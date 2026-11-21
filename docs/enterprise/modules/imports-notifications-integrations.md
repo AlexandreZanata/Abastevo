@@ -170,8 +170,10 @@ as `NOT_CONSULTED` until an authorized source returns a result.
 The fiscal recorder retains the source status code and response digest, scoped
 to the stored document and the current reviewed connection. Its transaction
 records one result and advances the document's fiscal revision together. The
-serving API and worker cannot write consultation results with their ordinary
-database login. A qualified provider still needs its own permitted route,
+document's stored-original audit event must fall between its declaration and
+the new consultation. An exact retry reuses that result and its observation
+time. The serving API and worker use an ordinary database login without
+consultation write access. A qualified provider still needs its permitted route,
 certificate custody and recorded authority before provisioning a recorder.
 The provider adapter must use the existing integration entitlement and
 connector authorization before accessing the source. The migration preserves

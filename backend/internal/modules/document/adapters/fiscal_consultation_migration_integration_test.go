@@ -96,4 +96,41 @@ func TestFiscalReceiptMigrationPreservesHistoryAndRollsBackFailedUpgrade(t *test
 	if err := f.Admin.QueryRow(ctx, `SELECT count(*) FROM org_document_fiscal_consultations`).Scan(&receipts); err != nil || receipts != 0 || snapshot() != before {
 		t.Fatalf("upgrade changed historical documents or invented receipts: %d / %v", receipts, err)
 	}
+
+	const dataReview = "000291_enterprise_data_source_review_order.sql"
+	const storageProof = "000292_organization_fiscal_consultation_storage_proof.sql"
+	for _, name := range []string{dataReview, storageProof} {
+		raw, err := fs.ReadFile(dbmigrations.Files, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		previous[name] = &fstest.MapFile{Data: raw}
+	}
+	projection := func() string {
+		t.Helper()
+		var definition string
+		if err := f.Admin.QueryRow(ctx, `SELECT pg_get_functiondef('org_document_apply_fiscal_receipt()'::regprocedure)`).Scan(&definition); err != nil {
+			t.Fatal(err)
+		}
+		return definition
+	}
+	priorProjection := projection()
+	broken = maps.Clone(previous)
+	broken[storageProof] = &fstest.MapFile{Data: append(slices.Clone(previous[storageProof].Data), "\nSELECT 1/0;\n"...)}
+	if _, err := migrate.Apply(ctx, f.AdminDSN, broken); sqlState(err) != "22012" {
+		t.Fatalf("expected the injected storage-proof upgrade failure: %v", err)
+	}
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.org_document_fiscal_stored_audit_idx') IS NULL
+ AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='000292')`).Scan(&rolledBack); err != nil ||
+		!rolledBack || projection() != priorProjection || snapshot() != before {
+		t.Fatalf("failed storage-proof upgrade changed the schema or documents: %v", err)
+	}
+	if applied, err := migrate.Apply(ctx, f.AdminDSN, previous); err != nil || !slices.Equal(applied, []string{"000292"}) {
+		t.Fatalf("storage-proof upgrade retry: %v / %v", applied, err)
+	}
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.org_document_fiscal_stored_audit_idx') IS NOT NULL
+ AND NOT EXISTS (SELECT 1 FROM org_document_fiscal_consultations)`).Scan(&rolledBack); err != nil ||
+		!rolledBack || projection() == priorProjection || snapshot() != before {
+		t.Fatalf("storage-proof upgrade altered historical evidence or missed its guard: %v", err)
+	}
 }

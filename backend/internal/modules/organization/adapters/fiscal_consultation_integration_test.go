@@ -31,7 +31,7 @@ func TestReviewedFiscalSourceRecordsOneScopedObservation(t *testing.T) {
 	}
 	store := &docpg.Store{Pool: serving, Authority: docpg.CurrentAuthority{Source: accesspg.NewStore(serving), Now: time.Now}, Audit: auditpg.NewStore(serving, catalog)}
 	owner := docapp.Actor{AccountID: fx.actor.AccountID, MembershipID: fx.member, Channel: "web"}
-	storedDocument := func() string {
+	storedDocument := func() (string, time.Time) {
 		t.Helper()
 		command := docapp.Create{OperationID: onboardingID(t), DocumentID: onboardingID(t), Original: docapp.Declaration{
 			Kind: docapp.KindReceipt, SHA256: strings.Repeat("ab", 32), Bytes: 1024, MediaType: docapp.MediaTypeJPEG,
@@ -39,26 +39,22 @@ func TestReviewedFiscalSourceRecordsOneScopedObservation(t *testing.T) {
 		if _, _, err := store.Create(ctx, fx.scope, owner, command); err != nil {
 			t.Fatal(err)
 		}
-		if err := database.WithOrgTx(ctx, serving, fx.scope, func(tx pgx.Tx) error {
-			for index, state := range []string{"RECEIVED", "STORED"} {
-				if _, err := tx.Exec(ctx, "UPDATE org_documents SET storage_state=$3,storage_revision=$4 WHERE org_id=$1 AND id=$2",
-					org, command.DocumentID, state, index+2); err != nil {
-					return err
-				}
-			}
-			return nil
-		}); err != nil {
+		if _, _, err := store.MarkReceived(ctx, fx.scope, owner, command.DocumentID, onboardingID(t)); err != nil {
 			t.Fatal(err)
 		}
-		return command.DocumentID
+		beforeCheck := lifecycleDBNow(t, fx)
+		outcome, err := store.Settle(ctx, fx.scope, command.DocumentID, domain.Received, 2, "", onboardingID(t))
+		if err != nil || outcome.State != domain.Stored {
+			t.Fatalf("verified original did not enter storage: %+v / %v", outcome, err)
+		}
+		return command.DocumentID, beforeCheck
 	}
-	doc, otherDoc := storedDocument(), storedDocument()
+	beforeCreation := lifecycleDBNow(t, fx)
+	doc, beforeCheck := storedDocument()
+	otherDoc, _ := storedDocument()
 	connection, approval, credential := onboardingID(t), onboardingID(t), onboardingID(t)
-	var observed time.Time
-	if err := fx.f.Admin.QueryRow(ctx, `SELECT clock_timestamp()-interval '5 seconds'`).Scan(&observed); err != nil {
-		t.Fatal(err)
-	}
-	ready := observed.Add(-time.Minute)
+	observed := lifecycleDBNow(t, fx)
+	ready := beforeCreation.Add(-time.Minute)
 	exec := func(query string, args ...any) {
 		t.Helper()
 		if _, err := fx.f.Admin.Exec(ctx, query, args...); err != nil {
@@ -120,6 +116,8 @@ func TestReviewedFiscalSourceRecordsOneScopedObservation(t *testing.T) {
 		{"wrong document", otherDoc, connection, observed},
 		{"foreign connection", doc, foreignConnection, observed},
 		{"before review and activation", doc, connection, ready.Add(-time.Second)},
+		{"before document declaration", doc, connection, beforeCreation},
+		{"after upload but before original safety check", doc, connection, beforeCheck},
 	} {
 		if _, err := record(serving, op, candidate.document, candidate.conn, 2, 2, "AUTHORIZED_AS_OF", "TEST_AUTHORIZED", candidate.at); linkSQLState(err) != "23514" {
 			t.Fatalf("%s accepted: %v", candidate.label, err)
@@ -157,13 +155,14 @@ func TestReviewedFiscalSourceRecordsOneScopedObservation(t *testing.T) {
 		t.Fatalf("operation identity admitted different provider evidence: %v", err)
 	}
 	secondOp, competingOp := onboardingID(t), onboardingID(t)
-	if _, err := record(serving, secondOp, doc, connection, 2, 3, "CANCELLED_AS_OF", "TEST_CANCELLED", observed.Add(-time.Second)); linkSQLState(err) != "23514" {
+	if _, err := record(serving, secondOp, doc, connection, 2, 3, "CANCELLED_AS_OF", "TEST_CANCELLED", observed); linkSQLState(err) != "23514" {
 		t.Fatalf("an older consultation advanced the fiscal state: %v", err)
 	}
+	secondObserved := lifecycleDBNow(t, fx)
 	results := make(chan error, 2)
 	for _, operation := range []string{secondOp, competingOp} {
 		go func() {
-			_, err := record(serving, operation, doc, connection, 2, 3, "CANCELLED_AS_OF", "TEST_CANCELLED", observed.Add(time.Second))
+			_, err := record(serving, operation, doc, connection, 2, 3, "CANCELLED_AS_OF", "TEST_CANCELLED", secondObserved)
 			results <- err
 		}()
 	}
@@ -177,7 +176,7 @@ func TestReviewedFiscalSourceRecordsOneScopedObservation(t *testing.T) {
 	exec(`INSERT INTO org_connector_approvals(org_id,id,revision,kind,provider_code,resource_id,credential_ref,maximum_bytes,
  maximum_items,decision,decision_ref) VALUES($1,$2,2,'FISCAL_LOOKUP','synthetic-fiscal',$3,$4,4096,1,'WITHDRAWN','synthetic-fiscal-withdrawal')`,
 		org, approval, doc, credential)
-	if _, err := record(serving, onboardingID(t), doc, connection, 2, 4, "AUTHORIZED_AS_OF", "TEST_AUTHORIZED", observed.Add(2*time.Second)); linkSQLState(err) != "23514" {
+	if _, err := record(serving, onboardingID(t), doc, connection, 2, 4, "AUTHORIZED_AS_OF", "TEST_AUTHORIZED", lifecycleDBNow(t, fx)); linkSQLState(err) != "23514" {
 		t.Fatalf("withdrawn review authorized an additional consultation: %v", err)
 	}
 	if rows, err := record(serving, op, doc, connection, 2, 2, "AUTHORIZED_AS_OF", "TEST_AUTHORIZED", observed); err != nil || rows != 0 {
@@ -185,7 +184,7 @@ func TestReviewedFiscalSourceRecordsOneScopedObservation(t *testing.T) {
 	}
 	view, err = store.Pending(ctx, fx.scope, owner, doc)
 	if err != nil || view.Statuses.Fiscal != domain.CancelledAsOf || view.Revisions.Fiscal != 3 ||
-		view.FiscalConsultedAt == nil || !observed.Add(time.Second).Equal(*view.FiscalConsultedAt) {
+		view.FiscalConsultedAt == nil || !secondObserved.Equal(*view.FiscalConsultedAt) {
 		t.Fatalf("withdrawal or replay altered the latest observation: %+v / %v", view, err)
 	}
 	var retained int
