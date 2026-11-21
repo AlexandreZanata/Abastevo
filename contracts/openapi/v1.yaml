@@ -13659,6 +13659,226 @@ paths:
                   ended_at: ''
                   end_reason: ''
                 next_cursor: ''
+  /v1/orgs/{org_id}/data/keys/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyList
+      summary: List company Data keys
+      description: Lists metadata only. Cursors are bound to the current company, member and route.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyListRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyPage'
+  /v1/orgs/{org_id}/data/keys/issue:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyIssue
+      summary: Issue a company Data key
+      description: Requires the current Data capability. The bearer appears once on successful issuance. Preserve it in secure storage.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyIssueRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyCommandResult'
+  /v1/orgs/{org_id}/data/keys/{key_id}/rotate:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyRotate
+      summary: Rotate a company Data key
+      description: Requires the current Data capability and the key revision. A replacement cannot widen scope. Omitted overlap ends old key access immediately.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: key_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyRotateRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyCommandResult'
+  /v1/orgs/{org_id}/data/keys/{key_id}/revoke:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyRevoke
+      summary: Revoke a company Data key
+      description: Revocation requires the key revision and remains available after the Data capability ends.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: key_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyRevokeRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyCommandResult'
   /v1/orgs/{org_id}/subscriptions/plan/read:
     post:
       tags:
@@ -47794,6 +48014,137 @@ components:
             substitute: ''
       description: 'Complete replacement: every field and nested slot is required, including explicit false, zero or
         empty values. Display preference does not rewrite normalized measures or historical records.'
+    EnterpriseDataKeyListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          maxLength: 2048
+    EnterpriseDataKeyIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, label, scopes, expires_at]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scopes:
+          $ref: '#/components/schemas/EnterpriseDataKeyScopes'
+        expires_at:
+          type: string
+          format: date-time
+    EnterpriseDataKeyRotateRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision, label, scopes, expires_at]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scopes:
+          $ref: '#/components/schemas/EnterpriseDataKeyScopes'
+        expires_at:
+          type: string
+          format: date-time
+        overlap_until:
+          type: string
+          format: date-time
+    EnterpriseDataKeyRevokeRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+    EnterpriseDataKeyScopes:
+      type: array
+      minItems: 1
+      maxItems: 1
+      items:
+        type: string
+        enum: [regional.read]
+    EnterpriseDataKeyMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, label, scopes, state, revision, issued_at, expires_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        scopes:
+          $ref: '#/components/schemas/EnterpriseDataKeyScopes'
+        state:
+          type: string
+          enum: [ACTIVE, ROTATING, REVOKED, EXPIRED]
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        overlap_until:
+          type: string
+          format: date-time
+    EnterpriseDataKeyPage:
+      type: object
+      additionalProperties: false
+      required: [keys, next_cursor]
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataKeyMetadata'
+        next_cursor:
+          type: string
+    EnterpriseDataKeyCommandResult:
+      type: object
+      additionalProperties: false
+      required: [key, replayed]
+      properties:
+        key:
+          $ref: '#/components/schemas/EnterpriseDataKeyMetadata'
+        bearer:
+          type: string
+          description: One-time bearer for the first successful issue or rotate response.
+        replayed:
+          type: boolean
     EnterprisePlanOverview:
       type: object
       additionalProperties: false

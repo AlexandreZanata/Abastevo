@@ -55,6 +55,9 @@ import (
 	billweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters/http"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	datapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters"
+	dataweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters/http"
+	datadomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
 	exportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	exportapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/application"
@@ -122,7 +125,7 @@ type Options struct {
 
 // CapabilityCodes are the organization capabilities this composition
 // registers; the operator tool validates against the same list (EDR-368).
-func CapabilityCodes() []string { return []string{"organizations"} }
+func CapabilityCodes() []string { return []string{"organizations", "data"} }
 
 // Register performs no I/O or provisioning. The default mounts no private
 // entry; enabled commands still require an ordinary role and current proof.
@@ -179,6 +182,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, trackingpg.RoutePlanAuditDefinitions()...)
 	definitions = append(definitions, intelpg.AuditDefinitions()...)
 	definitions = append(definitions, agreepg.AuditDefinitions()...)
+	definitions = append(definitions, datapg.KeyAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -198,6 +202,7 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
+		{Class: "data.key", Permissions: []string{"data.key.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Scoped key lifecycle inherits the identity v1 write allowance on each current organization/account/web axis; dataset request limits are independent."},
 		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup/settings only: share identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -245,6 +250,15 @@ func Register(router chi.Router, o Options) error {
 	billingOverview := billpg.OverviewStore{Pool: o.Pool, Capabilities: capabilities,
 		Authority: orgpg.SubscriptionAuthority{Memberships: memberStore, Roles: roles}}
 	if err := billweb.RegisterPlanOverview(router, billingOverview, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	keyVerifier, err := datadomain.NewKeyVerifier(o.CursorSecret)
+	if err != nil {
+		return err
+	}
+	keyStore := datapg.KeyStore{Pool: o.Pool, Audit: auditStore, Verifier: keyVerifier,
+		Authority: orgpg.DataKeyAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}
+	if err := dataweb.RegisterKeys(router, keyStore, cookies, gateway, authorization); err != nil {
 		return err
 	}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {

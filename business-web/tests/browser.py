@@ -72,7 +72,7 @@ def ordinary_runtime(dsn):
         connection.execute(sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD {}").format(sql.Identifier(role), sql.Literal(password)))
         grants = [
             "GRANT USAGE ON SCHEMA public TO {}",
-            "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances TO {}",
+            "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances,org_data_api_keys TO {}",
             "GRANT SELECT,INSERT ON account_key_credentials,org_onboarding_commands,org_audit_events,org_employee_commands,org_settings_commands,org_settings_versions,org_settings_designations,org_settings_notices,org_invitation_commands,org_invitation_notices,org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices,org_role_commands TO {}",
             "GRANT SELECT,UPDATE ON org_teams,org_team_links,org_ownership_transfers,org_device_enrollments TO {}",
             "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts TO {}",
@@ -165,6 +165,7 @@ def run(dsn):
         env = {k: v for k, v in os.environ.items() if not k.startswith("ANPFUEL_")}
         env.update(ANPFUEL_ENV="development", ANPFUEL_DATABASE_URL=dsn,
                    ANPFUEL_ANP_DISCOVERY_ENABLED="false", ANPFUEL_ENTERPRISE_ENABLED="true",
+                   ANPFUEL_ENTERPRISE_BILLING_ENABLED="true",
                    ANPFUEL_HTTP_ADDR="127.0.0.1:" + str(api_port),
                    ANPFUEL_CANONICAL_HOST="localhost:" + str(web.server_port))
         subprocess.run(["go", "run", "./cmd/migrate"], cwd=ROOT / "backend", env=env,
@@ -774,6 +775,44 @@ def employee_checks(browser, origin, dsn):
     assert "synthetic-browser-policy" not in private_plan.text(), "Approval evidence escaped through the plan view"
     assert context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read",
                                 headers=headers, data={"organization_id": other_org}).status == 400
+    data_path = origin + "/v1/orgs/" + org_id + "/data/keys/"
+    foreign_path = origin + "/v1/orgs/" + other_org + "/data/keys/"
+    expires = private_plan.json()["plans"][0]["term_end"]
+    issue = {"schema_version": 1, "operation_id": str(uuid.uuid4()),
+             "label": "Synthetic browser key", "scopes": ["regional.read"], "expires_at": expires}
+    denied = context.request.post(data_path + "issue", headers=headers, data=issue)
+    assert denied.status == 403 and "ENTITLEMENT_REQUIRED" in denied.text(), "A company without Data access could issue a key"
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SELECT set_config('anpfuel.org_id',%s,true)", (org_id,))
+        connection.execute("""
+            INSERT INTO enterprise_plan_catalog
+                (product_code,plan_code,revision,display_name,capabilities,api_calls)
+            VALUES ('data','browser-data-plan',1,'Data sintético',ARRAY['data'],5)
+        """)
+        connection.execute("""
+            INSERT INTO org_billing_subscription_events
+                (org_id,subscription_id,revision,product_code,plan_code,plan_revision,from_state,state,prior_state,
+                 event_kind,event_source,evidence_reference,occurred_at,term_start,term_end)
+            VALUES (%s,%s,1,'data','browser-data-plan',1,'','TRIALING','','START_TRIAL','TRIAL_POLICY',
+                    'synthetic-browser-data-policy',now(),now(),now()+interval '1 day')
+        """, (org_id, str(uuid.uuid4())))
+    issued = context.request.post(data_path + "issue", headers=headers, data=issue)
+    assert issued.status == 200 and issued.headers["cache-control"] == "no-store", f"Scoped Data key issuance failed: HTTP {issued.status}"
+    issued_json = issued.json()
+    assert issued_json["key"]["id"] == issue["operation_id"] and issued_json["bearer"].startswith("abv_data_")
+    reissued = context.request.post(data_path + "issue", headers=headers, data=issue)
+    assert reissued.status == 200 and reissued.json()["replayed"] and "bearer" not in reissued.json()
+    rotation = dict(issue, operation_id=str(uuid.uuid4()), revision=1)
+    rotated = context.request.post(data_path + issue["operation_id"] + "/rotate", headers=headers, data=rotation)
+    assert rotated.status == 200 and rotated.json()["key"]["id"] == rotation["operation_id"], "Scoped Data key rotation failed"
+    listing = context.request.post(data_path + "list", headers=headers, data={"limit": 1})
+    assert listing.status == 200 and listing.json()["next_cursor"] and "bearer" not in listing.text()
+    assert context.request.post(foreign_path + "list", headers=headers,
+                                data={"cursor": listing.json()["next_cursor"]}).status == 400
+    assert context.request.post(foreign_path + "list", headers=headers, data={}).json()["keys"] == []
+    revoke = {"schema_version": 1, "operation_id": str(uuid.uuid4()), "revision": 2}
+    revoked = context.request.post(data_path + issue["operation_id"] + "/revoke", headers=headers, data=revoke)
+    assert revoked.status == 200 and revoked.json()["key"]["state"] == "REVOKED" and "bearer" not in revoked.json()
     page.locator("#retry-button").click()
     expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
     page.locator("#organization-select").select_option(org_id)

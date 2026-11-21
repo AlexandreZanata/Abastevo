@@ -14,11 +14,9 @@ A regional dataset version pins the enterprise export snapshot, official
 survey revision and method version. The catalog checks the latest recorded
 commercial review for the exact registry and price digests. A later review
 can hold a previously approved dataset. Each catalog revision retains the
-state and minimum sample size.
-```text
-Registry pin: S-ESP-01
-Price pin: S-ESP-02
-```
+state and minimum sample size. The registry pin is S-ESP-01 and the
+official price pin is S-ESP-02.
+
 The organization owns its API keys, usage, watchlists and report requests. Key secrets are protected and only safe metadata is redisplayed. A dataset is not the organization's private operational database.
 
 ## 4. Business rules
@@ -38,7 +36,7 @@ The organization owns its API keys, usage, watchlists and report requests. Key s
 
 ## 6. States and transitions
 
-Keys follow active, rotating, revoked and expired states in [the state catalog](../state-model.md). Revocation applies to the next request. Report files use the existing export lifecycle and private expiry. Rights-pending admission remains a hold on the affected dataset regardless of subscription state.
+Keys follow active, rotating, revoked and expired states in [the state catalog](../state-model.md). The scoped company API issues and rotates keys after fresh proof, an organization-wide `data.key.manage` grant and the current Data capability. Revocation uses the same current proof and permission after the capability ends. Mutations bind a client operation ID to their command, and only the committed first issue or rotation response includes the bearer. Listing uses company- and member-bound cursors. The normal key proof holds the current operator switch, plan, active organization and key row through consumption. Revocation applies to the next request. Report files use the existing export lifecycle and private expiry. Rights-pending admission remains a hold on the affected dataset regardless of subscription state.
 
 ## 7. Roles and permissions
 

@@ -152,10 +152,15 @@
   },
   {
    "permission": "data.key.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Organization Data API key and usage routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/data/keys/list",
+   "routes": [
+    "POST /v1/orgs/{org_id}/data/keys/issue",
+    "POST /v1/orgs/{org_id}/data/keys/list",
+    "POST /v1/orgs/{org_id}/data/keys/{key_id}/revoke",
+    "POST /v1/orgs/{org_id}/data/keys/{key_id}/rotate"
+   ],
+   "reason": ""
   },
   {
    "permission": "data.usage.read",
