@@ -85,7 +85,7 @@ func (s HTTPSWebhookSender) SendWebhook(ctx context.Context, endpoint string, re
 	if s.keys == nil || s.client == nil || !validWebhookEndpoint(endpoint) || ref.Reference() == "" {
 		return WebhookSuppressed
 	}
-	key, err := s.readKey(ref.Reference())
+	key, err := readConnectorKey(s.keys, ref.Reference())
 	if err != nil {
 		return WebhookRetry
 	}
@@ -114,13 +114,13 @@ func (s HTTPSWebhookSender) SendWebhook(ctx context.Context, endpoint string, re
 	}
 }
 
-func (s HTTPSWebhookSender) readKey(name string) ([32]byte, error) {
+func readConnectorKey(root *os.Root, name string) ([32]byte, error) {
 	var key [32]byte
-	info, err := s.keys.Lstat(name)
+	info, err := root.Lstat(name)
 	if err != nil || !info.Mode().IsRegular() || info.Size() != int64(len(key)) {
 		return key, errWebhookDestination
 	}
-	file, err := s.keys.Open(name)
+	file, err := root.Open(name)
 	if err != nil {
 		return key, errWebhookDestination
 	}

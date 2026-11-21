@@ -14203,6 +14203,55 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/integrations/orgs/{org_id}/connections/{connection_id}/accounting/{export_id}:
+    get:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseAccountingConnectorDownload
+      summary: Download one approved accounting export
+      description: The connector proof binds the company, connection and exact ready file. Current
+        approval, requester permissions, byte and row limits are required on every request.
+      security:
+      - OrganizationAccountingBearer: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: export_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: If-None-Match
+        in: header
+        schema: {type: string}
+      responses:
+        '200':
+          description: Approved version 1 accounting CSV in exact integer centavos.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+            ETag:
+              schema: {type: string}
+          content:
+            text/csv:
+              schema: {type: string, format: binary}
+        '304':
+          description: Current authorized file matches the supplied validator.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+            ETag:
+              schema: {type: string}
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/preview:
     post:
       tags:
@@ -27569,6 +27618,10 @@ x-abastevo-organization-api:
   status: company_sessions_synthetic_onboarding_legal_units_and_cost_centres_implemented
 components:
   securitySchemes:
+    OrganizationAccountingBearer:
+      type: http
+      scheme: bearer
+      description: Exact approved accounting file proof for a reviewed external consumer.
     OrganizationDataBearer:
       type: http
       scheme: bearer

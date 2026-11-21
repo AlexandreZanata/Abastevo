@@ -97,3 +97,15 @@ WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND id= CAST(sqlc.arg(id)::te
 UPDATE org_export_jobs SET object_deleted_at=clock_timestamp()
 WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND id= CAST(sqlc.arg(id)::text AS UUID) AND state IN('FAILED','EXPIRED')
  AND object_sha256= sqlc.arg(object_sha256)::text AND object_deleted_at IS NULL;
+
+-- name: AccountingConnectorFile :one
+SELECT requester_account_id::text AS requester_account_id,requester_membership_id::text AS requester_membership_id,
+       kind,media_type,COALESCE(object_sha256,'')::text AS sha256,
+       COALESCE(object_bytes,0)::bigint AS bytes,COALESCE(row_count,0)::bigint AS rows
+FROM org_export_jobs
+WHERE org_id=sqlc.arg('org_id')::text::uuid AND id=sqlc.arg('id')::text::uuid
+  AND state='READY' AND expires_at>clock_timestamp() AND media_type='text/csv'
+  AND kind IN ('fin.accounting_competence.csv','fin.accounting_cash.csv')
+  AND parameters::jsonb->'layout_version'='1'::jsonb
+  AND jsonb_typeof(parameters::jsonb->'period_start')='string'
+  AND jsonb_typeof(parameters::jsonb->'period_end')='string';

@@ -111,15 +111,16 @@ const (
 	// Contributor surface (ADR-023). The GitHub repository is owner/repo;
 	// the token is optional and read-only. Public web origins are the only
 	// origins allowed to read GET /v1/contributors with CORS.
-	keyGitHubRepo               = "ANPFUEL_GITHUB_REPO"
-	keyGitHubToken              = "ANPFUEL_GITHUB_TOKEN"
-	keyPublicWebOrigins         = "ANPFUEL_PUBLIC_WEB_ORIGINS"
-	keyDriverEnabled            = "ANPFUEL_DRIVER_ENABLED"
-	keyForumEnabled             = "ANPFUEL_FORUM_ENABLED"
-	keyEnterpriseBillingEnabled = "ANPFUEL_ENTERPRISE_BILLING_ENABLED"
-	keyEnterpriseEnabled        = "ANPFUEL_ENTERPRISE_ENABLED"
-	keyEnterpriseDeviceLimit    = "ANPFUEL_ENTERPRISE_DEVICE_LIMIT"
-	keyEnterpriseWebhookKeyRoot = "ANPFUEL_ENTERPRISE_WEBHOOK_KEY_ROOT"
+	keyGitHubRepo                  = "ANPFUEL_GITHUB_REPO"
+	keyGitHubToken                 = "ANPFUEL_GITHUB_TOKEN"
+	keyPublicWebOrigins            = "ANPFUEL_PUBLIC_WEB_ORIGINS"
+	keyDriverEnabled               = "ANPFUEL_DRIVER_ENABLED"
+	keyForumEnabled                = "ANPFUEL_FORUM_ENABLED"
+	keyEnterpriseBillingEnabled    = "ANPFUEL_ENTERPRISE_BILLING_ENABLED"
+	keyEnterpriseEnabled           = "ANPFUEL_ENTERPRISE_ENABLED"
+	keyEnterpriseDeviceLimit       = "ANPFUEL_ENTERPRISE_DEVICE_LIMIT"
+	keyEnterpriseWebhookKeyRoot    = "ANPFUEL_ENTERPRISE_WEBHOOK_KEY_ROOT"
+	keyEnterpriseAccountingKeyRoot = "ANPFUEL_ENTERPRISE_ACCOUNTING_KEY_ROOT"
 	// EMP-METER-003 rollback switch (EDR-185); default on.
 	keyEnterpriseMeterPlausibility = "ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY"
 )
@@ -178,8 +179,9 @@ type Config struct {
 	// EnterpriseEnabled gates private organization surfaces; default off.
 	EnterpriseEnabled bool
 	// EnterpriseBillingEnabled adds the organization's plan capability provider.
-	EnterpriseBillingEnabled bool
-	EnterpriseWebhookKeyRoot string
+	EnterpriseBillingEnabled    bool
+	EnterpriseWebhookKeyRoot    string
+	EnterpriseAccountingKeyRoot string
 	// EnterpriseDeviceLimit is the server-owned existing-account enrollment
 	// ceiling per membership; clients never supply a limit. Default3, range1..5.
 	EnterpriseDeviceLimit int64
@@ -458,6 +460,10 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	cfg.EnterpriseWebhookKeyRoot, _ = getenv(keyEnterpriseWebhookKeyRoot)
 	if cfg.EnterpriseWebhookKeyRoot != "" && !filepath.IsAbs(cfg.EnterpriseWebhookKeyRoot) {
 		return Config{}, fmt.Errorf("%s must be an absolute path", keyEnterpriseWebhookKeyRoot)
+	}
+	cfg.EnterpriseAccountingKeyRoot, _ = getenv(keyEnterpriseAccountingKeyRoot)
+	if cfg.EnterpriseAccountingKeyRoot != "" && !filepath.IsAbs(cfg.EnterpriseAccountingKeyRoot) {
+		return Config{}, fmt.Errorf("%s must be an absolute path", keyEnterpriseAccountingKeyRoot)
 	}
 	cfg.EnterpriseDeviceLimit = 3
 	if raw, present := getenv(keyEnterpriseDeviceLimit); present {

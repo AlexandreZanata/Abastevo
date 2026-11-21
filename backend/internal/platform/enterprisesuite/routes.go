@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"os"
 	"slices"
 	"time"
 
@@ -117,7 +118,8 @@ type Options struct {
 	DocumentStorage *mediapg.StorageConfig
 	// ExportStorage is the private bucket for export files; nil keeps every
 	// export transfer unavailable (EMP-RPT-001).
-	ExportStorage *exportpg.StorageConfig
+	ExportStorage  *exportpg.StorageConfig
+	AccountingKeys *os.Root
 	// ExportFormats are additional admitted export formats. The suite always
 	// composes the operational list kinds of EMP-RPT-002; tests may add
 	// synthetic kinds.
@@ -605,7 +607,7 @@ func Register(router chi.Router, o Options) error {
 	}
 
 	exportAuthority := &orgpg.ExportAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
-	if err := registerExports(router, o, cookies, gateway, exportAuthority, authorization.Capabilities, roles, auditStore); err != nil {
+	if err := registerExports(router, o, cookies, gateway, exportAuthority, authorization.Capabilities, roles, auditStore, connections.Access); err != nil {
 		return err
 	}
 

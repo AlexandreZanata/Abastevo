@@ -18,6 +18,8 @@ import (
 	billpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	connectorpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters"
+	connectorweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters/http"
 	datapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters"
 	exportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	exportweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters/http"
@@ -66,7 +68,7 @@ func exportCapabilityKey(secret []byte) []byte {
 
 // registerExports mounts the export routes (EMP-RPT-001) on the shared
 // company entry, authority and audit runner.
-func registerExports(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authority *orgpg.ExportAuthority, capabilities access.CapabilityGate, roles access.AuthoritySource, audit *auditpg.Store) error {
+func registerExports(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authority *orgpg.ExportAuthority, capabilities access.CapabilityGate, roles access.AuthoritySource, audit *auditpg.Store, connector connectorpg.Access) error {
 	formats, objects, err := exportParts(o, authority)
 	if err != nil {
 		return err
@@ -75,7 +77,12 @@ func registerExports(router chi.Router, o Options, cookies companyweb.Handler, g
 	if err != nil {
 		return err
 	}
-	service := exportapp.Service{Enabled: true, Repository: &exportpg.Store{Pool: o.Pool, Authority: authority, Audit: audit}, Formats: formats, Objects: objects,
+	store := &exportpg.Store{Pool: o.Pool, Authority: authority, Audit: audit}
+	if o.BillingEnabled && o.ExportStorage != nil && o.AccountingKeys != nil {
+		connectorweb.RegisterAccounting(router, connectorpg.AccountingDownloads{Access: connector,
+			Keys: o.AccountingKeys, Files: store, FilesContent: objects})
+	}
+	service := exportapp.Service{Enabled: true, Repository: store, Formats: formats, Objects: objects,
 		Tokens: tokens, Recorder: auditpg.AccessLog{Runner: audit}, NewID: jobs.NewUUIDv4, Now: time.Now}
 	authorization := access.Authorization{Source: roles, Capabilities: capabilities, Records: exportweb.ExportRecords{}, Now: time.Now}
 	return exportweb.RegisterExports(router, service, cookies, gateway, authorization)

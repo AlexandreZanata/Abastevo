@@ -125,3 +125,33 @@ interrupted send may have reached the receiver before the outcome was
 recorded, so receivers must deduplicate the delivery ID. The default worker
 configuration has no key directory. Recorded provider approval and key
 provisioning precede activation.
+
+### Accounting export layout
+
+EMP-INTEG-007 uses the existing private export worker and integer BRL
+centavos (BR-RPT-002, BR-RPT-008, EDR-013). Competence and cash are distinct
+kinds. When present, `period_start` and `period_end` are inclusive calendar
+dates. Competence uses the stored reporting day of the approved operating
+cost, including the independent review of a fueling expense. Cash groups
+settled statements by their payment day in the organization time zone. The export cutoff is the recorded request instant. Manual exports may
+omit either limit. A connector needs a fixed period and explicit layout
+version, plus current authorization for the exact generated file. Delivery of
+the same file retains its export ID and checksum.
+
+A reviewed `accounting-csv-v1` connection binds one `layout_version: 1`
+export by ID. The API checks the current approved connection, the original
+requester's current company-wide permissions and the approval's size and
+row limits. The consumer presents a bearer proof in the form
+`<credential_uuid>.<lowercase-hex-hmac>`. The HMAC-SHA256 input is the UTF-8
+sequence `abastevo-accounting-v1`, organization UUID, connection UUID and
+export UUID separated by line feeds, with no final line feed. A repeated
+request may use the returned checksum ETag. It carries the same bytes and
+file ID, and creates no accounting entry. The standard manual download
+remains available with its existing company checks.
+
+To qualify a receiver, provision the reviewed credential in the API's
+private `ANPFUEL_ENTERPRISE_ACCOUNTING_KEY_ROOT` directory. A file named
+for the approved credential UUID contains exactly 32 raw random bytes.
+Withhold the key directory until the recipient and data contract have
+recorded approval. The connector uses a different credential directory
+from outbound vehicle webhooks.
