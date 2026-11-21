@@ -43,6 +43,24 @@ Admin actions require the online server. Mutations are idempotent and revision-b
 
 The existing admin audit captures each accepted mutation. Review queues consume typed owning-workflow requests. Organization members can inspect support history. Notification payloads contain safe references and links. Manual subscription adjustments use the owning approved billing contract.
 
+The restricted enterprise operations command posts a reviewed `SERVICE_CREDIT`
+or `DEBIT_CORRECTION` for an exact organization and subscription revision.
+The approval names the accountable operator, direction, BRL centavos, approved
+reason reference and validity window. The ordinary application role can read
+approvals and post the bounded entry. The review workflow creates approvals
+under its separate authority.
+
+```sh
+ops enterprise adjustment post --org <uuid> --approval-id <uuid> --operation-id <uuid>
+```
+
+Use the existing operator identity and the same operation ID for a matching
+retry. A competing operation cannot consume the same approval again. The
+organization audit records the adjustment category and request digest. The
+financial posting retains the exact amount and reviewed source. Provider
+settlement, individual Premium and company membership are evaluated by their
+existing owners.
+
 ## 10. Data, formulas and examples
 
 The support journey in [JRN-13](../journeys.md) requests the import area for two hours. Approval permits the named import case only. Its documents and positions remain closed. Duration is explicit approved data, not a blanket maximum. The time source is the server.

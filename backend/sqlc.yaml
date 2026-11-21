@@ -70,6 +70,7 @@ sql:
       - db/migrations/000268_organization_trial_grants.sql
       - db/migrations/000274_organization_asaas_billing.sql
       - db/migrations/000281_organization_vehicle_plan_selection.sql
+      - db/migrations/000283_organization_billing_adjustments.sql
     gen:
       go:
         package: orgbilling

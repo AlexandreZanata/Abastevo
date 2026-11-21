@@ -190,6 +190,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, datapg.KeyAuditDefinitions()...)
 	definitions = append(definitions, datapg.WatchAuditDefinitions()...)
 	definitions = append(definitions, billpg.VehicleSelectionAuditDefinitions()...)
+	definitions = append(definitions, billpg.AdjustmentAuditDefinitions()...)
 	definitions = append(definitions, connectorpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
