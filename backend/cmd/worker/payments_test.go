@@ -12,7 +12,7 @@ import (
 )
 
 func TestPAY19WorkerInboxIsolatedAndFailClosed(t *testing.T) {
-	handler := composePaymentInbox(config.PaymentsConfig{}, nil, time.Now)
+	handler := composePaymentInbox(config.Config{}, nil, time.Now)
 	if handler.Kind() != "payment-inbox" || handler.Version() != 1 {
 		t.Fatalf("handler=%s v%d", handler.Kind(), handler.Version())
 	}

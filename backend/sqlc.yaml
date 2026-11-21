@@ -61,6 +61,7 @@ sql:
       - db/migrations/000169_organization_roots.sql
       - db/migrations/000263_organization_plan_catalog.sql
       - db/migrations/000264_organization_subscription_history.sql
+      - db/migrations/000265_organization_billing_intake.sql
     gen:
       go:
         package: orgbilling

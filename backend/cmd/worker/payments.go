@@ -5,11 +5,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	orgbilling "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
+	orgcapability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	payadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/adapters"
 	payjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/adapters/jobs"
 	paymentsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	paydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 )
 
 const (
@@ -42,7 +45,7 @@ func payWorkerAsaasEnv(mode string) paydomain.Environment {
 // store and provider-gated verifiers as the API, drained through one serial
 // payment-inbox slot isolated from safety and map workloads. Unconfigured
 // providers stay nil so pending events are preserved, never dropped.
-func composePaymentInbox(payments config.PaymentsConfig, pool *pgxpool.Pool, clock func() time.Time) payjobs.Handler {
+func composePaymentInbox(cfg config.Config, pool *pgxpool.Pool, clock func() time.Time) payjobs.Handler {
 	if clock == nil {
 		clock = time.Now
 	}
@@ -51,10 +54,13 @@ func composePaymentInbox(payments config.PaymentsConfig, pool *pgxpool.Pool, clo
 	if err != nil {
 		catalog = paydomain.Catalog{}
 	}
+	payments := cfg.Payments
 	preflight := payments.Preflight()
 	router := &payjobs.Router{Store: store}
 	mux := payadapters.SettlementMux{}
 	dispute := &paymentsapp.DisputeService{Store: store, Clock: clock}
+	settlement := &paymentsapp.SettlementService{Store: store, Catalog: catalog}
+	router.Settlement = settlement
 
 	if preflight.Stripe.MaintenanceReady {
 		env := payWorkerStripeEnv(payments.Stripe.Mode)
@@ -62,14 +68,23 @@ func composePaymentInbox(payments config.PaymentsConfig, pool *pgxpool.Pool, clo
 		stripe.Merchant = payments.Stripe.MerchantID
 		mux.Stripe = stripe
 		dispute.Stripe = stripe
+		if cfg.EnterpriseEnabled && cfg.EnterpriseBillingEnabled {
+			capabilities, err := orgcapability.NewCatalog(enterprisesuite.CapabilityCodes())
+			if err == nil {
+				router.Settlement = orgbilling.StripeSettlement{
+					Resources: stripe, Personal: settlement, Inbox: store, Merchant: stripe.Merchant, Environment: env,
+					Record: orgbilling.BillingIntake{
+						Pool: pool, Ledger: orgbilling.SubscriptionLedger{Capabilities: capabilities}, Now: clock,
+					},
+				}
+			}
+		}
 		router.Lifecycle = &paymentsapp.LifecycleService{Store: store, Verifier: stripe}
 		router.Channels = append(router.Channels, payjobs.Channel{
 			Provider: paydomain.ProviderStripe, Environment: env,
 			Merchant: payments.Stripe.MerchantID,
 		})
 	}
-	settlement := &paymentsapp.SettlementService{Store: store, Catalog: catalog}
-	router.Settlement = settlement
 	if preflight.PixManual.MaintenanceReady {
 		env := payWorkerAsaasEnv(payments.Asaas.Mode)
 		asaas := payadapters.NewAsaasProvider(payments.Asaas.APIKey, env, nil)

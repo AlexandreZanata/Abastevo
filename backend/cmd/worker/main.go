@@ -586,7 +586,7 @@ func run() error {
 	handlers := map[string]jobs.Handler{
 		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
 		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
-		"payment-inbox":            composePaymentInbox(cfg.Payments, raw, time.Now),
+		"payment-inbox":            composePaymentInbox(cfg, raw, time.Now),
 		"anp-discovery": officialjobs.Discovery{
 			Fetch:       &fetcher,
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",

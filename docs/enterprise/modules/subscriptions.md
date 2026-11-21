@@ -59,7 +59,17 @@ Changes and purchases require the server. Existing field queues preserve creatio
 
 ## 9. Events, notifications and integrations
 
-Approved provider adapters feed the existing subscription and entitlement ports. Manual pilot capability activation remains independent from selling plans. Notifications carry safe links. Fiscal invoice issuance and accounting connections are separate capabilities.
+The organization settlement consumer can receive Stripe invoice events through
+the existing authenticated payment inbox when both enterprise and organization
+billing are enabled. The finalized subscription metadata identifies the
+company subscription. The consumer retrieves the invoice and captured card
+charge, compares the reviewed customer, contract, amount, price and term,
+and atomically appends the transition and its audit receipt. Reconciliation
+records conflicts in the inbox without applying an organization transition.
+
+Manual pilot capability activation remains independent from selling plans.
+Notifications carry safe links. Fiscal invoice issuance and accounting
+connections are separate capabilities.
 
 ## 10. Data, formulas and examples
 

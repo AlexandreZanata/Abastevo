@@ -221,3 +221,27 @@ evidence.
 
 Until all applicable inputs and the phase-specific provider proofs exist, the
 catalog remains `PRODUCTION_SALES_DISABLED`.
+
+## Organization billing envelope (EMP-GOV-009, EMP-SUBS-004)
+
+Abastevo Empresas has a separate catalog and company management surface.
+An approved organization offer binds a plan revision to a channel, merchant,
+environment, exact BRL amount and explicit provider offer reference. The
+offer and the payer agreement require recorded commercial and fiscal review.
+The company offer never enters the personal account catalog, and its
+entitlements still require the organization's membership and role gates.
+Android remains a consumption surface for this plan.
+
+Stripe card and the Asaas Pix channels use their existing provider proof
+boundaries. A verified webhook is an intake receipt. The processor retrieves
+the canonical resource before accepting a settlement. Stripe subscription
+creation does not establish that an invoice was paid. Asaas distinguishes
+a confirmed payment from funds received. Each channel must record the admitted
+settlement states and pass sandbox acceptance before sale. An unsupported
+event stays outside the subscription lifecycle. A future paid term starts at
+its recorded boundary.
+
+Reference: [Stripe subscription events](https://docs.stripe.com/billing/subscriptions/webhooks),
+[Stripe webhook verification and retries](https://docs.stripe.com/webhooks),
+[Asaas payment events](https://docs.asaas.com/docs/payment-events), and
+[Asaas webhook identity and delivery](https://docs.asaas.com/docs/receive-asaas-events-at-your-webhook-endpoint).
