@@ -143,6 +143,9 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 		National: national, Rankings: views, States: stateLinks(summaries, states), FuelHubs: g.orderedFuelHubs(),
 		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
 	}
+	if g.hasParityPage() {
+		data.ParityHref = parityRoute
+	}
 	codes := make([]string, 0, len(national))
 	for _, row := range national {
 		codes = append(codes, row.Code)
@@ -246,6 +249,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 		}
 		data := statePage{pageBase: base, UF: uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links, NoDataCities: noData}
 		data.Comparison = g.comparison(summaries, analytics.LevelState, uf, "")
+		data.Parity = g.parityLine(analytics.LevelState, uf)
 		items := make([]listItem, 0, len(links))
 		for _, link := range links {
 			items = append(items, listItem{Name: "Preços em " + placeLabel(link.Name, uf), Href: link.Href})
@@ -336,6 +340,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 				data.Rankings = observationRankings(items)
 				data.Comparison = g.comparison(summaries, analytics.LevelMunicipality, code, "")
 				data.FAQ = g.cityFAQ(placeLabel(name, uf), rows)
+				data.Parity = g.parityLine(analytics.LevelMunicipality, code)
 			}
 		}
 		listed := make([]listItem, 0, len(stationList))

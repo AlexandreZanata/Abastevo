@@ -129,6 +129,32 @@ const templates = `
   </table>
 </div>{{else}}<div class="notice"><strong>Sem resumo nesta pesquisa.</strong><p>Não há observações compatíveis para este recorte.</p></div>{{end}}{{end}}
 
+{{define "parityLine"}}{{if .}}<p>Etanol ÷ gasolina comum nesta amostra: {{.}} (referência geral: 70%). <a href="/precos/etanol-ou-gasolina/">Ver por estado e cidade</a></p>{{end}}{{end}}
+
+{{define "parityTable"}}<div class="table-wrap"><table>
+    <caption>Relação entre as médias da amostra de etanol hidratado e de gasolina comum; cálculo abastevo</caption>
+    <thead><tr><th scope="col">Área</th><th scope="col" class="num">Etanol (média da amostra)</th><th scope="col" class="num">Gasolina comum (média da amostra)</th><th scope="col" class="num">Relação</th><th scope="col" class="num">Postos (etanol / gasolina)</th><th scope="col">Referência de 70%</th></tr></thead>
+    <tbody>{{range .}}<tr><td><a href="{{.Href}}">{{.Name}}</a></td><td class="num">{{brl .EthanolMean}}</td><td class="num">{{brl .GasolineMean}}</td><td class="num">{{.Ratio}}</td><td class="num">{{.EthanolStations}} / {{.GasolineStations}}</td><td>{{.Position}}</td></tr>{{end}}</tbody>
+  </table></div>{{end}}
+
+{{define "parity"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <h1>Etanol ou gasolina: relação de preços por estado e cidade</h1>
+  <p class="lead">{{.Lead}}</p>
+  <div class="notice"><strong>Como ler.</strong><p>A regra geral usa 70% como referência: abaixo disso, o etanol costuma render mais por real gasto; acima, a gasolina. O ponto de equilíbrio do seu carro pode ser diferente.{{if .CalculatorHref}} Faça a conta com os seus números <a href="{{.CalculatorHref}}">na calculadora de etanol ou gasolina</a>. <a href="{{.GuideHref}}">Entenda a regra dos 70%</a>.{{end}}</p></div>
+  <h2>Brasil</h2>
+  {{template "parityTable" .National}}
+  {{if .States}}<h2>Por estado</h2>
+  {{template "parityTable" .States}}{{end}}
+  {{if .Cities}}<h2>Por cidade</h2>
+  {{template "parityTable" .Cities}}{{end}}
+  <p class="muted">Só há relação quando o etanol e a gasolina comum têm pelo menos 5 postos cada na amostra da área.</p>
+  {{template "modules" .}}
+  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para as médias da amostra e para a relação.</p></div>
+  <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
 {{define "comparison"}}{{if .}}<h2>Comparação com a pesquisa anterior</h2>
 <div class="table-wrap">
   <table>
@@ -207,7 +233,7 @@ const templates = `
   <h2>Brasil</h2>
   {{template "summary" .National}}
   {{if .FuelHubs}}<h2>Preço por combustível</h2>
-  <ul class="station-list">{{range .FuelHubs}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a> — {{brl .Min}} a {{brl .Max}} por {{unitShort .Unit}} na amostra nacional</li>{{end}}</ul>{{end}}
+  <ul class="station-list">{{range .FuelHubs}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a> — {{brl .Min}} a {{brl .Max}} por {{unitShort .Unit}} na amostra nacional</li>{{end}}{{if .ParityHref}}<li><a href="{{.ParityHref}}">Etanol ou gasolina por estado e cidade</a> — relação entre as médias da amostra</li>{{end}}</ul>{{end}}
   <h2>Menores preços encontrados na amostra</h2>
   {{if .Rankings}}{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking nacional.</strong><p>Não há postos suficientes para este recorte.</p></div>{{end}}
   <h2>Estados</h2>
@@ -222,6 +248,7 @@ const templates = `
   <p class="lead">Preços encontrados na pesquisa da ANP para os postos com identidade e observação neste estado.</p>
   <h2>Resumo por combustível</h2>
   {{template "summary" .Summaries}}
+  {{template "parityLine" .Parity}}
   {{template "comparison" .Comparison}}
   {{if .Rankings}}<h2>Menores preços encontrados na amostra</h2>{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking estadual.</strong></div>{{end}}
   <h2>Municípios</h2>
@@ -244,6 +271,7 @@ const templates = `
   {{else}}
   <h2>Resumo por combustível</h2>
   {{template "summary" .Summaries}}
+  {{template "parityLine" .Parity}}
   {{template "comparison" .Comparison}}
   <h2>Menores preços encontrados na amostra</h2>
   {{range .Rankings}}{{template "ranking" .}}{{end}}

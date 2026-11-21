@@ -15,6 +15,7 @@ labelled synthetic data and is not part of the landing build or `dist/`.
 | `/postos/{uuid}/` | Canonical station detail and dated history | indexable only with an official ANP price in the 8 most recent survey weeks and a complete address (D-SEO-02); otherwise `noindex,follow` | Directory + Official |
 | `/precos/` | National overview and links to fuel, state and municipality summaries | indexable | Official current revisions |
 | `/precos/{fuel-slug}/` | Fuel hub: national summary, table by state, cities with that fuel (SEO-07) | indexable when the current survey has the fuel | Official current revisions |
+| `/precos/etanol-ou-gasolina/` | Ratio between the sample means of hydrous ethanol and regular gasoline for Brazil, each state and each city, beside the general 70% reference (B-BR-SEO-12) | indexable; the page exists only when the national ratio exists | Official current revisions |
 | `/precos/{fuel-slug}/{uf}/` | One fuel in one state: summary, comparison with the previous survey, history by survey week, cities and the state ranking for that fuel (B-BR-SEO-11) | indexable; the page exists only when the state has that fuel in the current survey | Official revisions in the export window |
 | `/precos/{fuel-slug}/{uf}/{cidade-slug}/` | One fuel in one city: summary, comparison, every station with that fuel in the current survey (with its bairro and collection date), history by survey week, and the same fuel in the state and in Brazil (B-BR-SEO-11) | indexable; the page exists only when the city has at least 5 stations with that fuel in the current survey | Official revisions in the export window |
 | `/precos/{uf}/` | State summary and municipalities (lowercase UF, D-SEO-01) | indexable when the state has observations in the current survey; otherwise honest no-data page `noindex,follow` | Official current revisions + Directory geography |
@@ -256,6 +257,20 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   page owns “preço {do combustível} em {cidade}”, so the city page's title
   names all fuels and the stations (“Preços dos combustíveis e postos em
   {Cidade} ({UF})”) and never one fuel.
+- **B-BR-SEO-12 Ethanol to gasoline ratio.** The ratio is the sample mean of
+  hydrous ethanol divided by the sample mean of regular gasoline, both per
+  litre, for the same area and survey. It exists only when each fuel has at
+  least 5 stations in that area. It is computed as one exact fraction,
+  `(sumE × nG) ÷ (sumG × nE)`, and shown as a percentage with one decimal,
+  rounded half up, beside the general 70% reference (“abaixo de 70%”, “em
+  70%” or “acima de 70%”). `/precos/etanol-ou-gasolina/` lists Brazil, the
+  states and the cities that have a ratio, and exists only when the national
+  ratio does; the slug is reserved and is neither a fuel slug nor a state
+  code. State and city pages with a ratio show it in one line that links the
+  page, and `/precos/` and the two fuel hubs link it. The page states a
+  relation between two means: it says the general rule and that each car's
+  break-even differs, links the calculator and the guide of the landing, and
+  never says “compensa”, “hoje” or “esta semana”.
 
 ## Page fields (public allowlist)
 

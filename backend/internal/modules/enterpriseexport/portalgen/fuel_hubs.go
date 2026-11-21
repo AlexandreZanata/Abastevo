@@ -202,7 +202,7 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 		for _, row := range cities {
 			items = append(items, listItem{Name: "Preço " + fuelAreaPhrase(hub.Code) + " em " + placeLabel(row.Name, row.UF), Href: row.Href})
 		}
-		data.Modules = []linkModule{g.landingModule(
+		data.Modules = []linkModule{g.parityModule(hub.Code), g.landingModule(
 			moduleLink{Label: "Calcule o consumo médio do seu carro", Href: "/ferramentas/consumo-medio/"},
 			moduleLink{Label: "Calcule o custo por quilômetro rodado", Href: "/ferramentas/custo-por-km/"},
 			moduleLink{Label: "Como ler os preços da pesquisa ANP", Href: "/guias/como-ler-precos/"},

@@ -227,6 +227,8 @@ type precosPage struct {
 	States        []stateLink
 	SearchRelease string
 	SearchFuels   []searchFuel
+	// ParityHref links the ethanol to gasoline ratio page when it exists.
+	ParityHref string
 }
 
 type statePage struct {
@@ -238,6 +240,8 @@ type statePage struct {
 	Rankings       []rankingView
 	Municipalities []municipalityLink
 	Comparison     *comparisonView
+	// Parity is the ethanol to gasoline ratio of the state, "" without one.
+	Parity string
 }
 
 type municipalityPage struct {
@@ -255,6 +259,8 @@ type municipalityPage struct {
 	Population    int
 	Comparison    *comparisonView
 	FAQ           []faqItem
+	// Parity is the ethanol to gasoline ratio of the city, "" without one.
+	Parity string
 }
 
 type stationView struct {
@@ -352,6 +358,9 @@ type generator struct {
 	// fuelCityPages holds the planned /precos/{fuel}/{uf}/{cidade}/ pages,
 	// keyed by areaKey(fuel, IBGE code).
 	fuelCityPages map[string]bool
+	// parity holds the ethanol to gasoline ratio of each area that has one,
+	// keyed by parityKey(level, code) (B-BR-SEO-12).
+	parity map[string]parityRow
 	// weeks are the snapshot's survey weeks, newest first, for the history
 	// tables of the fuel by area pages.
 	weeks     []surveyWeek
@@ -590,6 +599,7 @@ func Generate(opts Options) (Result, error) {
 	g.prepareStationIndex(snapshot, stations, revisions, obsByStation)
 	g.prepareGeography(latestSummaries, municipalityState, municipalityName)
 	g.planFuelAreas(latestSummaries)
+	g.planParity(latestSummaries)
 	if err := g.prepareForum(snapshot.ForumPosts); err != nil {
 		return Result{}, err
 	}
@@ -627,6 +637,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	if err := g.generateFuelCities(latestSummaries, observations); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateParity(); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {
