@@ -14,10 +14,15 @@ import com.anpfuel.domain.enterprise.attachment.ReceiptLegibility
 import com.anpfuel.domain.enterprise.attachment.ReceiptOriginal
 import com.anpfuel.domain.enterprise.attachment.ReceiptRefusal
 import com.anpfuel.domain.enterprise.attachment.ReceiptSource
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 
 /*
  * EMP-DOC-004 — capture and import (B-BR-EMP-450..454, EDR-291..293). The platform reads the selected file once;
@@ -57,54 +62,99 @@ data class ReceiptCaptureState(
 class ReceiptCaptureController(private val originals: ReceiptOriginals) {
     private val mutable = MutableStateFlow(ReceiptCaptureState())
     val state: StateFlow<ReceiptCaptureState> = mutable.asStateFlow()
+    private val lock = Any()
+    private var currentRequest: String? = null
 
-    /** A fresh private camera target; only after the camera permission was granted. */
-    suspend fun cameraTarget(): String = originals.cameraTarget()
+    /** Bind a picker gesture before asking Android for permission or launching an activity. */
+    fun beginSelection(): String = synchronized(lock) {
+        val request = UUID.randomUUID().toString()
+        currentRequest = request
+        mutable.value = mutable.value.copy(reading = false)
+        request
+    }
 
-    /** The camera returned: read and delete its private file, then inspect the bytes. */
-    suspend fun cameraResult(reference: String, taken: Boolean) {
-        if (!taken) {
-            try { originals.discard(reference) } finally { mutable.value = mutable.value.copy(cancelled = true, cameraDenied = false, refusal = null) }
-            return
+    private fun isCurrent(request: String): Boolean = synchronized(lock) { currentRequest == request }
+
+    /** Create and clean up a private target even when its preparing coroutine loses ownership. */
+    suspend fun cameraTarget(request: String): String? {
+        if (!isCurrent(request)) return null
+        val target = withContext(NonCancellable) { originals.cameraTarget() }
+        if (isCurrent(request) && currentCoroutineContext().isActive) return target
+        discardCamera(target)
+        return null
+    }
+
+    suspend fun cameraResult(request: String, reference: String, taken: Boolean) {
+        if (taken) capture(request, reference, ReceiptSource.CAMERA)
+        else {
+            discardCamera(reference)
+            showCancellation(request)
         }
-        // The private camera file is the only plaintext moment: it is deleted whatever the read gives (EDR-291).
-        val bytes = try { read(reference) } finally { originals.discard(reference) }
-        accept(bytes, ReceiptSource.CAMERA)
     }
 
-    /** The photo picker returned a reference, or null when nothing was chosen; the picker's file is never deleted. */
-    suspend fun imported(reference: String?) {
-        if (reference == null) { mutable.value = mutable.value.copy(cancelled = true, cameraDenied = false, refusal = null); return }
-        accept(read(reference), ReceiptSource.IMPORT)
+    suspend fun imported(request: String, reference: String?) {
+        if (reference == null) showCancellation(request)
+        else capture(request, reference, ReceiptSource.IMPORT)
     }
 
-    fun cameraDenied() { mutable.value = mutable.value.copy(cameraDenied = true, cancelled = false, refusal = null) }
-
-    /** Drops the unsaved photo and every message. */
-    fun reset() { mutable.value = ReceiptCaptureState() }
-
-    private suspend fun read(reference: String): ByteArray? {
-        mutable.value = mutable.value.copy(reading = true)
-        return try { originals.read(reference) }
-        catch (cancelled: CancellationException) { throw cancelled }
-        // Revoked access or a vanished file reads as missing, never as a crash or a saved photo.
-        catch (_: Exception) { null }
-        finally { mutable.value = mutable.value.copy(reading = false) }
+    fun cameraDenied(request: String) {
+        update(request) { it.copy(cameraDenied = true, cancelled = false, refusal = null) }
     }
 
-    private suspend fun accept(bytes: ByteArray?, source: ReceiptSource) {
+    /** Invalidate pending callbacks and remove the unsaved photo and messages together. */
+    fun reset() {
+        synchronized(lock) {
+            currentRequest = null
+            mutable.value = ReceiptCaptureState()
+        }
+    }
+
+    private fun update(request: String, change: (ReceiptCaptureState) -> ReceiptCaptureState): Boolean = synchronized(lock) {
+        if (currentRequest != request) return@synchronized false
+        mutable.value = change(mutable.value)
+        true
+    }
+
+    private fun showCancellation(request: String) {
+        update(request) { it.copy(cancelled = true, cameraDenied = false, refusal = null) }
+    }
+
+    private suspend fun discardCamera(reference: String) = withContext(NonCancellable) {
+        originals.discard(reference)
+    }
+
+    private suspend fun capture(request: String, reference: String, source: ReceiptSource) {
+        val reading = update(request) { it.copy(reading = true) }
+        var bytes: ByteArray? = null
         try {
+            try {
+                if (reading) bytes = originals.read(reference)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // A vanished or unreadable file follows the existing missing-file path.
+            } finally {
+                if (source == ReceiptSource.CAMERA) discardCamera(reference)
+            }
+            if (!reading || !isCurrent(request)) return
             when (val inspection = ReceiptIntake.inspect(bytes, source)) {
-                // A refused selection never replaces the photo already shown (B-BR-EMP-451).
-                is ReceiptInspection.Refused -> mutable.value = mutable.value.copy(refusal = inspection.refusal, cameraDenied = false, cancelled = false)
+                is ReceiptInspection.Refused -> update(request) {
+                    it.copy(refusal = inspection.refusal, cameraDenied = false, cancelled = false)
+                }
                 is ReceiptInspection.Accepted -> {
-                    val sample = try { originals.sample(inspection.original.bytes()) }
+                    val sampleBytes = inspection.original.bytes()
+                    val sample = try { originals.sample(sampleBytes) }
                     catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { null }
-                    mutable.value = ReceiptCaptureState(draft = ReceiptDraft(inspection.original, ReceiptLegibility.assess(sample)))
+                    finally { sampleBytes.fill(0) }
+                    val draft = ReceiptDraft(inspection.original, ReceiptLegibility.assess(sample))
+                    update(request) { ReceiptCaptureState(draft = draft) }
                 }
             }
-        } finally { bytes?.fill(0) }
+        } finally {
+            bytes?.fill(0)
+            if (reading) update(request) { it.copy(reading = false) }
+        }
     }
     override fun toString(): String = "ReceiptCaptureController(redacted)"
 }

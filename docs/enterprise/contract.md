@@ -7930,6 +7930,10 @@ Evidence.
   enrollment, capture disabled) is shown with its reason. An unsaved photo
   lives only in memory and is gone after a context change or a process death;
   only sealed originals survive, and nothing else of the photo is written.
+  Camera permission, camera and picker callbacks, file reads, and legibility
+  checks retain the capture request that started them. Closing the capture or
+  changing context invalidates that request. A late result is discarded and
+  only the app-owned temporary camera file is removed.
 - **B-BR-EMP-454 — Each attachment shows its own state.** Under its record,
   each attachment is shown "Salvo no aparelho", "Enviando", "Arquivo em
   verificação", "Arquivo guardado pela empresa" (only after the server

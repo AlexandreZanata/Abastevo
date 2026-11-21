@@ -62,6 +62,7 @@ import com.anpfuel.domain.enterprise.attachment.LegibilityIssue
 import com.anpfuel.domain.enterprise.attachment.ReceiptRefusal
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -76,14 +77,19 @@ import kotlinx.coroutines.withContext
 @HiltViewModel
 class ReceiptCaptureViewModel(originals: ReceiptOriginals, queueEnabled: Boolean) : ViewModel() {
     @Inject constructor(originals: ReceiptOriginals, receipts: EnterpriseReceipts) : this(originals, receipts.enabled)
-    val controller = ReceiptCaptureController(originals)
+    private val controller = ReceiptCaptureController(originals)
     val state = controller.state
     /** Shown only with the attachment queue on and the rollback switch on (B-BR-EMP-450). */
     val enabled: Boolean = BuildConfig.ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED && queueEnabled
-    suspend fun cameraTarget(): String = controller.cameraTarget()
-    fun cameraResult(reference: String, taken: Boolean) { viewModelScope.launch { controller.cameraResult(reference, taken) } }
-    fun imported(reference: String?) { viewModelScope.launch { controller.imported(reference) } }
-    fun cameraDenied() = controller.cameraDenied()
+    fun beginSelection(): String = controller.beginSelection()
+    suspend fun cameraTarget(request: String): String? = controller.cameraTarget(request)
+    fun cameraResult(request: String, reference: String, taken: Boolean) {
+        viewModelScope.launch { controller.cameraResult(request, reference, taken) }
+    }
+    fun imported(request: String, reference: String?) {
+        viewModelScope.launch { controller.imported(request, reference) }
+    }
+    fun cameraDenied(request: String) = controller.cameraDenied(request)
     fun reset() = controller.reset()
     override fun onCleared() { controller.reset(); super.onCleared() }
 }
@@ -102,31 +108,63 @@ class ReceiptCaptureUi(val state: ReceiptCaptureState, val pickers: ReceiptPicke
 fun rememberSystemReceiptPickers(model: ReceiptCaptureViewModel): ReceiptPickers {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var pending by rememberSaveable { mutableStateOf<String?>(null) }
+    var cameraRequest by rememberSaveable { mutableStateOf<String?>(null) }
+    var cameraReference by rememberSaveable { mutableStateOf<String?>(null) }
+    var libraryRequest by rememberSaveable { mutableStateOf<String?>(null) }
     val take = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
-        val target = pending
-        pending = null
-        if (target != null) model.cameraResult(target, taken)
+        val request = cameraRequest
+        val reference = cameraReference
+        cameraRequest = null
+        cameraReference = null
+        if (request != null && reference != null) model.cameraResult(request, reference, taken)
     }
-    val launchCamera: () -> Unit = {
+    val launchCamera: (String) -> Unit = { request ->
         scope.launch {
-            val target = try { model.cameraTarget() } catch (_: Exception) { null } ?: return@launch
-            pending = target
-            try { take.launch(Uri.parse(target)) } catch (_: Exception) { pending = null; model.cameraResult(target, false) }
+            val target = try { model.cameraTarget(request) }
+            catch (cancelled: CancellationException) { cameraRequest = null; throw cancelled }
+            catch (_: Exception) { null }
+            if (target == null) {
+                cameraRequest = null
+                return@launch
+            }
+            cameraReference = target
+            try { take.launch(Uri.parse(target)) }
+            catch (_: Exception) {
+                cameraRequest = null
+                cameraReference = null
+                model.cameraResult(request, target, false)
+            }
         }
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) launchCamera() else model.cameraDenied()
+        val request = cameraRequest ?: return@rememberLauncherForActivityResult
+        if (granted) launchCamera(request)
+        else {
+            cameraRequest = null
+            model.cameraDenied(request)
+        }
     }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> model.imported(uri?.toString()) }
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        val request = libraryRequest ?: return@rememberLauncherForActivityResult
+        libraryRequest = null
+        model.imported(request, uri?.toString())
+    }
     return remember(model) {
         object : ReceiptPickers {
             override fun camera() {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCamera()
-                else permission.launch(Manifest.permission.CAMERA)
+                if (cameraRequest != null || libraryRequest != null) return
+                val request = model.beginSelection()
+                cameraRequest = request
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCamera(request)
+                else try { permission.launch(Manifest.permission.CAMERA) }
+                catch (_: Exception) { cameraRequest = null; model.cameraDenied(request) }
             }
             override fun library() {
-                try { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } catch (_: Exception) { model.imported(null) }
+                if (cameraRequest != null || libraryRequest != null) return
+                val request = model.beginSelection()
+                libraryRequest = request
+                try { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                catch (_: Exception) { libraryRequest = null; model.imported(request, null) }
             }
         }
     }

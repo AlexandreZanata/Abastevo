@@ -261,9 +261,9 @@ fun EnterpriseContextScreen(
         onSend = { if (checklistMatch) checklistViewModel.sendNow(renderedEpoch, checklistState.generation) },
     )
     SecureAccountWindow()
-    DisposableEffect(viewModel, syncViewModel, assetsViewModel, tripViewModel, fuelingViewModel, checklistViewModel, expenseViewModel) {
+    DisposableEffect(viewModel, syncViewModel, assetsViewModel, tripViewModel, fuelingViewModel, checklistViewModel, expenseViewModel, receiptViewModel) {
         onDispose { syncViewModel.withdraw(); assetsViewModel.withdraw(); tripViewModel.withdraw(); fuelingViewModel.withdraw()
-            checklistViewModel.withdraw(); expenseViewModel.withdraw(); trackingViewModel.withdraw(); viewModel.unconfirm() }
+            checklistViewModel.withdraw(); expenseViewModel.withdraw(); receiptViewModel.reset(); trackingViewModel.withdraw(); viewModel.unconfirm() }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         resumed = true; syncViewModel.invalidateIfStale(); assetsViewModel.invalidateIfStale(); tripViewModel.invalidateIfStale()
