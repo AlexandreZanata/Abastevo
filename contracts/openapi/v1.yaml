@@ -13711,6 +13711,58 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/usage/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataUsage
+      summary: Read scoped Data usage and dataset documentation
+      description: The current company and data.usage.read grant govern subscription-term counts, rate and prepared dataset metadata.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.usage.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyListRequest'
+      responses:
+        '200':
+          description: Scoped Data usage view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataUsage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/data/keys/list:
     post:
       tags:
@@ -48198,6 +48250,67 @@ components:
         max_milli_brl:
           type: integer
           format: int64
+    EnterpriseDataUsage:
+      type: object
+      additionalProperties: false
+      required: [observed_at, enabled, datasets, next_cursor]
+      properties:
+        observed_at:
+          type: string
+          format: date-time
+        enabled:
+          type: boolean
+        term:
+          type: object
+          additionalProperties: false
+          required: [start, end, used, ceiling]
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+            used:
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
+            ceiling:
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
+        rate:
+          type: object
+          additionalProperties: false
+          required: [calls, window_seconds]
+          properties:
+            calls:
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
+            window_seconds:
+              type: integer
+              minimum: 1
+        datasets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, revision, name, region, method, minimum_stations]
+            properties:
+              key:
+                type: string
+              revision:
+                type: string
+                pattern: '^[1-9][0-9]*$'
+              name:
+                type: string
+              region:
+                type: string
+              method:
+                type: string
+              minimum_stations:
+                type: integer
+                minimum: 5
+        next_cursor:
+          type: string
     EnterpriseDataKeyListRequest:
       type: object
       additionalProperties: false

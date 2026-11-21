@@ -75,7 +75,7 @@ def ordinary_runtime(dsn):
             "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances,org_data_api_keys TO {}",
             "GRANT SELECT,INSERT ON account_key_credentials,org_onboarding_commands,org_audit_events,org_employee_commands,org_settings_commands,org_settings_versions,org_settings_designations,org_settings_notices,org_invitation_commands,org_invitation_notices,org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices,org_role_commands TO {}",
             "GRANT SELECT,UPDATE ON org_teams,org_team_links,org_ownership_transfers,org_device_enrollments TO {}",
-            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts TO {}",
+            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts,enterprise_data_rate_policies,org_data_usage_terms,enterprise_data_plan_datasets,enterprise_regional_datasets,enterprise_regional_series,enterprise_data_source_reviews TO {}",
             "GRANT SELECT,INSERT,UPDATE,DELETE ON account_key_admission_events,company_web_sessions TO {}",
             "GRANT USAGE ON SEQUENCE account_key_admission_events_id_seq TO {}",
         ]
@@ -198,6 +198,31 @@ def run(dsn):
                 web.server_close()
 
 
+def capture_panel_response(page, suffix, trigger, expected=200):
+    """Read the real TLS response before browser navigation can discard its body."""
+    url = "**" + suffix
+    result = {}
+
+    def capture(route):
+        response = route.fetch(max_redirects=0)
+        if response.status == expected:
+            result["body"] = response.json()
+        route.fulfill(response=response)
+
+    page.route(url, capture)
+    try:
+        with page.expect_response(lambda response: response.url.endswith(suffix)) as observed:
+            trigger()
+        assert observed.value.status == expected and "body" in result, "Actual panel request failed: " + suffix
+        return result["body"]
+    finally:
+        page.unroute(url, capture)
+
+
+def capture_panel_login(page, trigger):
+    return capture_panel_response(page, "/v1/org-access/session/login", trigger)["csrf_token"]
+
+
 def browser_checks(origin, dsn):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -226,10 +251,7 @@ def browser_checks(origin, dsn):
         assert page.evaluate("document.activeElement.id") == "account-key", "Refused sign-in lost focus"
         assert page.locator("#live-status").inner_text() == "", "Refusal announced twice"
         page.locator("#account-key").fill(account_key)
-        with page.expect_response(lambda r: r.url.endswith("/org-access/session/login")) as issued:
-            page.locator("#account-key").press("Enter")
-        assert issued.value.status == 200, "Actual company issuance failed"
-        csrf = issued.value.json()["csrf_token"]
+        csrf = capture_panel_login(page, lambda: page.locator("#account-key").press("Enter"))
         expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         directory = context.request.post(origin + "/v1/org-access/contexts/list", data={"limit": 100}, headers={"Origin": origin, "X-CSRF": csrf})
         assert directory.status == 200, "Current context discovery failed: " + str(directory.status) + " " + str(directory.json().get("error", {}).get("code", "unknown"))
@@ -374,10 +396,7 @@ def setup_checks(browser, origin, dsn):
             page.locator("#account-key").fill(key)
         except PlaywrightError:
             raise AssertionError("Synthetic setup sign-in field unavailable") from None
-        with page.expect_response(lambda response: response.url.endswith("/org-access/session/login")) as logged_in:
-            page.locator("#login-button").click()
-        assert logged_in.value.status == 200, "Actual setup company login failed"
-        csrf = logged_in.value.json()["csrf_token"]
+        csrf = capture_panel_login(page, lambda: page.locator("#login-button").click())
 
     def post(path, body=None, status=200):
         response = context.request.post(origin + path, data=body or {}, headers={"Origin": origin, "X-CSRF": csrf})
@@ -622,9 +641,8 @@ def setup_checks(browser, origin, dsn):
     # refusal must clear every private draft instead of leaving a reusable form.
     change_fixture("UPDATE company_web_sessions SET authenticated_at=authenticated_at-interval '20 minutes',created_at=created_at-interval '20 minutes',expires_at=expires_at-interval '20 minutes' WHERE account_id=%s AND revoked_at IS NULL", (read(org_a)["context"]["account_id"],))
     page.locator("#setup-reason").fill("Tentativa sintética com confirmação vencida")
-    with page.expect_response(lambda response: response.url.endswith("/settings/change")) as stale:
-        page.locator("#setup-save").click()
-    assert stale.value.status == 401 and stale.value.json()["error"]["code"] == "FRESH_AUTH_REQUIRED"
+    stale = capture_panel_response(page, "/settings/change", lambda: page.locator("#setup-save").click(), 401)
+    assert stale["error"]["code"] == "FRESH_AUTH_REQUIRED"
     expect(page.locator("#login-view")).to_be_visible()
     expect(page.locator("#setup-detail")).to_be_hidden()
     assert name_a not in page.locator("body").text_content()
@@ -727,10 +745,8 @@ def employee_checks(browser, origin, dsn):
     page.clock.install()
     page.goto(origin + "/empresas/")
     page.locator("#account-key").fill(owner.json()["account_key"])
-    with page.expect_response(lambda response: response.url.endswith("/org-access/session/login")) as logged_in:
-        page.locator("#login-button").click()
+    csrf = capture_panel_login(page, lambda: page.locator("#login-button").click())
     expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
-    csrf = logged_in.value.json()["csrf_token"]
     headers = {"Origin": origin, "X-CSRF": csrf}
     terms_source = (ROOT / "backend/internal/modules/organization/domain/onboarding.go").read_text()
     terms_version = re.search(r'SyntheticTermsVersion = "([^"]+)"', terms_source)[1]
@@ -790,6 +806,11 @@ def employee_checks(browser, origin, dsn):
             VALUES ('data','browser-data-plan',1,'Data sintético',ARRAY['data'],5)
         """)
         connection.execute("""
+            INSERT INTO enterprise_data_rate_policies
+                (product_code,plan_code,plan_revision,window_seconds,window_calls,approval_ref)
+            VALUES ('data','browser-data-plan',1,60,12,'synthetic-browser-rate')
+        """)
+        connection.execute("""
             INSERT INTO org_billing_subscription_events
                 (org_id,subscription_id,revision,product_code,plan_code,plan_revision,from_state,state,prior_state,
                  event_kind,event_source,evidence_reference,occurred_at,term_start,term_end)
@@ -823,6 +844,31 @@ def employee_checks(browser, origin, dsn):
     expect(page.locator("#subscription-list")).to_contain_text("Plano sintético do navegador")
     expect(page.locator("#subscription-list")).to_contain_text("Veículos ativos: 0")
     expect(page.locator("#subscription-list")).not_to_contain_text("Cobrança liquidada")
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    expect(page.locator("#data-usage")).to_contain_text("0 de 5 chamadas")
+    expect(page.locator("#data-usage")).to_contain_text("12 chamadas a cada 60 s")
+    expect(page.locator("#data-key-section")).to_be_visible()
+    expect(page.locator("#data-keys")).to_contain_text("Synthetic browser key")
+    expiry = page.evaluate("new Date(Date.now() + 3600000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16)")
+    page.locator("#data-key-label").fill("Chave sintética do painel")
+    page.locator("#data-key-expiry").fill(expiry)
+    page.locator("#data-key-save").click()
+    expect(page.locator("#data-secret-box")).to_be_visible()
+    expect(page.locator("#data-secret")).to_have_value(re.compile(r"^abv_data_[0-9a-f-]{36}\.[0-9a-f]{64}$"))
+    page.locator("#data-hide-secret").click()
+    expect(page.locator("#data-secret")).to_have_value("")
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    item = page.locator("#data-keys > li").filter(has_text="Chave sintética do painel")
+    item.get_by_role("button", name="Rotacionar").click()
+    page.locator("#data-key-label").fill("Chave sintética substituta")
+    page.locator("#data-key-expiry").fill(expiry)
+    page.locator("#data-key-save").click()
+    expect(page.locator("#data-secret-box")).to_be_visible()
+    page.locator("#data-hide-secret").click()
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    replacement = page.locator("#data-keys > li").filter(has_text="Chave sintética substituta")
+    replacement.get_by_role("button", name="Revogar").click()
+    expect(replacement).to_contain_text("Revogada")
     created_employees = []
 
     def add_employee(suffix):
@@ -835,20 +881,15 @@ def employee_checks(browser, origin, dsn):
         page.locator("#employee-job").fill("Motorista sintético")
         page.locator("#employee-review").click()
         expect(page.locator("#employee-status")).to_have_text("Nenhum possível duplicado encontrado. Confirme para salvar.")
-        with page.expect_response(lambda response: response.url.endswith("/employees/create")) as saved:
-            page.locator("#employee-save").click()
-        assert saved.value.status == 201, "Panel employee creation failed"
-        created_employees.append(saved.value.json()["employee_id"])
+        saved = capture_panel_response(page, "/employees/create", lambda: page.locator("#employee-save").click(), 201)
+        created_employees.append(saved["employee_id"])
         expect(page.locator("#employee-detail-name")).to_have_text(name)
         expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
         return name
 
     def issue(role):
         page.locator("#invitation-role").select_option(role)
-        with page.expect_response(lambda response: response.url.endswith("/invitations/issue")) as issued:
-            page.locator("#invitation-issue").click()
-        assert issued.value.status == 200, "Panel invitation issue failed"
-        value = issued.value.json()
+        value = capture_panel_response(page, "/invitations/issue", lambda: page.locator("#invitation-issue").click())
         expect(page.locator("#invitation-delivery")).to_be_visible()
         expect(page.locator("#delivery-code")).to_have_value(value["delivery"]["code"])
         assert value["delivery"]["code"] not in page.url, "Invitation code reached navigation"
@@ -866,10 +907,8 @@ def employee_checks(browser, origin, dsn):
     first = issue("DRIVER:SELF")
     first_code = first["delivery"]["code"]
     close_delivery()
-    with page.expect_response(lambda response: response.url.endswith("/resend")) as resent:
-        page.get_by_role("button", name="Reemitir convite", exact=True).click()
-    assert resent.value.status == 200, "Panel invitation resend failed"
-    second_code = resent.value.json()["delivery"]["code"]
+    resent = capture_panel_response(page, "/resend", lambda: page.get_by_role("button", name="Reemitir convite", exact=True).click())
+    second_code = resent["delivery"]["code"]
     assert second_code != first_code, "Resend reused the old secret"
     expect(page.locator("#delivery-code")).to_have_value(second_code)
     page.locator("#organization-select").select_option(other_org)
@@ -880,6 +919,9 @@ def employee_checks(browser, origin, dsn):
     assert first_name not in page.locator("#workspace").inner_text(), "Prior organization employee survived the switch"
     expect(page.locator("#subscription-status")).to_have_text("Nenhum plano empresarial registrado.")
     expect(page.locator("#subscription-list")).not_to_contain_text("Plano sintético do navegador")
+    expect(page.locator("#data-usage")).to_contain_text("Nenhuma franquia de API vigente.")
+    expect(page.locator("#data-keys")).not_to_contain_text("Chave sintética")
+    expect(page.locator("#data-secret")).to_have_value("")
     page.locator("#organization-select").select_option(org_id)
     page.locator("#organization-open").click()
     expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")

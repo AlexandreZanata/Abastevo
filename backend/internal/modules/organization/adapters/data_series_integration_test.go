@@ -20,6 +20,7 @@ import (
 	datapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters"
 	dataweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters/http"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters/preparation"
+	data "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -224,5 +225,14 @@ VALUES('S-ESP-02',$1,2,'WITHDRAWN','synthetic-withdrawal')`, manifests[0].Source
 	var used int
 	if err := fx.f.Admin.QueryRow(ctx, "SELECT calls FROM org_data_usage_terms WHERE org_id=$1", org).Scan(&used); err != nil || used != 2 {
 		t.Fatalf("refused Data requests moved usage: calls=%d err=%v", used, err)
+	}
+	usage := datapg.UsageStore{Pool: env.pool, Plans: env.meter.Plans, Flags: env.flags, Authority: env.auth, Enabled: true}
+	view, err := usage.ReadUsage(ctx, fx.scope, fx.actor, fx.member, data.DatasetAfter{}, 20)
+	if err != nil || !view.Enabled || view.Term == nil || view.Term.Used != 2 || view.Term.Ceiling != 20 ||
+		view.Rate == nil || view.Rate.Calls != 100 || len(view.Datasets) != 1 || view.Datasets[0].Revision != 2 {
+		t.Fatalf("usage view did not keep the current scope and drop withdrawn rights: %+v error=%v", view, err)
+	}
+	if _, err := usage.ReadUsage(ctx, fx.f.Organizations[1].Scope(t), fx.actor, fx.member, data.DatasetAfter{}, 20); err == nil {
+		t.Fatal("foreign company exposed its usage")
 	}
 }

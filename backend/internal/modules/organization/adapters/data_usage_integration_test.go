@@ -28,6 +28,8 @@ type dataUsageFixtureState struct {
 	pool     *pgxpool.Pool
 	keys     datapg.KeyStore
 	meter    datapg.UsageMeter
+	flags    *cappg.Store
+	auth     adapters.DataKeyAuthority
 	original data.KeyResult
 	issue    data.Command
 	term     billing.TrialResult
@@ -65,8 +67,8 @@ func dataUsageFixture(t *testing.T, calls int64) dataUsageFixtureState {
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys := datapg.KeyStore{Pool: pool, Audit: audits, Verifier: verifier,
-		Authority: adapters.DataKeyAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: flags}}
+	auth := adapters.DataKeyAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: flags}
+	keys := datapg.KeyStore{Pool: pool, Audit: audits, Verifier: verifier, Authority: auth}
 	meter := datapg.UsageMeter{Plans: plans, Keys: datapg.KeyAccess{Pool: pool, Entitlements: flags, Verifier: verifier}}
 	grantID := onboardingID(t)
 	org := fx.scope.OrgID().String()
@@ -93,7 +95,7 @@ VALUES($1,$2,'data','synthetic',1,$3,$4,86400,'synthetic-reviewed-eligibility')`
 	if err != nil {
 		t.Fatal(err)
 	}
-	return dataUsageFixtureState{fx: fx, pool: pool, keys: keys, meter: meter, original: original, issue: issue, term: term, now: now}
+	return dataUsageFixtureState{fx: fx, pool: pool, keys: keys, meter: meter, flags: flags, auth: auth, original: original, issue: issue, term: term, now: now}
 }
 
 func TestDataUsageSharesTermAndRateAcrossRotationAndRetries(t *testing.T) {

@@ -27,3 +27,12 @@ func (g DataKeyAuthority) CheckKeyActionTx(ctx context.Context, tx pgx.Tx, scope
 		ctx, tx, scope, actor, member, scope.OrgID().String(), policy,
 	)
 }
+
+func (g DataKeyAuthority) CheckUsageReadTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor organization.CompanyActor, member string) error {
+	if tx == nil || g.Memberships == nil || g.Roles == nil || actor.Validate() != nil || legalIdentity(scope, member) != nil {
+		return data.ErrUnavailable
+	}
+	return (companyAuthority{Memberships: g.Memberships, Roles: g.Roles}).check(
+		ctx, tx, scope, actor, member, scope.OrgID().String(), data.UsagePolicy(),
+	)
+}

@@ -18,6 +18,8 @@ import { AgreementsApi } from './agreements.js';
 import { mountAgreementsPanel } from './agreementspanel.js';
 import { PlanOverviewApi } from './subscriptions.js';
 import { mountPlanPanel } from './subscriptionpanel.js';
+import { DataApi } from './data.js';
+import { mountDataPanel } from './datapanel.js';
 
 const COPY: Partial<Record<Phase, [string, string]>> = {
   loading: ['Carregando seu espaço', 'Verificando seu acesso. Aguarde um instante.'],
@@ -51,6 +53,7 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   const intel = api ? mountIntelligencePanel(doc, browser, new IntelligenceApi(api), message => controller.reset(message)) : null;
   const agreements = api ? mountAgreementsPanel(doc, browser, new AgreementsApi(api), message => controller.reset(message)) : null;
   const billing = api ? mountPlanPanel(doc, new PlanOverviewApi(api), message => controller.reset(message)) : null;
+  const data = api ? mountDataPanel(doc, browser, new DataApi(api), message => controller.reset(message)) : null;
   const setup = api ? mountOrganizationSetup(doc, browser, new OrganizationSetupApi(api), message => controller.reset(message), id => {
     if (target.kind !== 'create' && target.kind !== 'setup') return;
     const path = setupPath(id);
@@ -75,8 +78,8 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     // An unchanged tab-return recheck keeps focus, the pending choice and the
     // live region as they are; only the refreshed expiry deadline applies.
     if (unchanged) return;
-    if (state.phase === 'ready') { panel?.select(state.authority); missions?.select(state.authority); checks?.select(state.authority); ops?.select(state.authority); intel?.select(state.authority); agreements?.select(state.authority); billing?.select(state.authority); }
-    else { panel?.clear(); missions?.clear(); checks?.clear(); ops?.clear(); intel?.clear(); agreements?.clear(); billing?.clear(); }
+    if (state.phase === 'ready') { panel?.select(state.authority); missions?.select(state.authority); checks?.select(state.authority); ops?.select(state.authority); intel?.select(state.authority); agreements?.select(state.authority); billing?.select(state.authority); data?.select(state.authority); }
+    else { panel?.clear(); missions?.clear(); checks?.clear(); ops?.clear(); intel?.clear(); agreements?.clear(); billing?.clear(); data?.clear(); }
     if (state.phase === 'setup' && state.setupAccountId && (target.kind === 'create' || target.kind === 'setup')) setup?.select(state.setupAccountId, target.kind === 'setup' ? target.id : undefined);
     else setup?.clear();
     const busy = state.phase === 'loading' || state.phase === 'signing-out';

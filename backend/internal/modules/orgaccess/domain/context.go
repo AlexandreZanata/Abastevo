@@ -32,7 +32,7 @@ func ContextHints(scope kernel.OrgScope, member string, assignments []Assignment
 	}
 	// Reads remain visible with the current organization-wide assignment
 	// even when the company cannot perform an ordinary write.
-	for _, permission := range []Permission{"doc.document.view_content", "subs.plan.read"} {
+	for _, permission := range []Permission{"doc.document.view_content", "subs.plan.read", "data.usage.read"} {
 		if _, e := CoveringRules(scope, member, assignments, permission, facts, now); e == nil {
 			permissions = append(permissions, permission)
 		}

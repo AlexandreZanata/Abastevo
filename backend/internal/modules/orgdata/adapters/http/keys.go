@@ -150,7 +150,7 @@ func RegisterKeys(router chi.Router, service app.KeyCommands, cookies company.Ha
 		}
 		page, err := service.ListKeys(ctx, p.Scope, actor, p.MembershipID, after, input.Limit)
 		if err != nil {
-			return nil, keyError(err)
+			return nil, scopedDataError("data.key.manage", err)
 		}
 		out := listResponse{Keys: make([]keyResponse, 0, len(page.Keys))}
 		for _, key := range page.Keys {
@@ -213,15 +213,15 @@ func write(ctx context.Context, service app.KeyCommands, p orgapi.Principal, act
 	}
 	out, err := service.WriteKey(ctx, p.Scope, actor, p.MembershipID, input)
 	if err != nil {
-		return nil, keyError(err)
+		return nil, scopedDataError("data.key.manage", err)
 	}
 	return commandResponse{Key: keyDTO(out.Key), Bearer: out.Bearer.Reveal(), Replayed: out.Replayed}, nil
 }
 
-func keyError(err error) error {
+func scopedDataError(permission string, err error) error {
 	switch {
 	case errors.Is(err, permissions.ErrPermissionDenied):
-		return orgapi.MissingPermission("data.key.manage")
+		return orgapi.MissingPermission(permission)
 	case errors.Is(err, domain.ErrKeyDenied), errors.Is(err, access.ErrNoMembership), errors.Is(err, orgapp.ErrNotFound):
 		return orgapi.NotFound
 	case errors.Is(err, access.ErrUnauthenticated), errors.Is(err, orgapp.ErrUnauthenticated):
@@ -232,7 +232,7 @@ func keyError(err error) error {
 		return orgapi.OrgSuspended
 	case errors.Is(err, capability.ErrEntitlementRequired):
 		return orgapi.EntitlementRequired
-	case errors.Is(err, domain.ErrInvalidKey):
+	case errors.Is(err, domain.ErrInvalidKey), errors.Is(err, domain.ErrInvalidDataset):
 		return orgapi.ValidationFailed
 	case errors.Is(err, domain.ErrKeyConflict):
 		return orgapi.Conflict

@@ -192,7 +192,8 @@ export class CompanyApi implements SessionPort {
         // F5 live navigation & operations panel.
         !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:tracking\/(?:live\/list|geofences\/(?:list|create|[0-9a-f-]{36}\/change))|trips\/[0-9a-f-]{36}\/(?:location\/live\/read|track\/replay)|routes\/(?:plans\/(?:read|save)|suggestions\/evaluate))$/.test(path) &&
         // EMP-SUBS-008 read-only company billing overview.
-        !/^\/v1\/orgs\/[0-9a-f-]{36}\/subscriptions\/plan\/read$/.test(path)) throw new ApiError('denied');
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/subscriptions\/plan\/read$/.test(path) &&
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/data\/(?:usage\/read|keys\/(?:list|issue|[0-9a-f-]{36}\/(?:rotate|revoke)))$/.test(path)) throw new ApiError('denied');
     return this.#private(path, body, signal, JSON_LIMIT);
   }
   // EMP-CHECK-004 (EDR-329): only the audited document content path, with its

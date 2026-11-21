@@ -210,6 +210,12 @@ func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.
 	if e != nil {
 		return empty, e
 	}
+	if fresh {
+		facts := permissions.ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String()}
+		if _, err := permissions.CoveringRules(scope, member, candidates, "data.key.manage", facts, now.Time); err == nil {
+			result.Permissions = append(result.Permissions, "data.key.manage")
+		}
+	}
 	return result, nil
 }
 func (s *AccountContextStore) ListAccountContexts(ctx context.Context, actor app.CompanyActor, limit int, after string) (app.AccountContextPage, error) {

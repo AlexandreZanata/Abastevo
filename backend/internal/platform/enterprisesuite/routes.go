@@ -256,9 +256,13 @@ func Register(router chi.Router, o Options) error {
 	if err != nil {
 		return err
 	}
-	keyStore := datapg.KeyStore{Pool: o.Pool, Audit: auditStore, Verifier: keyVerifier,
-		Authority: orgpg.DataKeyAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}
+	dataAuthority := orgpg.DataKeyAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}
+	keyStore := datapg.KeyStore{Pool: o.Pool, Audit: auditStore, Verifier: keyVerifier, Authority: dataAuthority}
 	if err := dataweb.RegisterKeys(router, keyStore, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	usage := datapg.UsageStore{Pool: o.Pool, Plans: plans, Flags: flags, Authority: dataAuthority, Enabled: o.BillingEnabled}
+	if err := dataweb.RegisterUsage(router, usage, cookies, gateway, authorization); err != nil {
 		return err
 	}
 	if o.BillingEnabled {
