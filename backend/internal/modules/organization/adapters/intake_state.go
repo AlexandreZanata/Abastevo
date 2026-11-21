@@ -2,11 +2,13 @@ package adapters
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"time"
 
 	qsync "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgsync"
+	fueling "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/application"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
@@ -32,7 +34,7 @@ type IntakeStateAssessor struct {
 	SubscriptionPlans bool
 }
 
-func (a IntakeStateAssessor) AssessStateTx(ctx context.Context, tx pgx.Tx, source syncapp.Source, descriptor syncapp.Descriptor, declared time.Time) (syncapp.StateDecision, error) {
+func (a IntakeStateAssessor) AssessStateTx(ctx context.Context, tx pgx.Tx, source syncapp.Source, op protocol.Operation, descriptor syncapp.Descriptor, declared time.Time) (syncapp.StateDecision, error) {
 	if a.Suspensions == nil || a.Plans == nil || source.Validate() != nil || descriptor.Validate() != nil {
 		return syncapp.StateDecision{}, syncapp.SourceDenied(syncapp.ErrUnavailable)
 	}
@@ -81,10 +83,23 @@ func (a IntakeStateAssessor) AssessStateTx(ctx context.Context, tx pgx.Tx, sourc
 	case disposition == syncapp.StateHold:
 		decision.Instant, decision.CapabilityRevision = changed, revision
 	case a.SubscriptionPlans && (!present || enabled) && slices.Contains(descriptor.Results(), protocol.AcceptedForReview):
-		proof, err := qsync.New(tx).InactiveSubscriptionIntakeProof(ctx, qsync.InactiveSubscriptionIntakeProofParams{
-			OrgID: source.Scope.OrgID().String(), Capability: capability,
-			DeclaredAt: pgtype.Timestamptz{Time: declared.UTC().Truncate(time.Microsecond), Valid: true},
-			ReceivedAt: pgtype.Timestamptz{Time: intake.ReceivedAt, Valid: true},
+		q := qsync.New(tx)
+		declaredAt := pgtype.Timestamptz{Time: declared.UTC().Truncate(time.Microsecond), Valid: true}
+		receivedAt := pgtype.Timestamptz{Time: intake.ReceivedAt, Valid: true}
+		if descriptor.Type == fueling.OperationType && capability == "organizations" {
+			archived, err := assessVehiclePlanArchive(ctx, q, source.Scope, op, declaredAt, receivedAt, &decision)
+			if err != nil {
+				return syncapp.StateDecision{}, syncapp.SourceDenied(err)
+			}
+			if archived {
+				if decision.Validate() != nil {
+					return syncapp.StateDecision{}, syncapp.SourceDenied(syncapp.ErrUnavailable)
+				}
+				return decision, nil
+			}
+		}
+		proof, err := q.InactiveSubscriptionIntakeProof(ctx, qsync.InactiveSubscriptionIntakeProofParams{
+			OrgID: source.Scope.OrgID().String(), Capability: capability, DeclaredAt: declaredAt, ReceivedAt: receivedAt,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return syncapp.StateDecision{}, nil
@@ -101,4 +116,33 @@ func (a IntakeStateAssessor) AssessStateTx(ctx context.Context, tx pgx.Tx, sourc
 		return syncapp.StateDecision{}, syncapp.SourceDenied(errors.New("orgsync: invalid plan decision"))
 	}
 	return decision, nil
+}
+
+// assessVehiclePlanArchive resolves only the vehicle selector. The owning
+// fueling handler still validates the signed payload and recorded author
+// authority before it can create a review item.
+func assessVehiclePlanArchive(ctx context.Context, q *qsync.Queries, scope kernel.OrgScope, op protocol.Operation,
+	declared, received pgtype.Timestamptz, decision *syncapp.StateDecision,
+) (bool, error) {
+	var target struct {
+		Asset string `json:"asset_id"`
+	}
+	if err := json.Unmarshal(op.PayloadBytes(), &target); err != nil || legalIdentity(scope, target.Asset) != nil {
+		return false, nil
+	}
+	proof, err := q.VehiclePlanArchiveForIntake(ctx, qsync.VehiclePlanArchiveForIntakeParams{
+		OrgID: scope.OrgID().String(), AssetID: target.Asset, DeclaredAt: declared, ReceivedAt: received,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if proof.SubscriptionRevision == 0 {
+		return false, orgapi.NotFound
+	}
+	decision.VehiclePlanSelectionID, decision.VehiclePlanAssetID = proof.SelectionID, target.Asset
+	decision.SubscriptionID, decision.SubscriptionRevision = proof.SubscriptionID, proof.SubscriptionRevision
+	return true, nil
 }

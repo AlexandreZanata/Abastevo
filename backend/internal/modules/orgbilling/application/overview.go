@@ -40,6 +40,14 @@ type PlanSummary struct {
 	Receipt          *TermReceipt
 	Pending          *PendingPlan
 	StorageUsedBytes *int64
+	VehicleSelection *VehicleSelectionBasis
+}
+
+type VehicleSelectionBasis struct {
+	SubscriptionID string
+	Revision       int64
+	Active         int64
+	Ceiling        int64
 }
 
 type PendingPlan struct {

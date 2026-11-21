@@ -26,11 +26,77 @@ export function mountPlanPanel(doc: Document, source: PlanSource, sessionLost: (
     parent.appendChild(node);
   }
 
+  function renderVehicleSelection(parent: HTMLElement, basis: NonNullable<PlanPanelState['plans'][number]['vehicleSelection']>, state: PlanPanelState): void {
+    const edit = state.vehicleEdit;
+    text(parent, 'p', `${number.format(basis.active)} veículos ativos. O novo limite é ${number.format(basis.ceiling)}.`);
+    if (!state.canChooseVehicles) return;
+    if (!edit || edit.basis !== basis) {
+      const open = doc.createElement('button');
+      open.type = 'button';
+      open.textContent = 'Escolher veículos ativos';
+      open.addEventListener('click', () => { void controller.chooseVehicles(basis); });
+      parent.appendChild(open);
+      return;
+    }
+
+    const form = doc.createElement('form');
+    const status = doc.createElement('p');
+    status.setAttribute('role', 'status');
+    status.textContent = edit.message;
+    form.appendChild(status);
+    const close = doc.createElement('button');
+    close.type = 'button';
+    close.textContent = 'Cancelar seleção';
+    close.disabled = edit.busy;
+    close.addEventListener('click', () => controller.cancelVehicleSelection());
+    if (edit.options.length > 0) {
+      const choices = doc.createElement('fieldset');
+      const legend = doc.createElement('legend');
+      legend.textContent = `Selecione ${number.format(basis.ceiling)} para manter em uso`;
+      choices.appendChild(legend);
+      choices.disabled = edit.busy;
+      const counters = doc.createElement('p');
+      counters.setAttribute('role', 'status');
+      const commit = doc.createElement('button');
+      commit.type = 'submit';
+      commit.textContent = 'Confirmar veículos ativos';
+      const selected = new Set(edit.keep);
+      const showCount = (): void => {
+        counters.textContent = `${number.format(selected.size)} de ${number.format(basis.ceiling)} selecionados`;
+        commit.disabled = edit.busy || selected.size !== basis.ceiling;
+      };
+      for (const asset of edit.options) {
+        const row = doc.createElement('p');
+        const label = doc.createElement('label');
+        const input = doc.createElement('input');
+        input.type = 'checkbox';
+        input.checked = selected.has(asset.id);
+        input.addEventListener('change', () => {
+          if (input.checked) selected.add(asset.id);
+          else selected.delete(asset.id);
+          showCount();
+        });
+        label.append(input, doc.createTextNode(` ${asset.name}`));
+        row.appendChild(label);
+        choices.appendChild(row);
+      }
+      text(choices, 'p', 'Os demais veículos saem do uso ativo e mantêm o histórico.');
+      form.append(choices, counters, commit);
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        void controller.confirmVehicles([...selected]);
+      });
+      showCount();
+    }
+    form.appendChild(close);
+    parent.appendChild(form);
+  }
+
   function render(state: PlanPanelState): void {
     panel.hidden = state.phase === 'closed';
     panel.setAttribute('aria-busy', String(state.phase === 'loading'));
     status.textContent = state.message;
-    refresh.disabled = state.phase === 'loading';
+    refresh.disabled = state.phase === 'loading' || state.vehicleEdit?.busy === true;
     list.replaceChildren();
     for (const plan of state.plans) {
       const item = doc.createElement('li');
@@ -63,6 +129,7 @@ export function mountPlanPanel(doc: Document, source: PlanSource, sessionLost: (
         }
         item.appendChild(limits);
       }
+      if (plan.vehicleSelection) renderVehicleSelection(item, plan.vehicleSelection, state);
       list.appendChild(item);
     }
   }

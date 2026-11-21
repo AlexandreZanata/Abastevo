@@ -189,6 +189,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, agreepg.AuditDefinitions()...)
 	definitions = append(definitions, datapg.KeyAuditDefinitions()...)
 	definitions = append(definitions, datapg.WatchAuditDefinitions()...)
+	definitions = append(definitions, billpg.VehicleSelectionAuditDefinitions()...)
 	definitions = append(definitions, connectorpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
@@ -233,6 +234,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "subs.plan", Permissions: []string{"subs.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic plan vehicle selection inherits the reviewed identity write ceiling on each axis."},
 		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
 		{Class: "gps.geofence", Permissions: []string{"gps.geofence.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic geofence management inherits identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
 		{Class: "route.plan", Permissions: []string{"route.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic route plan revisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
@@ -257,7 +259,7 @@ func Register(router chi.Router, o Options) error {
 		flags.PlanWrites = plans
 	}
 	authorization := access.Authorization{Source: roles, Capabilities: entitlements, Records: orgweb.SetupRecords{}, Now: time.Now}
-	billingOverview := billpg.OverviewStore{Pool: o.Pool, Capabilities: capabilities,
+	billingOverview := billpg.OverviewStore{Pool: o.Pool, Capabilities: capabilities, VehicleSelectionsEnabled: o.BillingEnabled,
 		Authority: orgpg.SubscriptionAuthority{Memberships: memberStore, Roles: roles}}
 	if err := billweb.RegisterPlanOverview(router, billingOverview, cookies, gateway, authorization); err != nil {
 		return err
@@ -324,6 +326,12 @@ func Register(router chi.Router, o Options) error {
 	// through the same Fleet port in Prepare and in the transaction.
 	assetAssignee := &orgpg.ResourceAssignee{Pool: o.Pool, Assignments: assets}
 	fleetAuthority.Assignee = assetAssignee
+	selections := billpg.VehicleSelectionStore{Enabled: o.BillingEnabled, Pool: o.Pool, Fleet: assets, Audit: auditStore, NewID: jobs.NewUUIDv4,
+		Authority: orgpg.SubscriptionAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}
+	if err := billweb.RegisterVehicleSelection(router, selections, cookies, gateway, authorization); err != nil {
+		return err
+	}
+
 	assetAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.FleetRecords{}, Structure: assetStructure, Assignee: assetAssignee, Now: time.Now}
 	if err := fleetweb.RegisterAssets(router, fleetapp.AssetService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err

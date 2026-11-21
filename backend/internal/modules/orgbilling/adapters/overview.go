@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	db "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgbilling"
@@ -17,9 +18,10 @@ import (
 )
 
 type OverviewStore struct {
-	Pool         *pgxpool.Pool
-	Authority    app.ReadAuthority
-	Capabilities capability.Catalog
+	Pool                     *pgxpool.Pool
+	Authority                app.ReadAuthority
+	Capabilities             capability.Catalog
+	VehicleSelectionsEnabled bool
 }
 
 func (store OverviewStore) Read(ctx context.Context, scope kernel.OrgScope, actor organization.CompanyActor, member string) (app.Overview, error) {
@@ -58,6 +60,7 @@ func (store OverviewStore) readTx(ctx context.Context, tx pgx.Tx, scope kernel.O
 	}
 	overview := app.Overview{ObservedAt: instant.Time.UTC(), Plans: make([]app.PlanSummary, 0, len(subscriptions))}
 	var storageUsed *int64
+	var vehicleCount *int64
 	for _, current := range subscriptions {
 		key := domain.PlanKey{Product: current.ProductCode, Plan: current.PlanCode, Revision: current.PlanRevision}
 		plan, err := catalog.GetPlan(ctx, key)
@@ -84,6 +87,28 @@ func (store OverviewStore) readTx(ctx context.Context, tx pgx.Tx, scope kernel.O
 				storageUsed = &used
 			}
 			summary.StorageUsedBytes = storageUsed
+		}
+		_, vehicleLimit := plan.Limit(domain.ActiveVehicles)
+		if store.VehicleSelectionsEnabled && vehicleLimit == nil && summary.TermCurrent && current.State == string(domain.Active) && current.Revision > 1 {
+			basis, err := queries.ReadVehicleDowngrade(ctx, db.ReadVehicleDowngradeParams{
+				OrgID: org, SubscriptionID: current.ID, SubscriptionRevision: current.Revision, EvaluatedAt: instant,
+			})
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return app.Overview{}, err
+			}
+			if err == nil {
+				if vehicleCount == nil {
+					total, err := queries.CountPlanSelectionActiveVehicles(ctx, org)
+					if err != nil {
+						return app.Overview{}, err
+					}
+					vehicleCount = &total
+				}
+				if *vehicleCount > basis.Ceiling {
+					summary.VehicleSelection = &app.VehicleSelectionBasis{SubscriptionID: current.ID, Revision: current.Revision,
+						Active: *vehicleCount, Ceiling: basis.Ceiling}
+				}
+			}
 		}
 		if len(receipts) > 1 {
 			return app.Overview{}, app.ErrUnavailable

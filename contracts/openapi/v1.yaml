@@ -14649,6 +14649,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterprisePlanOverview'
+  /v1/orgs/{org_id}/subscriptions/vehicles/select:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseSelectActivePlanVehicles
+      summary: Choose the vehicles that stay active after a paid downgrade
+      description: Fresh dedicated company session and organization-wide subs.plan.manage. The exact active set is
+        protected by the current plan and fleet locks. Other active vehicles move to retained inactive history under the selected plan.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: subs.plan.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Exact vehicles to keep for the lower current subscription revision.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseVehiclePlanSelectionRequest'
+      responses:
+        '200':
+          description: The retained active and archived vehicle identifiers for the committed selection.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseVehiclePlanSelectionResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/settings/read:
     post:
       tags:
@@ -41607,16 +41661,20 @@ components:
         permissions:
           type: array
           uniqueItems: true
-          maxItems: 4
-          description: Current UI hints, never authority. doc.document.view_content is a read hint present when a
-            current ORG assignment covers it (EMP-CHECK-004, B-BR-EMP-507).
+          maxItems: 9
+          description: Current UI hints from the organization-wide assignment and session proof. Owning endpoints verify authority again.
           items:
             type: string
             enum:
             - idn.employee.read
             - idn.employee.manage
             - idn.invitation.manage
+            - subs.plan.manage
             - doc.document.view_content
+            - subs.plan.read
+            - data.usage.read
+            - fleet.asset.read
+            - data.key.manage
         invitation_grants:
           type: array
           uniqueItems: true
@@ -49439,6 +49497,26 @@ components:
                 type: string
                 pattern: '^(0|[1-9][0-9]{0,18})$'
                 description: Scoped total of reserved and retained document original bytes at observation.
+              vehicle_selection:
+                type: object
+                description: Lower current vehicle limit that requires an explicit keep-active selection.
+                additionalProperties: false
+                required: [subscription_id, revision, active, ceiling]
+                properties:
+                  subscription_id:
+                    $ref: '#/components/schemas/EnterpriseUUID'
+                  revision:
+                    type: integer
+                    format: int64
+                    minimum: 2
+                  active:
+                    type: integer
+                    format: int64
+                    minimum: 1
+                  ceiling:
+                    type: integer
+                    format: int64
+                    minimum: 0
               pending:
                 type: object
                 additionalProperties: false
@@ -49452,6 +49530,45 @@ components:
                   effective_at:
                     type: string
                     format: date-time
+    EnterpriseVehiclePlanSelectionRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, subscription_id, revision, keep_active]
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        subscription_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 2
+        keep_active:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+    EnterpriseVehiclePlanSelectionResult:
+      type: object
+      additionalProperties: false
+      required: [kept, archived, replayed]
+      properties:
+        kept:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+        archived:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
     EnterpriseSettingsReadRequest:
       type: object
       additionalProperties: false

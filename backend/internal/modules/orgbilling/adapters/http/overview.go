@@ -34,7 +34,7 @@ func (planRecords) Resolve(_ context.Context, scope kernel.OrgScope, _ access.Su
 }
 
 func (planRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, target permissions.ResourceFacts, rules []permissions.Rule) error {
-	if scope.Validate() != nil || scope != subject.Scope() || policy != billing.ReadPlanPolicy() ||
+	if scope.Validate() != nil || scope != subject.Scope() || (policy != billing.ReadPlanPolicy() && policy != billing.SelectVehiclesPolicy()) ||
 		target.OrgID != scope.OrgID() || target.ID != scope.OrgID().String() || len(rules) == 0 {
 		return access.ErrUnavailable
 	}
@@ -73,20 +73,28 @@ type termReceiptView struct {
 	FiscalStatus   document.State `json:"fiscal_status"`
 }
 
+type vehicleSelectionView struct {
+	SubscriptionID string `json:"subscription_id"`
+	Revision       int64  `json:"revision"`
+	Active         int64  `json:"active"`
+	Ceiling        int64  `json:"ceiling"`
+}
+
 type planView struct {
-	Product       string                   `json:"product"`
-	Name          string                   `json:"name"`
-	Revision      string                   `json:"revision"`
-	State         domain.SubscriptionState `json:"state"`
-	TermStart     time.Time                `json:"term_start"`
-	TermEnd       time.Time                `json:"term_end"`
-	TermCurrent   bool                     `json:"term_current"`
-	ConfirmedPaid bool                     `json:"confirmed_paid"`
-	Receipt       *termReceiptView         `json:"receipt,omitempty"`
-	Capabilities  []string                 `json:"capabilities"`
-	Limits        map[domain.Meter]string  `json:"limits"`
-	StorageUsed   string                   `json:"storage_used_bytes,omitempty"`
-	Pending       *pendingView             `json:"pending,omitempty"`
+	Product          string                   `json:"product"`
+	Name             string                   `json:"name"`
+	Revision         string                   `json:"revision"`
+	State            domain.SubscriptionState `json:"state"`
+	TermStart        time.Time                `json:"term_start"`
+	TermEnd          time.Time                `json:"term_end"`
+	TermCurrent      bool                     `json:"term_current"`
+	ConfirmedPaid    bool                     `json:"confirmed_paid"`
+	Receipt          *termReceiptView         `json:"receipt,omitempty"`
+	Capabilities     []string                 `json:"capabilities"`
+	Limits           map[domain.Meter]string  `json:"limits"`
+	StorageUsed      string                   `json:"storage_used_bytes,omitempty"`
+	VehicleSelection *vehicleSelectionView    `json:"vehicle_selection,omitempty"`
+	Pending          *pendingView             `json:"pending,omitempty"`
 }
 
 func response(overview billing.Overview) overviewResponse {
@@ -107,6 +115,10 @@ func response(overview billing.Overview) overviewResponse {
 			p.Receipt = &termReceiptView{AmountCentavos: strconv.FormatInt(row.Receipt.Amount.Centavos, 10),
 				Currency: string(row.Receipt.Amount.Currency), SettledAt: row.Receipt.SettledAt,
 				ProviderPaidOn: row.Receipt.PaidOn, FiscalStatus: document.NotConsulted}
+		}
+		if basis := row.VehicleSelection; basis != nil {
+			p.VehicleSelection = &vehicleSelectionView{SubscriptionID: basis.SubscriptionID, Revision: basis.Revision,
+				Active: basis.Active, Ceiling: basis.Ceiling}
 		}
 		if row.Pending != nil {
 			p.Pending = &pendingView{Name: row.Pending.Catalog.Name(), Revision: strconv.FormatInt(row.Pending.Catalog.Key().Revision, 10),

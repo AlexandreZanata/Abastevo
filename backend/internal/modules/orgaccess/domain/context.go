@@ -22,7 +22,7 @@ func ContextHints(scope kernel.OrgScope, member string, assignments []Assignment
 		return nil, nil, ErrAssignmentInvalid
 	}
 	facts := ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String()}
-	for _, permission := range []Permission{"idn.employee.read", "idn.employee.manage", "idn.invitation.manage"} {
+	for _, permission := range []Permission{"idn.employee.read", "idn.employee.manage", "idn.invitation.manage", "subs.plan.manage"} {
 		if permission != "idn.employee.read" && !fresh {
 			continue
 		}
@@ -32,7 +32,7 @@ func ContextHints(scope kernel.OrgScope, member string, assignments []Assignment
 	}
 	// Reads remain visible with the current organization-wide assignment
 	// even when the company cannot perform an ordinary write.
-	for _, permission := range []Permission{"doc.document.view_content", "subs.plan.read", "data.usage.read"} {
+	for _, permission := range []Permission{"doc.document.view_content", "subs.plan.read", "data.usage.read", "fleet.asset.read"} {
 		if _, e := CoveringRules(scope, member, assignments, permission, facts, now); e == nil {
 			permissions = append(permissions, permission)
 		}

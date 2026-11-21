@@ -601,6 +601,16 @@ func (f *Fixture) GrantStateIntake(t *testing.T) {
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_state_intakes TO "+role+";GRANT SELECT ON org_suspension_periods TO "+role); err != nil {
 			t.Fatal(err)
 		}
+		var vehicleProof bool
+		if err := f.Admin.QueryRow(t.Context(), `SELECT to_regprocedure('public.org_sync_vehicle_plan_archive_at(uuid,uuid,timestamptz,timestamptz)') IS NOT NULL`).Scan(&vehicleProof); err != nil {
+			t.Fatal(err)
+		}
+		if vehicleProof {
+			if _, err := f.Admin.Exec(t.Context(), "GRANT EXECUTE ON FUNCTION org_sync_vehicle_plan_archive_at(uuid,uuid,timestamptz,timestamptz) TO "+role+
+				"; GRANT SELECT ON org_billing_vehicle_plan_archives,org_billing_vehicle_plan_selections,org_asset_lifecycle_events TO "+role); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
 }
 

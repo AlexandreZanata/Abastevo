@@ -872,6 +872,65 @@ def employee_checks(browser, origin, dsn):
     paid_item = page.locator("#subscription-list > li").filter(has_text="Data sintético")
     expect(paid_item).to_contain_text("45,67")
     expect(paid_item).to_contain_text("Situação fiscal não consultada.")
+
+    # Keep the real company cookie and test the explicit selection UI against
+    # a synthetic downgrade. The PostGIS integration tests exercise the same
+    # request and both database transactions through the real API and device.
+    plan_url = "**/v1/orgs/" + org_id + "/subscriptions/plan/read"
+    fleet_url = "**/v1/orgs/" + org_id + "/fleet/assets/list"
+    choice_url = "**/v1/orgs/" + org_id + "/subscriptions/vehicles/select"
+    selection_subscription = str(uuid.uuid4())
+    candidates = [str(uuid.uuid4()) for _ in range(3)]
+    browser_choice = []
+
+    def comparison_plan(route):
+        stamp = "2026-11-21T18:30:00Z"
+        choice = {"subscription_id": selection_subscription, "revision": 2, "active": 3, "ceiling": 2}
+        plan = {"product": "fleet", "name": "Plano de seleção sintético", "revision": "2", "state": "ACTIVE",
+                "term_start": stamp, "term_end": "2026-12-21T18:30:00Z", "term_current": True,
+                "confirmed_paid": True, "capabilities": ["organizations"], "limits": {"active_vehicles": "2"}}
+        if not browser_choice:
+            plan["vehicle_selection"] = choice
+        route.fulfill(json={"observed_at": stamp, "plans": [plan]}, headers={"Cache-Control": "no-store"})
+
+    def selection_roster(route):
+        if route.request.post_data_json.get("kind") != "VEHICLE":
+            route.fallback()
+            return
+        route.fulfill(json={"items": [{"id": item, "kind": "VEHICLE", "state": "ACTIVE",
+            "name": "Veículo sintético " + str(index + 1)} for index, item in enumerate(candidates)], "next_cursor": ""},
+            headers={"Cache-Control": "no-store"})
+
+    def commit_selection(route):
+        request = route.request.post_data_json
+        assert request["schema_version"] == 1 and uuid.UUID(request["operation_id"])
+        assert request["revision"] == 2 and request["subscription_id"] == selection_subscription
+        assert request["keep_active"] == sorted([candidates[0], candidates[2]])
+        assert route.request.headers.get("x-csrf"), "Company CSRF proof absent on the selection"
+        browser_choice.append(request["operation_id"])
+        route.fulfill(json={"kept": request["keep_active"], "archived": [candidates[1]], "replayed": False},
+            headers={"Cache-Control": "no-store"})
+
+    page.route(plan_url, comparison_plan)
+    page.route(fleet_url, selection_roster)
+    page.route(choice_url, commit_selection)
+    page.locator("#subscription-refresh").click()
+    page.get_by_role("button", name="Escolher veículos ativos").click()
+    confirm_selection = page.get_by_role("button", name="Confirmar veículos ativos")
+    expect(confirm_selection).to_be_disabled()
+    page.get_by_role("checkbox", name="Veículo sintético 1").check()
+    expect(confirm_selection).to_be_disabled()
+    page.get_by_role("checkbox", name="Veículo sintético 3").check()
+    expect(confirm_selection).to_be_enabled()
+    confirm_selection.click()
+    expect(page.locator("#subscription-status")).to_contain_text("Seleção confirmada")
+    expect(page.get_by_role("button", name="Escolher veículos ativos")).to_have_count(0)
+    assert len(browser_choice) == 1
+    page.unroute(plan_url, comparison_plan)
+    page.unroute(fleet_url, selection_roster)
+    page.unroute(choice_url, commit_selection)
+    page.locator("#subscription-refresh").click()
+    expect(page.locator("#subscription-list")).to_contain_text("Plano sintético do navegador")
     expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
     expect(page.locator("#data-usage")).to_contain_text("0 de 5 chamadas")
     expect(page.locator("#data-usage")).to_contain_text("12 chamadas a cada 60 s")

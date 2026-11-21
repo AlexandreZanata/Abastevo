@@ -800,10 +800,12 @@
   },
   {
    "permission": "subs.plan.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Subscription plan and billing routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/subscriptions/vehicles/select",
+   "routes": [
+    "POST /v1/orgs/{org_id}/subscriptions/vehicles/select"
+   ],
+   "reason": ""
   },
   {
    "permission": "subs.plan.read",

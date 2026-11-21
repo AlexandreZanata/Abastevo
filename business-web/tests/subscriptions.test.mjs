@@ -76,3 +76,58 @@ test('changing company or its permission clears data and ignores an old response
   assert.deepEqual(controller.state.plans, []);
   assert.equal(calls.length, 2);
 });
+
+test('vehicle plan reads one bounded roster and commits the exact confirmed selection', async () => {
+  const abort = new AbortController();
+  const keys = [uuid(101), uuid(102), uuid(103)];
+  const requests = [];
+  const current = { ...rawPlan, limits: { ...rawPlan.limits, active_vehicles: '2' },
+    vehicle_selection: { subscription_id: uuid(50), revision: 3, active: 3, ceiling: 2 } };
+  const client = new PlanOverviewApi({
+    async privatePost(path, body, signal) {
+      assert.equal(signal, abort.signal);
+      assert(path.startsWith(`/v1/orgs/${uuid(1)}/`));
+      if (path.endsWith('/plan/read')) return { observed_at: observed, plans: [current] };
+      if (path.endsWith('/fleet/assets/list')) {
+        assert.deepEqual(body, { limit: 100, state: 'ACTIVE', kind: 'VEHICLE', ...(requests.length ? { cursor: 'page-two' } : {}) });
+        const values = requests.length ? keys.slice(2) : keys.slice(0, 2);
+        requests.push(path);
+        return { items: values.map((id, i) => ({ id, kind: 'VEHICLE', state: 'ACTIVE', name: 'Veículo', fleet_number: `F-${i}` })),
+          next_cursor: requests.length === 1 ? 'page-two' : '' };
+      }
+      assert(path.endsWith('/subscriptions/vehicles/select'));
+      assert.deepEqual(body, { schema_version: 1, operation_id: uuid(99), subscription_id: uuid(50), revision: 3, keep_active: [keys[2], keys[0]] });
+      return { kept: [keys[0], keys[2]], archived: [keys[1]], replayed: true };
+    },
+  });
+  const [plan] = await client.read(uuid(1), abort.signal);
+  const options = await client.vehicleOptions(uuid(1), plan.vehicleSelection, abort.signal);
+  assert.deepEqual(options.map(choice => choice.id), keys);
+  assert.equal(options[0].name, 'Veículo · F-0');
+  await client.commitVehicles(uuid(1), plan.vehicleSelection, uuid(99), [keys[2], keys[0]], abort.signal);
+});
+
+test('changing company aborts an old vehicle selection load', async () => {
+  const pending = deferred();
+  const basis = { subscription: uuid(50), revision: 2, active: 2, ceiling: 1 };
+  let vehicleSignal;
+  const controller = new PlanPanelController({
+    async read(org) { return org === uuid(1) ? [{ name: 'Empresa A', vehicleSelection: basis }] : [{ name: 'Empresa B' }]; },
+    vehicleOptions(_org, _basis, signal) { vehicleSignal = signal; return pending.promise; },
+    async commitVehicles() { assert.fail('an old choice cannot be committed'); },
+  }, () => {}, () => {});
+  const authority = n => ({
+    accountId: uuid(90), organization: { id: uuid(n), membershipId: uuid(n + 50), name: 'Empresa sintética' },
+    permissions: ['subs.plan.read', 'subs.plan.manage', 'fleet.asset.read'],
+  });
+  controller.select(authority(1));
+  await Promise.resolve();
+  const choosing = controller.chooseVehicles(basis);
+  controller.select(authority(2));
+  await Promise.resolve();
+  assert.equal(vehicleSignal.aborted, true);
+  pending.resolve([{ id: uuid(113), name: 'Veículo da empresa A' }]);
+  await choosing;
+  assert.equal(controller.state.plans[0].name, 'Empresa B');
+  assert.equal(controller.state.vehicleEdit, undefined);
+});

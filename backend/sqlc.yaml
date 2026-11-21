@@ -58,7 +58,10 @@ sql:
   - engine: postgresql
     queries: db/queries/orgbilling
     schema:
+      - db/migrations/000165_org_audit_events.sql
       - db/migrations/000169_organization_roots.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000205_org_documents.sql
       - db/migrations/000263_organization_plan_catalog.sql
       - db/migrations/000264_organization_subscription_history.sql
@@ -66,6 +69,7 @@ sql:
       - db/migrations/000267_organization_subscription_plan_changes.sql
       - db/migrations/000268_organization_trial_grants.sql
       - db/migrations/000274_organization_asaas_billing.sql
+      - db/migrations/000281_organization_vehicle_plan_selection.sql
     gen:
       go:
         package: orgbilling
@@ -706,6 +710,7 @@ sql:
       - db/migrations/000263_organization_plan_catalog.sql
       - db/migrations/000264_organization_subscription_history.sql
       - db/migrations/000266_organization_subscription_sync_intakes.sql
+      - db/migrations/000282_organization_vehicle_plan_offline.sql
     gen:
       go:
         package: orgsync

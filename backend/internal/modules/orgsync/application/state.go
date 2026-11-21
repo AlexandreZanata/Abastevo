@@ -32,11 +32,13 @@ type StateDecision struct {
 	Condition, Disposition, Result, Code string
 	// Instant is the plan's downgrade instant; suspension history is
 	// re-derived by the database from its recorded periods.
-	Instant              time.Time
-	Capability           string
-	CapabilityRevision   int64
-	SubscriptionID       string
-	SubscriptionRevision int64
+	Instant                time.Time
+	Capability             string
+	CapabilityRevision     int64
+	SubscriptionID         string
+	SubscriptionRevision   int64
+	VehiclePlanSelectionID string
+	VehiclePlanAssetID     string
 }
 
 func (decision StateDecision) Restricts() bool { return decision.Condition != "" }
@@ -46,11 +48,20 @@ func (decision StateDecision) Holds() bool     { return decision.Disposition == 
 func (decision StateDecision) Same(other StateDecision) bool {
 	return decision.Condition == other.Condition && decision.Disposition == other.Disposition && decision.Result == other.Result && decision.Code == other.Code &&
 		decision.Instant.Equal(other.Instant) && decision.Capability == other.Capability && decision.CapabilityRevision == other.CapabilityRevision &&
-		decision.SubscriptionID == other.SubscriptionID && decision.SubscriptionRevision == other.SubscriptionRevision
+		decision.SubscriptionID == other.SubscriptionID && decision.SubscriptionRevision == other.SubscriptionRevision &&
+		decision.VehiclePlanSelectionID == other.VehiclePlanSelectionID && decision.VehiclePlanAssetID == other.VehiclePlanAssetID
 }
 
 func (decision StateDecision) Validate() error {
 	hasSubscriptionProof := decision.SubscriptionID != "" || decision.SubscriptionRevision != 0
+	hasVehicleProof := decision.VehiclePlanSelectionID != "" || decision.VehiclePlanAssetID != ""
+	if hasVehicleProof {
+		if decision.Condition != StatePlan || decision.Capability != "organizations" || !hasSubscriptionProof ||
+			!stateProofID(decision.VehiclePlanSelectionID) || !stateProofID(decision.VehiclePlanAssetID) {
+			return ErrUnavailable
+		}
+	}
+
 	switch {
 	case !decision.Restricts():
 		if decision != (StateDecision{}) {
@@ -66,8 +77,7 @@ func (decision StateDecision) Validate() error {
 			return ErrUnavailable
 		}
 		if hasSubscriptionProof {
-			id, err := kernel.ParseOrgID(decision.SubscriptionID)
-			if err != nil || id.String() != decision.SubscriptionID || decision.SubscriptionRevision < 1 || !decision.Instant.IsZero() || decision.CapabilityRevision != 0 {
+			if !stateProofID(decision.SubscriptionID) || decision.SubscriptionRevision < 1 || !decision.Instant.IsZero() || decision.CapabilityRevision != 0 {
 				return ErrUnavailable
 			}
 		} else if decision.Instant.IsZero() || decision.CapabilityRevision < 2 {
@@ -77,6 +87,11 @@ func (decision StateDecision) Validate() error {
 		return ErrUnavailable
 	}
 	return nil
+}
+
+func stateProofID(raw string) bool {
+	id, err := kernel.ParseOrgID(raw)
+	return err == nil && id.String() == raw
 }
 
 // Plan states of the operation's write capability row.

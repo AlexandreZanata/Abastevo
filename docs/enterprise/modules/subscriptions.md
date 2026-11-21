@@ -28,7 +28,15 @@ Verified billing event identity and reconciliation preserve provenance. Personal
 
 **UC-SUBS-01 — Evaluate access.** A request resolves current membership, scoped role, state and approved capability limits. Missing or disabled authority denies the relevant new action. Reads and exports use the recorded state policy.
 
-**UC-SUBS-02 — Downgrade.** A permitted manager selects an admitted change. The recorded effective period applies. If 14 assets exceed a limit of 10, the authorized member chooses the 10 active assets and the remaining four retain archived history. Eligible earlier offline facts enter review.
+**UC-SUBS-02 — Downgrade.** A permitted manager selects an admitted change.
+The recorded effective period applies. When the lower paid term leaves
+more active vehicles than its limit, the company plan panel shows the
+current count and allows a manager with fresh proof to select the exact
+vehicles that stay active. The scoped command binds the current subscription
+revision and fleet authorization. The remaining vehicles become inactive
+and receive a plan archive reference to the audited fleet transition.
+Fleet reads and exports retain their history. Open trips or work orders
+block the whole selection. Reactivation checks the current fleet limit.
 
 **UC-SUBS-03 — Reconcile billing.** An admitted verified event is bound to its exact organization and offer. Repeated event IDs converge. Unknown or inconsistent records remain unreconciled and cannot grant roles.
 
@@ -65,6 +73,13 @@ The read remains available when billing writes are disabled.
 ## 8. Offline, concurrency, idempotency and corrections
 
 Changes and purchases require the server. Existing field queues preserve creation context and current intake uses server history. Repeated provider events and manual adjustments are idempotent. Usage counters retain period and source and cannot be bypassed by merely rotating a credential.
+
+A matching keep-active retry returns its original selection. The signed
+fueling intake resolves a currently plan-archived vehicle under the same
+organization and proves the author's retained authority and the subscription
+in effect when the fueling was declared. Eligible earlier fuelings produce
+one `PLAN_CHANGED` review item and a replayable receipt. A new declaration
+for the archived vehicle is refused while it stays out of active use.
 
 The storage meter counts reserved and retained original bytes from the
 company document registry. The plan panel displays that measured total

@@ -14,6 +14,18 @@ export const METERS = {
 type State = keyof typeof STATES;
 type Meter = keyof typeof METERS;
 
+export interface VehiclePlanBasis {
+  subscription: string;
+  revision: number;
+  active: number;
+  ceiling: number;
+}
+
+interface PlanVehicle {
+  id: string;
+  name: string;
+}
+
 export interface PlanSummary {
   name: string;
   product: string;
@@ -27,11 +39,15 @@ export interface PlanSummary {
   capabilities: string[];
   limits: Partial<Record<Meter, string>>;
   storageUsedBytes?: string;
+  vehicleSelection?: VehiclePlanBasis;
   pending?: { name: string; revision: string; effectiveAt: string };
 }
 
 export interface PlanSource {
   read(organization: string, signal: AbortSignal): Promise<PlanSummary[]>;
+  vehicleOptions?(organization: string, basis: VehiclePlanBasis, signal: AbortSignal): Promise<PlanVehicle[]>;
+  commitVehicles?(organization: string, basis: VehiclePlanBasis, operation: string, keep: string[], signal: AbortSignal): Promise<void>;
+
 }
 
 function text(value: unknown): string {
@@ -69,6 +85,14 @@ function plan(value: unknown): PlanSummary {
     state: raw.state as State, termStart, termEnd, termCurrent: raw.term_current,
     confirmedPaid: raw.confirmed_paid, capabilities: raw.capabilities.map(text), limits,
   };
+  if (raw.vehicle_selection !== undefined) {
+    const v = record(raw.vehicle_selection);
+    if (!isUuid(v.subscription_id) || !Number.isSafeInteger(v.revision) || Number(v.revision) < 2 ||
+        !Number.isSafeInteger(v.ceiling) || Number(v.ceiling) < 0 || !Number.isSafeInteger(v.active) ||
+        Number(v.active) <= Number(v.ceiling) || String(v.ceiling) !== limits.active_vehicles ||
+        result.state !== 'ACTIVE' || !result.termCurrent) throw new ApiError('unavailable');
+    result.vehicleSelection = { subscription: v.subscription_id, revision: Number(v.revision), active: Number(v.active), ceiling: Number(v.ceiling) };
+  }
   if (raw.storage_used_bytes !== undefined) {
     if (limits.storage_bytes === undefined) throw new ApiError('unavailable');
     result.storageUsedBytes = integer(raw.storage_used_bytes);
@@ -102,17 +126,70 @@ export class PlanOverviewApi implements PlanSource {
     if (!Array.isArray(view.plans)) throw new ApiError('unavailable');
     return view.plans.map(plan);
   }
+
+  async vehicleOptions(organization: string, basis: VehiclePlanBasis, signal: AbortSignal): Promise<PlanVehicle[]> {
+    if (!isUuid(organization)) throw new ApiError('denied');
+    const options = new Map<string, PlanVehicle>();
+    const cursors = new Set<string>();
+    let cursor = '';
+    do {
+      if (cursors.has(cursor)) throw new ApiError('unavailable');
+      cursors.add(cursor);
+      const result = await this.api.privatePost(`/v1/orgs/${organization}/fleet/assets/list`,
+        { limit: 100, state: 'ACTIVE', kind: 'VEHICLE', ...(cursor ? { cursor } : {}) }, signal);
+      if (!Array.isArray(result.items) || result.items.length > 100 || typeof result.next_cursor !== 'string' ||
+          result.next_cursor.length > 8192) throw new ApiError('unavailable');
+      for (const item of result.items) {
+        const asset = record(item);
+        if (!isUuid(asset.id) || asset.kind !== 'VEHICLE' || asset.state !== 'ACTIVE' || options.has(asset.id)) {
+          throw new ApiError('unavailable');
+        }
+        const label = [text(asset.name), asset.fleet_number, asset.plate]
+          .filter(part => typeof part === 'string' && part.trim() !== '').join(' · ');
+        options.set(asset.id, { id: asset.id, name: label });
+      }
+      cursor = result.next_cursor;
+      if (options.size > basis.active || (cursor !== '' && result.items.length === 0)) throw new ApiError('conflict');
+    } while (cursor !== '');
+    if (options.size !== basis.active) throw new ApiError('conflict');
+    return [...options.values()];
+  }
+
+  async commitVehicles(organization: string, basis: VehiclePlanBasis, operation: string, keep: string[], signal: AbortSignal): Promise<void> {
+    if (!isUuid(organization) || !isUuid(operation)) throw new ApiError('denied');
+    const result = await this.api.privatePost(`/v1/orgs/${organization}/subscriptions/vehicles/select`,
+      { schema_version: 1, operation_id: operation, subscription_id: basis.subscription, revision: basis.revision, keep_active: keep }, signal);
+    if (!Array.isArray(result.kept) || result.kept.length !== keep.length || !Array.isArray(result.archived) ||
+        result.archived.length !== basis.active - keep.length || typeof result.replayed !== 'boolean' ||
+        new Set([...result.kept, ...result.archived]).size !== basis.active ||
+        !result.kept.every(value => isUuid(value) && keep.includes(value)) || !result.archived.every(isUuid)) {
+      throw new ApiError('unavailable');
+    }
+  }
+}
+
+interface VehiclePlanEdit {
+  basis: VehiclePlanBasis;
+  options: PlanVehicle[];
+  busy: boolean;
+  keep: string[];
+  message: string;
 }
 
 export interface PlanPanelState {
   phase: 'closed' | 'loading' | 'ready' | 'unavailable';
   plans: PlanSummary[];
   message: string;
+  canChooseVehicles?: boolean;
+  vehicleEdit?: VehiclePlanEdit;
 }
 
 export class PlanPanelController {
   #authority: Authority | undefined;
   #reading: AbortController | undefined;
+  #vehicleRequest: AbortController | undefined;
+  #vehicleAttempt: { key: string; operation: string } | undefined;
+
   state: PlanPanelState = { phase: 'closed', plans: [], message: '' };
 
   constructor(private readonly source: PlanSource, private readonly render: (state: PlanPanelState) => void,
@@ -126,22 +203,26 @@ export class PlanPanelController {
 
   clear(): void {
     this.#reading?.abort();
+    this.#clearVehicleEdit();
     this.#reading = undefined;
     this.#authority = undefined;
     this.#show({ phase: 'closed', plans: [], message: '' });
   }
 
-  async refresh(): Promise<void> {
+  async refresh(message = ''): Promise<void> {
     const authority = this.#authority;
     if (!authority) return;
     this.#reading?.abort();
+    this.#clearVehicleEdit();
     const read = new AbortController();
     this.#reading = read;
     this.#show({ phase: 'loading', plans: [], message: 'Consultando o plano da empresa…' });
     try {
       const plans = await this.source.read(authority.organization.id, read.signal);
       if (this.#reading !== read) return;
-      this.#show({ phase: 'ready', plans, message: plans.length ? '' : 'Nenhum plano empresarial registrado.' });
+      const canChooseVehicles = authority.permissions?.includes('subs.plan.manage') && authority.permissions.includes('fleet.asset.read');
+      this.#show({ phase: 'ready', plans, message: plans.length ? message : 'Nenhum plano empresarial registrado.',
+        ...(canChooseVehicles ? { canChooseVehicles } : {}) });
     } catch (error) {
       if (this.#reading !== read) return;
       if (error instanceof ApiError && error.kind === 'unauthenticated') {
@@ -155,6 +236,69 @@ export class PlanPanelController {
       }
       this.#show({ phase: 'unavailable', plans: [], message: 'Não foi possível consultar o plano. Tente atualizar.' });
     }
+  }
+
+  async chooseVehicles(basis: VehiclePlanBasis): Promise<void> {
+    const authority = this.#authority;
+    if (!authority || !this.state.canChooseVehicles || !this.source.vehicleOptions || !this.source.commitVehicles ||
+        !this.state.plans.some(plan => plan.vehicleSelection === basis)) return;
+    this.#clearVehicleEdit();
+    const request = new AbortController();
+    this.#vehicleRequest = request;
+    const edit: VehiclePlanEdit = { basis, options: [], busy: true, keep: [], message: 'Carregando os veículos ativos…' };
+    this.#show({ ...this.state, vehicleEdit: edit });
+    try {
+      const options = await this.source.vehicleOptions(authority.organization.id, basis, request.signal);
+      if (this.#vehicleRequest !== request) return;
+      this.#show({ ...this.state, vehicleEdit: { ...edit, options, busy: false, message: '' } });
+    } catch (error) {
+      if (this.#vehicleRequest !== request || this.#selectionSessionLost(error)) return;
+      this.#show({ ...this.state, vehicleEdit: { ...edit, busy: false, message: 'Não foi possível carregar a frota. Atualize o plano e tente novamente.' } });
+    }
+  }
+
+  cancelVehicleSelection(): void {
+    this.#clearVehicleEdit();
+    this.#show({ ...this.state, vehicleEdit: undefined });
+  }
+
+  async confirmVehicles(keep: string[]): Promise<void> {
+    const edit = this.state.vehicleEdit, authority = this.#authority;
+    if (!edit || edit.busy || !authority || !this.state.canChooseVehicles || !this.source.commitVehicles ||
+        keep.length !== edit.basis.ceiling || new Set(keep).size !== keep.length ||
+        !keep.every(id => edit.options.some(asset => asset.id === id))) return;
+    const chosen = [...keep].sort();
+    const key = chosen.join(',');
+    const operation = this.#vehicleAttempt?.key === key ? this.#vehicleAttempt.operation : crypto.randomUUID();
+    this.#vehicleAttempt = { key, operation };
+    const request = new AbortController();
+    this.#vehicleRequest = request;
+    this.#show({ ...this.state, vehicleEdit: { ...edit, keep: chosen, busy: true, message: 'Confirmando os veículos ativos…' } });
+    try {
+      await this.source.commitVehicles(authority.organization.id, edit.basis, operation, chosen, request.signal);
+      if (this.#vehicleRequest === request) await this.refresh('Seleção confirmada. O histórico da frota foi preservado.');
+    } catch (error) {
+      if (this.#vehicleRequest !== request || this.#selectionSessionLost(error)) return;
+      const message = error instanceof ApiError && error.code === 'ASSET_HAS_OPEN_OPERATIONS'
+        ? 'Encerre as operações em aberto dos veículos que sairão do uso ativo.'
+        : error instanceof ApiError && error.kind === 'conflict'
+          ? 'A frota ou o plano mudou. Atualize o plano antes de confirmar.'
+          : 'Não foi possível confirmar. Revise a seleção e tente novamente.';
+      this.#show({ ...this.state, vehicleEdit: { ...edit, keep: chosen, busy: false, message } });
+    }
+  }
+
+  #selectionSessionLost(error: unknown): boolean {
+    if (!(error instanceof ApiError) || !['unauthenticated', 'fresh'].includes(error.kind)) return false;
+    this.clear();
+    this.sessionLost('Entre novamente para confirmar a seleção de veículos.');
+    return true;
+  }
+
+  #clearVehicleEdit(): void {
+    this.#vehicleRequest?.abort();
+    this.#vehicleRequest = undefined;
+    this.#vehicleAttempt = undefined;
   }
 
   #show(state: PlanPanelState): void {

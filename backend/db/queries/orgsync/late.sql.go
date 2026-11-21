@@ -90,27 +90,30 @@ func (q *Queries) InsertLateIntake(ctx context.Context, arg InsertLateIntakePara
 }
 
 const insertStateIntake = `-- name: InsertStateIntake :exec
-INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code,subscription_id,subscription_revision)
+INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code,subscription_id,subscription_revision,vehicle_plan_selection_id,vehicle_plan_asset_id)
 VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),$3::text,$4::text,NULLIF($5::text,''),NULLIF($6::bigint,0),
  $7::timestamptz,$8::timestamptz,$9::smallint,$10::timestamptz,$11::text,$12::text,
- CAST(NULLIF($13::text,'') AS uuid),NULLIF($14::bigint,0))
+ CAST(NULLIF($13::text,'') AS uuid),NULLIF($14::bigint,0),
+ CAST(NULLIF($15::text,'') AS uuid),CAST(NULLIF($16::text,'') AS uuid))
 `
 
 type InsertStateIntakeParams struct {
-	OrgID                string             `json:"org_id"`
-	OperationID          string             `json:"operation_id"`
-	Condition            string             `json:"condition"`
-	Disposition          string             `json:"disposition"`
-	Capability           string             `json:"capability"`
-	CapabilityRevision   int64              `json:"capability_revision"`
-	PlanChangedAt        pgtype.Timestamptz `json:"plan_changed_at"`
-	DeclaredAt           pgtype.Timestamptz `json:"declared_at"`
-	DeclaredSubmicro     int16              `json:"declared_submicro"`
-	ReceivedAt           pgtype.Timestamptz `json:"received_at"`
-	Result               string             `json:"result"`
-	Code                 string             `json:"code"`
-	SubscriptionID       string             `json:"subscription_id"`
-	SubscriptionRevision int64              `json:"subscription_revision"`
+	OrgID                  string             `json:"org_id"`
+	OperationID            string             `json:"operation_id"`
+	Condition              string             `json:"condition"`
+	Disposition            string             `json:"disposition"`
+	Capability             string             `json:"capability"`
+	CapabilityRevision     int64              `json:"capability_revision"`
+	PlanChangedAt          pgtype.Timestamptz `json:"plan_changed_at"`
+	DeclaredAt             pgtype.Timestamptz `json:"declared_at"`
+	DeclaredSubmicro       int16              `json:"declared_submicro"`
+	ReceivedAt             pgtype.Timestamptz `json:"received_at"`
+	Result                 string             `json:"result"`
+	Code                   string             `json:"code"`
+	SubscriptionID         string             `json:"subscription_id"`
+	SubscriptionRevision   int64              `json:"subscription_revision"`
+	VehiclePlanSelectionID string             `json:"vehicle_plan_selection_id"`
+	VehiclePlanAssetID     string             `json:"vehicle_plan_asset_id"`
 }
 
 func (q *Queries) InsertStateIntake(ctx context.Context, arg InsertStateIntakeParams) error {
@@ -129,6 +132,8 @@ func (q *Queries) InsertStateIntake(ctx context.Context, arg InsertStateIntakePa
 		arg.Code,
 		arg.SubscriptionID,
 		arg.SubscriptionRevision,
+		arg.VehiclePlanSelectionID,
+		arg.VehiclePlanAssetID,
 	)
 	return err
 }
@@ -224,5 +229,36 @@ func (q *Queries) ReadStateIntake(ctx context.Context, arg ReadStateIntakeParams
 		&i.Code,
 		&i.Policy,
 	)
+	return i, err
+}
+
+const vehiclePlanArchiveForIntake = `-- name: VehiclePlanArchiveForIntake :one
+SELECT selection_id::text AS selection_id,subscription_id::text AS subscription_id,subscription_revision::bigint AS subscription_revision
+FROM org_sync_vehicle_plan_archive_at($1::text::uuid,$2::text::uuid,
+  $3::timestamptz,$4::timestamptz)
+`
+
+type VehiclePlanArchiveForIntakeParams struct {
+	OrgID      string             `json:"org_id"`
+	AssetID    string             `json:"asset_id"`
+	DeclaredAt pgtype.Timestamptz `json:"declared_at"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
+type VehiclePlanArchiveForIntakeRow struct {
+	SelectionID          string `json:"selection_id"`
+	SubscriptionID       string `json:"subscription_id"`
+	SubscriptionRevision int64  `json:"subscription_revision"`
+}
+
+func (q *Queries) VehiclePlanArchiveForIntake(ctx context.Context, arg VehiclePlanArchiveForIntakeParams) (VehiclePlanArchiveForIntakeRow, error) {
+	row := q.db.QueryRow(ctx, vehiclePlanArchiveForIntake,
+		arg.OrgID,
+		arg.AssetID,
+		arg.DeclaredAt,
+		arg.ReceivedAt,
+	)
+	var i VehiclePlanArchiveForIntakeRow
+	err := row.Scan(&i.SelectionID, &i.SubscriptionID, &i.SubscriptionRevision)
 	return i, err
 }
