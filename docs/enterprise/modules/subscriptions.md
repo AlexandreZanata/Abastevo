@@ -117,6 +117,10 @@ A canonical paid Stripe renewal which arrives before its scoped charge binding
 remains pending. Its bounded retry delay allows other inbox work to proceed.
 The retry fetches the canonical invoice again and can settle only after the
 exact reviewed charge binding exists. An inconsistent binding is a conflict.
+A first Stripe invoice and any Asaas charge, including each Pix Automático
+cycle, do not wait: a settlement notice that arrives before the binding is
+recorded as a terminal conflict. Bind the reviewed resource before collecting
+its payment.
 
 A commercial review can authorize binding an existing Stripe invoice or Asaas
 charge to the exact reviewed company offer. The approval fixes the company,
