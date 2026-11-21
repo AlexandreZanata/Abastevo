@@ -30,6 +30,7 @@ import (
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	meterdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
+	fuelweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters/http"
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
@@ -172,6 +173,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, maintpg.IncidentAuditDefinitions()...)
 	definitions = append(definitions, maintpg.RunAuditDefinitions()...)
 	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
+	definitions = append(definitions, fuelpg.ReviewAuditDefinitions()...)
 	definitions = append(definitions, trippg.ClosureAuditDefinitions()...)
 	definitions = append(definitions, trippg.HandoverAuditDefinitions()...)
 	definitions = append(definitions, trippg.MissionAuditDefinitions()...)
@@ -225,6 +227,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "trip.mission", Permissions: []string{"trip.mission.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic mission create, assign and cancel commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "trip.close", Permissions: []string{"trip.trip.close_for_other"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic supervisor trip closures and handovers (EMP-TRIP-012) inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "trip.review", Permissions: []string{"trip.trip.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic trip review decisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "fueling.review", Permissions: []string{"fuel.fueling.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Fueling review decisions inherit the existing synthetic identity v1 write allowance."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -523,6 +526,13 @@ func Register(router chi.Router, o Options) error {
 		Audit: auditStore, Allocations: assets, Readings: reviews}
 	conflictAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ConflictRecords{}, Structure: heldTripStructure, Now: time.Now}
 	if err := tripweb.RegisterConflicts(router, tripapp.ConflictService{Enabled: true, Repository: conflicts}, cookies, gateway, conflictAuthorization); err != nil {
+		return err
+	}
+	fuelingStructure := &orgpg.ResourceStructure{Kind: orgpg.FuelingReviewStructure, Pool: o.Pool}
+	fuelingReviews := fuelpg.ReviewStore{Pool: o.Pool, Audit: auditStore,
+		Authority: orgpg.FuelingReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: fuelingStructure}}
+	fuelingAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Structure: fuelingStructure, Now: time.Now}
+	if err := fuelweb.RegisterReview(router, fuelingReviews, cookies, gateway, fuelingAuthorization); err != nil {
 		return err
 	}
 	// EMP-GPS-012 (EDR-281/282): recorded tracks only under gps.track.read

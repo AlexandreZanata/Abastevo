@@ -52,6 +52,8 @@ const (
 	HeldTripStructure
 	// GeofenceStructure: a geofence resolves to the optional unit it scopes (EMP-GPS-013).
 	GeofenceStructure
+	// FuelingReviewStructure resolves the stored allocation and team snapshot.
+	FuelingReviewStructure
 )
 
 // ResourceStructure is the EMP-AUTH-006 structural scope lookup for one
@@ -90,6 +92,11 @@ const tripStructure = `SELECT t.asset_id::text,COALESCE(t.unit_id::text,''),COAL
  COALESCE((SELECT array_agg(DISTINCT l.team_id::text) FROM org_team_links l WHERE l.org_id=t.org_id AND l.employee_id IN(t.author_employee_id,t.driver_employee_id)
   AND l.started_at<=t.received_at AND(l.ended_at IS NULL OR l.ended_at>t.received_at)),'{}'::text[])
 FROM org_trips t WHERE t.org_id=$1 AND t.id=$2`
+
+const fuelingReviewStructure = `SELECT f.asset_id::text,COALESCE(f.unit_id::text,''),COALESCE(f.cost_centre_id::text,''),
+ COALESCE((SELECT array_agg(DISTINCT l.team_id::text) FROM org_team_links l WHERE l.org_id=f.org_id AND l.employee_id IN(f.author_employee_id,f.responsible_employee_id)
+  AND l.started_at<=f.received_at AND(l.ended_at IS NULL OR l.ended_at>f.received_at)),'{}'::text[])
+FROM org_fuelings f WHERE f.org_id=$1 AND f.id=$2`
 
 // heldTripStructure reads only immutable held facts, the retained
 // allocation periods and team link periods (half-open, at the receipt).
@@ -215,9 +222,14 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 	// stored structure; EMP-GPS-012 (EDR-281): a recorded-track read uses the
 	// same snapshot; EMP-TRIP-012 (EDR-255): a handover covers the trip
 	// through it too.
-	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct" || policy.Permission == "trip.trip.close_for_other" || policy.Permission == "gps.track.read" || policy.Permission == "gps.location.read_live"):
+	case r.Kind == FuelingReviewStructure && policy.Permission == "fuel.fueling.review",
+		r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct" || policy.Permission == "trip.trip.close_for_other" || policy.Permission == "gps.track.read" || policy.Permission == "gps.location.read_live"):
+		query := tripStructure
+		if r.Kind == FuelingReviewStructure {
+			query = fuelingReviewStructure
+		}
 		var teams []string
-		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {
+		if err := tx.QueryRow(ctx, query, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return permissions.ResourceFacts{}, errStructureNotFound
 			}

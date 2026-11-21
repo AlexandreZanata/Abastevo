@@ -14319,6 +14319,121 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fuelings/{fueling_id}/review/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingReviewRead
+      summary: Read the scoped fueling review state
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fuel.fueling.review
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: fueling_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Server-recorded state and review sequence for the exact fueling.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelingReviewView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fuelings/{fueling_id}/review/decide:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingReviewDecide
+      summary: Record an authorized fueling review decision
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fuel.fueling.review
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: fueling_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFuelingReviewDecision'
+      responses:
+        '200':
+          description: Server-recorded state and review sequence for the exact fueling.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelingReviewResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/subscriptions/plan/read:
     post:
       tags:
@@ -48776,6 +48891,76 @@ components:
         bearer:
           type: string
           description: One-time bearer for the first successful issue or rotate response.
+        replayed:
+          type: boolean
+    EnterpriseFuelingReviewDecision:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision, decision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Expected sequence of the current review record.
+        decision:
+          type: string
+          enum: [OPEN, APPROVE, RETURN, REJECT]
+        reason:
+          type: string
+          maxLength: 280
+        warning_notes:
+          type: object
+          additionalProperties: false
+          properties:
+            ARITHMETIC_MISMATCH:
+              type: string
+              minLength: 1
+              maxLength: 280
+            PRODUCT_NOT_ACCEPTED:
+              type: string
+              minLength: 1
+              maxLength: 280
+        fuel_entered_tank:
+          type: boolean
+          description: Required when rejecting the fueling.
+    EnterpriseFuelingReviewView:
+      type: object
+      additionalProperties: false
+      required: [sequence, state, warnings, suspected_duplicate]
+      properties:
+        sequence:
+          type: integer
+          format: int64
+          minimum: 1
+        state:
+          type: string
+          enum: [SUBMITTED, IN_REVIEW, APPROVED, RETURNED, REJECTED]
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [ARITHMETIC_MISMATCH, PRODUCT_NOT_ACCEPTED]
+        suspected_duplicate:
+          type: boolean
+    EnterpriseFuelingReviewResult:
+      type: object
+      additionalProperties: false
+      required: [sequence, state, replayed]
+      properties:
+        sequence:
+          type: integer
+          format: int64
+          minimum: 1
+        state:
+          type: string
+          enum: [SUBMITTED, IN_REVIEW, APPROVED, RETURNED, REJECTED]
         replayed:
           type: boolean
     EnterpriseFuelCardStatementPreview:

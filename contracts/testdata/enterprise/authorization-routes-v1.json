@@ -394,10 +394,13 @@
   },
   {
    "permission": "fuel.fueling.review",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Fueling operation and review routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/fuelings/{fueling_id}/review/read",
+   "routes": [
+    "POST /v1/orgs/{org_id}/fuelings/{fueling_id}/review/decide",
+    "POST /v1/orgs/{org_id}/fuelings/{fueling_id}/review/read"
+   ],
+   "reason": ""
   },
   {
    "permission": "gps.geofence.manage",
