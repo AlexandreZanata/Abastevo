@@ -111,7 +111,9 @@ and published by `android-release`. Details: [docs/operations/](docs/operations/
   through resources/i18n (`en` default, `pt-BR` and other locales). The public
   site is pt-BR first. Other locales ship only as reviewed translations under
   [decision 026](docs/decisions/026-multilingual-public-site.md) and its
-  [multilingual contract](docs/product/landing/organic-growth-i18n-plan.md).
+  [multilingual contract](docs/product/landing/organic-growth-i18n-plan.md);
+  [decision 027](docs/decisions/027-ai-reviewed-landing-translations.md) lets
+  an AI review, disclosed to readers, sign the `en` and `es` landing.
 - Conventional Commits: `type(scope): imperative subject` (≤ 72 chars), one
   logical change per commit, body explains why.
 - Never commit secrets, keystores, `local.properties`, personal data, precise
