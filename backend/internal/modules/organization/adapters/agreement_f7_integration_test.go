@@ -35,12 +35,17 @@ import (
 // F7 scopes for the given account (BR-AGREE-001: the station party).
 func agreementStation(t *testing.T, pool *pgxpool.Pool, accountID, scopes string) string {
 	t.Helper()
+	return agreementStationForOperator(t, pool, accountID, "04218406000104", scopes)
+}
+
+func agreementStationForOperator(t *testing.T, pool *pgxpool.Pool, accountID, cnpj, scopes string) string {
+	t.Helper()
 	ctx := context.Background()
 	stationID := onboardingID(t)
 	if _, err := pool.Exec(ctx, "INSERT INTO directory_stations (id, display_name) VALUES ($1, 'Posto Sintético F7')", stationID); err != nil {
 		t.Fatalf("seed station: %v", err)
 	}
-	if _, err := pool.Exec(ctx, "INSERT INTO station_operator_revisions (id, station_id, cnpj, source) VALUES (gen_random_uuid(), $1, '04218406000104', 'registry')", stationID); err != nil {
+	if _, err := pool.Exec(ctx, "INSERT INTO station_operator_revisions (id, station_id, cnpj, source) VALUES (gen_random_uuid(), $1, $2, 'registry')", stationID, cnpj); err != nil {
 		t.Fatalf("seed operator: %v", err)
 	}
 	if _, err := pool.Exec(ctx, "INSERT INTO station_profiles (station_id, policy_version) VALUES ($1, 'profile-v1') ON CONFLICT DO NOTHING", stationID); err != nil {
@@ -50,10 +55,10 @@ func agreementStation(t *testing.T, pool *pgxpool.Pool, accountID, scopes string
 	if _, err := pool.Exec(ctx, "INSERT INTO profile_claims (id, account_id, station_id, role, policy_version, state) VALUES ($1, $2, $3, 'administrator', 'profile-v1', 'approved')", claimID, accountID, stationID); err != nil {
 		t.Fatalf("seed claim: %v", err)
 	}
-	if _, err := pool.Exec(ctx, "INSERT INTO claim_decisions (id, claim_id, reviewer, decision, reason, policy_version, operator_cnpj, scopes) VALUES ($1, $2, 'op-f7', 'approved', 'seed', 'profile-v1', '04218406000104', $3)", decisionID, claimID, scopes); err != nil {
+	if _, err := pool.Exec(ctx, "INSERT INTO claim_decisions (id, claim_id, reviewer, decision, reason, policy_version, operator_cnpj, scopes) VALUES ($1, $2, 'op-f7', 'approved', 'seed', 'profile-v1', $3, $4)", decisionID, claimID, cnpj, scopes); err != nil {
 		t.Fatalf("seed decision: %v", err)
 	}
-	if _, err := pool.Exec(ctx, "INSERT INTO representation_grants (id, account_id, station_id, operator_cnpj, role, scopes, claim_id, decision_id) VALUES ($1, $2, $3, '04218406000104', 'administrator', $4, $5, $6)", grantID, accountID, stationID, scopes, claimID, decisionID); err != nil {
+	if _, err := pool.Exec(ctx, "INSERT INTO representation_grants (id, account_id, station_id, operator_cnpj, role, scopes, claim_id, decision_id) VALUES ($1, $2, $3, $4, 'administrator', $5, $6, $7)", grantID, accountID, stationID, cnpj, scopes, claimID, decisionID); err != nil {
 		t.Fatalf("seed grant: %v", err)
 	}
 	return stationID

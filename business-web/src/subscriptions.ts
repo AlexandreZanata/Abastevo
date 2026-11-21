@@ -39,6 +39,8 @@ export interface PlanSummary {
   capabilities: string[];
   limits: Partial<Record<Meter, string>>;
   storageUsedBytes?: string;
+  activeVehiclesUsed?: string;
+  activeStationsUsed?: string;
   vehicleSelection?: VehiclePlanBasis;
   pending?: { name: string; revision: string; effectiveAt: string };
 }
@@ -85,6 +87,14 @@ function plan(value: unknown): PlanSummary {
     state: raw.state as State, termStart, termEnd, termCurrent: raw.term_current,
     confirmedPaid: raw.confirmed_paid, capabilities: raw.capabilities.map(text), limits,
   };
+  if (raw.active_vehicles_used !== undefined) {
+    if (limits.active_vehicles === undefined) throw new ApiError('unavailable');
+    result.activeVehiclesUsed = integer(raw.active_vehicles_used);
+  }
+  if (raw.active_stations_used !== undefined) {
+    if (limits.active_stations === undefined) throw new ApiError('unavailable');
+    result.activeStationsUsed = integer(raw.active_stations_used);
+  }
   if (raw.vehicle_selection !== undefined) {
     const v = record(raw.vehicle_selection);
     if (!isUuid(v.subscription_id) || !Number.isSafeInteger(v.revision) || Number(v.revision) < 2 ||

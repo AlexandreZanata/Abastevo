@@ -33,14 +33,16 @@ type Overview struct {
 }
 
 type PlanSummary struct {
-	Catalog          domain.Plan
-	State            domain.SubscriptionState
-	Term             domain.Period
-	TermCurrent      bool
-	Receipt          *TermReceipt
-	Pending          *PendingPlan
-	StorageUsedBytes *int64
-	VehicleSelection *VehicleSelectionBasis
+	Catalog            domain.Plan
+	State              domain.SubscriptionState
+	Term               domain.Period
+	TermCurrent        bool
+	Receipt            *TermReceipt
+	Pending            *PendingPlan
+	StorageUsedBytes   *int64
+	ActiveVehiclesUsed *int64
+	ActiveStationsUsed *int64
+	VehicleSelection   *VehicleSelectionBasis
 }
 
 type VehicleSelectionBasis struct {

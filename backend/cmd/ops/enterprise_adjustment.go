@@ -17,37 +17,41 @@ import (
 
 var errAdjustmentUsage = errors.New("usage: ops enterprise adjustment post --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]")
 
-type adjustmentArgs struct {
+type reviewedBillingArgs struct {
 	scope                         kernel.OrgScope
 	approval, operation, operator string
 }
 
-func parseAdjustmentArgs(args []string, getenv func(string) string) (adjustmentArgs, error) {
-	if len(args) == 0 || args[0] != "post" {
-		return adjustmentArgs{}, errAdjustmentUsage
+func parseAdjustmentArgs(args []string, getenv func(string) string) (reviewedBillingArgs, error) {
+	return parseReviewedBillingArgs(args, getenv, "enterprise adjustment post", "post", errAdjustmentUsage)
+}
+
+func parseReviewedBillingArgs(args []string, getenv func(string) string, command, verb string, usage error) (reviewedBillingArgs, error) {
+	if len(args) == 0 || args[0] != verb {
+		return reviewedBillingArgs{}, usage
 	}
-	flags := flag.NewFlagSet("enterprise adjustment post", flag.ContinueOnError)
+	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	org := flags.String("org", "", "organization UUID")
 	approval := flags.String("approval-id", "", "reviewed billing approval UUID")
 	operation := flags.String("operation-id", "", "operation UUID, reused for a matching retry")
 	operator := flags.String("operator", "", "accountable operator UUID")
 	if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
-		return adjustmentArgs{}, errAdjustmentUsage
+		return reviewedBillingArgs{}, usage
 	}
 	who, err := resolveOperatorID(*operator, getenv)
 	if err != nil {
-		return adjustmentArgs{}, err
+		return reviewedBillingArgs{}, err
 	}
 	id, ok := canonicalUUID(*org)
 	if !ok || !audit.ValidID(*approval) || !audit.ValidID(*operation) || !audit.ValidID(who) {
-		return adjustmentArgs{}, errAdjustmentUsage
+		return reviewedBillingArgs{}, usage
 	}
 	scope, err := kernel.NewOrgScope(id)
 	if err != nil {
-		return adjustmentArgs{}, errAdjustmentUsage
+		return reviewedBillingArgs{}, usage
 	}
-	return adjustmentArgs{scope: scope, approval: *approval, operation: *operation, operator: who}, nil
+	return reviewedBillingArgs{scope: scope, approval: *approval, operation: *operation, operator: who}, nil
 }
 
 func runEnterpriseAdjustment(args []string, getenv func(string) string, out io.Writer) error {

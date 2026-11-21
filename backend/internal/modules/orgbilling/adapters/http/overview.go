@@ -81,20 +81,22 @@ type vehicleSelectionView struct {
 }
 
 type planView struct {
-	Product          string                   `json:"product"`
-	Name             string                   `json:"name"`
-	Revision         string                   `json:"revision"`
-	State            domain.SubscriptionState `json:"state"`
-	TermStart        time.Time                `json:"term_start"`
-	TermEnd          time.Time                `json:"term_end"`
-	TermCurrent      bool                     `json:"term_current"`
-	ConfirmedPaid    bool                     `json:"confirmed_paid"`
-	Receipt          *termReceiptView         `json:"receipt,omitempty"`
-	Capabilities     []string                 `json:"capabilities"`
-	Limits           map[domain.Meter]string  `json:"limits"`
-	StorageUsed      string                   `json:"storage_used_bytes,omitempty"`
-	VehicleSelection *vehicleSelectionView    `json:"vehicle_selection,omitempty"`
-	Pending          *pendingView             `json:"pending,omitempty"`
+	Product            string                   `json:"product"`
+	Name               string                   `json:"name"`
+	Revision           string                   `json:"revision"`
+	State              domain.SubscriptionState `json:"state"`
+	TermStart          time.Time                `json:"term_start"`
+	TermEnd            time.Time                `json:"term_end"`
+	TermCurrent        bool                     `json:"term_current"`
+	ConfirmedPaid      bool                     `json:"confirmed_paid"`
+	Receipt            *termReceiptView         `json:"receipt,omitempty"`
+	Capabilities       []string                 `json:"capabilities"`
+	Limits             map[domain.Meter]string  `json:"limits"`
+	StorageUsed        string                   `json:"storage_used_bytes,omitempty"`
+	ActiveVehiclesUsed string                   `json:"active_vehicles_used,omitempty"`
+	ActiveStationsUsed string                   `json:"active_stations_used,omitempty"`
+	VehicleSelection   *vehicleSelectionView    `json:"vehicle_selection,omitempty"`
+	Pending            *pendingView             `json:"pending,omitempty"`
 }
 
 func response(overview billing.Overview) overviewResponse {
@@ -115,6 +117,12 @@ func response(overview billing.Overview) overviewResponse {
 			p.Receipt = &termReceiptView{AmountCentavos: strconv.FormatInt(row.Receipt.Amount.Centavos, 10),
 				Currency: string(row.Receipt.Amount.Currency), SettledAt: row.Receipt.SettledAt,
 				ProviderPaidOn: row.Receipt.PaidOn, FiscalStatus: document.NotConsulted}
+		}
+		if row.ActiveVehiclesUsed != nil {
+			p.ActiveVehiclesUsed = strconv.FormatInt(*row.ActiveVehiclesUsed, 10)
+		}
+		if row.ActiveStationsUsed != nil {
+			p.ActiveStationsUsed = strconv.FormatInt(*row.ActiveStationsUsed, 10)
 		}
 		if basis := row.VehicleSelection; basis != nil {
 			p.VehicleSelection = &vehicleSelectionView{SubscriptionID: basis.SubscriptionID, Revision: basis.Revision,

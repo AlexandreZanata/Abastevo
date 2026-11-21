@@ -191,6 +191,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, datapg.WatchAuditDefinitions()...)
 	definitions = append(definitions, billpg.VehicleSelectionAuditDefinitions()...)
 	definitions = append(definitions, billpg.AdjustmentAuditDefinitions()...)
+	definitions = append(definitions, billpg.StationPlanAuditDefinitions()...)
 	definitions = append(definitions, connectorpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
@@ -260,7 +261,7 @@ func Register(router chi.Router, o Options) error {
 		flags.PlanWrites = plans
 	}
 	authorization := access.Authorization{Source: roles, Capabilities: entitlements, Records: orgweb.SetupRecords{}, Now: time.Now}
-	billingOverview := billpg.OverviewStore{Pool: o.Pool, Capabilities: capabilities, VehicleSelectionsEnabled: o.BillingEnabled,
+	billingOverview := billpg.OverviewStore{Pool: o.Pool, Capabilities: capabilities, BillingEnabled: o.BillingEnabled,
 		Authority: orgpg.SubscriptionAuthority{Memberships: memberStore, Roles: roles}}
 	if err := billweb.RegisterPlanOverview(router, billingOverview, cookies, gateway, authorization); err != nil {
 		return err

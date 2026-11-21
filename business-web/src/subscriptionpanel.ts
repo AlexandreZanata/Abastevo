@@ -123,6 +123,10 @@ export function mountPlanPanel(doc: Document, source: PlanSource, sessionLost: (
           if (meter === 'storage_bytes' && plan.storageUsedBytes !== undefined) {
             const used = number.format(BigInt(plan.storageUsedBytes));
             text(limits, 'li', `${used} de ${maximum} bytes de armazenamento`);
+          } else if (meter === 'active_vehicles' && plan.activeVehiclesUsed !== undefined) {
+            text(limits, 'li', `${label}: ${number.format(BigInt(plan.activeVehiclesUsed))} de ${maximum}`);
+          } else if (meter === 'active_stations' && plan.activeStationsUsed !== undefined) {
+            text(limits, 'li', `${label}: ${number.format(BigInt(plan.activeStationsUsed))} de ${maximum}`);
           } else {
             text(limits, 'li', `${label}: ${maximum}`);
           }

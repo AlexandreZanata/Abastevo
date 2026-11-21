@@ -198,6 +198,9 @@ func runEnterprise(args []string, getenv func(string) string, out io.Writer) err
 	if len(args) > 0 && args[0] == "adjustment" {
 		return runEnterpriseAdjustment(args[1:], getenv, out)
 	}
+	if len(args) > 0 && args[0] == "station" {
+		return runEnterpriseStation(args[1:], getenv, out)
+	}
 	parsed, err := parseEnterpriseArgs(args, getenv)
 	if err != nil {
 		return err

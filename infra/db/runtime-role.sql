@@ -10,8 +10,8 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000283. Relations: 428 granted, 3 without access.
--- Sequences: 7. Explicit functions: 2.
+-- Schema version: 000284. Relations: 430 granted, 3 without access.
+-- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
 SELECT pg_catalog.set_config('abastevo.runtime_role', :'runtime_role', true);
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000283' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000283 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000284' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000284 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -240,6 +240,8 @@ GRANT SELECT ON TABLE public.org_billing_adjustment_approvals TO :"runtime_role"
 GRANT SELECT, INSERT ON TABLE public.org_billing_adjustment_postings TO :"runtime_role";
 GRANT SELECT ON TABLE public.org_billing_charge_bindings TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_settlement_receipts TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_billing_station_plan_admissions TO :"runtime_role";
+GRANT SELECT ON TABLE public.org_billing_station_plan_reviews TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_subscription_events TO :"runtime_role";
 GRANT SELECT ON TABLE public.org_billing_trial_grants TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_vehicle_plan_archives TO :"runtime_role";
@@ -505,6 +507,7 @@ GRANT USAGE ON SEQUENCE public.org_notification_notices_position_seq TO :"runtim
 GRANT USAGE ON SEQUENCE public.org_tracking_live_revision_seq TO :"runtime_role";
 GRANT USAGE ON SEQUENCE public.org_work_orders_number_seq TO :"runtime_role";
 -- Functions the runtime calls that PUBLIC cannot execute.
+GRANT EXECUTE ON FUNCTION public.org_billing_station_plan_reviews_at(uuid,timestamp with time zone) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.org_billing_vehicle_downgrade(uuid,uuid,bigint,timestamp with time zone) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.org_sync_vehicle_plan_archive_at(uuid,uuid,timestamp with time zone,timestamp with time zone) TO :"runtime_role";
 -- Safety net until this script is re-run after a migration: objects the
@@ -546,7 +549,7 @@ BEGIN
     FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.prosecdef
      AND pg_catalog.has_function_privilege(role_name, p.oid, 'EXECUTE')
-     AND p.oid::regprocedure::text <> ALL (ARRAY['org_billing_vehicle_downgrade(uuid,uuid,bigint,timestamp with time zone)', 'org_sync_vehicle_plan_archive_at(uuid,uuid,timestamp with time zone,timestamp with time zone)']::text[]);
+     AND p.oid::regprocedure::text <> ALL (ARRAY['org_billing_station_plan_reviews_at(uuid,timestamp with time zone)', 'org_billing_vehicle_downgrade(uuid,uuid,bigint,timestamp with time zone)', 'org_sync_vehicle_plan_archive_at(uuid,uuid,timestamp with time zone,timestamp with time zone)']::text[]);
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'runtime role can execute SECURITY DEFINER functions: %', bad;
   END IF;

@@ -49497,6 +49497,14 @@ components:
                 type: string
                 pattern: '^(0|[1-9][0-9]{0,18})$'
                 description: Scoped total of reserved and retained document original bytes at observation.
+              active_vehicles_used:
+                type: string
+                pattern: '^(0|[1-9][0-9]{0,18})$'
+                description: Active vehicle records in the organization at observation.
+              active_stations_used:
+                type: string
+                pattern: '^(0|[1-9][0-9]{0,18})$'
+                description: Admitted stations with a current reviewed representation at observation.
               vehicle_selection:
                 type: object
                 description: Lower current vehicle limit that requires an explicit keep-active selection.

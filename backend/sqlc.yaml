@@ -71,6 +71,7 @@ sql:
       - db/migrations/000274_organization_asaas_billing.sql
       - db/migrations/000281_organization_vehicle_plan_selection.sql
       - db/migrations/000283_organization_billing_adjustments.sql
+      - db/migrations/000284_organization_station_plan_meter.sql
     gen:
       go:
         package: orgbilling
