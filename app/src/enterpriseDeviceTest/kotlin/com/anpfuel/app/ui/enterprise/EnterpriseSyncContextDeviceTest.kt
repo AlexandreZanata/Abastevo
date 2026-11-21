@@ -18,6 +18,7 @@ import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
 import com.anpfuel.application.enterprise.fueling.FuelingFlow
 import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
 import com.anpfuel.app.ui.enterprise.trip.TripViewModel
+import com.anpfuel.app.ui.enterprise.tracking.MyTrackingViewModel
 import com.anpfuel.data.enterprise.attachment.AndroidReceiptOriginals
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
@@ -48,6 +49,8 @@ import com.anpfuel.application.enterprise.fleet.MyAssetsFlow
 import com.anpfuel.application.enterprise.queue.*
 import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncFlow
+import com.anpfuel.application.enterprise.tracking.MyTrackingFlow
+import com.anpfuel.application.enterprise.tracking.TrackingRuntime
 import com.anpfuel.application.port.NetworkConnectivityGateway
 import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
@@ -98,6 +101,8 @@ class EnterpriseSyncContextDeviceTest {
     @Inject lateinit var fence: EnterpriseSessionFence
     @Inject lateinit var database: AnpFuelDatabase
     @Inject lateinit var scenario: EnterpriseDeviceScenario
+    @Inject lateinit var trackingFlow: MyTrackingFlow
+    @Inject lateinit var trackingRuntime: TrackingRuntime
     @get:Rule(order = 0) val hilt = HiltAndroidRule(this)
     @get:Rule(order = 1) val compose = createAndroidComposeRule<ComponentActivity>()
 
@@ -127,6 +132,7 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var fuelingModel: FuelingViewModel
             lateinit var checklistModel: ChecklistViewModel
             lateinit var expenseModel: ExpenseViewModel
+            lateinit var trackingModel: MyTrackingViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
@@ -145,6 +151,8 @@ class EnterpriseSyncContextDeviceTest {
                 // EMP-EXP-004: the expense owner over the same protected store; no expense action runs here.
                 expenseModel = ExpenseViewModel(graph.expenseFlow, graph.network, fence, EnterpriseDeliveryActivity())
                 models.put("expenses", expenseModel)
+                trackingModel = MyTrackingViewModel(trackingFlow, fence, trackingRuntime)
+                models.put("tracking", trackingModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
@@ -152,7 +160,7 @@ class EnterpriseSyncContextDeviceTest {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
                     MaterialTheme { EnterpriseContextScreen({ personal = true }, { sourceCalls.incrementAndGet() },
                         { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel,
-                        expenseModel) }
+                        expenseModel, trackingViewModel = trackingModel) }
                 }
             }
             awaitTag(option(graph.a))
@@ -268,6 +276,7 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var fuelingModel: FuelingViewModel
             lateinit var checklistModel: ChecklistViewModel
             lateinit var expenseModel: ExpenseViewModel
+            lateinit var trackingModel: MyTrackingViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
@@ -286,13 +295,15 @@ class EnterpriseSyncContextDeviceTest {
                 // EMP-EXP-004: the expense owner over the same protected store; no expense action runs here.
                 expenseModel = ExpenseViewModel(graph.expenseFlow, graph.network, fence, EnterpriseDeliveryActivity())
                 models.put("expenses", expenseModel)
+                trackingModel = MyTrackingViewModel(trackingFlow, fence, trackingRuntime)
+                models.put("tracking", trackingModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
                     MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel,
-                        expenseModel) }
+                        expenseModel, trackingViewModel = trackingModel) }
                 }
             }
             fun names() = assetsModel.state.value.snapshot?.assets?.map { it.asset.name }
