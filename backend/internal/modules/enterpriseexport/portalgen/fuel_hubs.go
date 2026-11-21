@@ -45,6 +45,9 @@ type fuelHubPage struct {
 	Cities     []fuelGeoRow
 	Others     []fuelHubLink
 	Comparison *comparisonView
+	// WeekSummary and FAQ are the dated answers of B-BR-SEO-09.
+	WeekSummary string
+	FAQ         []faqItem
 }
 
 // unitLabel names a canonical unit for "R$ por ..." captions.
@@ -187,6 +190,10 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 			Code: hub.Code, Label: hub.Label, H1: "Preço " + words.Article + " " + words.Name + " no Brasil",
 			UnitLabel: unitLabel(hub.Unit), Synonym: words.Synonym, National: national, States: states, Cities: cities, Others: others,
 			Comparison: g.comparison(summaries, analytics.LevelNational, "BR", hub.Code),
+		}
+		if len(national) == 1 {
+			facts := fuelFacts{Code: hub.Code, States: len(states), Row: national[0], Comparison: data.Comparison}
+			data.WeekSummary, data.FAQ = g.weekSummary(facts), g.fuelFAQ(facts)
 		}
 		items := make([]listItem, 0, len(states)+len(cities))
 		for _, row := range states {

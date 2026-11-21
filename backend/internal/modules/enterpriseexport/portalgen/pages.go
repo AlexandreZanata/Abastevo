@@ -335,6 +335,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 			} else {
 				data.Rankings = observationRankings(items)
 				data.Comparison = g.comparison(summaries, analytics.LevelMunicipality, code, "")
+				data.FAQ = g.cityFAQ(placeLabel(name, uf), rows)
 			}
 		}
 		listed := make([]listItem, 0, len(stationList))

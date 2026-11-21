@@ -211,6 +211,18 @@ as follows; tests in `portalgen` prove each rule on fixtures.
     compares a fingerprint of the exported fields with the export state and
     enqueues a build; the build enqueues a portal refresh. Worst-case latency
     is about 6 h plus build and generation time.
+- **B-BR-SEO-09 Dated answers.** A title or meta description of a price page
+  never contains the word “hoje”. The fuel hub, the fuel by area pages and the
+  city page carry a visible “Perguntas frequentes” block, and the first three
+  also carry a one-paragraph reading of the survey. Every sentence is a fixed
+  template over figures the page already shows, built without a language
+  model, and a sentence whose condition fails is left out. A “today” question
+  is answered only with the survey period, the statement that the site has no
+  live price, and the warning that the price may differ today. No page names a
+  cheapest station or uses “mais barato”, “preço atual” or “tempo real”: the
+  lowest-price question speaks of the lowest price found in a dated sample.
+  The block is visible content only; no `FAQPage` or `HowTo` markup is
+  emitted.
 - **B-BR-SEO-10 Sample mean and comparison.** The mean of a summary is the sum
   of the latest price of each station divided by the station count, in
   milli-BRL, rounded half up (`(2 × sum + n) ÷ (2 × n)` in integers). It is

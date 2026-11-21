@@ -141,6 +141,11 @@ const templates = `
 </div>
 <p class="muted">Só calculamos variação quando os postos da amostra são os mesmos nas duas pesquisas.</p>{{end}}{{end}}
 
+{{define "faq"}}{{if .}}<h2>Perguntas frequentes</h2>
+{{range .}}<h3>{{.Question}}</h3>
+<p>{{.Answer}}{{if .LinkHref}} <a href="{{.LinkHref}}">{{.LinkLabel}}</a>.{{end}}</p>
+{{end}}{{end}}{{end}}
+
 {{define "ranking"}}<h3>{{.Title}}</h3>
 <p class="muted">{{.Population}} {{plural .Population "posto" "postos"}} na amostra.{{if .Truncated}} Exibindo os primeiros; empates no corte: {{.TiesAtCutoff}}.{{end}}</p>
 {{if .Rows}}<div class="table-wrap">
@@ -242,6 +247,7 @@ const templates = `
   {{template "comparison" .Comparison}}
   <h2>Menores preços encontrados na amostra</h2>
   {{range .Rankings}}{{template "ranking" .}}{{end}}
+  {{template "faq" .FAQ}}
   {{end}}
   {{if .Stations}}<section class="link-module"><h2>Postos em {{.Name}}</h2>{{if gt .StationsTotal (len .Stations)}}<p class="muted">Exibindo {{len .Stations}} de {{.StationsTotal}} postos.</p>{{end}}<ul class="link-list">{{range .Stations}}<li><a href="{{.Href}}">{{.Label}}</a>{{if .Note}} <span class="muted">{{.Note}}</span>{{end}}</li>{{end}}</ul></section>{{end}}
   {{template "modules" .}}
@@ -298,6 +304,7 @@ const templates = `
 <main id="conteudo" class="wrap">
   <h1>{{.H1}}</h1>
   <p class="lead">Preços encontrados na pesquisa da ANP{{if .Period}} de {{.Period}}{{end}}, em R$ por {{.UnitLabel}}. Não é preço ao vivo nem estatística oficial da ANP.{{if .Synonym}} Também chamado de {{.Synonym}}.{{end}}</p>
+  {{if .WeekSummary}}<p class="lead">{{.WeekSummary}}</p>{{end}}
   <div class="notice"><strong>Mesma unidade, mesmo combustível.</strong><p>Esta página compara apenas {{.Label}} em R$ por {{.UnitLabel}}. Mínimo, máximo e dispersão vêm dos postos com observação no período; a amostra não cobre todos os postos.</p></div>
   <h2>Brasil</h2>
   {{template "summary" .National}}
@@ -314,6 +321,7 @@ const templates = `
     <thead><tr><th scope="col">Cidade</th><th scope="col" class="num">Amostra</th><th scope="col" class="num">Mínimo</th><th scope="col" class="num">Máximo</th><th scope="col" class="num">Média da amostra</th></tr></thead>
     <tbody>{{range .Cities}}<tr><td><a href="{{.Href}}">{{.Name}} ({{.UF}})</a></td><td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td>{{if .Insufficient}}<td colspan="3"><span class="tag tag-warn">amostra pequena</span></td>{{else}}<td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td><td class="num">{{if .HasMean}}{{brl .Mean}}{{else}}—{{end}}</td>{{end}}</tr>{{end}}</tbody>
   </table></div>{{else}}<div class="notice"><strong>Sem cidades com resumo.</strong></div>{{end}}
+  {{template "faq" .FAQ}}
   {{if .Others}}<h2>Outros combustíveis</h2><ul class="station-list">{{range .Others}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a></li>{{end}}</ul>{{end}}
   {{template "modules" .}}
   <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo Abastevo para mínimo, máximo, média da amostra e dispersão.</p></div>
@@ -325,6 +333,7 @@ const templates = `
 <main id="conteudo" class="wrap">
   <h1>{{.H1}}</h1>
   <p class="lead">{{.Lead}}</p>
+  {{if .WeekSummary}}<p class="lead">{{.WeekSummary}}</p>{{end}}
   <h2>Resumo da amostra</h2>
   {{template "summary" .Summary}}
   {{template "comparison" .Comparison}}
@@ -350,6 +359,7 @@ const templates = `
   {{if .Rankings}}<h2>Menores preços encontrados na amostra</h2>{{range .Rankings}}{{template "ranking" .}}{{end}}{{end}}
   {{if .Context}}<h2>{{.ContextTitle}}</h2>
   <ul class="station-list">{{range .Context}}<li><a href="{{.Href}}">{{.Label}}</a> — {{brl .Min}} a {{brl .Max}} em {{.Stations}} {{plural .Stations "posto" "postos"}}{{if .HasMean}}, média da amostra {{brl .Mean}}{{end}}</li>{{end}}</ul>{{end}}
+  {{template "faq" .FAQ}}
   {{template "modules" .}}
   <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para mínimo, máximo, média da amostra e dispersão.</p></div>
   <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>

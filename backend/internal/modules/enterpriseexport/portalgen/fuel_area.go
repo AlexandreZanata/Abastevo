@@ -97,6 +97,9 @@ type fuelAreaPage struct {
 	// ContextTitle and Context place a city next to its state and Brazil.
 	ContextTitle string
 	Context      []fuelContextLine
+	// WeekSummary and FAQ are the dated answers of B-BR-SEO-09.
+	WeekSummary string
+	FAQ         []faqItem
 }
 
 // fuelStationRow is one station of a fuel by city page.
@@ -298,6 +301,8 @@ func (g *generator) generateFuelStates(summaries []analytics.Summary, rankings [
 				Comparison: g.comparison(summaries, analytics.LevelState, uf, hub.Code), History: g.fuelHistory(key),
 				CitiesTitle: "Cidades de " + state + " com preço na amostra", Cities: cities, Rankings: views,
 			}
+			facts := fuelFacts{Code: hub.Code, Place: state, Row: rows[0], Comparison: data.Comparison}
+			data.WeekSummary, data.FAQ = g.weekSummary(facts), g.fuelFAQ(facts)
 			items := make([]listItem, 0, len(cities))
 			for _, row := range cities {
 				items = append(items, listItem{Name: "Preço " + phrase + " em " + placeLabel(row.Name, uf), Href: row.Href})
@@ -437,6 +442,8 @@ func (g *generator) generateFuelCities(summaries []analytics.Summary, observatio
 				Stations: stationRows, StationsTotal: total,
 				ContextTitle: hub.Label + " em " + state + " e no Brasil", Context: context,
 			}
+			facts := fuelFacts{Code: hub.Code, Place: place, Row: rows[0], Comparison: data.Comparison}
+			data.WeekSummary, data.FAQ = g.weekSummary(facts), g.fuelFAQ(facts)
 			items := make([]listItem, 0, len(stationRows))
 			for _, row := range stationRows {
 				items = append(items, listItem{Name: row.Name, Href: "/postos/" + row.StationID + "/"})

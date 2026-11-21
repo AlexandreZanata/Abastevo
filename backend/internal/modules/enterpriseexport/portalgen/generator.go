@@ -254,6 +254,7 @@ type municipalityPage struct {
 	Insufficient  bool
 	Population    int
 	Comparison    *comparisonView
+	FAQ           []faqItem
 }
 
 type stationView struct {
