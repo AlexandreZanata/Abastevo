@@ -81,9 +81,29 @@ test('check rejects broken internal links but allowlists portal routes', () => {
   }
 });
 
+test('check measures the meta description as text, not as escaped HTML', () => {
+  // English copy carries apostrophes, which the page escapes as `&#39;`. A
+  // description at the upper bound must not fail for its escaping.
+  const text = `${'Brazil\'s fuel prices explained with source and date. '.repeat(4)}`.slice(0, 165);
+  assert.equal(text.length, 165);
+  const escaped = text.replace(/'/g, '&#39;');
+  const swap = (dir, value) => {
+    const file = path.join(dir, 'sobre', 'index.html');
+    const html = fs.readFileSync(file, 'utf8');
+    fs.writeFileSync(file, html.replace(/(<meta\s+name="description"\s+content=")[^"]+(")/, `$1${value}$2`));
+  };
+  const ok = mutated((dir) => swap(dir, escaped));
+  try {
+    assert.doesNotThrow(() => checkDist({ distDir: ok }));
+  } finally {
+    fs.rmSync(ok, { recursive: true, force: true });
+  }
+  expectFailure((dir) => swap(dir, `${escaped}x`), /sobre\/index\.html meta description length \(166\)/);
+});
+
 test('check rejects sitemap drift and inline scripts', () => {
   expectFailure((dir) => patch(dir, 'sitemap.xml', /<url>\s*<loc>https:\/\/abastevo\.com\.br\/sobre\/<\/loc>\s*<lastmod>[^<]+<\/lastmod>\s*<\/url>\s*/.exec(fs.readFileSync(path.join(dir, 'sitemap.xml'), 'utf8'))[0], ''), /\/sobre\/ is missing from sitemap\.xml/);
-  expectFailure((dir) => patch(dir, 'sitemap.xml', '<lastmod>2026-11-14</lastmod>', '<lastmod>ontem</lastmod>'), /needs a YYYY-MM-DD lastmod/);
+  expectFailure((dir) => patch(dir, 'sitemap.xml', /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.exec(fs.readFileSync(path.join(dir, 'sitemap.xml'), 'utf8'))[0], '<lastmod>ontem</lastmod>'), /needs a YYYY-MM-DD lastmod/);
   expectFailure((dir) => patch(dir, 'sitemap.xml', '</urlset>', '  <url>\n    <loc>https://abastevo.com.br/fantasma/</loc>\n    <lastmod>2026-11-14</lastmod>\n  </url>\n</urlset>'), /not an emitted indexable landing page/);
   expectFailure((dir) => patch(dir, 'sobre/index.html', '</body>', '<script>alert(1)</script></body>'), /inline or non-fingerprinted script/);
 });
