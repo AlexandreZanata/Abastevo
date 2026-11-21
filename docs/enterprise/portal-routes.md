@@ -114,6 +114,10 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   pages and hubs derived from it, the latest valid observation date for a
   station, the official edition publication for `/fiscalizacao/`, and the build
   date only for pages without a data date. No `priority` or `changefreq`.
+  The same-origin web tier serves both the landing and portal sitemap URLs in
+  its robots response, which mirrors the rendered landing robots file. Every
+  crawler group that allows crawling also disallows the admin, company, and
+  search shard paths.
 - **B-BR-SEO-05 Head contract.** Every page with a configured site URL carries
   an absolute self `<link rel="canonical">` (trailing slash), Open Graph and
   Twitter tags (`og:site_name` `abastevo`, `og:locale` `pt_BR`, landing image

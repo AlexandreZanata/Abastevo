@@ -450,8 +450,11 @@ export function checkDist(options = {}) {
   const robotsPath = path.join(distDir, 'robots.txt');
   if (fs.existsSync(robotsPath)) {
     const robotsContent = fs.readFileSync(robotsPath, 'utf8');
-    if (!robotsContent.includes(`Sitemap: ${origin}/sitemap.xml`)) {
-      errors.push(`robots.txt missing Sitemap directive for ${origin}`);
+    const robotsLines = robotsContent.split('\n');
+    for (const sitemap of ['sitemap.xml', 'sitemap-portal.xml']) {
+      if (!robotsLines.includes('Sitemap: ' + origin + '/' + sitemap)) {
+        errors.push('robots.txt missing Sitemap directive for ' + origin + '/' + sitemap);
+      }
     }
     if (!robotsContent.includes('User-agent:')) {
       errors.push('robots.txt missing User-agent directive');

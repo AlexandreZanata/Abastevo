@@ -120,6 +120,22 @@ test('robots: allows crawling and references canonical sitemap', () => {
     );
     assert.ok(!robotsContent.includes('{{CANONICAL_ORIGIN}}'), 'Robots must not contain unreplaced placeholders');
 
+    assert.doesNotMatch(robotsContent, /["\\{}]/, 'Rendered robots must be safe in a Caddy quoted string');
+    const caddy = fs.readFileSync(path.join(root, '../infra/caddy/staging-web.Caddyfile'), 'utf8');
+    const caddyRobots = caddy.match(/handle \/robots\.txt \{\s*respond "([^"]*)" 200/);
+    assert.ok(caddyRobots, 'Caddyfile must serve a robots response');
+    assert.equal(caddyRobots[1], robotsContent, 'Caddy response must match the built robots file');
+
+    const groups = [...robotsContent.matchAll(/^User-agent: (.+)\n((?:(?:Allow|Disallow): .+\n)+)/gm)];
+    assert.deepEqual(groups.map(([, agent]) => agent),
+      ['*', 'OAI-SearchBot', 'GPTBot', 'ClaudeBot', 'ChatGPT-User', 'Perplexity-User']);
+    for (const [, agent, rules] of groups) {
+      const trainingCrawler = agent === 'GPTBot' || agent === 'ClaudeBot';
+      const expected = trainingCrawler ? 'Disallow: /\n'
+        : 'Allow: /\nDisallow: /admin/\nDisallow: /empresas/\nDisallow: /dados/busca/\n';
+      assert.equal(rules, expected, agent + ' must follow the crawler policy');
+    }
+
     // Crawler separation (LR28): search allowed, training not granted, fetchers transparent.
     for (const token of ['OAI-SearchBot', 'ChatGPT-User', 'Perplexity-User']) {
       assert.ok(robotsContent.includes(`User-agent: ${token}`), `Robots must name ${token}`);
