@@ -139,6 +139,9 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 					continue
 				}
 				row.Name, row.UF, row.Href = municipalityName[code], g.cityState[code], g.cityRoutes[code]
+				if href := g.fuelCityHref(hub.Code, code); href != "" {
+					row.Href = href
+				}
 				if row.Name == "" {
 					row.Name = "Município " + code
 				}
@@ -190,7 +193,7 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 			items = append(items, listItem{Name: "Preço " + fuelAreaPhrase(hub.Code) + " em " + row.Name, Href: row.Href})
 		}
 		for _, row := range cities {
-			items = append(items, listItem{Name: "Preços em " + placeLabel(row.Name, row.UF), Href: row.Href})
+			items = append(items, listItem{Name: "Preço " + fuelAreaPhrase(hub.Code) + " em " + placeLabel(row.Name, row.UF), Href: row.Href})
 		}
 		data.Modules = []linkModule{g.landingModule(
 			moduleLink{Label: "Calcule o consumo médio do seu carro", Href: "/ferramentas/consumo-medio/"},

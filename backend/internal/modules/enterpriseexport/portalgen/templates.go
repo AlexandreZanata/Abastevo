@@ -328,6 +328,13 @@ const templates = `
   <h2>Resumo da amostra</h2>
   {{template "summary" .Summary}}
   {{template "comparison" .Comparison}}
+  {{if .Stations}}<h2>Postos com preço nesta pesquisa</h2>
+  <p class="muted">{{.StationsTotal}} {{plural .StationsTotal "posto" "postos"}} na amostra.{{if gt .StationsTotal (len .Stations)}} Exibindo {{len .Stations}} de {{.StationsTotal}} postos, pelos menores preços.{{end}}</p>
+  <div class="table-wrap"><table>
+    <caption>Preços encontrados nesta amostra e período; não é preço ao vivo</caption>
+    <thead><tr><th scope="col">#</th><th scope="col">Posto</th><th scope="col">Bairro</th><th scope="col" class="num">Preço</th><th scope="col">Coleta</th><th scope="col">Empates</th></tr></thead>
+    <tbody>{{range .Stations}}<tr><td>{{.Position}}</td><td><a href="/postos/{{.StationID}}/">{{.Name}}</a>{{if .LegalName}}<small class="station-legal-name muted">{{.LegalName}}</small>{{end}}</td><td>{{if .District}}{{.District}}{{else}}—{{end}}</td><td class="num">{{brl .Amount}}</td><td>{{.Collected}}</td><td>{{if gt .TieCount 1}}<span class="tag">{{.TieCount}} no mesmo preço</span>{{else}}—{{end}}</td></tr>{{end}}</tbody>
+  </table></div>{{end}}
   {{if .History}}<h2>Histórico por pesquisa</h2>
   <div class="table-wrap"><table>
     <caption>Uma linha por pesquisa; lacunas não são preço zero</caption>
@@ -341,6 +348,8 @@ const templates = `
     <tbody>{{range .Cities}}<tr><td><a href="{{.Href}}">{{.Name}} ({{.UF}})</a></td><td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td>{{if .Insufficient}}<td colspan="3"><span class="tag tag-warn">amostra pequena</span></td>{{else}}<td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td><td class="num">{{if .HasMean}}{{brl .Mean}}{{else}}—{{end}}</td>{{end}}</tr>{{end}}</tbody>
   </table></div>{{end}}
   {{if .Rankings}}<h2>Menores preços encontrados na amostra</h2>{{range .Rankings}}{{template "ranking" .}}{{end}}{{end}}
+  {{if .Context}}<h2>{{.ContextTitle}}</h2>
+  <ul class="station-list">{{range .Context}}<li><a href="{{.Href}}">{{.Label}}</a> — {{brl .Min}} a {{brl .Max}} em {{.Stations}} {{plural .Stations "posto" "postos"}}{{if .HasMean}}, média da amostra {{brl .Mean}}{{end}}</li>{{end}}</ul>{{end}}
   {{template "modules" .}}
   <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para mínimo, máximo, média da amostra e dispersão.</p></div>
   <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>

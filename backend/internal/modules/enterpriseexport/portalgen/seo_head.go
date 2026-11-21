@@ -184,18 +184,12 @@ func placeLabel(city, uf string) string {
 	return city + " (" + uf + ")"
 }
 
-func cityTitle(city, uf string, fuels []string, surveyDate string) string {
-	families := fuelFamilies(fuels)
-	subject := "Preço dos combustíveis"
-	if len(families) > 0 {
-		article := "do"
-		if families[0] == "gasolina" {
-			article = "da"
-		}
-		subject = "Preço " + article + " " + joinPT(families)
-	}
-	base := subject + " em " + placeLabel(city, uf)
-	return fitTitle(base+" – pesquisa ANP "+surveyDate, base+" – ANP "+surveyDate, base)
+// cityTitle names all fuels and the stations of a city. The one-fuel query
+// ("preço da gasolina em …") belongs to the fuel by city page, so the two
+// pages never compete for the same search.
+func cityTitle(city, uf, surveyDate string) string {
+	base := "Preços dos combustíveis e postos em " + placeLabel(city, uf)
+	return fitTitle(base+" – ANP "+surveyDate, base)
 }
 
 func stateTitle(uf, surveyDate string) string {

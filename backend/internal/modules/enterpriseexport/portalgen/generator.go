@@ -348,6 +348,9 @@ type generator struct {
 	// fuelStatePages holds the planned /precos/{fuel}/{uf}/ pages, keyed by
 	// areaKey(fuel, uf) (B-BR-SEO-11).
 	fuelStatePages map[string]bool
+	// fuelCityPages holds the planned /precos/{fuel}/{uf}/{cidade}/ pages,
+	// keyed by areaKey(fuel, IBGE code).
+	fuelCityPages map[string]bool
 	// weeks are the snapshot's survey weeks, newest first, for the history
 	// tables of the fuel by area pages.
 	weeks     []surveyWeek
@@ -567,7 +570,6 @@ func Generate(opts Options) (Result, error) {
 	g.cityState = municipalityState
 	latestSummaries := summariesFor(projection, latest)
 	g.fuelHubs = planFuelHubs(latestSummaries)
-	g.planFuelAreas(latestSummaries)
 	g.weeks = surveyWeeks(snapshot.Revisions, projection)
 	g.latest = latest
 	latestRankings := rankingsFor(projection, latest)
@@ -586,6 +588,7 @@ func Generate(opts Options) (Result, error) {
 	g.observed = obsByStation
 	g.prepareStationIndex(snapshot, stations, revisions, obsByStation)
 	g.prepareGeography(latestSummaries, municipalityState, municipalityName)
+	g.planFuelAreas(latestSummaries)
 	if err := g.prepareForum(snapshot.ForumPosts); err != nil {
 		return Result{}, err
 	}
@@ -620,6 +623,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	if err := g.generateFuelStates(latestSummaries, latestRankings, stations); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateFuelCities(latestSummaries, observations); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {

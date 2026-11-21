@@ -45,14 +45,13 @@ func TestComposeDescriptionBounds(t *testing.T) {
 }
 
 func TestPriceTitleFormulas(t *testing.T) {
-	if got := cityTitle("Cuiabá", "MT", []string{"ETHANOL", "DIESEL_S10", "GASOLINE_REGULAR", "DIESEL_S500"}, "17/10/2026"); got != "Preço da gasolina, etanol e diesel em Cuiabá (MT)" {
+	// The city page names all fuels and the stations; the one-fuel query
+	// belongs to the fuel by city page.
+	if got := cityTitle("Cuiabá", "MT", "17/10/2026"); got != "Preços dos combustíveis e postos em Cuiabá (MT) – ANP 17/10/2026" {
 		t.Errorf("city title = %q", got)
 	}
-	if got := cityTitle("Sorriso", "MT", []string{"ETHANOL"}, "17/10/2026"); got != "Preço do etanol em Sorriso (MT) – pesquisa ANP 17/10/2026" {
-		t.Errorf("single fuel city title = %q", got)
-	}
-	if got := cityTitle("Sorriso", "MT", []string{"CNG"}, "17/10/2026"); got != "Preço dos combustíveis em Sorriso (MT) – pesquisa ANP 17/10/2026" {
-		t.Errorf("other fuel city title = %q", got)
+	if got := cityTitle("São José do Rio Preto", "SP", "17/10/2026"); got != "Preços dos combustíveis e postos em São José do Rio Preto (SP)" {
+		t.Errorf("long city title = %q", got)
 	}
 	if got := stateTitle("MT", "17/10/2026"); got != "Preço dos combustíveis em Mato Grosso por cidade – ANP 17/10/2026" {
 		t.Errorf("state title = %q", got)

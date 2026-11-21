@@ -277,12 +277,13 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		rows := []summaryRow{}
 		if city.HasData {
 			rows = g.summaryRows(summaries, analytics.LevelMunicipality, code, true)
+			linkFuelRows(rows, func(fuel string) string { return g.fuelCityHref(fuel, code) })
 		}
 		fuels := make([]string, 0, len(rows))
 		for _, row := range rows {
 			fuels = append(fuels, row.Code)
 		}
-		head := cityTitle(name, uf, fuels, g.surveyDate)
+		head := cityTitle(name, uf, g.surveyDate)
 		parts := []string{"Pesquisa ANP " + g.periodPhrase() + " em " + placeLabel(name, uf) + "."}
 		switch {
 		case !city.HasData:

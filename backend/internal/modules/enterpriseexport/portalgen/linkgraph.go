@@ -208,6 +208,8 @@ func routeFamily(route string) string {
 			return "estados"
 		case len(parts) == 2 && isFuelSlug(parts[0]):
 			return "combustivel-estado"
+		case len(parts) == 3 && isFuelSlug(parts[0]):
+			return "combustivel-cidade"
 		}
 		return "combustiveis"
 	default:

@@ -30,9 +30,8 @@ func TestFitTitlePicksTheFirstCandidateInsideTheBudget(t *testing.T) {
 }
 
 func TestLongPlaceNamesKeepTitlesInsideTheBudget(t *testing.T) {
-	fuels := []string{"GASOLINE_REGULAR", "ETHANOL", "DIESEL_S10"}
 	for name, got := range map[string]string{
-		"city":         cityTitle("São José do Rio Preto", "SP", fuels, "17/10/2026"),
+		"city":         cityTitle("São José do Rio Preto", "SP", "17/10/2026"),
 		"state":        stateTitle("MS", "17/10/2026"),
 		"fuel hub":     fuelHubTitle("GASOLINE_ADDITIVED", "17/10/2026"),
 		"station":      stationTitle("Auto Posto e Serviços Rodoviários Bandeirantes do Oeste Paulista Ltda", "São José do Rio Preto", "SP"),
@@ -46,7 +45,7 @@ func TestLongPlaceNamesKeepTitlesInsideTheBudget(t *testing.T) {
 	if got := stateTitle("MS", "17/10/2026"); got != "Preço dos combustíveis em Mato Grosso do Sul – ANP 17/10/2026" {
 		t.Errorf("state fallback = %q", got)
 	}
-	if got := cityTitle("São José do Rio Preto", "SP", fuels, "17/10/2026"); got != "Preço da gasolina, etanol e diesel em São José do Rio Preto (SP)" {
+	if got := cityTitle("São José do Rio Preto", "SP", "17/10/2026"); got != "Preços dos combustíveis e postos em São José do Rio Preto (SP)" {
 		t.Errorf("city fallback = %q", got)
 	}
 }

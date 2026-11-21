@@ -49,7 +49,7 @@ func TestGeneratedFuelHubs(t *testing.T) {
 	gas := readPortal(t, out, "precos/gasolina-comum/index.html")
 	for _, want := range []string{
 		`<h1>Preço da gasolina comum no Brasil</h1>`, `href="/precos/gasolina-comum/mt/">Mato Grosso (MT)</a>`, `href="/precos/gasolina-comum/sp/">São Paulo (SP)</a>`,
-		`href="/precos/mt/cuiaba/">Cuiabá (MT)</a>`, `href="/precos/mt/sorriso/">Sorriso (MT)</a>`, "amostra pequena",
+		`href="/precos/gasolina-comum/mt/cuiaba/">Cuiabá (MT)</a>`, `href="/precos/mt/sorriso/">Sorriso (MT)</a>`, "amostra pequena",
 		`href="/precos/etanol/"`,
 	} {
 		if !strings.Contains(gas, want) {

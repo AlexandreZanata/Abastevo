@@ -24,7 +24,7 @@ func sitemapFamily(family pageFamily) (string, error) {
 	switch family {
 	case familyHub, familyFiscalHub:
 		return "hubs", nil
-	case familyFuel, familyState, familyCity, familyFuelState:
+	case familyFuel, familyState, familyCity, familyFuelState, familyFuelCity:
 		return "precos", nil
 	case familyStation:
 		return "postos", nil

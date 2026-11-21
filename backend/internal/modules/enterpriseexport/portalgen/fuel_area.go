@@ -9,8 +9,13 @@ import (
 )
 
 // Fuel by area pages (B-BR-SEO-11): one fuel in one state,
-// /precos/{fuel}/{uf}/. They answer the one-fuel queries that the state page
-// answers only as one row among many.
+// /precos/{fuel}/{uf}/, or in one city, /precos/{fuel}/{uf}/{cidade}/. They
+// answer the one-fuel queries that the state and city pages answer only as
+// one row among many.
+
+// fuelCityStationCap bounds the station table of a fuel by city page; ties
+// at the cutoff stay together.
+const fuelCityStationCap = 200
 
 // surveyWeek is one survey week of the snapshot with its summaries.
 type surveyWeek struct {
@@ -85,6 +90,35 @@ type fuelAreaPage struct {
 	CitiesTitle string
 	Cities      []fuelGeoRow
 	Rankings    []rankingView
+	// Stations is the price table of a city page; StationsTotal counts the
+	// whole sample when the table is cut.
+	Stations      []fuelStationRow
+	StationsTotal int
+	// ContextTitle and Context place a city next to its state and Brazil.
+	ContextTitle string
+	Context      []fuelContextLine
+}
+
+// fuelStationRow is one station of a fuel by city page.
+type fuelStationRow struct {
+	Position  int
+	Name      string
+	LegalName string
+	StationID string
+	District  string
+	Amount    int64
+	Collected string
+	TieCount  int
+}
+
+// fuelContextLine is the same fuel in a wider area.
+type fuelContextLine struct {
+	Label    string
+	Href     string
+	Stations int
+	Min, Max int64
+	Mean     int64
+	HasMean  bool
 }
 
 func areaKey(fuel, area string) string { return fuel + "\x00" + area }
@@ -101,17 +135,39 @@ func (g *generator) fuelStateHref(code, uf string) string {
 	return ""
 }
 
+// fuelCityRoute nests the city slug of /precos/{uf}/{cidade}/ under the fuel.
+func fuelCityRoute(code string, city *cityInfo) string {
+	return strings.TrimSuffix(fuelRoute(code), "/") + strings.TrimPrefix(city.Route, "/precos")
+}
+
+// fuelCityHref is the fuel by city route when this build has that page.
+func (g *generator) fuelCityHref(code, municipality string) string {
+	if city, ok := g.cities[municipality]; ok && g.fuelCityPages[areaKey(code, municipality)] {
+		return fuelCityRoute(code, city)
+	}
+	return ""
+}
+
 // planFuelAreas decides, before any page is written, which fuel by area
-// pages this build has, so the other pages can link them.
+// pages this build has, so the other pages can link them. A city needs the
+// municipal minimum of stations for the fuel; a state needs the fuel.
 func (g *generator) planFuelAreas(summaries []analytics.Summary) {
-	g.fuelStatePages = map[string]bool{}
+	g.fuelStatePages, g.fuelCityPages = map[string]bool{}, map[string]bool{}
 	for _, summary := range summaries {
 		hub, ok := g.fuelHubs[summary.Fuel]
 		if !ok || hub.Unit != summary.Unit {
 			continue
 		}
-		if summary.Geography.Level == analytics.LevelState && isUF(summary.Geography.Code) {
-			g.fuelStatePages[areaKey(summary.Fuel, summary.Geography.Code)] = true
+		code := summary.Geography.Code
+		switch summary.Geography.Level {
+		case analytics.LevelState:
+			if isUF(code) {
+				g.fuelStatePages[areaKey(summary.Fuel, code)] = true
+			}
+		case analytics.LevelMunicipality:
+			if city, ok := g.cities[code]; ok && city.HasData && city.Route != "" && summary.StationCount >= minMunicipality {
+				g.fuelCityPages[areaKey(summary.Fuel, code)] = true
+			}
 		}
 	}
 }
@@ -182,6 +238,9 @@ func (g *generator) generateFuelStates(summaries []analytics.Summary, rankings [
 					Min: item.MinMilliBRL, Max: item.MaxMilliBRL, Spread: item.SpreadMilliBRL,
 					Insufficient: item.StationCount < minMunicipality,
 				}
+				if href := g.fuelCityHref(hub.Code, city.Code); href != "" {
+					row.Href = href
+				}
 				row.Mean, row.HasMean = summaryMean(item)
 				cities = append(cities, row)
 			}
@@ -243,6 +302,146 @@ func (g *generator) generateFuelStates(summaries []analytics.Summary, rankings [
 			for _, row := range cities {
 				items = append(items, listItem{Name: "Preço " + phrase + " em " + placeLabel(row.Name, uf), Href: row.Href})
 			}
+			if data.pageBase, err = g.collectionBase(data.pageBase, items); err != nil {
+				return err
+			}
+			if err := g.writeRoute("fuelArea", data); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// fuelStationRows orders one fuel's observations of a city by price, then
+// name, then id, and cuts the table at fuelCityStationCap plus ties.
+func fuelStationRows(items []observation) ([]fuelStationRow, int) {
+	districts := make(map[string]string, len(items))
+	for _, item := range items {
+		districts[item.station.StationID] = stationDisplayTitle(addressComponent(item.station.Address["district"]))
+	}
+	ranked := observationRows(items, 0, true)
+	total := len(ranked)
+	if total > fuelCityStationCap {
+		end, cutoff := fuelCityStationCap, ranked[fuelCityStationCap-1].Amount
+		for end < total && ranked[end].Amount == cutoff {
+			end++
+		}
+		ranked = ranked[:end]
+	}
+	rows := make([]fuelStationRow, 0, len(ranked))
+	for _, row := range ranked {
+		rows = append(rows, fuelStationRow{
+			Position: row.Position, Name: row.Name, LegalName: row.LegalName, StationID: row.StationID,
+			District: districts[row.StationID], Amount: row.Amount, Collected: row.Collected, TieCount: row.TieCount,
+		})
+	}
+	return rows, total
+}
+
+func (g *generator) generateFuelCities(summaries []analytics.Summary, observations []observation) error {
+	index := indexSummaries(summaries)
+	type fuelCity struct{ fuel, city string }
+	grouped := map[fuelCity][]observation{}
+	for _, item := range observations {
+		key := fuelCity{item.price.FuelProduct, item.station.MunicipalityCode}
+		if !g.fuelCityPages[areaKey(key.fuel, key.city)] {
+			continue
+		}
+		if hub := g.fuelHubs[key.fuel]; hub.Unit != item.price.Unit || g.cities[key.city].UF != item.station.State {
+			continue
+		}
+		grouped[key] = append(grouped[key], item)
+	}
+	hubs := g.orderedFuelHubs()
+	for _, hub := range hubs {
+		for _, code := range sortedKeys(g.cities) {
+			if !g.fuelCityPages[areaKey(hub.Code, code)] {
+				continue
+			}
+			city := g.cities[code]
+			uf, state, place := city.UF, ufName(city.UF), placeLabel(city.Name, city.UF)
+			key := summaryKey{analytics.LevelMunicipality, code, hub.Code, hub.Unit}
+			rows := []summaryRow{}
+			for _, row := range g.summaryRows(summaries, analytics.LevelMunicipality, code, true) {
+				if row.Code == hub.Code && row.Unit == hub.Unit {
+					rows = append(rows, row)
+				}
+			}
+			if len(rows) != 1 {
+				continue
+			}
+			stationRows, total := fuelStationRows(grouped[fuelCity{hub.Code, code}])
+			phrase := fuelAreaPhrase(hub.Code)
+			h1 := "Preço " + phrase + " em " + place
+			parts := []string{capitalize(fuelName(hub.Code)) + " em " + place + " na pesquisa ANP " + g.periodPhrase() + ".", rangeSentence(rows[0])}
+			if rows[0].HasMean {
+				parts = append(parts, "Média da amostra: "+brl(rows[0].Mean)+".")
+			}
+			parts = append(parts, "Preço por posto, bairro, data da coleta e histórico.")
+			stateCrumb := crumb{Label: state, Href: g.fuelStateHref(hub.Code, uf)}
+			if stateCrumb.Href == "" {
+				stateCrumb.Href = stateRoute(uf)
+			}
+			base := g.newBase(pageSpec{
+				Route: fuelCityRoute(hub.Code, city), Facts: indexFacts{Family: familyFuelCity, HasCurrentData: total > 0},
+				Title: h1, HeadTitle: fitTitle(h1+" – ANP "+g.surveyDate, h1), Description: composeDescription(parts...), Active: "precos",
+				Crumbs:  []crumb{{Label: "Preços", Href: "/precos/"}, {Label: hub.Label, Href: hub.Href}, stateCrumb, {Label: city.Name, Current: true}},
+				LastMod: g.dataDate,
+			})
+
+			context := []fuelContextLine{}
+			for _, wider := range []struct {
+				key   summaryKey
+				label string
+				href  string
+			}{
+				{summaryKey{analytics.LevelState, uf, hub.Code, hub.Unit}, "Preço " + phrase + " em " + state, stateCrumb.Href},
+				{summaryKey{analytics.LevelNational, "BR", hub.Code, hub.Unit}, "Preço " + phrase + " no Brasil", hub.Href},
+			} {
+				summary, ok := index[wider.key]
+				if !ok {
+					continue
+				}
+				line := fuelContextLine{Label: wider.label, Href: wider.href, Stations: summary.StationCount, Min: summary.MinMilliBRL, Max: summary.MaxMilliBRL}
+				line.Mean, line.HasMean = summaryMean(summary)
+				context = append(context, line)
+			}
+
+			nearby := []moduleLink{}
+			for _, other := range g.nearestDataCities(city, nearbyCities) {
+				if href := g.fuelCityHref(hub.Code, other.Code); href != "" {
+					nearby = append(nearby, moduleLink{Label: "Preço " + phrase + " em " + placeLabel(other.Name, other.UF), Href: href})
+				}
+			}
+			siblings := []moduleLink{}
+			for _, other := range hubs {
+				if href := g.fuelCityHref(other.Code, code); href != "" && other.Code != hub.Code {
+					siblings = append(siblings, moduleLink{Label: "Preço " + fuelAreaPhrase(other.Code) + " em " + place, Href: href})
+				}
+			}
+			siblings = append(siblings, moduleLink{Label: "Preços dos combustíveis e postos em " + place, Href: city.Route})
+			base.Modules = []linkModule{
+				{Title: hub.Label + " em cidades próximas", Links: nearby},
+				{Title: "Outros combustíveis em " + city.Name, Links: siblings},
+				g.priceGuides(" em "+city.Name, []string{hub.Code}),
+			}
+			lead := "Preços encontrados na pesquisa da ANP"
+			if g.period != "" {
+				lead += " de " + g.period
+			}
+			lead += " em " + place + ", em R$ por " + unitLabel(hub.Unit) + ". Não é preço ao vivo nem estatística oficial da ANP."
+			data := fuelAreaPage{
+				pageBase: base, H1: h1, Lead: lead, Summary: rows,
+				Comparison: g.comparison(summaries, analytics.LevelMunicipality, code, hub.Code), History: g.fuelHistory(key),
+				Stations: stationRows, StationsTotal: total,
+				ContextTitle: hub.Label + " em " + state + " e no Brasil", Context: context,
+			}
+			items := make([]listItem, 0, len(stationRows))
+			for _, row := range stationRows {
+				items = append(items, listItem{Name: row.Name, Href: "/postos/" + row.StationID + "/"})
+			}
+			var err error
 			if data.pageBase, err = g.collectionBase(data.pageBase, items); err != nil {
 				return err
 			}
