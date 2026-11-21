@@ -2,7 +2,7 @@
 # duplicating shell logic. quick-verify is the bounded change-aware gate run
 # by the required "Quick verification" check.
 
-.PHONY: quick-verify test-gate test-flow check-mobile check-rust check-infra test-infra test-deploy test-deploy-agent test-backup test-restore test-load check-security test-security test-rehearse test-portal-release rehearse-portal check-portal-capacity portal-capacity check-preview-probe preview-portal check-publication-gate preflight-portal-publication smoke-portal-public help
+.PHONY: quick-verify test-gate test-flow check-mobile check-rust check-infra test-infra test-deploy test-deploy-agent test-seo test-backup test-restore test-load check-security test-security test-rehearse test-portal-release rehearse-portal check-portal-capacity portal-capacity check-preview-probe preview-portal check-publication-gate preflight-portal-publication smoke-portal-public help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -41,6 +41,9 @@ test-deploy-agent:
 	python3 infra/deploy/agent/tests/test-surge-capacity.py
 	python3 infra/deploy/agent/tests/test-indexnow.py
 	bash infra/deploy/agent/tests/test-agent.sh
+
+test-seo:
+	python3 scripts/tests/test-seo-search-report.py
 
 test-backup:
 	bash scripts/tests/test-backup.sh
@@ -102,6 +105,7 @@ help:
 	@echo "  test-infra      infra gate failure-behavior harness"
 	@echo "  test-deploy     deploy/rollback failure-behavior harness"
 	@echo "  test-deploy-agent  signed staging planner failure-behavior harness"
+	@echo "  test-seo        Search Console report script tests, no network"
 	@echo "  test-backup     backup pipeline harness, real disposable DB"
 	@echo "  test-restore    isolated restore drill harness, real disposable DB"
 	@echo "  test-load       bounded load smoke + fault suite, real disposable DB"
