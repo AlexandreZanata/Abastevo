@@ -184,6 +184,46 @@ VALUES($1,'stripe','test','synthetic-merchant','different-invoice',$2,$3,'synthe
 	if _, err := intake.RecordSettlement(ctx, redelivery, foreignAmount); !errors.Is(err, payment.ErrAmountMismatch) {
 		t.Fatalf("mismatched facts replayed a previously verified charge: %v", err)
 	}
+
+	if _, err := f.Admin.Exec(ctx, `INSERT INTO org_billing_charge_bindings
+(org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
+VALUES($1,'stripe','test','synthetic-merchant','second-company-invoice',$2,$3,'second-company-customer',
+ 'second-company-contract',$4,$5)`, b.ID, b.RecordID, a.ParentID, term.Start, term.End); err != nil {
+		t.Fatal(err)
+	}
+	secondCompany := fact
+	secondCompany.Scope, secondCompany.SubscriptionID = scopeB, b.RecordID
+	secondCompany.CustomerRef, secondCompany.ContractRef = "second-company-customer", "second-company-contract"
+	secondCompany.ResourceRef = "second-company-invoice"
+	secondCompany.Notice.ResourceRef = secondCompany.ResourceRef
+	for _, collision := range []struct{ event, charge string }{
+		{"second-company-event", fact.ChargeRef},
+		{notice.EventID, "second-company-charge"},
+	} {
+		attempt := secondCompany
+		attempt.Notice.EventID, attempt.ChargeRef = collision.event, collision.charge
+		if receipt, err := intake.RecordSettlement(ctx, attempt.Notice, attempt); !errors.Is(err, payment.ErrConflict) || receipt != (adapters.SettlementReceipt{}) {
+			t.Fatalf("consumed provider identity did not yield a terminal private conflict: %+v %v", receipt, err)
+		}
+	}
+	if err := database.WithOrgTx(ctx, f.Runtime, scopeB, func(tx pgx.Tx) error {
+		var changes int
+		if err := tx.QueryRow(ctx, `SELECT (SELECT count(*) FROM org_billing_subscription_events)
+ + (SELECT count(*) FROM org_billing_settlement_receipts)`).Scan(&changes); err != nil {
+			return err
+		}
+		if changes != 0 {
+			t.Fatalf("provider identity collision changed the second company's billing: %d", changes)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	secondCompany.Notice.EventID, secondCompany.ChargeRef = "second-company-event", "second-company-charge"
+	if receipt, err := intake.RecordSettlement(ctx, secondCompany.Notice, secondCompany); err != nil || receipt.Replayed || receipt.Revision != 1 {
+		t.Fatalf("second company could not settle an independent charge: %+v %v", receipt, err)
+	}
+
 	if err := database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
 		var receipts, recoveries int
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM org_billing_settlement_receipts`).Scan(&receipts); err != nil {

@@ -162,7 +162,9 @@ func (intake BillingIntake) recordTx(ctx context.Context, tx pgx.Tx, notice doma
 		return SettlementReceipt{}, err
 	}
 	if rows != 1 {
-		return SettlementReceipt{}, domain.ErrStaleSubscription
+		// The receipt's immutable provider identity already exists. Roll back
+		// the lifecycle write and let the inbox record a reconciliation conflict.
+		return SettlementReceipt{}, payment.ErrConflict
 	}
 	return SettlementReceipt{Revision: transition.Revision, SettledAt: fact.At.UTC()}, nil
 }

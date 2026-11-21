@@ -105,6 +105,7 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 		{name: "advance renewal", recordErr: orgbilling.FutureTermError{EffectiveAt: time.Unix(1795255200, 0).UTC()},
 			recorded: 1, scheduled: time.Unix(1795255200, 0).UTC()},
 		{name: "foreign price", recordErr: orgbilling.ErrBillingBinding, marked: "CONFLICT", recorded: 1},
+		{name: "consumed provider identity", recordErr: paydomain.ErrConflict, marked: "CONFLICT", recorded: 1},
 		{name: "temporary dependency failure", recordErr: paydomain.ErrUnavailable, recorded: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -146,6 +147,9 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 			}
 			if probe.marked != tc.marked || probe.recorded != tc.recorded || probe.personal != tc.personal || !probe.deferred.Equal(tc.scheduled) {
 				t.Fatalf("wrong owner or acknowledgement: %+v", probe)
+			}
+			if tc.recordErr == paydomain.ErrConflict && probe.reason != "organization-settlement-binding" {
+				t.Fatalf("the inbox exposed a different conflict reason: %q", probe.reason)
 			}
 			if tc.name == "settled" && (probe.fact.Channel != paydomain.ChannelCard ||
 				probe.fact.Scope.OrgID().String() != "df12742d-7361-4308-ad01-0167408e778a" ||
