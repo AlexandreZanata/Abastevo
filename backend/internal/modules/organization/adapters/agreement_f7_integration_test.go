@@ -116,6 +116,7 @@ func f7StationCall(t *testing.T, router interface {
 // capability guard and bounded attempts), all under the ordinary runtime
 // role with real PostGIS (EMP-AGREE-001..006, BR-AGREE-001/002).
 func TestAgreementF7EndToEndFlow(t *testing.T) {
+	t.Setenv("ANPFUEL_TEST_RUNTIME_GRANTS", "script")
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
 	grantF7AgreementTables(t, fx.f)
@@ -223,6 +224,17 @@ func TestAgreementF7EndToEndFlow(t *testing.T) {
 	}
 	if code, _ := f7StationCall(t, router, stationSession, "/v1/stations/"+stationID+"/agreements/"+agreementID+"/accept", nil); code != http.StatusConflict {
 		t.Fatal("repeated acceptance must conflict")
+	}
+
+	lifecycle := "/v1/orgs/" + org + "/lifecycle"
+	archive := matrixCall(t, fx, router, owner, lifecycle+"/open-items", map[string]any{}, 200, "", "", nil)
+	if archive["open_items"].(map[string]any)["agreements"] != float64(1) {
+		t.Fatal("archive report missed an active agreement")
+	}
+	if code := matrixCallStatus(t, fx, router, owner, lifecycle+"/change", map[string]any{
+		"schema_version": 1, "operation_id": onboardingID(t), "revision": archive["revision"], "action": "ARCHIVE",
+	}); code != http.StatusConflict {
+		t.Fatalf("active agreement did not block archive: %d", code)
 	}
 
 	// EMP-AGREE-004: bounded, expiring, single-use authorization. The code

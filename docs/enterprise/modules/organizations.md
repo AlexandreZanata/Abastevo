@@ -206,8 +206,8 @@ Keys are those of [07-permissions](../permissions.md) §7.2. All `org.*` permiss
 | `org.legal_entity.manage` | UC-ORG-04, UC-ORG-05 | `OWNER`, `ADMIN` (§7.3, org-permissions-v2; EDR-037) |
 | `org.ownership.transfer` | UC-ORG-09 proposal | `OWNER` (§7.3) |
 | `org.ownership.respond` | UC-ORG-09 participant read, consent and cancellation | A live fixed-role assignment plus actual source participant check; v4/EDR-048 |
-| `org.lifecycle.manage` | UC-ORG-11, UC-ORG-12 | `OWNER` (proposed; no row in §7.3) |
-| `org.group.manage` | UC-ORG-10 | `OWNER` (proposed; no row in §7.3) |
+| `org.lifecycle.manage` | UC-ORG-11, UC-ORG-12 | `OWNER` (organization-wide, fresh authentication) |
+| `org.group.manage` | UC-ORG-10 | `OWNER` (organization-wide, fresh authentication) |
 
 Members without `org.settings.read` (drivers, operations staff) receive the units, teams and cost centres inside their own scopes through the reference data of [10-offline-sync](../offline-sync.md) UC-OFFL-08, never the settings document. Creating an organization needs no permission, only a personal account. Suspension, reactivation, verification decisions and owner recovery are platform operator actions ([back-office](back-office.md)); no organization role performs them. Ownership transfer, archive, closure, verification requests and grant acceptance require fresh authentication (BR-AUTH-010).
 
@@ -344,3 +344,21 @@ proof even on reads/retries. Either participant's suspension/end cancels the
 proposal, with real source metadata. Notices are retained for NOTIF-001; no
 provider delivery is claimed. A recipient still needs an effective role to use
 `org.ownership.respond`; a roleless membership receives no implied permission.
+
+### Archive and closure transaction
+
+EMP-ORG-013 implements BR-ORG-033, BR-ORG-036, BR-ORG-037 and
+BR-PRIV-012 for UC-ORG-11 and UC-ORG-12. The current company owner uses
+fresh company authentication. Archive checks trips and active agreements
+again under the organization lock. The open-items preview shows counts
+only. Archive preserves existing records, triggers the existing invitation
+and transfer reductions, and permits a scoped retained export. Restore
+requires no pending closure and retains an unresolved suspension reason.
+
+Closure requires the exact recorded company name and a window of 7 to 90
+days. It defaults to 30 days. Request and cancellation are audited and
+versioned. A delayed scoped job can finalize only its original, current
+request at or after the stored deadline. Cancellation leaves the company
+archived. Finalization ends access and records the retention handoff. The
+retention process acts under approved category rules and holds. This
+transaction retains history and records no purge outcome.

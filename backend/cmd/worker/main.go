@@ -55,6 +55,7 @@ import (
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
+	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	connectorpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
@@ -1065,6 +1066,10 @@ func run() error {
 	}
 	if webhookHandler != nil {
 		handlers[webhookHandler.Kind()] = webhookHandler
+	}
+	if cfg.EnterpriseEnabled {
+		closure := orgpg.OrganizationClosureWorker{Pool: raw}
+		handlers[closure.Kind()] = closure
 	}
 	// EMP-GPS-005 (EDR-298): track processing runs on the general dispatcher.
 	trackingHandlers, err := trackingWorkerHandlers(cfg.EnterpriseEnabled, raw)

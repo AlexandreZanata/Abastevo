@@ -24,7 +24,7 @@ func TestLegalManagementV2GrantsOnlyTheRecordedRoles(t *testing.T) {
 		}
 	}
 	_, version := d.SystemCatalog().Versions()
-	if version != "org-permissions-v7" {
+	if version != "org-permissions-v8" {
 		t.Fatal("matrix amendment did not change its version")
 	}
 }
@@ -68,6 +68,11 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 				changes++
 			}
 
+			if row[0] == "org.lifecycle.manage" && name == "OWNER" {
+				expected = "O"
+				changes++
+			}
+
 			rule, err := d.SystemCatalog().Lookup(d.Role(name), d.Permission(row[0]))
 			if err != nil {
 				t.Fatal(err)
@@ -84,7 +89,7 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 			}
 		}
 	}
-	if changes != 43 {
-		t.Fatal("expected exactly forty-three explicit amendments (v2, v3, v5, v6 and v7)")
+	if changes != 44 {
+		t.Fatal("expected exactly forty-four explicit amendments (v2, v3, v5, v6, v7 and v8)")
 	}
 }

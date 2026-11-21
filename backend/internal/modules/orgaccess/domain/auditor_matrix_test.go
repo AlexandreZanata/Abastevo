@@ -13,7 +13,7 @@ func TestAuditorHoldsExactlyTheDocumentedReadOnlySet(t *testing.T) {
 	documented := []d.Permission{"audit.event.read", "doc.document.view_content", "exp.expense.read", "find.finding.read", "fleet.asset.read", "fuel.fueling.read", "gps.track.read", "idn.employee.read",
 		"kpi.dashboard.read", "org.ownership.respond", "org.settings.read", "rpt.export.run", "trip.trip.read"}
 	catalog := d.SystemCatalog()
-	if roles, permissions := catalog.Versions(); roles != "org-roles-v1" || permissions != "org-permissions-v7" {
+	if roles, permissions := catalog.Versions(); roles != "org-roles-v1" || permissions != "org-permissions-v8" {
 		t.Fatal("catalog version changed: revisit the auditor column", roles, permissions)
 	}
 	rules, err := catalog.Rules(d.Auditor)

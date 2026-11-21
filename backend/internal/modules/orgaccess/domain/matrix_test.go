@@ -11,7 +11,7 @@ import (
 )
 
 func TestCatalogMatrix(t *testing.T) {
-	f, err := os.Open("../../../../../contracts/testdata/enterprise/authorization-catalog-v7.psv")
+	f, err := os.Open("../../../../../contracts/testdata/enterprise/authorization-catalog-v8.psv")
 	if err != nil {
 		t.Fatal(err)
 	}

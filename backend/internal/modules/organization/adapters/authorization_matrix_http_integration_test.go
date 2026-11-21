@@ -18,6 +18,9 @@ import (
 	"time"
 
 	accountpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
+	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
+	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/go-chi/chi/v5"
@@ -30,7 +33,7 @@ type matrixRoute struct {
 }
 
 // These expectations are literal policy examples, independent of the catalog
-// implementation. The independent v5 PSV supplies every role's cell outcome.
+// implementation. The independent versioned PSV supplies every role's cell outcome.
 var matrixRepresentatives = []matrixRoute{
 	{"org.ownership.transfer", "/ownership-transfer/propose", true, true},
 	{"org.ownership.respond", "/ownership-transfer/read", true, false},
@@ -78,6 +81,14 @@ var matrixRepresentatives = []matrixRoute{
 	{"stock.tank.manage", "/stock/tanks/list", false, false},
 	{"agree.agreement.manage", "/station-agreements/list", false, false},
 	{"agree.authorization.issue", "/fueling-authorizations/list", false, false},
+	{"data.key.manage", "/data/keys/list", true, false},
+	{"data.usage.read", "/data/usage/read", false, false},
+	{"fuel.fueling.review", "/fuelings/{fueling_id}/review/read", false, false},
+	{"import.batch.run", "/integrations/connections/{connection_id}/fuel-card/preview", true, true},
+	{"integ.connection.manage", "/integrations/connections/list", false, false},
+	{"subs.plan.manage", "/subscriptions/vehicles/select", true, true},
+	{"subs.plan.read", "/subscriptions/plan/read", false, false},
+	{"org.lifecycle.manage", "/lifecycle/open-items", true, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -87,7 +98,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		t.Fatal("authorization test location unavailable")
 	}
 	directory := filepath.Join(filepath.Dir(source), "../../../../../contracts/testdata/enterprise")
-	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v7.psv"))
+	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v8.psv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +142,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		} `json:"permissions"`
 	}
 	raw, err := os.ReadFile(filepath.Join(directory, "authorization-routes-v1.json"))
-	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v7" || len(inventory.Permissions) != 85 {
+	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v8" || len(inventory.Permissions) != 85 {
 		t.Fatal("independent route inventory unavailable or invalid")
 	}
 	routed := map[string]string{}
@@ -367,6 +378,7 @@ func matrixCall(t *testing.T, fx deviceFixtureState, router chi.Router, actor ma
 }
 
 func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
+	t.Setenv("ANPFUEL_TEST_RUNTIME_GRANTS", "script")
 	roles, oracle := matrixOracle(t)
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
@@ -385,6 +397,11 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	tracked := trackingFixtureOn(t, tripFixtureOn(t, selfIntakeFixtureOn(t, syncFixtureOn(t, fx))))
 	tracked.recordedTrack(t)
 	trackReadGrants(t, tracked)
+	fuelings := fuelingFixtureOn(t, tracked.selfIntakeState, nil)
+	fueling := fuelings.op(t, fuelings.syncFixtureState, fuelings.declaredNow(t), nil)
+	ack, err := fuelings.process(t, fuelings.syncFixtureState, fueling)
+	fuelings.accepted(t, fueling, ack, err, 0, 1)
+	fuelingID := fueling.Snapshot().Entity.ID
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -411,6 +428,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	}
 	org, otherOrg := fx.scope.OrgID().String(), other.scope.OrgID().String()
 	base := "/v1/orgs/" + org
+	conn, card := matrixCardPreviewSource(t, fx, router, owner, base)
 	// The content representative targets one owner-authored stored document:
 	// SELF (S) content cells are refused on another member's document.
 	ownerDocument := matrixStoredDocument(t, fx, router, owner)
@@ -450,6 +468,11 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "starts_at": start.Format(time.RFC3339Nano), "ends_at": start.Add(time.Hour).Format(time.RFC3339Nano), "purpose": "Synthetic matrix reservation"}
 				case "doc.document.attach":
 					return matrixDocumentDeclaration(t)
+				case "subs.plan.manage":
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 2, "subscription_id": onboardingID(t), "keep_active": []string{matrixAsset}}
+				case "import.batch.run":
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "source_account_id": card,
+						"csv": "transaction_id,fueling_id,occurred_at,currency,paid_centavos\n" + onboardingID(t) + ",,2026-01-05T10:00:00Z,BRL,97351\n"}
 				case "route.plan.manage":
 					return map[string]any{"owner_kind": "TRIP", "owner_id": tracked.trip}
 				default:
@@ -459,7 +482,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			// Each role reopens its own synthetic month, locked by the owner first.
 			month := fmt.Sprintf("2019-%02d", roleIndex+1)
 			path := func(entry matrixRoute, organization string) string {
-				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month, "{document_id}", ownerDocument, "{asset_id}", matrixAsset, "{trip_id}", tracked.trip).Replace(entry.path)
+				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month, "{document_id}", ownerDocument, "{asset_id}", matrixAsset, "{trip_id}", tracked.trip, "{fueling_id}", fuelingID, "{connection_id}", conn).Replace(entry.path)
 			}
 			for _, entry := range matrixRepresentatives {
 				if entry.permission == "org.ownership.respond" && proposalID == "" {
@@ -489,6 +512,11 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					allowed++
 				} else {
 					t.Fatal("new SELF descriptor needs explicit delivered business-resource cases")
+				}
+				if entry.permission == "subs.plan.manage" && want == 200 {
+					// No paid term is provisioned in this permission matrix. The
+					// focused downgrade test supplies one and verifies selection.
+					want, code = 404, "NOT_FOUND"
 				}
 				exercised++
 				t.Run("in-scope/"+entry.permission, func(t *testing.T) {
@@ -585,7 +613,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 								want, code, key = 401, "FRESH_AUTH_REQUIRED", ""
 							}
 						case "capability-off":
-							if want < 400 && entry.write {
+							if want < 400 && entry.write && entry.permission != "import.batch.run" {
 								want, code, key = 403, "ENTITLEMENT_REQUIRED", ""
 							}
 						case "suspended-organization":
@@ -605,9 +633,12 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 							// ownership response and own documents are refused. The
 							// recorded track is of a trip whose stored unit is the
 							// scoped one, so an O cell covers it (EMP-GPS-012).
-							if !((entry.permission == "gps.track.read" || entry.permission == "gps.location.read_live") && want == 200) {
+							if !((entry.permission == "gps.track.read" || entry.permission == "gps.location.read_live" || entry.permission == "fuel.fueling.review") && want == 200) {
 								want, code, key = 403, "FORBIDDEN", entry.permission
 							}
+						}
+						if entry.permission == "subs.plan.manage" && want == 200 {
+							want, code = 404, "NOT_FOUND"
 						}
 						matrixCall(t, fx, router, actor, path(entry, organization), body(entry), want, code, key, edit)
 					})
@@ -682,10 +713,41 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 460 || allowed != 182 || denied != 278 {
+	if exercised != 540 || allowed != 204 || denied != 336 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 38 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident and maintenance request S cells cover only the own list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; station-only roles excluded; 30 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident and maintenance request S cells cover only the own list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+}
+
+func matrixCardPreviewSource(t *testing.T, fx deviceFixtureState, router chi.Router, owner matrixPerson, base string) (string, string) {
+	t.Helper()
+	known, err := cap.NewCatalog(enterprisesuite.CapabilityCodes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := audit.NewCatalog(cappg.AuditDefinitions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	flags := cappg.NewStore(fx.f.Runtime, known, auditpg.NewStore(fx.f.Runtime, catalog))
+	if _, err := flags.Set(t.Context(), fx.scope, cap.Actor{AccountID: fx.actor.AccountID}, cap.Change{
+		OperationID: onboardingID(t), Capability: "integrations", Enabled: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	connection, approval, card := onboardingID(t), onboardingID(t), onboardingID(t)
+	if _, err := fx.f.Admin.Exec(t.Context(), `INSERT INTO org_connector_approvals
+(org_id,id,revision,kind,provider_code,resource_id,maximum_bytes,maximum_items,decision,decision_ref,ready_at)
+VALUES($1,$2,1,'FUEL_CARD_STATEMENT','synthetic-card',$3,4096,3,'APPROVED','synthetic-matrix',clock_timestamp())`,
+		fx.scope.OrgID().String(), approval, card); err != nil {
+		t.Fatal(err)
+	}
+	path := base + "/integrations/connections"
+	matrixCall(t, fx, router, owner, path+"/configure", map[string]any{"schema_version": 1, "operation_id": connection,
+		"approval_id": approval, "approval_revision": 1, "label": "Synthetic authorization matrix"}, 200, "", "", nil)
+	matrixCall(t, fx, router, owner, path+"/"+connection+"/activate", map[string]any{"schema_version": 1,
+		"operation_id": onboardingID(t), "revision": 1}, 200, "", "", nil)
+	return connection, card
 }
 
 // matrixAssignableAsset creates, through the owner's actual requests, one

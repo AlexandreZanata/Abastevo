@@ -79,7 +79,7 @@ func TestCatalogV5RetainsEveryV4CellExceptTheRecordedGrants(t *testing.T) {
 
 func TestCatalogV5GrantsReservationAndCheckKeysOnlyToTheRecordedRoles(t *testing.T) {
 	catalog := d.SystemCatalog()
-	if _, version := catalog.Versions(); version != "org-permissions-v7" {
+	if _, version := catalog.Versions(); version != "org-permissions-v8" {
 		t.Fatal("matrix amendment did not change its version", version)
 	}
 	for key, granted := range v5Amendments {

@@ -15,3 +15,7 @@ LEFT JOIN org_role_assignments r ON (r.org_id,r.membership_id)=(m.org_id,m.id)
 WHERE m.org_id=CAST(@org_id::text AS uuid) AND m.account_id=CAST(@account_id::text AS uuid) AND m.state<>'ENDED'
  AND NOT EXISTS(SELECT 1 FROM payment_billing_exits x WHERE x.account_id=m.account_id AND x.reason='ACCOUNT_DELETION')
 ORDER BY r.id;
+
+-- name: ArchivedOrganizationClosureElapsed :one
+SELECT EXISTS (SELECT 1 FROM org_closure_requests WHERE org_id=sqlc.arg('org_id')::text::uuid
+               AND state='PENDING' AND closes_at<=statement_timestamp())::boolean AS elapsed;

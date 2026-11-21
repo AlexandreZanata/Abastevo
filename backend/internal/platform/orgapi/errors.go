@@ -21,6 +21,7 @@ const (
 	MembershipEnded          Code = "MEMBERSHIP_ENDED"
 	OrgSuspended             Code = "ORG_SUSPENDED"
 	OrgArchived              Code = "ORG_ARCHIVED"
+	OrgHasOpenOperations     Code = "ORG_HAS_OPEN_OPERATIONS"
 	OrgSetupIncomplete       Code = "ORG_SETUP_INCOMPLETE"
 	FreshAuthRequired        Code = "FRESH_AUTH_REQUIRED"
 	EntitlementRequired      Code = "ENTITLEMENT_REQUIRED"
@@ -82,7 +83,7 @@ var statuses = map[Code]int{
 	Forbidden: 403, MembershipSuspended: 403, MembershipEnded: 403, OrgSuspended: 403, OrgArchived: 403,
 	FreshAuthRequired: 401, EntitlementRequired: 403, LimitReached: 403,
 	DeviceRevoked: 403,
-	Conflict:      409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
+	Conflict:      409, OrgHasOpenOperations: 409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
 	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, AssetHasOpenOperations: 409, AssignmentOverlap: 409, ReservationConflict: 409, MeterAlreadyInService: 409, DuplicateReviewRequired: 409,
 	OrgSetupIncomplete:    409,
@@ -96,6 +97,15 @@ var statuses = map[Code]int{
 	MeterRequired: 422, QuoteRequired: 409, QuoteExpired: 409, OverrunNotApproved: 409,
 	HoldOpen: 409, InvoiceRequired: 409, ControlDisabled: 409, FindingClosed: 409,
 	StockInsufficient: 409, StockProductMismatch: 422,
+}
+
+type organizationOpenOperations struct{ trips, agreements int64 }
+
+func (organizationOpenOperations) Error() string { return string(OrgHasOpenOperations) }
+func (organizationOpenOperations) Unwrap() error { return OrgHasOpenOperations }
+
+func OrganizationOpenOperations(trips, agreements int64) error {
+	return organizationOpenOperations{trips: trips, agreements: agreements}
 }
 
 type permissionFailure struct{ key string }
@@ -338,6 +348,15 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if code == ValidationFailed && errors.As(err, &asset) {
 		for _, field := range asset.fields {
 			details = append(details, httpapi.Detail{Field: field, Code: "REQUIRED"})
+		}
+	}
+	var openOrg organizationOpenOperations
+	if code == OrgHasOpenOperations && errors.As(err, &openOrg) {
+		if openOrg.trips > 0 {
+			details = append(details, httpapi.Detail{Field: "trips", Code: "IN_USE", Count: strconv.FormatInt(openOrg.trips, 10)})
+		}
+		if openOrg.agreements > 0 {
+			details = append(details, httpapi.Detail{Field: "agreements", Code: "IN_USE", Count: strconv.FormatInt(openOrg.agreements, 10)})
 		}
 	}
 	var open assetOpenOperationsFailure

@@ -14,8 +14,8 @@ import (
 
 var _ app.AuthoritySource = (*Store)(nil)
 
-// LoadAuthority takes one current statement snapshot; it neither caches nor
-// authorizes. The active account, deletion fence and every composite join are
+// LoadAuthority reads current scope and closure facts without caching or
+// authorizing. The active account, deletion fence and every composite join are
 // selected within the same forced-RLS scope and ordinary runtime transaction.
 func (s *Store) LoadAuthority(ctx context.Context, scope kernel.OrgScope, account string) (app.Authority, error) {
 	if err := validateID(scope, account); err != nil {
@@ -43,7 +43,8 @@ func (s *Store) LoadAuthorityTx(ctx context.Context, tx app.AuthorityQueries, sc
 	if actual != scope.OrgID().String() {
 		return app.Authority{}, app.ErrUnavailable
 	}
-	rows, err := q.New(tx).CurrentAuthority(ctx, q.CurrentAuthorityParams{OrgID: scope.OrgID().String(), AccountID: account})
+	queries := q.New(tx)
+	rows, err := queries.CurrentAuthority(ctx, q.CurrentAuthorityParams{OrgID: scope.OrgID().String(), AccountID: account})
 	if err != nil {
 		return app.Authority{}, safe(ctx, err)
 	}
@@ -53,6 +54,15 @@ func (s *Store) LoadAuthorityTx(ctx context.Context, tx app.AuthorityQueries, sc
 	first := rows[0]
 	if !first.OrganizationState.Valid {
 		return app.Authority{}, app.ErrUnavailable
+	}
+	if o.State(first.OrganizationState.String) == o.Archived {
+		elapsed, err := queries.ArchivedOrganizationClosureElapsed(ctx, scope.OrgID().String())
+		if err != nil {
+			return app.Authority{}, safe(ctx, err)
+		}
+		if elapsed {
+			return app.Authority{}, app.ErrNotFound
+		}
 	}
 	current := app.Authority{OrgID: scope.OrgID(), AccountID: first.AccountID, MembershipID: first.MembershipID, EmployeeID: first.EmployeeID, MembershipState: m.MembershipState(first.MembershipState), EmployeeState: m.EmployeeState(first.EmployeeState), Model: m.AccessModel(first.AccessModel), OrganizationState: o.State(first.OrganizationState.String), Assignments: make([]d.Assignment, 0, len(rows))}
 	for _, r := range rows {

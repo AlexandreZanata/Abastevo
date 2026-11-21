@@ -63,14 +63,14 @@ func TestUnknownKeysAndZeroCatalogFailClosed(t *testing.T) {
 	if (d.Rule{}).Coverage() != d.Denied {
 		t.Fatal("zero rule grants")
 	}
-	if r, p := catalog.Versions(); r != "org-roles-v1" || p != "org-permissions-v7" {
+	if r, p := catalog.Versions(); r != "org-roles-v1" || p != "org-permissions-v8" {
 		t.Fatal("unversioned catalog")
 	}
 }
 
 func TestRegisteredMatrixGapsRemainDeniedWithoutInheritance(t *testing.T) {
 	catalog := d.SystemCatalog()
-	expected := []d.Permission{"appr.policy.manage", "auth.role.read", "budg.budget.read", "doc.document.allocate", "doc.document.read", "exp.category.manage", "fin.payable.read", "fleet.supplier.manage", "notif.rule.manage", "org.lifecycle.manage", "stock.reconcile"}
+	expected := []d.Permission{"appr.policy.manage", "auth.role.read", "budg.budget.read", "doc.document.allocate", "doc.document.read", "exp.category.manage", "fin.payable.read", "fleet.supplier.manage", "notif.rule.manage", "stock.reconcile"}
 	if !slices.Equal(catalog.UnassignedPermissions(), expected) {
 		t.Fatal("unapproved matrix grants changed")
 	}

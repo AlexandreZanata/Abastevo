@@ -22,7 +22,7 @@ import (
 // ExportAuthority supplies the export permission port (EMP-RPT-001). Web
 // calls retain the company pipeline for the organization target (an
 // organization-wide rpt.export.run grant; a unit- or SELF-scoped grant never
-// covers it); a request also needs an ACTIVE root. The worker re-evaluates a
+// covers it); a request needs an active or archived root. The worker re-evaluates a
 // recorded requester without a session (BR-RPT-002).
 type ExportAuthority struct {
 	Memberships  members.TransactionRepository
@@ -67,7 +67,7 @@ func (g *ExportAuthority) CheckExportTx(ctx context.Context, tx pgx.Tx, scope ke
 	if err := tx.QueryRow(ctx, `SELECT state FROM organizations WHERE org_id=$1`, scope.OrgID().String()).Scan(&state); err != nil {
 		return exports.ErrUnavailable
 	}
-	if state != string(d.Active) {
+	if state != string(d.Active) && state != string(d.Archived) {
 		return access.ErrSetupIncomplete
 	}
 	return nil
@@ -134,8 +134,8 @@ func (g *ExportAuthority) covers(ctx context.Context, tx pgx.Tx, scope kernel.Or
 
 // CheckRequesterTx returns ErrRightsLost when the recorded requester no
 // longer holds export authority now: inactive or deleting account, a
-// membership that is not the same ACTIVE one, an organization that is not
-// ACTIVE, or no current role covering rpt.export.run and the kind's declared
+// membership that is not the same ACTIVE one, an organization outside active or archived state,
+// or no current role covering rpt.export.run and the kind's declared
 // read permission for the whole organization. Only an unavailable source is
 // ErrUnavailable.
 func (g *ExportAuthority) CheckRequesterTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, requester exports.Requester, kind string, read permissions.Permission) error {
@@ -170,8 +170,17 @@ func (g *ExportAuthority) CheckRequesterTx(ctx context.Context, tx pgx.Tx, scope
 	if err != nil {
 		return unavailable(err)
 	}
-	if !root.HasSnapshot || !root.State.Valid || !root.SyntheticSetup || d.State(root.State.String) != d.Active {
+	if !root.HasSnapshot || !root.State.Valid || !root.SyntheticSetup || (d.State(root.State.String) != d.Active && d.State(root.State.String) != d.Archived) {
 		return exports.ErrRightsLost
+	}
+	if d.State(root.State.String) == d.Archived {
+		elapsed, err := queries.OrganizationClosureWindowElapsed(ctx, orgID)
+		if err != nil {
+			return exports.ErrUnavailable
+		}
+		if elapsed {
+			return exports.ErrRightsLost
+		}
 	}
 	current, err := g.Memberships.ActiveByAccountTx(ctx, tx, scope, requester.AccountID)
 	if err != nil {

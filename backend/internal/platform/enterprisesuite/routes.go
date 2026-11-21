@@ -195,6 +195,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, billpg.AdjustmentAuditDefinitions()...)
 	definitions = append(definitions, billpg.StationPlanAuditDefinitions()...)
 	definitions = append(definitions, connectorpg.AuditDefinitions()...)
+	definitions = append(definitions, orgpg.OrganizationLifecycleAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -237,6 +238,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "fueling.review", Permissions: []string{"fuel.fueling.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Fueling review decisions inherit the existing synthetic identity v1 write allowance."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
+		{Class: "org.lifecycle", Permissions: []string{"org.lifecycle.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Reviewed owner-only lifecycle commands use the existing synthetic identity write allowance."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "subs.plan", Permissions: []string{"subs.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic plan vehicle selection inherits the reviewed identity write ceiling on each axis."},
 		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
@@ -624,9 +626,16 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 
-	if err := registerNotices(router, o, cookies, gateway, roles, allowance); err != nil {
+	noticeStore, err := registerNotices(router, o, cookies, gateway, roles, allowance)
+	if err != nil {
 		return err
 	}
+	lifecycle := orgpg.LifecycleStore{Pool: o.Pool, Roots: roots, Memberships: memberStore, Roles: roles, Capabilities: flags, Audit: auditStore, Notices: noticeStore}
+	lifecycleAuth := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.LifecycleRecords{}, Now: time.Now}
+	if err := orgweb.RegisterLifecycle(router, lifecycle, cookies, gateway, lifecycleAuth, roots); err != nil {
+		return err
+	}
+
 	var documentStorage documentpg.StorageReservations
 	if o.BillingEnabled {
 		documentStorage = billpg.DocumentQuota{Entitlements: plans, Flags: flags}
@@ -656,23 +665,23 @@ func Register(router chi.Router, o Options) error {
 
 // registerNotices mounts the four own-inbox routes (EMP-NOTIF-001). Their
 // writes use a dedicated route-class admission, not a catalog permission.
-func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, roles *accesspg.Store, allowance identity.OperationQuota) error {
-	definitions := o.NoticeKinds
+func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, roles *accesspg.Store, allowance identity.OperationQuota) (*notifypg.Store, error) {
+	definitions := append(slices.Clone(o.NoticeKinds), orgpg.ClosureNoticeKind())
 	if o.BillingEnabled {
-		definitions = append(slices.Clone(definitions), datapg.WatchNoticeKind())
+		definitions = append(definitions, datapg.WatchNoticeKind())
 	}
 	kinds, err := notify.NewCatalog(definitions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
 		{Class: "notif.self", Permissions: []string{notifyweb.WriteClass}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic own read marks and notice preferences inherit identity v1 write200/hour on every axis after current own-membership proof; production measurement remains required."},
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	store := &notifypg.Store{Pool: o.Pool, Catalog: kinds, Authority: roles, NewID: jobs.NewUUIDv4}
-	return notifyweb.Register(router, notifyweb.Options{Enabled: true, Service: notifyapp.Service{Enabled: true, Catalog: kinds, Repository: store}, Cookies: cookies, Gateway: gateway, Admission: admission})
+	return store, notifyweb.Register(router, notifyweb.Options{Enabled: true, Service: notifyapp.Service{Enabled: true, Catalog: kinds, Repository: store}, Cookies: cookies, Gateway: gateway, Admission: admission})
 }
 
 // registerDocuments composes EMP-DOC-002 over the EMP-PLAT-006 private

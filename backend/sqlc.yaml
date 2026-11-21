@@ -10,6 +10,7 @@ sql:
   - engine: postgresql
     queries: db/queries/orgaccess
     schema:
+      - db/migrations/000007_jobs.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000128_payment_billing_exits.sql
       - db/migrations/000169_organization_roots.sql
@@ -17,6 +18,7 @@ sql:
       - db/migrations/000171_role_assignments.sql
       - db/migrations/000165_org_audit_events.sql
       - db/migrations/000186_role_command_receipts.sql
+      - db/migrations/000286_organization_closure.sql
     gen:
       go:
         package: orgaccess
@@ -121,6 +123,7 @@ sql:
   - engine: postgresql
     queries: db/queries/organization
     schema:
+      - db/migrations/000007_jobs.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000128_payment_billing_exits.sql
       - db/migrations/000165_org_audit_events.sql
@@ -139,6 +142,7 @@ sql:
       - "db/migrations/000185_ownership_transfers.sql"
       - db/migrations/000187_ownership_transfer_hardening.sql
       - db/migrations/000188_employee_invitations.sql
+      - db/migrations/000286_organization_closure.sql
     gen:
       go:
         package: organization

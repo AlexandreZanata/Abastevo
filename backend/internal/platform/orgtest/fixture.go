@@ -155,6 +155,16 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 		}
 	}
 
+	var closure bool
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.org_closure_requests') IS NOT NULL`).Scan(&closure); err != nil {
+		t.Fatal(err)
+	}
+	if closure {
+		if _, err := f.Admin.Exec(ctx, "GRANT SELECT ON org_closure_requests TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	f.GrantFleetUsage(t)
 	f.GrantMeterUsage(t)
 	f.GrantAssignmentReductions(t)

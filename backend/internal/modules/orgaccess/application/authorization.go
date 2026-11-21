@@ -265,7 +265,7 @@ func organizationAllows(state o.State, effect Effect) error {
 		}
 		return ErrOrgSuspended
 	case o.Archived:
-		if effect == Read || effect == ReduceAccess || effect == RegularizePlan || effect == RestoreOrganization {
+		if effect == Read || effect == ReduceAccess || effect == RegularizePlan || effect == RestoreOrganization || effect == RetainedExport {
 			return nil
 		}
 		return ErrOrgArchived

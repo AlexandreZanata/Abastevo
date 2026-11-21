@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
  "roles_version": "org-roles-v1",
- "permissions_version": "org-permissions-v7",
+ "permissions_version": "org-permissions-v8",
  "permissions": [
   {
    "permission": "agree.agreement.manage",
@@ -632,10 +632,13 @@
   },
   {
    "permission": "org.lifecycle.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "This organization group or archive/closure permission has no production member route; operator lifecycle routes use their separate boundary."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/lifecycle/open-items",
+   "routes": [
+    "POST /v1/orgs/{org_id}/lifecycle/change",
+    "POST /v1/orgs/{org_id}/lifecycle/open-items"
+   ],
+   "reason": ""
   },
   {
    "permission": "org.ownership.respond",

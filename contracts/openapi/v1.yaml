@@ -13841,6 +13841,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseDataKeyIssueRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              label: Reviewed example reader
+              scopes: [regional.read]
+              expires_at: '2026-12-31T18:00:00Z'
       responses:
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
@@ -13899,6 +13905,13 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseDataKeyRotateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+              label: Reviewed example reader
+              scopes: [regional.read]
+              expires_at: '2026-12-31T18:00:00Z'
       responses:
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
@@ -13957,6 +13970,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseDataKeyRevokeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
       responses:
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
@@ -14061,6 +14078,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseConnectorConfigure'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              approval_id: 7b0e2a54-0000-4000-8000-000000000e01
+              approval_revision: 1
+              label: Reviewed example receiver
       responses:
         '200':
           description: Organization connection metadata.
@@ -14119,6 +14142,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseConnectorStateChange'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
       responses:
         '200':
           description: Organization connection metadata.
@@ -14177,6 +14204,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseConnectorStateChange'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
       responses:
         '200':
           description: Organization connection metadata.
@@ -14284,6 +14315,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseFuelCardStatementPreview'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              source_account_id: 7b0e2a54-0000-4000-8000-000000000e01
+              csv: "transaction_id,fueling_id,occurred_at,currency,paid_centavos\n7b0e2a54-0000-4000-8000-000000000e01,,2026-11-20T10:00:00Z,BRL,97351\n"
       responses:
         '200':
           description: Scoped row outcomes in input order.
@@ -14342,6 +14378,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseFuelCardStatementConfirm'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              source_account_id: 7b0e2a54-0000-4000-8000-000000000e01
+              csv: "transaction_id,fueling_id,occurred_at,currency,paid_centavos\n7b0e2a54-0000-4000-8000-000000000e01,,2026-11-20T10:00:00Z,BRL,97351\n"
+              preview_token: synthetic-example-only
       responses:
         '200':
           description: Scoped row outcomes in input order.
@@ -14444,6 +14486,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseDataWatchCreate'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              dataset: market-mt
+              fuel: GASOLINE_REGULAR
+              baseline_revision: '1'
       responses:
         '200':
           description: Watchlist state for the current company membership.
@@ -14501,6 +14549,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseDataWatchDisable'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
       responses:
         '200':
           description: Watchlist state for the current company membership.
@@ -14616,6 +14667,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseFuelingReviewDecision'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+              decision: OPEN
       responses:
         '200':
           description: Server-recorded state and review sequence for the exact fueling.
@@ -14726,6 +14782,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseVehiclePlanSelectionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              subscription_id: 7b0e2a54-0000-4000-8000-000000000e01
+              revision: 2
+              keep_active: [7b0e2a54-0000-4000-8000-000000000e02]
       responses:
         '200':
           description: The retained active and archived vehicle identifiers for the committed selection.
@@ -15204,6 +15266,115 @@ paths:
                 effective_at: '2026-11-12T12:00:00Z'
                 data_mode: SYNTHETIC
                 replayed: false
+  /v1/orgs/{org_id}/lifecycle/open-items:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOrganizationOpenItems
+      summary: Read the organization archive and closure report
+      description: Requires a current organization owner with fresh company proof. Pending closure leaves a retained export window.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.lifecycle.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseReadRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private organization lifecycle and open-items report.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOrganizationLifecycleStatus'
+  /v1/orgs/{org_id}/lifecycle/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOrganizationLifecycleChange
+      summary: Archive, restore or schedule organization closure
+      description: Requires a current organization owner with fresh company proof. Pending closure leaves a retained export window.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.lifecycle.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOrganizationLifecycleRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+              action: ARCHIVE
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private organization lifecycle and open-items report.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOrganizationLifecycleResult'
   /v1/orgs/{org_id}/ownership-transfer/propose:
     post:
       tags:
@@ -41754,6 +41925,50 @@ components:
       example: 7b0e2a54-0000-4000-8000-000000000001
       pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       not: {enum: ['00000000-0000-0000-0000-000000000000']}
+    EnterpriseOrganizationLifecycleRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision, action]
+      properties:
+        schema_version: {type: integer, enum: [1]}
+        operation_id: {type: string, format: uuid}
+        revision: {type: integer, minimum: 1}
+        action: {type: string, enum: [ARCHIVE, RESTORE, REQUEST_CLOSURE, CANCEL_CLOSURE]}
+        confirmation: {type: string, minLength: 1, maxLength: 120}
+        closure_days: {type: integer, minimum: 7, maximum: 90, default: 30}
+    EnterpriseOrganizationOpenItems:
+      type: object
+      additionalProperties: false
+      required: [trips, agreements, reviews, held_operations, open_payables, station_authorities, active_grants]
+      properties:
+        trips: {type: integer, minimum: 0}
+        agreements: {type: integer, minimum: 0}
+        reviews: {type: integer, minimum: 0}
+        held_operations: {type: integer, minimum: 0}
+        open_payables: {type: integer, minimum: 0}
+        station_authorities: {type: integer, minimum: 0}
+        active_grants: {type: integer, minimum: 0}
+    EnterpriseOrganizationLifecycleStatus:
+      type: object
+      additionalProperties: false
+      required: [state, revision, closes_at, open_items]
+      properties:
+        state: {type: string, enum: [PENDING_SETUP, ACTIVE, SUSPENDED, ARCHIVED]}
+        revision: {type: integer, minimum: 1}
+        closes_at: {type: [string, 'null'], format: date-time}
+        open_items:
+          $ref: '#/components/schemas/EnterpriseOrganizationOpenItems'
+    EnterpriseOrganizationLifecycleResult:
+      type: object
+      additionalProperties: false
+      required: [state, revision, closes_at, open_items, replayed]
+      properties:
+        state: {type: string, enum: [PENDING_SETUP, ACTIVE, SUSPENDED, ARCHIVED]}
+        revision: {type: integer, minimum: 1}
+        closes_at: {type: [string, 'null'], format: date-time}
+        open_items:
+          $ref: '#/components/schemas/EnterpriseOrganizationOpenItems'
+        replayed: {type: boolean}
     EnterpriseReadRequest:
       description: Common read fields. Module requests declare their full strict DTO with the same session and page fields. Omitted credentials select the dedicated company session channel.
       type: object
@@ -41802,7 +42017,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, RESERVATION_CONFLICT, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE, READING_ALREADY_SUPERSEDED, AMENDMENT_REQUIRED, ROUTE_POINT_LIMIT, GEOFENCE_INVALID_GEOMETRY]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_HAS_OPEN_OPERATIONS, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, RESERVATION_CONFLICT, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE, READING_ALREADY_SUPERSEDED, AMENDMENT_REQUIRED, ROUTE_POINT_LIMIT, GEOFENCE_INVALID_GEOMETRY]
     DriverCommandRequest:
       type: object
       additionalProperties: false

@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000285. Relations: 432 granted, 3 without access.
+-- Schema version: 000286. Relations: 434 granted, 3 without access.
 -- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000285' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000285 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000286' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000286 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -257,6 +257,7 @@ GRANT SELECT, INSERT ON TABLE public.org_checklist_template_items TO :"runtime_r
 GRANT SELECT, INSERT ON TABLE public.org_checklist_template_targets TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_checklist_template_versions TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_checklist_templates TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_closure_requests TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_compliance_items TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_connections TO :"runtime_role";
 GRANT SELECT, UPDATE ON TABLE public.org_connector_approvals TO :"runtime_role";
@@ -318,6 +319,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.org_invitations TO :"runtime_role";
 -- no access: public.org_kpi_snapshots
 GRANT SELECT, INSERT ON TABLE public.org_legal_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.org_legal_entities TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_lifecycle_receipts TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_maintenance_occurrences TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_maintenance_plans TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_membership_access_commands TO :"runtime_role";
