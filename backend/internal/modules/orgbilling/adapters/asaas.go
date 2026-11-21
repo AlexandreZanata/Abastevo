@@ -69,11 +69,16 @@ func (s AsaasSettlement) Process(ctx context.Context, event payment.InboxRecord)
 		return s.Inbox.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "asaas-merchant-binding")
 	}
 	proof, err := s.Resources.RetrieveCompanyPix(ctx, event.ResourceID)
-	if errors.Is(err, paydomain.ErrInvalid) {
+	switch {
+	case errors.Is(err, paydomain.ErrInvalid):
 		return s.Inbox.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "asaas-payment-reference")
-	}
-	if err != nil {
+	case errors.Is(err, paydomain.ErrUnavailable), errors.Is(err, payment.ErrAmbiguous),
+		errors.Is(err, payment.ErrProviderUnauthorized):
 		return err
+	case err != nil:
+		// The router drains in order and stops at an error, so a deterministic
+		// provider answer keeps the personal processor's terminal handling.
+		return s.Personal.Process(ctx, event)
 	}
 	if !domain.IsCompanyAsaasReference(proof.ExternalReference) {
 		return s.Personal.Process(ctx, event)
@@ -103,7 +108,8 @@ func (s AsaasSettlement) billingFact(ctx context.Context, event payment.InboxRec
 	channel, contract := paydomain.ChannelPixManual, proof.ID
 	if proof.AuthorizationID != "" {
 		if !s.AutomaticAllowed {
-			return domain.CanonicalBillingFact{}, paydomain.ErrUnavailable
+			// A disabled channel is a deployment fact, not a transient fault.
+			return domain.CanonicalBillingFact{}, domain.ErrBillingBinding
 		}
 		channel, contract = paydomain.ChannelPixAutomatic, proof.AuthorizationID
 	} else if proof.SubscriptionID != "" {
