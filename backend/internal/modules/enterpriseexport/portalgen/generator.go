@@ -420,7 +420,7 @@ func Generate(opts Options) (Result, error) {
 	g.dataDate = g.buildDate
 	g.tmpl, err = template.New("portal").Funcs(template.FuncMap{
 		"brl": brl, "brlPtr": brlPtr, "dateBR": dateBR,
-		"periodLabel": periodLabel, "fuelLabel": fuelLabel, "plural": plural,
+		"periodLabel": periodLabel, "fuelLabel": fuelLabel, "plural": plural, "unitShort": unitShort,
 	}).Parse(templates)
 	if err != nil {
 		return Result{}, err

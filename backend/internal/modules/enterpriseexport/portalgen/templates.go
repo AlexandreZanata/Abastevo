@@ -120,7 +120,7 @@ const templates = `
     </thead>
     <tbody>
       {{range .}}<tr>
-        <td>{{if .FuelHref}}<a href="{{.FuelHref}}">{{.Fuel}}</a>{{else}}{{.Fuel}}{{end}}</td><td>{{.Unit}}</td>
+        <td>{{if .FuelHref}}<a href="{{.FuelHref}}">{{.Fuel}}</a>{{else}}{{.Fuel}}{{end}}</td><td>{{unitShort .Unit}}</td>
         <td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td><td class="num">{{.Observations}}</td>
         <td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td><td class="num">{{brl .Spread}}</td>
         <td>{{if .Insufficient}}<span class="tag tag-warn">amostra pequena</span>{{else}}—{{end}}</td>
@@ -190,7 +190,7 @@ const templates = `
   <h2>Brasil</h2>
   {{template "summary" .National}}
   {{if .FuelHubs}}<h2>Preço por combustível</h2>
-  <ul class="station-list">{{range .FuelHubs}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a> — {{brl .Min}} a {{brl .Max}} por {{.Unit}} na amostra nacional</li>{{end}}</ul>{{end}}
+  <ul class="station-list">{{range .FuelHubs}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a> — {{brl .Min}} a {{brl .Max}} por {{unitShort .Unit}} na amostra nacional</li>{{end}}</ul>{{end}}
   <h2>Menores preços encontrados na amostra</h2>
   {{if .Rankings}}{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking nacional.</strong><p>Não há postos suficientes para este recorte.</p></div>{{end}}
   <h2>Estados</h2>
@@ -262,10 +262,10 @@ const templates = `
   {{if .Observations}}<div class="table-wrap"><table>
     <caption>Observações mais recentes por combustível e unidade, com data de coleta</caption>
     <thead><tr><th scope="col">Combustível</th><th scope="col">Unidade</th><th scope="col">Condição</th><th scope="col" class="num">Preço</th><th scope="col">Coleta</th><th scope="col">Fonte</th></tr></thead>
-    <tbody>{{range .Observations}}<tr><td>{{.Fuel}}</td><td>{{.Unit}}</td><td>{{.Condition}}</td><td class="num">{{brl .Amount}}</td><td>{{.Collected}}</td><td>ANP</td></tr>{{end}}</tbody>
+    <tbody>{{range .Observations}}<tr><td>{{.Fuel}}</td><td>{{unitShort .Unit}}</td><td>{{.Condition}}</td><td class="num">{{brl .Amount}}</td><td>{{.Collected}}</td><td>ANP</td></tr>{{end}}</tbody>
   </table></div>{{else}}<div class="notice"><strong>Sem preço ANP nesta pesquisa.</strong><p>O posto pode não ter sido amostrado ou pode não ter uma observação válida no período. A ausência não significa preço zero.</p></div>{{end}}
   <h2>Histórico por pesquisa</h2>
-  {{if .Histories}}{{range .Histories}}<h3>{{.Fuel}} · {{.Unit}}</h3><div class="table-wrap"><table>
+  {{if .Histories}}{{range .Histories}}<h3>{{.Fuel}} · {{unitShort .Unit}}</h3><div class="table-wrap"><table>
     <caption>Uma linha por pesquisa; lacunas não são preço zero</caption>
     <thead><tr><th scope="col">Período da pesquisa</th><th scope="col" class="num">Preço</th><th scope="col">Coleta</th><th scope="col">Situação</th></tr></thead>
     <tbody>{{range .Points}}<tr><td>{{.Period}}</td><td class="num">{{brlPtr .Amount}}</td><td>{{if .Collected}}{{.Collected}}{{else}}—{{end}}</td><td>{{if .Missing}}Sem observação nesta pesquisa{{else}}Observação publicada{{end}}</td></tr>{{end}}</tbody>
@@ -283,7 +283,7 @@ const templates = `
 {{define "fuel"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
   <h1>{{.H1}}</h1>
-  <p class="lead">Preços encontrados na pesquisa da ANP{{if .Period}} de {{.Period}}{{end}}, em R$ por {{.UnitLabel}}. Não é preço ao vivo nem estatística oficial da ANP.</p>
+  <p class="lead">Preços encontrados na pesquisa da ANP{{if .Period}} de {{.Period}}{{end}}, em R$ por {{.UnitLabel}}. Não é preço ao vivo nem estatística oficial da ANP.{{if .Synonym}} Também chamado de {{.Synonym}}.{{end}}</p>
   <div class="notice"><strong>Mesma unidade, mesmo combustível.</strong><p>Esta página compara apenas {{.Label}} em R$ por {{.UnitLabel}}. Mínimo, máximo e dispersão vêm dos postos com observação no período; a amostra não cobre todos os postos.</p></div>
   <h2>Brasil</h2>
   {{template "summary" .National}}

@@ -125,7 +125,13 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   (`dd/mm/aaaa`), never “hoje”; descriptions are 120–160 characters, carry only
   figures shown on the page and are unique per indexable page. ALL-CAPS
   registry names are shown in Portuguese title case in the title/H1 while the
-  registry and legal names stay visible.
+  registry and legal names stay visible. A price or station page title has at
+  most 65 characters: each page lists candidates from the most to the least
+  specific and uses the first that fits, so a long place name drops the survey
+  date before it drops the place. Pages show units in words (`litro`, `m³`,
+  `botijão de 13 kg`), never the unit code; downloads and search shards keep
+  the codes. A fuel hub names the fuel's everyday synonym once, in its
+  description and lead (`álcool`, `gás de cozinha`, `gás natural veicular`).
 - **B-BR-SEO-06 Structured data.** Inline JSON-LD describes only visible facts:
   `BreadcrumbList` mirroring the visible breadcrumb (Início › Preços › UF ›
   Cidade › Posto), `CollectionPage` + `ItemList` on hubs, fuel, state and city

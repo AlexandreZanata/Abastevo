@@ -126,7 +126,8 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 	}
 	head := "Preços de combustíveis no Brasil por estado e cidade | abastevo"
 	if g.surveyDate != "" {
-		head = "Preços de combustíveis no Brasil por estado e cidade – ANP " + g.surveyDate
+		head = fitTitle("Preços de combustíveis no Brasil por estado e cidade – ANP "+g.surveyDate,
+			"Preços de combustíveis no Brasil por estado – ANP "+g.surveyDate)
 	}
 	national := g.summaryRows(summaries, analytics.LevelNational, "BR", false)
 	parts := []string{"Preços de combustíveis na pesquisa ANP " + g.periodPhrase() + ": resumo nacional, por combustível, estado e cidade."}
@@ -218,7 +219,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 			}
 			description = composeDescription(parts...)
 		} else {
-			head = "Postos de combustíveis em " + ufName(uf) + " – sem pesquisa ANP recente | abastevo"
+			head = noDataTitle(ufName(uf))
 			description = composeDescription(ufName(uf)+" não tem preço na pesquisa ANP "+g.periodPhrase()+".", "Veja as cidades com postos cadastrados.")
 		}
 		base := g.newBase(pageSpec{
@@ -283,7 +284,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		parts := []string{"Pesquisa ANP " + g.periodPhrase() + " em " + placeLabel(name, uf) + "."}
 		switch {
 		case !city.HasData:
-			head = "Postos de combustíveis em " + placeLabel(name, uf) + " – sem pesquisa ANP recente | abastevo"
+			head = noDataTitle(placeLabel(name, uf))
 			parts = []string{placeLabel(name, uf) + " não tem preço na pesquisa ANP " + g.periodPhrase() + ".",
 				"Veja os postos cadastrados, cidades próximas com preço e outras cidades de " + ufName(uf) + "."}
 		case insufficient:

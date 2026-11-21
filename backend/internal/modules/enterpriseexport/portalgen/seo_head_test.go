@@ -45,7 +45,7 @@ func TestComposeDescriptionBounds(t *testing.T) {
 }
 
 func TestPriceTitleFormulas(t *testing.T) {
-	if got := cityTitle("Cuiabá", "MT", []string{"ETHANOL", "DIESEL_S10", "GASOLINE_REGULAR", "DIESEL_S500"}, "17/10/2026"); got != "Preço da gasolina, etanol e diesel em Cuiabá (MT) – pesquisa ANP 17/10/2026" {
+	if got := cityTitle("Cuiabá", "MT", []string{"ETHANOL", "DIESEL_S10", "GASOLINE_REGULAR", "DIESEL_S500"}, "17/10/2026"); got != "Preço da gasolina, etanol e diesel em Cuiabá (MT)" {
 		t.Errorf("city title = %q", got)
 	}
 	if got := cityTitle("Sorriso", "MT", []string{"ETHANOL"}, "17/10/2026"); got != "Preço do etanol em Sorriso (MT) – pesquisa ANP 17/10/2026" {

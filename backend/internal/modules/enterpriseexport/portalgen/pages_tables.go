@@ -50,7 +50,7 @@ func rankingViews(rankings []analytics.Ranking, level, code string, stations map
 			})
 		}
 		view := rankingView{
-			Title: fuelLabel(ranking.Fuel) + " · " + ranking.Unit,
+			Title: fuelLabel(ranking.Fuel) + " · " + unitShort(ranking.Unit),
 			Fuel:  fuelLabel(ranking.Fuel), Unit: ranking.Unit,
 			Population: ranking.PopulationStations, Rows: rows,
 			Truncated: ranking.Truncated, TiesAtCutoff: ranking.TiesAtCutoff,
@@ -143,14 +143,14 @@ func observationRankings(items []observation) []rankingView {
 				}
 			}
 			views = append(views, rankingView{
-				Title: fuelLabel(group[0].price.FuelProduct) + " · " + group[0].price.Unit,
+				Title: fuelLabel(group[0].price.FuelProduct) + " · " + unitShort(group[0].price.Unit),
 				Fuel:  fuelLabel(group[0].price.FuelProduct), Unit: group[0].price.Unit,
 				Population: len(group), Rows: rows, Truncated: true, TiesAtCutoff: ties,
 			})
 			continue
 		}
 		views = append(views, rankingView{
-			Title: fuelLabel(group[0].price.FuelProduct) + " · " + group[0].price.Unit,
+			Title: fuelLabel(group[0].price.FuelProduct) + " · " + unitShort(group[0].price.Unit),
 			Fuel:  fuelLabel(group[0].price.FuelProduct), Unit: group[0].price.Unit,
 			Population: len(group), Rows: rows,
 		})

@@ -36,10 +36,12 @@ type fuelHubPage struct {
 	Label     string
 	H1        string
 	UnitLabel string
-	National  []summaryRow
-	States    []fuelGeoRow
-	Cities    []fuelGeoRow
-	Others    []fuelHubLink
+	// Synonym is the everyday name of the fuel, shown once in the lead.
+	Synonym  string
+	National []summaryRow
+	States   []fuelGeoRow
+	Cities   []fuelGeoRow
+	Others   []fuelHubLink
 }
 
 // unitLabel names a canonical unit for "R$ por ..." captions.
@@ -154,7 +156,11 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 			}
 		}
 		words := fuelVocabulary[hub.Code]
-		parts := []string{capitalize(words.Name) + " na pesquisa ANP " + g.periodPhrase() + "."}
+		subject := capitalize(words.Name)
+		if words.Synonym != "" {
+			subject += " (" + words.Synonym + ")"
+		}
+		parts := []string{subject + " na pesquisa ANP " + g.periodPhrase() + "."}
 		if len(national) == 1 {
 			row := national[0]
 			parts = append(parts, fmt.Sprintf("No Brasil: %s a %s em %s postos de %d %s.", brl(row.Min), brl(row.Max),
@@ -169,7 +175,7 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 				Crumbs: []crumb{{Label: "Preços", Href: "/precos/"}, {Label: hub.Label, Current: true}}, LastMod: g.dataDate,
 			}),
 			Code: hub.Code, Label: hub.Label, H1: "Preço " + words.Article + " " + words.Name + " no Brasil",
-			UnitLabel: unitLabel(hub.Unit), National: national, States: states, Cities: cities, Others: others,
+			UnitLabel: unitLabel(hub.Unit), Synonym: words.Synonym, National: national, States: states, Cities: cities, Others: others,
 		}
 		items := make([]listItem, 0, len(states)+len(cities))
 		for _, row := range states {

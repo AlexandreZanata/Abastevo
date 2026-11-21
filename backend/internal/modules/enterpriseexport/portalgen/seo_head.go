@@ -9,6 +9,8 @@ import (
 const (
 	descriptionMin = 120
 	descriptionMax = 160
+	// titleMax is the <title> budget of the price and station pages.
+	titleMax = 65
 	// ogImagePath is served by the landing on the same origin.
 	ogImagePath = "/assets/brand/og-image-v1.png"
 )
@@ -72,17 +74,36 @@ type fuelWords struct {
 	Article string // "da"/"do"
 	Name    string // lower-case running-text name
 	Slug    string
+	// Synonym is the everyday name people search for, when it differs.
+	Synonym string
 }
 
 var fuelVocabulary = map[string]fuelWords{
-	"GASOLINE_REGULAR":       {"da", "gasolina comum", "gasolina-comum"},
-	"GASOLINE_ADDITIVED":     {"da", "gasolina aditivada", "gasolina-aditivada"},
-	"GASOLINE_PREMIUM_GRADE": {"da", "gasolina premium", "gasolina-premium"},
-	"ETHANOL":                {"do", "etanol hidratado", "etanol"},
-	"DIESEL_S10":             {"do", "diesel S10", "diesel-s10"},
-	"DIESEL_S500":            {"do", "diesel S500", "diesel-s500"},
-	"CNG":                    {"do", "GNV", "gnv"},
-	"LPG_P13":                {"do", "GLP", "glp"},
+	"GASOLINE_REGULAR":       {"da", "gasolina comum", "gasolina-comum", ""},
+	"GASOLINE_ADDITIVED":     {"da", "gasolina aditivada", "gasolina-aditivada", ""},
+	"GASOLINE_PREMIUM_GRADE": {"da", "gasolina premium", "gasolina-premium", ""},
+	"ETHANOL":                {"do", "etanol hidratado", "etanol", "álcool"},
+	"DIESEL_S10":             {"do", "diesel S10", "diesel-s10", ""},
+	"DIESEL_S500":            {"do", "diesel S500", "diesel-s500", ""},
+	"CNG":                    {"do", "GNV", "gnv", "gás natural veicular"},
+	"LPG_P13":                {"do", "GLP", "glp", "gás de cozinha"},
+}
+
+// fitTitle returns the first candidate of at most titleMax runes; callers
+// list them from the most to the least specific. When none fits, the last
+// one is cut at a word boundary.
+func fitTitle(candidates ...string) string {
+	last := ""
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		if utf8.RuneCountInString(candidate) <= titleMax {
+			return candidate
+		}
+		last = candidate
+	}
+	return strings.TrimRight(truncateWords(last, titleMax), " –-(|")
 }
 
 // fuelSlug is the /precos/{slug}/ hub slug for a product code, "" when the
@@ -161,27 +182,38 @@ func cityTitle(city, uf string, fuels []string, surveyDate string) string {
 		}
 		subject = "Preço " + article + " " + joinPT(families)
 	}
-	return subject + " em " + placeLabel(city, uf) + " – pesquisa ANP " + surveyDate
+	base := subject + " em " + placeLabel(city, uf)
+	return fitTitle(base+" – pesquisa ANP "+surveyDate, base+" – ANP "+surveyDate, base)
 }
 
 func stateTitle(uf, surveyDate string) string {
-	return "Preço dos combustíveis em " + ufName(uf) + " por cidade – ANP " + surveyDate
+	base := "Preço dos combustíveis em " + ufName(uf)
+	return fitTitle(base+" por cidade – ANP "+surveyDate, base+" – ANP "+surveyDate, base)
 }
 
 func fuelHubTitle(code, surveyDate string) string {
 	words := fuelVocabulary[code]
-	return "Preço " + words.Article + " " + words.Name + " no Brasil por estado – ANP " + surveyDate
+	base := "Preço " + words.Article + " " + words.Name + " no Brasil"
+	return fitTitle(base+" por estado – ANP "+surveyDate, base+" – ANP "+surveyDate, base)
 }
 
 func stationTitle(name, city, uf string) string {
+	place := ""
 	switch {
 	case city != "" && uf != "":
-		return name + " – preços em " + placeLabel(city, uf)
+		place = placeLabel(city, uf)
 	case uf != "":
-		return name + " – preços em " + ufName(uf)
+		place = ufName(uf)
 	default:
-		return name + " – preços de combustíveis"
+		return fitTitle(name+" – preços de combustíveis", name)
 	}
+	return fitTitle(name+" – preços em "+place, name+" – "+place, name)
+}
+
+// noDataTitle is the head of a state or city page without a current survey.
+func noDataTitle(place string) string {
+	base := "Postos de combustíveis em " + place
+	return fitTitle(base+" – sem pesquisa ANP recente | abastevo", base+" – sem pesquisa ANP recente", base)
 }
 
 // periodShort renders a survey week compactly ("11/10 a 17/10/2026").
