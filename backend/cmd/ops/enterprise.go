@@ -186,14 +186,16 @@ func describeCapabilityError(err error) error {
 	return fmt.Errorf("capability change unavailable: %w", err)
 }
 
-// runEnterprise opens the database named by this process's configuration
-// (the runtime DSN inside the api container) and prints one bounded line.
+// runEnterprise dispatches restricted commands using the configured database login.
 func runEnterprise(args []string, getenv func(string) string, out io.Writer) error {
 	if len(args) > 0 && args[0] == "data" {
 		return runEnterpriseData(args[1:], out)
 	}
 	if len(args) > 0 && args[0] == "trial" {
 		return runEnterpriseTrial(args[1:], getenv, out)
+	}
+	if len(args) > 0 && args[0] == "billing" {
+		return runEnterpriseBillingBind(args[1:], getenv, out)
 	}
 	if len(args) > 0 && args[0] == "adjustment" {
 		return runEnterpriseAdjustment(args[1:], getenv, out)

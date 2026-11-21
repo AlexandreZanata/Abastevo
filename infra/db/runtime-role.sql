@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000288. Relations: 434 granted, 3 without access.
+-- Schema version: 000289. Relations: 434 granted, 4 without access.
 -- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000288' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000288 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000289' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000289 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -61,6 +61,7 @@ $runtime_role$;
 GRANT USAGE ON SCHEMA public TO :"runtime_role";
 
 -- Reviewed limits (EDR-363):
+--   org_billing_charge_approvals no access: only the restricted billing operator reads independent charge approvals (EMP-SUBS-004).
 --   schema_migrations at most SELECT: the readiness probe reads the ledger (migrate.Check); only the migration owner writes it.
 -- Operator-only functions referenced by the binaries, never granted here:
 --   org_meter_current_rebuild(uuid): operator projection rebuild (EMP-METER-006, EDR-317); never reachable from a route or job.
@@ -238,6 +239,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.org_assets TO :"runtime_rol
 GRANT SELECT, INSERT ON TABLE public.org_audit_events TO :"runtime_role";
 GRANT SELECT ON TABLE public.org_billing_adjustment_approvals TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_adjustment_postings TO :"runtime_role";
+-- no access: public.org_billing_charge_approvals
 GRANT SELECT ON TABLE public.org_billing_charge_bindings TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_settlement_receipts TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_station_plan_admissions TO :"runtime_role";

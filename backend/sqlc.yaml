@@ -82,6 +82,23 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgbillingops
+    schema:
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000263_organization_plan_catalog.sql
+      - db/migrations/000264_organization_subscription_history.sql
+      - db/migrations/000265_organization_billing_intake.sql
+      - db/migrations/000274_organization_asaas_billing.sql
+      - db/migrations/000289_organization_billing_charge_approvals.sql
+    gen:
+      go:
+        package: orgbillingops
+        out: db/queries/orgbillingops
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/orgconnector
     schema:
       - db/migrations/000007_jobs.sql

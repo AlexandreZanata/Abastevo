@@ -97,6 +97,29 @@ protected by organization scope. No grant, price or duration is seeded.
 
 ## 9. Events, notifications and integrations
 
+A commercial review can authorize binding an existing Stripe invoice or Asaas
+charge to the exact reviewed company offer. The approval fixes the company,
+operator, subscription, customer, contract, resource and term. Asaas reviews
+include the scoped external reference. The operator runs:
+
+```sh
+ops enterprise billing bind --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
+```
+
+The command uses a dedicated ordinary PostgreSQL login and the existing
+enterprise billing flags. It consumes an in-window approval and retains the
+binding and audit together. A retry of the same operation returns the original
+acknowledgement even after the approval expires. New bindings require a company
+that has not closed. Binding creates no payment, fiscal document or entitlement
+and the acknowledgement contains only internal identifiers and replay status.
+The review authority provisions immutable offers and charge approvals separately
+under GOV-009. The operator login can only read these reviews. The API and worker
+have read access to the binding for reconciliation and cannot enroll charges.
+After migration `000289`, the migration owner applies
+[`infra/db/billing-binding-role.sql`](../../../infra/db/billing-binding-role.sql)
+to a dedicated ordinary login. The restricted operator process uses that
+login in `ANPFUEL_DATABASE_URL`; the API and worker keep their own login.
+
 The organization settlement consumer can receive Stripe invoice events through
 the existing authenticated payment inbox when both enterprise and organization
 billing are enabled. The finalized subscription metadata identifies the

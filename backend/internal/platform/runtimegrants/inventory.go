@@ -57,6 +57,9 @@ func ReviewedExceptions() Exceptions {
 			Table:   "schema_migrations",
 			Allowed: []string{Select},
 			Reason:  "the readiness probe reads the ledger (migrate.Check); only the migration owner writes it",
+		}, {
+			Table:  "org_billing_charge_approvals",
+			Reason: "only the restricted billing operator reads independent charge approvals (EMP-SUBS-004)",
 		}},
 		OperatorOnly: []OperatorOnly{{
 			Signature: "org_meter_current_rebuild(uuid)",
