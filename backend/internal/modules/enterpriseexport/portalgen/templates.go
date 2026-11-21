@@ -369,8 +369,8 @@ const templates = `
   <p class="muted">{{.StationsTotal}} {{plural .StationsTotal "posto" "postos"}} na amostra.{{if gt .StationsTotal (len .Stations)}} Exibindo {{len .Stations}} de {{.StationsTotal}} postos, pelos menores preços.{{end}}</p>
   <div class="table-wrap"><table>
     <caption>Preços encontrados nesta amostra e período; não é preço ao vivo</caption>
-    <thead><tr><th scope="col">#</th><th scope="col">Posto</th><th scope="col">Bairro</th><th scope="col" class="num">Preço</th><th scope="col">Coleta</th><th scope="col">Empates</th></tr></thead>
-    <tbody>{{range .Stations}}<tr><td>{{.Position}}</td><td><a href="/postos/{{.StationID}}/">{{.Name}}</a>{{if .LegalName}}<small class="station-legal-name muted">{{.LegalName}}</small>{{end}}</td><td>{{if .District}}{{.District}}{{else}}—{{end}}</td><td class="num">{{brl .Amount}}</td><td>{{.Collected}}</td><td>{{if gt .TieCount 1}}<span class="tag">{{.TieCount}} no mesmo preço</span>{{else}}—{{end}}</td></tr>{{end}}</tbody>
+    <thead><tr><th scope="col">#</th><th scope="col">Posto</th><th scope="col" class="num">Preço</th><th scope="col">Bairro</th><th scope="col">Coleta</th><th scope="col">Empates</th></tr></thead>
+    <tbody>{{range .Stations}}<tr><td>{{.Position}}</td><td><a href="/postos/{{.StationID}}/">{{.Name}}</a>{{if .LegalName}}<small class="station-legal-name muted">{{.LegalName}}</small>{{end}}</td><td class="num">{{brl .Amount}}</td><td>{{if .District}}{{.District}}{{else}}—{{end}}</td><td>{{.Collected}}</td><td>{{if gt .TieCount 1}}<span class="tag">{{.TieCount}} no mesmo preço</span>{{else}}—{{end}}</td></tr>{{end}}</tbody>
   </table></div>{{end}}
   {{if .History}}<h2>Histórico por pesquisa</h2>
   <div class="table-wrap"><table>

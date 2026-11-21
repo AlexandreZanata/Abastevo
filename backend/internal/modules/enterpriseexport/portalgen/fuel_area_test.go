@@ -339,12 +339,13 @@ func TestFuelByCityPageListsEveryStationWithItsDistrict(t *testing.T) {
 		t.Error("a six-station table says it was cut")
 	}
 	stations := sectionAfter(page, "<h2>Postos com preço nesta pesquisa</h2>")
-	// #, Posto, Bairro, Preço, Coleta, Empates.
+	// #, Posto, Preço, Bairro, Coleta, Empates: the price comes right after
+	// the name, so a narrow screen shows it without scrolling the table.
 	for first, want := range map[string][]string{
-		"1": {"1", "Posto Cuiabano 1", "Centro", "R$ 6,000", "13/10/2026", "—"},
-		"3": {"3", "Posto Cuiabano 3", "—", "R$ 6,200", "13/10/2026", "—"},
+		"1": {"1", "Posto Cuiabano 1", "R$ 6,000", "Centro", "13/10/2026", "—"},
+		"3": {"3", "Posto Cuiabano 3", "R$ 6,200", "—", "13/10/2026", "—"},
 		// Registry districts are upper case; they get the title case of the station names.
-		"6": {"6", "Posto Cuiabano 6", "Cpa", "R$ 6,500", "13/10/2026", "—"},
+		"6": {"6", "Posto Cuiabano 6", "R$ 6,500", "Cpa", "13/10/2026", "—"},
 	} {
 		if got := tableRow(stations, first); !reflect.DeepEqual(got, want) {
 			t.Errorf("station row %s = %q, want %q", first, got, want)
@@ -386,7 +387,7 @@ func TestFuelByCityTableCountsTiesAndIsCutAtTheCap(t *testing.T) {
 	}))
 	stations := sectionAfter(tied["precos/gasolina-comum/mt/cuiaba/index.html"], "<h2>Postos com preço nesta pesquisa</h2>")
 	for _, first := range []string{"1", "2"} {
-		if got := tableRow(stations, first); len(got) != 6 || got[3] != "R$ 6,000" || got[5] != "2 no mesmo preço" {
+		if got := tableRow(stations, first); len(got) != 6 || got[2] != "R$ 6,000" || got[5] != "2 no mesmo preço" {
 			t.Errorf("tied row %s = %q", first, got)
 		}
 	}
