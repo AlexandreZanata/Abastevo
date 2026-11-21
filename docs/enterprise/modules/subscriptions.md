@@ -151,3 +151,13 @@ surface’s separate source rules.
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
 [EP16](../backlog/ep16-subscriptions.md) defines tasks. GOV-009 and the offer policy precede billing. VAL-18 and VAL-35 test verified-event replay and state effects. Keep public registration, ranking and social participation independent. The plan cannot certify provider or store readiness.
+
+### Independent personal Premium and company plan checks
+
+EMP-SUBS-010 verifies BR-AUTH-009 and BR-TEN-010 against current payment
+and membership facts. Personal Premium is authorized by the personal
+subscription projection and account proof. Company billing and its plan
+limits are evaluated under the selected company scope and current member
+permission. A change in one projection leaves the other unchanged. A
+retained company export and an earlier signed fueling are evaluated by
+their own company rules when the plan blocks new work.
