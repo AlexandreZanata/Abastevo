@@ -164,7 +164,7 @@ test('multilingual build: locales disabled leave the pt-BR output unchanged', ()
   const first = path.join(os.tmpdir(), 'abastevo-i18n-off-1-' + Math.random().toString(36).slice(2, 8));
   const second = path.join(os.tmpdir(), 'abastevo-i18n-off-2-' + Math.random().toString(36).slice(2, 8));
   try {
-    buildSite({ projectRoot: root, outDir: first, canonicalOrigin: origin, storeState: 'prelaunch' });
+    buildSite({ projectRoot: root, outDir: first, canonicalOrigin: origin, storeState: 'prelaunch', enableLocales: [] });
     buildSite({
       projectRoot: root,
       outDir: second,
@@ -239,32 +239,79 @@ test('multilingual check: broken hreflang and lang fail the dist check', () => {
   }
 });
 
-test('draft translations: validated in content/translations, never emitted', () => {
-  const outDir = path.join(os.tmpdir(), 'abastevo-i18n-drafts-' + Math.random().toString(36).slice(2, 8));
-  const drafts = [
-    'content/translations/en/guias/ethanol-or-gasoline.md',
-    'content/translations/en/ferramentas/ethanol-or-gasoline-calculator.md',
-    'content/translations/es/guias/etanol-o-gasolina.md',
-    'content/translations/es/ferramentas/calculadora-etanol-o-gasolina.md',
-  ];
+test('production locales: every translation is AI-reviewed, fresh and emitted with hreflang', () => {
+  const outDir = path.join(os.tmpdir(), 'abastevo-i18n-production-' + Math.random().toString(36).slice(2, 8));
+  const production = {
+    en: {
+      prefix: '/en',
+      guias: ['guides', ['anp-weekly-price-survey', 'diesel-s10-or-s500', 'ethanol-or-gasoline', 'how-gasoline-prices-are-formed', 'how-to-read-fuel-prices', 'icms-fuel-tax-explained']],
+      ferramentas: ['tools', ['cost-per-km-calculator', 'ethanol-or-gasoline-calculator', 'fill-up-cost-calculator', 'fuel-consumption-calculator', 'trip-fuel-cost-calculator']],
+      paginas: ['', ['about', 'editorial-policy']],
+      disclosure: 'This English version was translated and reviewed with AI against the Portuguese original, which prevails.',
+    },
+    es: {
+      prefix: '/es',
+      guias: ['guias', ['como-leer-los-precios', 'como-se-forma-el-precio-de-la-gasolina', 'diesel-s10-o-s500', 'encuesta-semanal-anp', 'etanol-o-gasolina', 'icms-sobre-combustibles']],
+      ferramentas: ['herramientas', ['calculadora-consumo-medio', 'calculadora-costo-de-viaje', 'calculadora-costo-por-km', 'calculadora-etanol-o-gasolina', 'calculadora-llenar-el-tanque']],
+      paginas: ['', ['politica-editorial', 'sobre']],
+      disclosure: 'Esta versión en español fue traducida y revisada con IA a partir del original en portugués, que prevalece.',
+    },
+  };
   try {
-    for (const rel of drafts) {
-      const raw = fs.readFileSync(path.join(root, rel), 'utf8');
-      assert.match(raw, /^translationStatus: draft$/m, `${rel} stays a draft`);
-      assert.match(raw, /^translationOf: \/(guias|ferramentas)\//m, `${rel} names its pt-BR source`);
-      assert.match(raw, /^sourceRevision: \d{4}-\d{2}-\d{2}$/m, `${rel} records its source revision`);
+    // ADR-027: a translation ships only as `reviewed`, and the record names
+    // the AI review instead of a person.
+    const routes = [];
+    for (const [code, locale] of Object.entries(production)) {
+      routes.push([code, `${locale.prefix}/`]);
+      for (const dir of ['guias', 'ferramentas', 'paginas']) {
+        const [segment, slugs] = locale[dir];
+        const files = fs.readdirSync(path.join(root, 'content', 'translations', code, dir)).sort();
+        assert.deepEqual(files, slugs.map((slug) => `${slug}.md`), `${code}/${dir} holds exactly the launched pages`);
+        if (segment) routes.push([code, `${locale.prefix}/${segment}/`]);
+        for (const slug of slugs) {
+          const rel = `content/translations/${code}/${dir}/${slug}.md`;
+          const raw = fs.readFileSync(path.join(root, rel), 'utf8');
+          assert.match(raw, /^translationStatus: reviewed$/m, `${rel} is reviewed`);
+          assert.match(raw, /^reviewedBy: AI review \(Claude\)$/m, `${rel} records the AI review`);
+          assert.match(raw, /^reviewedAt: \d{4}-\d{2}-\d{2}$/m, `${rel} dates its review`);
+          assert.doesNotMatch(raw, /!\[/, `${rel} embeds no Portuguese screenshot`);
+          routes.push([code, segment ? `${locale.prefix}/${segment}/${slug}/` : `${locale.prefix}/${slug}/`]);
+        }
+      }
     }
-    buildSite({
-      projectRoot: root,
-      outDir,
-      canonicalOrigin: origin,
-      storeState: 'prelaunch',
-      enableLocales: ['en', 'es'],
-    });
-    assert.ok(!fs.existsSync(path.join(outDir, 'en')), 'no English output from drafts');
-    assert.ok(!fs.existsSync(path.join(outDir, 'es')), 'no Spanish output from drafts');
-    assert.equal((read(outDir, 'sitemap.xml').match(/<url>/g) || []).length, 49, 'sitemap keeps the pt-BR URL count');
-    assert.ok(!read(outDir, 'sitemap.xml').includes('/en/') && !read(outDir, 'sitemap.xml').includes('/es/'));
+
+    // The registry flags alone, with no test override, emit both locales.
+    buildSite({ projectRoot: root, outDir, canonicalOrigin: origin, storeState: 'prelaunch' });
+    const sitemap = read(outDir, 'sitemap.xml');
+    assert.equal((sitemap.match(/<url>/g) || []).length, 49 + routes.length, 'sitemap adds exactly the locale pages to the pt-BR set');
+    for (const [code, route] of routes) {
+      const html = read(outDir, `${route.slice(1)}index.html`);
+      assert.ok(sitemap.includes(`<loc>${origin}${route}</loc>`), `sitemap lists ${route}`);
+      assert.match(html, /<meta name="robots" content="index,follow/, `${route} is fresh and indexable`);
+      assert.ok(html.includes(`<link rel="canonical" href="${origin}${route}">`), `${route} is self-canonical`);
+      const links = hreflangs(html);
+      assert.ok(links.some((link) => link.hreflang === code && link.route === route), `${route} lists itself in hreflang`);
+      assert.ok(links.some((link) => link.hreflang === 'pt-BR'), `${route} lists its Portuguese original`);
+      assert.equal(links.filter((link) => link.hreflang === 'x-default').length, 1, `${route} has one x-default`);
+      assert.doesNotMatch(html, /<img[^>]+src="\/assets\/app\//, `${route} shows no Portuguese app capture`);
+    }
+
+    // Readers are told how each translated guide was made.
+    for (const [code, locale] of Object.entries(production)) {
+      const [segment, slugs] = locale.guias;
+      for (const slug of slugs) {
+        assert.ok(read(outDir, `${code}/${segment}/${slug}/index.html`).includes(locale.disclosure), `${code} guide ${slug} discloses the AI translation`);
+      }
+    }
+    assert.ok(read(outDir, 'en/editorial-policy/index.html').includes('the Portuguese text prevails'), 'English policy states which version prevails');
+    assert.ok(read(outDir, 'es/politica-editorial/index.html').includes('prevalece el texto en portugués'), 'Spanish policy states which version prevails');
+
+    // The Portuguese pages now offer both languages.
+    const picker = headerLanguagePicker(read(outDir, 'index.html'));
+    assert.ok(picker.includes('<a href="/en/" lang="en" hreflang="en">English</a>'), 'pt-BR home links the English home');
+    assert.ok(picker.includes('<a href="/es/" lang="es" hreflang="es">Español</a>'), 'pt-BR home links the Spanish home');
+
+    assert.doesNotThrow(() => checkDist({ projectRoot: root, distDir: outDir, origin }));
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
@@ -379,9 +426,81 @@ La cuenta divide el precio del etanol entre el precio de la gasolina.
   }
 });
 
+test('localized chrome: byline, editorial line and footer link the same-locale about and policy pages', () => {
+  const tmpTrans = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-i18n-chrome-'));
+  const outDir = path.join(os.tmpdir(), 'abastevo-i18n-chrome-out-' + Math.random().toString(36).slice(2, 8));
+  const page = (slug, source, title) => `---
+title: "${title}"
+description: "Fixture page ${slug}: it stands for the reviewed translation of one Portuguese institutional page of the abastevo site."
+slug: ${slug}
+datePublished: 2026-11-21
+dateModified: 2026-11-21
+translationOf: ${source}
+sourceRevision: 2026-11-21
+translationStatus: reviewed
+reviewedBy: Test Reviewer
+reviewedAt: 2026-11-21
+---
+
+## Section
+
+Fixture body.
+`;
+  try {
+    fs.cpSync(translationsDir, tmpTrans, { recursive: true });
+    fs.mkdirSync(path.join(tmpTrans, 'en', 'paginas'), { recursive: true });
+    fs.writeFileSync(path.join(tmpTrans, 'en', 'paginas', 'about.md'), page('about', '/sobre/', 'About abastevo: who we are'));
+    fs.writeFileSync(path.join(tmpTrans, 'en', 'paginas', 'editorial-policy.md'), page('editorial-policy', '/politica-editorial/', 'Editorial policy: sources and dates'));
+    buildSite({
+      projectRoot: root,
+      outDir,
+      canonicalOrigin: origin,
+      storeState: 'prelaunch',
+      enableLocales: ['en', 'es'],
+      translationsDir: tmpTrans,
+    });
+
+    // English has both pages: every chrome link stays in English.
+    const enGuide = read(outDir, 'en/guides/ethanol-or-gasoline/index.html');
+    assert.ok(enGuide.includes('By <a href="/en/about/">abastevo Team</a>'), 'en byline links the English about page');
+    assert.ok(enGuide.includes('<a href="/en/editorial-policy/">editorial policy</a>'), 'en editorial line links the English policy');
+    assert.ok(!enGuide.includes('href="/sobre/"') && !enGuide.includes('href="/politica-editorial/"'), 'en guide has no Portuguese about or policy link');
+    const enFooter = enGuide.match(/<footer\b[\s\S]*?<\/footer>/)[0];
+    assert.ok(enFooter.includes('<a href="/en/about/">About abastevo</a>'), 'en footer links the English about page');
+    assert.ok(enFooter.includes('<a href="/en/editorial-policy/">Editorial policy</a>'), 'en footer links the English policy');
+    const enTool = read(outDir, 'en/tools/ethanol-or-gasoline-calculator/index.html');
+    assert.ok(enTool.includes('By <a href="/en/about/">abastevo Team</a>'), 'en tool byline links the English about page');
+    const enHub = read(outDir, 'en/guides/index.html');
+    assert.ok(enHub.includes('<a href="/en/about/">abastevo Team</a>') && enHub.includes('<a href="/en/editorial-policy/">editorial policy</a>'), 'en guides hub links the English pages');
+
+    // Spanish has neither page: the links fall back to Portuguese, marked as such.
+    const esGuide = read(outDir, 'es/guias/etanol-o-gasolina/index.html');
+    assert.ok(esGuide.includes('Por <a href="/sobre/" hreflang="pt-BR">Equipo abastevo</a>'), 'es byline falls back to the Portuguese about page');
+    assert.ok(esGuide.includes('<a href="/politica-editorial/" hreflang="pt-BR">política editorial</a>'), 'es editorial line falls back to the Portuguese policy');
+    const esFooter = esGuide.match(/<footer\b[\s\S]*?<\/footer>/)[0];
+    assert.ok(!esFooter.includes('/sobre/') && !esFooter.includes('politica-editorial'), 'es footer lists no about or policy link without a translation');
+
+    // The Portuguese pages are unchanged.
+    const ptGuide = read(outDir, 'guias/icms-sobre-combustiveis/index.html');
+    assert.ok(ptGuide.includes('Por <a href="/sobre/">Equipe abastevo</a>'), 'pt-BR byline is unchanged');
+    assert.ok(ptGuide.includes('<a href="/politica-editorial/">política editorial</a>'), 'pt-BR editorial line is unchanged');
+
+    assert.doesNotThrow(() => checkDist({ projectRoot: root, distDir: outDir, origin }));
+  } finally {
+    fs.rmSync(tmpTrans, { recursive: true, force: true });
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 test('i18n review gate: refuses enabling a locale whose dictionary is still a draft', () => {
   const outDir = path.join(os.tmpdir(), 'abastevo-i18n-gate-' + Math.random().toString(36).slice(2, 8));
+  const messagesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-i18n-messages-'));
   try {
+    fs.cpSync(path.join(root, 'content', 'i18n'), messagesDir, { recursive: true });
+    const file = path.join(messagesDir, 'en.json');
+    const dictionary = JSON.parse(fs.readFileSync(file, 'utf8'));
+    dictionary._review = { status: 'draft', reviewedBy: '', reviewedAt: '' };
+    fs.writeFileSync(file, JSON.stringify(dictionary));
     assert.throws(() => buildSite({
       projectRoot: root,
       outDir,
@@ -389,8 +508,10 @@ test('i18n review gate: refuses enabling a locale whose dictionary is still a dr
       storeState: 'prelaunch',
       enableLocales: ['en'],
       enforceReviewGates: true,
-    }), /enabled locale dictionary must have _review\.status = "reviewed"/);
+      messagesDir,
+    }), /i18n en: enabled locale dictionary must have _review\.status = "reviewed"/);
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
+    fs.rmSync(messagesDir, { recursive: true, force: true });
   }
 });

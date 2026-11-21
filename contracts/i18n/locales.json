@@ -20,8 +20,8 @@
       "hreflang": "en",
       "ogLocale": "en_US",
       "decimal": ".",
-      "enabled": false,
-      "reviewers": [],
+      "enabled": true,
+      "reviewers": ["AI review (Claude)"],
       "segments": { "guias": "guides", "ferramentas": "tools" }
     },
     {
@@ -31,8 +31,8 @@
       "hreflang": "es",
       "ogLocale": "es_ES",
       "decimal": ",",
-      "enabled": false,
-      "reviewers": [],
+      "enabled": true,
+      "reviewers": ["AI review (Claude)"],
       "segments": { "guias": "guias", "ferramentas": "herramientas" }
     }
   ]

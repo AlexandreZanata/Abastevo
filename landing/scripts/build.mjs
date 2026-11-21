@@ -140,6 +140,7 @@ export function build(options = {}) {
   const site = loadSite(root, {
     enableLocales: options.enableLocales,
     translationsDir: options.translationsDir,
+    messagesDir: options.messagesDir,
     enforceReviewGates: options.enforceReviewGates,
   });
   const defaultLocale = site.defaultLocale;

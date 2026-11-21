@@ -1,14 +1,14 @@
 {
   "_review": {
-    "status": "draft",
-    "reviewedBy": "",
-    "reviewedAt": ""
+    "status": "reviewed",
+    "reviewedBy": "AI review (Claude)",
+    "reviewedAt": "2026-11-21"
   },
   "home": {
     "title": "Fuel prices in Brazil by state and city",
     "description": "Check gasoline, ethanol and diesel prices in Brazil by state and city with visible source and collection date: weekly ANP survey and calculators.",
     "hero": {
-      "kicker": "Open code · ANP data · Community",
+      "kicker": "Public code · ANP data · Community",
       "title": "More information for life on the road.",
       "lead": "Find fuel prices across Brazil, read weekly ANP reference data and use free calculators in your browser.",
       "artLabel": "Illustration: the abastevo mark among routes, map markers and price cards"
@@ -64,7 +64,7 @@
     "published": "Published on",
     "updated": "Updated on",
     "languages": "Languages",
-    "editorial": "Text by the {team}, reviewed by people against the cited sources. See the {policy} and how to request a correction.",
+    "editorial": "Text by the {team}. This English version was translated and reviewed with AI against the Portuguese original, which prevails. See the {policy} and how to request a correction.",
     "policy": "editorial policy",
     "guidesTitle": "abastevo guides",
     "allGuidesOf": "All guides in {category}",
@@ -74,7 +74,7 @@
     "toolsLabel": "fuel calculators",
     "calculatorsShort": "calculators",
     "howGuides": "How the guides are made",
-    "howGuidesBody": "The guides are written by the {team}, cite the official source of every fact and show the last review date. Quoted prices are always examples; for real values, check the {prices} with their collection date. Full rules in the {policy}.",
+    "howGuidesBody": "The guides are written in Portuguese by the {team}, cite the official source of every fact and show the last review date. The English versions are translated and reviewed with AI. Quoted prices are always examples; for real values, check the {prices} with their collection date. Full rules in the {policy}.",
     "pricesLabel": "reference prices by state",
     "articles": "Articles",
     "otherCategories": "Other categories",
@@ -84,7 +84,7 @@
     "chooseCalculator": "Choose a calculator",
     "howCalculators": "How the calculators work",
     "howCalculatorsBody": "Every page shows the formula and a worked example step by step, so you can check the math by hand, even with JavaScript off. The interactive version calculates in your browser: the values you type are never sent, stored or linked to you.",
-    "estimates": "Results are estimates. Real consumption changes with traffic, load, terrain, tyre pressure and driving style, and the price changes from station to station and week to week.",
+    "estimates": "Results are estimates. Real consumption changes with traffic, load, terrain, tire pressure and driving style, and the price changes from station to station and week to week.",
     "wherePrices": "Where to get prices for the math",
     "wherePricesBody": "Use the price you saw at the pump or check the {prices}, always with the collection date. Learn what those numbers mean in the {methodology}.",
     "pricesAnpLabel": "ANP reference prices by state and city",
@@ -127,6 +127,7 @@
     "toolsHubTitle": "Fuel calculators",
     "toolsHubIntro": "Five simple calculators, each with its formula and a worked example. The math runs in your browser: nothing is sent, stored or tracked.",
     "mainNav": "Main navigation",
+    "openMenu": "Open navigation menu",
     "brandHome": "abastevo - home",
     "githubLabel": "View on GitHub — Code with visible attribution",
     "github": "GitHub",
@@ -184,7 +185,7 @@
         "gasolineCheaper": "Result: gasoline tends to cost less per kilometer driven.",
         "tie": "Result: technical tie; both cost practically the same per kilometer.",
         "ratio": "Ethanol costs {percent} of the gasoline price.",
-        "thresholdOwn": "Reference used: {percent}, calculated from your car's stated consumption.",
+        "thresholdOwn": "Reference used: {percent}, calculated from the consumption you entered for your car.",
         "thresholdRule": "Reference used: 70%, the general rule for flex-fuel cars.",
         "maxPrice": "With gasoline at {gasoline}, ethanol pays off up to {ethanol} per liter.",
         "costPerKm": "Cost per km: ethanol {ethanol}, gasoline {gasoline}."
@@ -251,7 +252,7 @@
         },
         "preco": {
           "label": "Price per liter (BRL, optional)",
-          "hint": "Also calculates the cost per kilometer.",
+          "hint": "To also calculate the cost per kilometer.",
           "unit": "BRL per liter",
           "example": "6.29"
         }
@@ -278,7 +279,7 @@
         },
         "tarifa_kwh": {
           "label": "Electricity rate (BRL/kWh)",
-          "hint": "Price per kWh with taxes, from your bill or the charging station, for example 0.95.",
+          "hint": "Price per kWh with taxes, from your electricity bill or the charging station, for example 0.95.",
           "unit": "BRL per kWh",
           "example": "0.95"
         },

@@ -1,16 +1,21 @@
 ---
 title: "Ethanol or gasoline calculator for Brazil"
+headline: "Calculator: ethanol or gasoline?"
 description: "Compare ethanol and gasoline prices in Brazil, apply the 70% rule or your own consumption, and see the break-even ethanol price per liter."
+summary: "Compare pump prices with the 70% rule or with your flex-fuel car's own consumption."
 slug: ethanol-or-gasoline-calculator
+primaryQuery: "ethanol or gasoline calculator"
 datePublished: 2026-11-17
-dateModified: 2026-11-17
+dateModified: 2026-11-21
 translationOf: /ferramentas/etanol-ou-gasolina/
 sourceRevision: 2026-11-17
-translationStatus: draft
+translationStatus: reviewed
+reviewedBy: AI review (Claude)
+reviewedAt: 2026-11-21
 related:
-  - /guias/etanol-ou-gasolina/
-  - /guias/como-calcular-consumo-medio/
-  - /precos/
+  - /en/guides/ethanol-or-gasoline/
+  - /en/guides/how-to-read-fuel-prices/
+  - /en/tools/fuel-consumption-calculator/
 ---
 
 ## How the math works
@@ -19,27 +24,28 @@ Ethanol travels fewer kilometers per liter than gasoline because each liter
 carries less energy. Looking only at which liter is cheaper is not enough: you
 have to compare the cost of driving the same distance.
 
-Divide the ethanol price by the gasoline price. The relation is:
+Divide the ethanol price by the gasoline price. The ratio is:
 
 ```
-relation = ethanol price ÷ gasoline price
+ratio = ethanol price ÷ gasoline price
 ```
 
 - Below **70%** (0.70), ethanol tends to cost less per kilometer.
 - Above **70%**, gasoline tends to cost less.
-- The ethanol limit price is the gasoline price multiplied by 0.70.
+- The break-even ethanol price is the gasoline price multiplied by 0.70.
 
 The 70% figure is an average. If you measured your own car with both fuels, use
-the relation between the consumptions (ethanol km/l ÷ gasoline km/l), which is
-more accurate for that car. See
-[how to calculate average consumption](/guias/como-calcular-consumo-medio/).
+the ratio between the two consumption figures (ethanol km/l ÷ gasoline km/l),
+which is more accurate for that car. See
+[how to calculate average consumption](/guias/como-calcular-consumo-medio/)
+(in Portuguese).
 
 ## Worked example
 
 Gasoline at R$ 6.29 and ethanol at R$ 4.19 per liter:
 
-1. Relation: 4.19 ÷ 6.29 = 0.666, so ethanol costs 66.6% of the gasoline price.
-2. Limit price by the 70% rule: 6.29 × 0.70 = R$ 4.403.
+1. Ratio: 4.19 ÷ 6.29 = 0.666, so ethanol costs 66.6% of the gasoline price.
+2. Break-even price by the 70% rule: 6.29 × 0.70 = R$ 4.403.
 3. Since 66.6% is below 70%, ethanol tends to cost less per kilometer.
 
 With measured consumption, for example 12.5 km/l on gasoline and 8.7 km/l on
@@ -61,24 +67,32 @@ methods.
 
 ## Limits of the estimate
 
-- The real relation changes from car to car and with use: short trips and cold
+- The real ratio changes from car to car and with use: short trips and cold
   starts usually make ethanol perform worse.
 - Very small differences (less than one percentage point) are inside the error
   margin of any home measurement.
 - The price changes between stations and weeks. To compare your city, check the
-  [reference prices by state](/precos/) with the collection date.
+  [reference prices by state](/precos/) (in Portuguese) with the collection
+  date.
 
 To understand where the 70% comes from and when it changes, read the guide
-[ethanol or gasoline: the 70% rule](/guias/etanol-ou-gasolina/).
+[ethanol or gasoline: the 70% rule](/en/guides/ethanol-or-gasoline/).
 
 ## In the app
 
-The Android app, still in development, shows the two reference prices from the
-same week. In the example from the week of November 8 to 14, 2026, the ethanol
-average divided by the regular gasoline average is 4.09 ÷ 6.34 ≈ 0.65. The
-captures in the Portuguese guide were taken on November 17, 2026. The
-[ANP table tutorial](/como-usar/precos-anp/) shows where to find them.
+The abastevo Android app, still in development, shows the two reference
+prices from the same week:
 
-## Sources
+1. Under "Prices in your city", look at the "Ethanol" and "Regular gasoline"
+   cards and use the two values in the calculator on this page.
+2. Under "Filters", "Lowest price" shows the lowest surveyed value of each
+   fuel. Always compare values of the same kind: average with average, lowest
+   with lowest.
+3. In the "Abastevo Forum", the editorial post about ethanol or gasoline
+   explains the same math.
 
-- [ANP — Brazilian oil, gas and biofuels regulator](https://www.gov.br/anp/)
+The captures are on the Portuguese page, show the Portuguese interface and
+were taken on November 17, 2026. The first one shows the ANP averages in São
+Paulo, SP, for the week of November 8 to 14, 2026: the ethanol average divided
+by the regular gasoline average is 4.09 ÷ 6.34 ≈ 0.65. See the tutorial
+[Check the ANP table](/como-usar/precos-anp/) (in Portuguese).

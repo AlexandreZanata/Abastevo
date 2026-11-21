@@ -145,8 +145,19 @@ function linkList(site, routes) {
   return `<ul class="link-list">\n        ${items.join('\n        ')}\n      </ul>`;
 }
 
-function datesLine(entry, locale, { published = true } = {}) {
-  const parts = [`${t(locale, 'chrome.by')} <a href="/sobre/">${esc(t(locale, 'chrome.team'))}</a>`];
+/**
+ * Link from a page of `locale` to a pt-BR route: the same-locale translation
+ * when the locale has one, otherwise the Portuguese page, declared as such.
+ * pt-BR pages keep a plain link.
+ */
+function localeLink(site, locale, route, label) {
+  const target = site.localizedRoute(route, locale.code);
+  const portuguese = Boolean(locale.prefix) && target === route;
+  return `<a href="${esc(target)}"${portuguese ? ' hreflang="pt-BR"' : ''}>${label}</a>`;
+}
+
+function datesLine(site, entry, locale, { published = true } = {}) {
+  const parts = [`${t(locale, 'chrome.by')} ${localeLink(site, locale, '/sobre/', esc(t(locale, 'chrome.team')))}`];
   if (published) parts.push(`${t(locale, 'chrome.published')} <time datetime="${entry.datePublished}">${formatDateLong(entry.datePublished, locale)}</time>`);
   parts.push(`${t(locale, 'chrome.updated')} <time datetime="${entry.dateModified}">${formatDateLong(entry.dateModified, locale)}</time>`);
   return `<p class="article-meta">${parts.join(' · ')}</p>`;
@@ -200,7 +211,7 @@ export function renderGuide(site, guide, origin, locale) {
   const pool = isLocale ? site.translations.filter((entry) => entry.locale === guide.locale && entry.kind === 'guide') : site.guides;
   const readAlso = relatedGuides(site, guide, 3, pool);
   const team = esc(t(locale, 'chrome.team'));
-  const policy = `<a href="/politica-editorial/">${esc(t(locale, 'chrome.policy'))}</a>`;
+  const policy = localeLink(site, locale, '/politica-editorial/', esc(t(locale, 'chrome.policy')));
   const staleNote = staleBanner(guide, locale);
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -234,7 +245,7 @@ export function renderGuide(site, guide, origin, locale) {
         <p class="article-kicker">${isLocale ? esc(categoryName) : `<a href="${category.route}">${esc(categoryName)}</a>`}</p>
         <h1>${esc(guide.headline)}</h1>
         <p class="article-lead">${esc(guide.description)}</p>
-        ${datesLine(guide, locale)}
+        ${datesLine(site, guide, locale)}
         ${staleNote ? `${staleNote}\n        ` : ''}<p class="article-editorial">${t(locale, 'chrome.editorial', { team, policy })}</p>
         ${toc}
 ${guide.html}
@@ -311,9 +322,9 @@ export function renderGuidesHub(site, origin, locale) {
     ],
   };
   const toolLink = `<a href="${toolsHub}">${esc(t(locale, 'chrome.toolsLabel'))}</a>`;
-  const teamLink = `<a href="/sobre/">${esc(t(locale, 'chrome.team'))}</a>`;
+  const teamLink = localeLink(site, locale, '/sobre/', esc(t(locale, 'chrome.team')));
   const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
-  const policyLink = `<a href="/politica-editorial/">${esc(t(locale, 'chrome.policy'))}</a>`;
+  const policyLink = localeLink(site, locale, '/politica-editorial/', esc(t(locale, 'chrome.policy')));
   const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
         <h1>${esc(isLocale ? title : t(locale, 'chrome.guidesTitle'))}</h1>
@@ -557,7 +568,7 @@ export function renderTool(site, tool, origin, locale) {
           <div class="tool-result" data-tool-result role="status" aria-live="polite"></div>
           <p class="tool-privacy">${esc(t(locale, 'chrome.toolPrivacy'))}</p>
         </div>
-        ${datesLine(tool, locale, { published: false })}${tool.stale ? `\n        ${staleBanner(tool, locale)}` : ''}
+        ${datesLine(site, tool, locale, { published: false })}${tool.stale ? `\n        ${staleBanner(tool, locale)}` : ''}
 ${tool.html}
         <section class="article-section" aria-labelledby="precos-de-referencia">
           <h2 id="precos-de-referencia">${esc(t(locale, 'chrome.toolPrices'))}</h2>
@@ -798,6 +809,17 @@ export function renderLocalizedHeader(site, locale, languagePicker) {
     site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
     site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
   ].filter(Boolean).join('\n        ');
+  // Below the desktop breakpoint the top navigation is hidden, so the same
+  // native disclosure as the pt-BR header carries the locale's links.
+  const menu = [
+    site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
+    site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
+    ...[['/sobre/', 'chrome.footerAbout'], ['/politica-editorial/', 'chrome.footerEditorial']]
+      .filter(([route]) => site.localizedRoute(route, locale.code) !== route)
+      .map(([route, key]) => `<a href="${site.localizedRoute(route, locale.code)}">${esc(t(locale, key))}</a>`),
+    `<a href="/precos/" hreflang="pt-BR">${esc(t(locale, 'chrome.footerPrices'))}</a>`,
+    `<a href="/privacidade/" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>`,
+  ].filter(Boolean).join('\n            ');
   return `<header class="topbar">
     <div class="shell topbar-inner">
       <a href="${homeHref}" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
@@ -811,6 +833,12 @@ export function renderLocalizedHeader(site, locale, languagePicker) {
         <a class="topbar-link hide-sm" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}">${esc(t(locale, 'chrome.github'))}</a>
         <a class="topbar-link topbar-privacy" href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>
         ${languagePicker}
+        <details class="nav-toggle" name="landing-header">
+          <summary class="nav-button" aria-label="${esc(t(locale, 'chrome.openMenu'))}"><span aria-hidden="true"></span></summary>
+          <nav class="site-nav" aria-label="${esc(t(locale, 'chrome.mainNav'))}">
+            ${menu}
+          </nav>
+        </details>
       </div>
     </div>
   </header>`;
@@ -823,6 +851,9 @@ export function renderLocalizedFooter(site, locale) {
   const nav = [
     site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
     site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
+    ...[['/sobre/', 'chrome.footerAbout'], ['/politica-editorial/', 'chrome.footerEditorial']]
+      .filter(([route]) => site.localizedRoute(route, locale.code) !== route)
+      .map(([route, key]) => `<a href="${site.localizedRoute(route, locale.code)}">${esc(t(locale, key))}</a>`),
     `<a href="/" lang="pt-BR" hreflang="pt-BR">${NATIVE_NAMES['pt-BR']}</a>`,
     `<a href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>`,
     `<a href="${GITHUB_URL}">${esc(t(locale, 'chrome.github'))}</a>`,

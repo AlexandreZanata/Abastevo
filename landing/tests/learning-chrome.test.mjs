@@ -20,10 +20,18 @@ test('learning and legal routes share the home header/footer and resolve home-se
       assert.ok(files.length >= (learning ? 4 : 1), `${section} includes its public routes`);
       for (const file of files) {
         const html = fs.readFileSync(path.join(outDir, section, file), 'utf8');
+        // The language picker links each page's own translations, so it is
+        // the one part of the header that differs between pages.
+        const picker = /<details class="language-picker"[\s\S]*?<\/details>/;
         for (const tag of ['header', 'footer']) {
           const pattern = new RegExp(`<${tag}\\b[\\s\\S]*?</${tag}>`);
-          assert.equal(html.match(pattern)?.[0], home.match(pattern)?.[0].replaceAll('href="#', 'href="/#'), `${section}/${file}: ${tag} parity`);
+          assert.equal(
+            html.match(pattern)?.[0].replace(picker, ''),
+            home.match(pattern)?.[0].replaceAll('href="#', 'href="/#').replace(picker, ''),
+            `${section}/${file}: ${tag} parity`,
+          );
         }
+        assert.match(html.match(picker)?.[0] || '', /lang="pt-BR" aria-current="true">Português<\/span>/, `${section}/${file}: picker marks Portuguese`);
         assert.match(html, learning ? /class="landing-home learning-page/ : /class="landing-home legal-document"/);
         assert.doesNotMatch(html, /(?:LEARNING|SITE)_(?:HEADER|FOOTER)|class="site-header"|class="site-footer"/);
         for (const anchor of [...html.matchAll(/href="\/#([^"]+)"/g)].map((m) => m[1])) {

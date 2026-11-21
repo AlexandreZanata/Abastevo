@@ -82,8 +82,9 @@ test('every landing page carries the shared footer hubs, with the forum link', (
   const privacidade = column('Privacidade');
   for (const href of ['/privacidade/', '/excluir-conta/', '/termos/']) assert.ok(privacidade.includes(`href="${href}"`));
 
+  // Locale pages carry their own localized footer (tests/i18n-build.test.mjs).
   const shared = footer.replaceAll('href="#', 'href="/#');
-  for (const rel of listHtmlPages(outDir)) {
+  for (const rel of listHtmlPages(outDir).filter((page) => !/^(en|es)\//.test(page))) {
     const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
     const pageFooter = html.match(/<footer\b[\s\S]*?<\/footer>/)?.[0];
     assert.equal(pageFooter, rel === 'index.html' ? footer : shared, `${rel} uses the shared footer`);

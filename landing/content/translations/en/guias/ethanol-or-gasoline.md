@@ -4,16 +4,24 @@ description: "Learn why the 70% rule works for flex-fuel cars in Brazil, how the
 slug: ethanol-or-gasoline
 category: escolher-combustivel
 tags: [ethanol, gasoline, flex-fuel, consumption]
+primaryQuery: "ethanol or gasoline in brazil"
 datePublished: 2026-11-17
-dateModified: 2026-11-17
+dateModified: 2026-11-21
 translationOf: /guias/etanol-ou-gasolina/
 sourceRevision: 2026-11-17
-translationStatus: draft
+translationStatus: reviewed
+reviewedBy: AI review (Claude)
+reviewedAt: 2026-11-21
 related:
-  - /guias/etanol-ou-gasolina/
-  - /guias/como-calcular-consumo-medio/
-  - /precos/
+  - /en/tools/ethanol-or-gasoline-calculator/
+  - /en/guides/how-gasoline-prices-are-formed/
+  - /en/guides/how-to-read-fuel-prices/
+  - /en/tools/fuel-consumption-calculator/
 ---
+
+Anyone who drives a flex-fuel car in Brazil often faces the same question at
+the pump: ethanol or gasoline? The answer depends on the ratio between the two
+pump prices and on how well your engine uses each fuel.
 
 ## Why the 70% rule works
 
@@ -54,10 +62,14 @@ the engine:
 
 ## Measure your own car
 
-Fill the tank with gasoline, reset the trip odometer and drive to the reserve.
-Divide the kilometers driven by the liters added to get km/l on gasoline. Fill
-the tank with ethanol next time and repeat. Divide the ethanol km/l by the
-gasoline km/l: that fraction is your car's exact parity.
+To find the real parity of your own vehicle, run the tank-to-tank test:
+
+1. Fill the tank with gasoline, reset the trip odometer and drive to the
+   reserve. Kilometers driven ÷ liters added = km/l on gasoline.
+2. At the next fill-up, fill the tank with ethanol and repeat the measurement:
+   kilometers driven ÷ liters added = km/l on ethanol.
+3. Divide the ethanol consumption by the gasoline consumption: km/l on ethanol
+   ÷ km/l on gasoline. That fraction is your car's exact parity.
 
 ## The Brazilian context
 
@@ -70,18 +82,33 @@ by Pix or card is common.
 
 ## Do the math
 
-Use the [ethanol or gasoline calculator](/ferramentas/etanol-ou-gasolina/) with
-the prices you find. To measure consumption, follow
-[how to calculate average consumption](/guias/como-calcular-consumo-medio/).
-For the official regional reference, check
-[prices by state and city](/precos/) with the collection date. The [ANP price
-table tutorial](/como-usar/precos-anp/) shows where the app displays the two
-weekly references.
+Use the
+[ethanol or gasoline calculator](/en/tools/ethanol-or-gasoline-calculator/)
+with the prices you find. To measure consumption, follow
+[how to calculate average consumption](/guias/como-calcular-consumo-medio/)
+(in Portuguese) or use the
+[fuel consumption calculator](/en/tools/fuel-consumption-calculator/). For the
+official regional reference, check
+[prices by state and city](/precos/) (in Portuguese), always with the
+collection date.
 
-In the app example from the week of November 8 to 14, 2026, the ethanol
-average divided by the regular gasoline average is 4.09 ÷ 6.34 ≈ 0.65. The
-captures in the Portuguese guide were taken on November 17, 2026.
+## In the app
 
-## Sources
+The abastevo Android app is in development. The captures that illustrate this
+section are on the Portuguese page: they are real, were taken on November 17,
+2026, and show the ANP reference of the week indicated, not the pump price. To
+get the two prices of the same week:
 
-- [ANP — Brazilian oil, gas and biofuels regulator](https://www.gov.br/anp/)
+1. Under "Prices in your city", look at the "Ethanol" and "Regular gasoline"
+   cards and use the two values in the math of this guide or in the
+   [ethanol or gasoline calculator](/en/tools/ethanol-or-gasoline-calculator/).
+2. Under "Filters", "Lowest price" shows the lowest surveyed value of each
+   fuel. Always compare values of the same kind: average with average, lowest
+   with lowest.
+3. In the "Abastevo Forum", the editorial post about ethanol or gasoline
+   explains the same rule.
+
+The first capture shows the ANP averages in São Paulo, SP, for the week of
+November 8 to 14, 2026: the ethanol average divided by the regular gasoline
+average is 4.09 ÷ 6.34 ≈ 0.65. The full walkthrough is in the tutorial
+[Check the ANP table](/como-usar/precos-anp/) (in Portuguese).

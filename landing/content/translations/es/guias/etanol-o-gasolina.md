@@ -1,19 +1,28 @@
 ---
 title: "Etanol o gasolina en Brasil: la regla del 70 %"
-description: "Entiende por qué funciona la regla del 70 % en los coches flex de Brasil, cómo cambia el punto de equilibrio y cómo medir tu propio coche de tanque a tanque."
+description: "Entiende por qué funciona la regla del 70 % en los autos flex de Brasil, cómo cambia el punto de equilibrio y cómo medir tu propio auto de tanque a tanque."
 slug: etanol-o-gasolina
 category: escolher-combustivel
-tags: [etanol, gasolina, flex, consumo]
+tags: [etanol, gasolina, nafta, flex, consumo]
+primaryQuery: "etanol o gasolina en brasil"
 datePublished: 2026-11-17
-dateModified: 2026-11-17
+dateModified: 2026-11-21
 translationOf: /guias/etanol-ou-gasolina/
 sourceRevision: 2026-11-17
-translationStatus: draft
+translationStatus: reviewed
+reviewedBy: AI review (Claude)
+reviewedAt: 2026-11-21
 related:
-  - /guias/etanol-ou-gasolina/
-  - /guias/como-calcular-consumo-medio/
-  - /precos/
+  - /es/herramientas/calculadora-etanol-o-gasolina/
+  - /es/guias/como-se-forma-el-precio-de-la-gasolina/
+  - /es/guias/como-leer-los-precios/
+  - /es/herramientas/calculadora-consumo-medio/
 ---
+
+Quien conduce un auto con motor flex en Brasil se encuentra a menudo con la
+misma duda al cargar combustible: ¿etanol o gasolina (nafta)? La respuesta
+depende de la relación entre los dos precios del surtidor y de cómo aprovecha
+tu motor cada combustible.
 
 ## Por qué funciona la regla del 70 %
 
@@ -53,13 +62,17 @@ del motor:
   frecuentes y los trayectos cortos con tráfico pesado pueden bajar el
   rendimiento del etanol al **66 % al 68 %** de la gasolina.
 
-## Mide tu propio coche
+## Mide tu propio auto
 
-Llena el tanque con gasolina, pon a cero el cuentakilómetros parcial y conduce
-hasta la reserva. Divide los kilómetros recorridos entre los litros
-repostados para obtener km/l con gasolina. La próxima vez llena con etanol y
-repite. Divide los km/l del etanol entre los km/l de la gasolina: esa fracción
-es la paridad exacta de tu coche.
+Para conocer la paridad real de tu vehículo, haz la prueba de tanque a tanque:
+
+1. Llena el tanque con gasolina, pon en cero el cuentakilómetros parcial y
+   conduce hasta la reserva. Kilómetros recorridos ÷ litros cargados = km/l
+   con gasolina.
+2. En la carga siguiente, llena el tanque con etanol y repite la medición:
+   kilómetros recorridos ÷ litros cargados = km/l con etanol.
+3. Divide el consumo con etanol entre el consumo con gasolina: km/l con etanol
+   ÷ km/l con gasolina. Esa fracción es la paridad exacta de tu auto.
 
 ## El contexto brasileño
 
@@ -67,23 +80,40 @@ Los precios son por litro en reales brasileños (BRL), y el precio del cartel ya
 incluye impuestos federales y estatales. La gasolina regular no es gasolina
 pura: lleva etanol anhidro, así que el etanol que compras en el surtidor no es
 el mismo producto que se mezcla con la gasolina. En la mayoría de las
-estaciones un empleado llena el tanque por ti; no accionas el surtidor. Es
-habitual pagar con Pix o tarjeta.
+estaciones de servicio un empleado llena el tanque por ti; no accionas el
+surtidor. Es habitual pagar con Pix o tarjeta.
 
 ## Haz la cuenta
 
-Usa la [calculadora de etanol o gasolina](/ferramentas/etanol-ou-gasolina/) con
-los precios que encuentres. Para medir el consumo, sigue la guía
-[cómo calcular el consumo medio](/guias/como-calcular-consumo-medio/). Para la
-referencia oficial de tu región, consulta los
-[precios por estado y ciudad](/precos/) con la fecha de recogida. El
-[tutorial de la tabla de la ANP](/como-usar/precos-anp/) muestra dónde enseña la
-app las dos referencias semanales.
+Usa la
+[calculadora de etanol o gasolina](/es/herramientas/calculadora-etanol-o-gasolina/)
+con los precios que encuentres. Para medir el consumo, sigue la guía
+[cómo calcular el consumo medio](/guias/como-calcular-consumo-medio/) (en
+portugués) o usa la
+[calculadora de consumo medio](/es/herramientas/calculadora-consumo-medio/).
+Para la referencia oficial de tu región, consulta los
+[precios por estado y ciudad](/precos/) (en portugués), siempre con la fecha
+de recolección.
 
-En el ejemplo de la app de la semana del 8 al 14 de noviembre de 2026, la media
-del etanol dividida por la media de la gasolina regular es 4,09 ÷ 6,34 ≈ 0,65.
-Las capturas de la guía en portugués se tomaron el 17 de noviembre de 2026.
+## En la app
 
-## Fuentes
+La app Android de abastevo está en desarrollo. Las capturas de pantalla que
+ilustran esta sección están en la página en portugués y muestran la interfaz
+en portugués: son reales, se tomaron el 17 de noviembre de 2026 y muestran la
+referencia de la ANP de la semana indicada, no el precio del surtidor. Para obtener los dos precios de la misma
+semana:
 
-- [ANP — regulador brasileño del petróleo, el gas y los biocombustibles](https://www.gov.br/anp/)
+1. En "Precios en tu ciudad", mira las tarjetas "Etanol" y "Gasolina regular"
+   y usa los dos valores en la cuenta de esta guía o en la
+   [calculadora de etanol o gasolina](/es/herramientas/calculadora-etanol-o-gasolina/).
+2. En "Filtros", "Menor precio" muestra el menor valor encuestado de cada
+   combustible. Compara siempre valores del mismo tipo: media con media, menor
+   con menor.
+3. En el "Foro Abastevo", la publicación editorial sobre etanol o gasolina
+   explica la misma regla.
+
+La primera captura muestra las medias de la ANP en São Paulo, SP, de la semana
+del 8 al 14 de noviembre de 2026: la media del etanol dividida por la de la
+gasolina regular es 4,09 ÷ 6,34 ≈ 0,65. El paso a paso completo está en el
+tutorial [Consultar la tabla de la ANP](/como-usar/precos-anp/) (en
+portugués).

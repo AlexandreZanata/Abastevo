@@ -21,17 +21,18 @@ function withRegistry(mutate) {
   return { landingRoot, cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }) };
 }
 
-test('locale registry: pt-BR is the default and en/es stay disabled', () => {
+test('locale registry: pt-BR is the default and en/es are enabled with a recorded AI review', () => {
   const registry = loadLocales(root);
   assert.equal(registry.version, 1);
   assert.equal(registry.default, 'pt-BR');
   assert.deepEqual(registry.locales.map((locale) => locale.code), ['pt-BR', 'en', 'es']);
   assert.equal(registry.locales.find((locale) => locale.code === 'pt-BR').enabled, true);
   assert.ok(registry.locales.find((locale) => locale.code === 'pt-BR').reviewers.length >= 1);
+  // ADR-027: the review of en and es is made by AI and recorded as such.
   for (const code of ['en', 'es']) {
     const entry = registry.locales.find((locale) => locale.code === code);
-    assert.equal(entry.enabled, false, `${code} must start disabled`);
-    assert.deepEqual(entry.reviewers, [], `${code} starts with no named reviewers`);
+    assert.equal(entry.enabled, true, `${code} is enabled`);
+    assert.deepEqual(entry.reviewers, ['AI review (Claude)'], `${code} records the AI review, not a person`);
   }
 });
 

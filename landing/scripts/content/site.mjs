@@ -55,8 +55,8 @@ const SCHEMAS = {
  * Interface dictionary for one locale. Full key parity is asserted by the
  * landing tests; the build only needs the files to exist and parse.
  */
-export function loadMessages(root, code) {
-  const file = path.join(root, 'content', 'i18n', `${code}.json`);
+export function loadMessages(root, code, dir = path.join(root, 'content', 'i18n')) {
+  const file = path.join(dir, `${code}.json`);
   let data;
   try {
     data = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -271,7 +271,7 @@ export function loadSite(root, options = {}) {
   const locales = localeRegistry.locales.map((locale) => ({
     ...locale,
     enabled: locale.code === localeRegistry.default ? true : (override ? override.has(locale.code) : locale.enabled),
-    messages: loadMessages(root, locale.code),
+    messages: loadMessages(root, locale.code, options.messagesDir),
   }));
   const localeByCode = new Map(locales.map((locale) => [locale.code, locale]));
   const defaultLocale = localeByCode.get(localeRegistry.default);
@@ -599,6 +599,14 @@ export function loadSite(root, options = {}) {
     return activeHomes.map((home) => exact.get(home.code) || home);
   };
 
+  // Same-locale target of a pt-BR route: the emitted translation, hub or home
+  // of that locale when it exists, otherwise the pt-BR route itself.
+  const translationRoutes = new Map();
+  for (const entry of registry.values()) {
+    if (entry.locale && entry.translationOf) translationRoutes.set(`${entry.locale}|${entry.translationOf}`, entry.route);
+  }
+  const localizedRoute = (route, localeCode) => translationRoutes.get(`${localeCode}|${route}`) || route;
+
   // SEO-20 keyword map: one URL per query, compared without case or accents,
   // scoped by locale so translations in different languages never collide.
   const queryOwners = new Map();
@@ -669,6 +677,7 @@ export function loadSite(root, options = {}) {
     translations: [...registry.values()].filter((entry) => entry.locale && !entry.hub),
     hreflangMembers,
     switcherMembers,
+    localizedRoute,
   };
   return site;
 }
