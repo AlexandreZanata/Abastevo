@@ -142,3 +142,4 @@ form .button-primary { width: 100%; }
 .mission-board .record-list > li[aria-current="true"] { border-left: 3px solid var(--link); padding-left: 12px; }
 .mission-agenda { margin-top: 24px; }
 .mission-agenda h5 { font-size: 16px; margin: 20px 0 0; }
+.ops-canvas { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; display: block; }

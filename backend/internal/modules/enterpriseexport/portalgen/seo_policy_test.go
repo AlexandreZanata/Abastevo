@@ -45,7 +45,7 @@ func TestRobotsValueHonoursGlobalSwitch(t *testing.T) {
 	if got := robotsValue(false, true); got != "noindex,nofollow" {
 		t.Errorf("global off = %q", got)
 	}
-	if got := robotsValue(true, true); got != "index,follow" {
+	if got := robotsValue(true, true); got != robotsIndexable {
 		t.Errorf("indexable = %q", got)
 	}
 	if got := robotsValue(true, false); got != "noindex,follow" {

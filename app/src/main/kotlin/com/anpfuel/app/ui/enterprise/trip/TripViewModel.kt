@@ -19,10 +19,19 @@ import com.anpfuel.domain.enterprise.trip.TripAssetLabel
 import com.anpfuel.domain.enterprise.trip.TripCommand
 import com.anpfuel.domain.enterprise.trip.TripLogbookType
 import com.anpfuel.domain.enterprise.trip.TripMissionResponse
+import com.anpfuel.application.enterprise.trip.TripFieldReader
+import com.anpfuel.application.enterprise.trip.TripFieldReference
+import com.anpfuel.domain.enterprise.route.RoutePlanOwnerKind
+import com.anpfuel.domain.enterprise.sync.EnterpriseSyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import javax.inject.Named
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.drop
@@ -36,15 +45,24 @@ class TripViewModel @Inject constructor(
     private val fence: EnterpriseSessionFence,
     activity: EnterpriseDeliveryActivity,
     private val tracking: TrackingServiceLauncher,
+    private val fieldReader: TripFieldReader,
 ) : ViewModel() {
     /** Without the tracking service (screens built outside the Hilt graph): tracking writes still work, nothing listens. */
-    constructor(flow: TripFlow, network: NetworkConnectivityGateway, fence: EnterpriseSessionFence, activity: EnterpriseDeliveryActivity) :
-        this(flow, network, fence, activity, TrackingServiceLauncher.NONE)
+    constructor(flow: TripFlow, network: NetworkConnectivityGateway, fence: EnterpriseSessionFence, activity: EnterpriseDeliveryActivity,
+        tracking: TrackingServiceLauncher = TrackingServiceLauncher.NONE) :
+        this(flow, network, fence, activity, tracking, TripFieldReader { _, _ -> null })
 
     val state = flow.state
     val epochs = fence.epochs
     private val mutableConnected = MutableStateFlow(false)
     val connected = mutableConnected.asStateFlow()
+    private data class FieldRequest(val context: EnterpriseContextSummary,
+        val tripId: String, val missionId: String?, val epoch: Long, val generation: Long)
+    data class FieldView(val context: EnterpriseContextSummary, val epoch: Long, val generation: Long,
+        val value: TripFieldReference)
+
+    private val field = MutableStateFlow<FieldView?>(null)
+    val tripField = field.asStateFlow()
     @Volatile private var closed = false
 
     init {
@@ -52,6 +70,36 @@ class TripViewModel @Inject constructor(
             network.observeIsConnected().catch { emit(false) }.collect { mutableConnected.value = it }
         }
         viewModelScope.launch { fence.epochs.collect { flow.invalidateIfStale() } }
+        viewModelScope.launch {
+            val requests = state.map { view ->
+                val trip = view.openTrip
+                val context = view.context
+                val epoch = view.epoch
+                if (epoch == null || context == null || trip == null || !trip.trip.open ||
+                    trip.start.sync != EnterpriseSyncStatus.ACCEPTED ||
+                    view.error != null || view.unlockRequired || view.unrecoverable) null
+                else FieldRequest(context, trip.trip.tripId, trip.missionId, epoch, view.generation)
+            }.distinctUntilChanged()
+            combine(requests, connected, epochs) { request, online, epoch -> request?.takeIf { online && it.epoch == epoch } }
+                .distinctUntilChanged().collectLatest { request ->
+                    field.value = null
+                    if (request == null) return@collectLatest
+                    val snapshot = try {
+                        fieldReader.read(request.context, request.tripId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        null
+                    } ?: return@collectLatest
+                    if (snapshot.tripId == request.tripId &&
+                        (snapshot.plan?.ownerKind != RoutePlanOwnerKind.MISSION ||
+                            snapshot.plan?.ownerId == request.missionId) &&
+                        isCurrent(request.epoch, request.generation) && state.value.openTripId == request.tripId &&
+                        state.value.context == request.context && connected.value) {
+                        field.value = FieldView(request.context, request.epoch, request.generation, snapshot)
+                    }
+                }
+        }
         // A finished delivery may have stored new receipts: re-read the protected book (local only).
         viewModelScope.launch {
             activity.changes.drop(1).collect {

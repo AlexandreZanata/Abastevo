@@ -1,0 +1,19 @@
+id|operation|args|expected
+propose-opens|PROPOSE|org_label=Transportes Vale;valid_from=2026-12-01T00:00:00Z;valid_until=2026-12-31T23:59:59Z;terms=DIESEL_S10/L:5999,GASOLINE_REGULAR/L:6499|status=ACCEPTED;state=PROPOSED;revision=1
+propose-requires-terms|PROPOSE|org_label=Transportes Vale;valid_from=2026-12-01T00:00:00Z;valid_until=2026-12-31T23:59:59Z;terms=|status=REJECTED;error=AGREEMENT_TERMS_REQUIRED
+propose-refuses-duplicate-term|PROPOSE|org_label=Transportes Vale;valid_from=2026-12-01T00:00:00Z;valid_until=2026-12-31T23:59:59Z;terms=DIESEL_S10/L:5999,DIESEL_S10/L:6100|status=REJECTED;error=AGREEMENT_TERM_DUPLICATE
+propose-refuses-inverted-window|PROPOSE|org_label=Transportes Vale;valid_from=2026-12-31T23:59:59Z;valid_until=2026-12-01T00:00:00Z;terms=DIESEL_S10/L:5999|status=REJECTED;error=AGREEMENT_WINDOW_INVALID
+accept-activates|ACCEPT|state=PROPOSED;now=2026-12-01T08:00:00Z|status=ACCEPTED;state=ACTIVE;revision=2
+decline-closes|DECLINE|state=PROPOSED;now=2026-12-01T08:00:00Z|status=ACCEPTED;state=DECLINED;revision=2
+withdraw-proposal-ends|END|state=PROPOSED;now=2026-12-01T08:00:00Z|status=ACCEPTED;state=ENDED;revision=2
+suspend-pauses-active|SUSPEND|state=ACTIVE;now=2026-12-05T08:00:00Z|status=ACCEPTED;state=SUSPENDED;revision=2
+end-closes-active|END|state=ACTIVE;now=2026-12-05T08:00:00Z|status=ACCEPTED;state=ENDED;revision=2
+end-closes-suspended|END|state=SUSPENDED;now=2026-12-05T08:00:00Z|status=ACCEPTED;state=ENDED;revision=2
+accept-active-refused|ACCEPT|state=ACTIVE;now=2026-12-05T08:00:00Z|status=REJECTED;error=AGREEMENT_TRANSITION_REFUSED
+decline-active-refused|DECLINE|state=ACTIVE;now=2026-12-05T08:00:00Z|status=REJECTED;error=AGREEMENT_TRANSITION_REFUSED
+suspend-proposed-refused|SUSPEND|state=PROPOSED;now=2026-12-01T08:00:00Z|status=REJECTED;error=AGREEMENT_TRANSITION_REFUSED
+end-declined-refused|END|state=DECLINED;now=2026-12-05T08:00:00Z|status=REJECTED;error=AGREEMENT_TRANSITION_REFUSED
+usable-within-active-window|USABLE|state=ACTIVE;now=2026-12-05T08:00:00Z;valid_from=2026-12-01T00:00:00Z;valid_until=2026-12-31T23:59:59Z|status=ACCEPTED;usable=true
+unusable-when-suspended|USABLE|state=SUSPENDED;now=2026-12-05T08:00:00Z;valid_from=2026-12-01T00:00:00Z;valid_until=2026-12-31T23:59:59Z|status=ACCEPTED;usable=false
+unusable-after-validity|USABLE|state=ACTIVE;now=2027-01-05T08:00:00Z;valid_from=2026-12-01T00:00:00Z;valid_until=2026-12-31T23:59:59Z|status=ACCEPTED;usable=false;derived_state=EXPIRED
+unusable-before-validity|USABLE|state=ACTIVE;now=2026-11-20T08:00:00Z;valid_from=2026-12-01T00:00:00Z;valid_until=2026-12-31T23:59:59Z|status=ACCEPTED;usable=false

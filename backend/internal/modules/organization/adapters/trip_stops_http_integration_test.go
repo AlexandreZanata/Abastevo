@@ -13,6 +13,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 // EMP-TRIP-010 through the actual composed company routes: the planner plans
@@ -22,6 +23,11 @@ import (
 // are refused with no write.
 func TestTripStopsThroughComposedCompanyHTTP(t *testing.T) {
 	x := tripStopsFixture(t)
+	// The composed FLEET-007 assessment of the assign warning reads open
+	// work-order holds (EMP-MAINT-005), like the production runtime role.
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_work_orders TO "+pgx.Identifier{x.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	router := chi.NewRouter()
 	runtimeAccounts := *x.accounts
 	runtimeAccounts.Store = accountpg.NewPGStore(x.f.Runtime)

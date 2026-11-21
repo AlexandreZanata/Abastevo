@@ -4,6 +4,7 @@ headline: Calculadora: quanto custa encher o tanque
 description: Saiba quantos litros faltam e quanto vai pagar para completar o tanque a partir do nível atual do marcador, e estime a autonomia do carro com o tanque cheio.
 summary: Litros e valor para completar o tanque a partir do marcador, com autonomia estimada.
 slug: encher-o-tanque
+primaryQuery: calculadora encher o tanque
 datePublished: 2026-11-14
 dateModified: 2026-11-17
 related:

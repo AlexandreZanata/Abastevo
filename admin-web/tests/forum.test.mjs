@@ -351,3 +351,74 @@ test('forum error mapping', async () => {
     'Serviço de fórum indisponível. Tente mais tarde.',
   );
 });
+
+test('forum validators and api client handle landing_route', async () => {
+  const { validators: v, api } = await loadModules();
+  assert.equal(v.FORUM_LANDING_ROUTE_MAX, 120);
+  assert.equal(v.forumLandingRouteError(''), null);
+  assert.equal(v.forumLandingRouteError('   '), null);
+  assert.equal(v.forumLandingRouteError('/guias/etanol-ou-gasolina/'), null);
+  assert.equal(v.forumLandingRouteError(' /ferramentas/etanol-ou-gasolina/ '), null);
+  assert.ok(v.forumLandingRouteError('/guias/etanol-ou-gasolina') !== null);
+  assert.ok(v.forumLandingRouteError('https://abastevo.com.br/guias/etanol-ou-gasolina/') !== null);
+  assert.ok(v.forumLandingRouteError('/en/guides/ethanol-vs-gasoline/') !== null);
+  assert.ok(v.forumLandingRouteError('/guias/ETANOL/') !== null);
+  assert.ok(v.forumLandingRouteError(`/guias/${'a'.repeat(115)}/`) !== null);
+
+  const recorded = [];
+  const samplePost = {
+    id: '22222222-2222-4222-8222-222222222222',
+    kind: 'EDITORIAL',
+    category: 'FUELS',
+    title: 'Rendimento do etanol no uso real',
+    excerpt: 'Resumo',
+    body_text: 'Texto',
+    publication_state: 'DRAFT',
+    visibility: 'VISIBLE',
+    revision: 1,
+    created_at: '2026-11-18T12:00:00Z',
+    updated_at: '2026-11-18T12:00:00Z',
+    published_at: null,
+    source_id: '11111111-1111-4111-8111-111111111111',
+    source_name: 'Redação Abastevo',
+    landing_route: '/guias/etanol-ou-gasolina/',
+  };
+  const fakeFetch = async (input, init) => {
+    recorded.push({ url: input, method: init.method, body: init.body });
+    if (input === '/v1/admin/session') {
+      return new Response(JSON.stringify({ csrf_token: 'csrf', expires_at: '2026-11-18T13:00:00Z' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(samplePost), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  const client = new api.AdminApi(fakeFetch);
+  await client.login('test-key');
+
+  await client.createForumPost({
+    category: 'FUELS',
+    title: 'Rendimento do etanol no uso real',
+    excerpt: 'Resumo',
+    bodyText: 'Texto',
+    landingRoute: '/guias/etanol-ou-gasolina/',
+    reason: 'criando artigo editorial com landing_route',
+  });
+  const createBody = JSON.parse(recorded[recorded.length - 1].body);
+  assert.equal(createBody.landing_route, '/guias/etanol-ou-gasolina/');
+
+  await client.editForumPost(samplePost.id, {
+    category: 'FUELS',
+    title: 'Rendimento do etanol no uso real',
+    excerpt: 'Resumo',
+    bodyText: 'Texto',
+    landingRoute: '',
+    expectedRevision: 1,
+    reason: 'removendo vínculo com guia da landing',
+  });
+  const editBody = JSON.parse(recorded[recorded.length - 1].body);
+  assert.equal(editBody.landing_route, null);
+});

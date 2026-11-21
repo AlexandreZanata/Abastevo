@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_route_card_title">運行ルート</string>
+    <string name="enterprise_route_waypoints_summary">経由地 %1$d / %2$d</string>
+    <string name="enterprise_route_heavy_vehicle_warning">普通車プロファイルで計算されています。高さ制限・重量・軸重・危険物規制は検証されません。</string>
+    <string name="enterprise_route_driving_locked">走行中は詳細編集がロックされます。停車後に操作してください。</string>
+    <string name="enterprise_route_arrival_prompt">%1$s 付近への到着を検知しました。手動で到着確定してください。</string>
+    <string name="enterprise_route_arrival_confirm">到着</string>
+    <string name="enterprise_route_pending_revision">新しいルート計画リビジョン %1$d があります。停車後に適用できます。</string>
+    <string name="enterprise_route_apply_revision">リビジョンを適用</string>
+    <string name="enterprise_route_recalculations">ルートを再計算: %1$d 回</string>
+    <string name="enterprise_route_text_stop_prompt">座標なしのテキスト経由地は確認が必要です: %1$s</string>
+    <string name="enterprise_route_degraded_map_missing">このルートのオフライン地図が不足していますが、運行は継続できます。</string>
+    <string name="enterprise_route_degraded_no_route">この区間のルートを計算できませんでしたが、運行は継続できます。</string>
+    <string name="enterprise_route_degraded_no_fix">有効な位置情報がありませんが、運行は継続できます。</string>
+    <string name="enterprise_route_degraded_voice_unavailable">音声案内が利用できません。画面表示を続行します。</string>
+    <string name="enterprise_route_attribution">© OpenStreetMap contributors</string>
+</resources>

@@ -33,6 +33,9 @@ import (
 	accountoidc "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	agreeadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/adapters"
+	agreeweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/adapters/http"
+	agreeapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/application"
 	alertsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters"
 	alertshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters/http"
 	charginghttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/http"
@@ -92,6 +95,8 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
+	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
+	orgaudit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	orgexportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
@@ -763,6 +768,88 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 			return accountService.ValidateAccess(ctx, familyID, accessToken)
 		},
 	}.RegisterRoutes(privateProfiles)
+	// EMP-STN-002/004 (Phase F7): the station's own attributed commercial
+	// source. The public reads are anonymous and source-labelled; the
+	// managed writes recheck the live price.publish scope, account and
+	// operator server-side and stay behind the same composition boundary.
+	profileCommerceReads := profileadapters.CommerceStore{Q: dbstationprofile.New(pool.Underlying())}
+	profileCommercePorts := func(r *http.Request) profileapplication.CommercePorts {
+		_ = r
+		return profileapplication.CommercePorts{
+			Grants:     profileadapters.ReviewDecisions{Pool: pool.Underlying()},
+			Prices:     profileCommerceReads,
+			Promotions: profileCommerceReads,
+			OperatorOf: func(ctx context.Context, stationID string) (string, bool, error) {
+				operator, found, err := profileManageStore.CurrentOperator(ctx, stationID)
+				if err != nil || !found {
+					return "", false, err
+				}
+				return operator.CNPJ, true, nil
+			},
+			AccountLive: func(ctx context.Context, accountID string) (bool, error) {
+				acc, found, err := accountStore.GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return acc.Active(), nil
+			},
+			Now:   time.Now,
+			NewID: newUUID,
+		}
+	}
+	profileadapters.CommerceHandler{
+		Ports: profileCommercePorts,
+		Reads: profileCommerceReads,
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+		Now: time.Now,
+	}.RegisterPublicRoutes(router)
+	profileadapters.CommerceHandler{
+		Ports: profileCommercePorts,
+		Reads: profileCommerceReads,
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+		Now: time.Now,
+	}.RegisterManageRoutes(privateProfiles)
+	// EMP-AGREE-002/005 (Phase F7): the station party's agreements, its
+	// explicit decisions and the once-only redemption confirmation. The
+	// same composition boundary holds them until the recorded Stage-D
+	// override is activated.
+	agreementCatalog, err := orgaudit.NewCatalog(agreeadapters.AuditDefinitions())
+	if err != nil {
+		return err
+	}
+	agreementStationStore := &agreeadapters.Store{
+		Pool:  pool.Underlying(),
+		Audit: auditpg.NewStore(pool.Underlying(), agreementCatalog),
+		NewID: newUUID,
+		Now:   time.Now,
+	}
+	agreeweb.StationHandler{
+		Service: agreeapp.Service{Enabled: true, Repository: agreementStationStore, Now: time.Now, NewID: newUUID, NewCode: platformjobs.NewVoucherCode},
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+		Authority: profileapplication.StationAuthority{
+			Grants: profileadapters.ReviewDecisions{Pool: pool.Underlying()},
+			OperatorOf: func(ctx context.Context, stationID string) (string, bool, error) {
+				operator, found, err := profileManageStore.CurrentOperator(ctx, stationID)
+				if err != nil || !found {
+					return "", false, err
+				}
+				return operator.CNPJ, true, nil
+			},
+			AccountLive: func(ctx context.Context, accountID string) (bool, error) {
+				acc, found, err := accountStore.GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return acc.Active(), nil
+			},
+		},
+	}.RegisterStationRoutes(privateProfiles)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	// Premium source is prepared; real payment/catalog/credential ports remain

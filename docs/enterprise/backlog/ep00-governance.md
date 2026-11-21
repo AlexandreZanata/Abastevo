@@ -37,22 +37,6 @@ gate and any real-data or implementation gate require separate verification.
 - **Risks and assumptions:** A source review alone does not prove foreground-service behavior on a device.
 - **Done when:** The authorized synthetic spike yields a reviewed report or explicit blocked evidence.
 
-### EMP-GOV-007 — Decide the panel web map and whether server-side routing is needed, with a cost model
-- **Meta:** module GOV · phase F0 · cut - · priority P1 · type DEC · size M · state TODO
-- **Objective:** Select the company panel map and decide whether server routing is necessary.
-- **Rules and use cases:** EDR-016, EDR-017, CX-10, OQ-10
-- **Depends on:** EMP-GOV-006
-- **Read first:** [decision register](../decisions.md), [architecture](../architecture.md)
-- **Scope:** in: candidate map and routing costs, license and fallback; out: adding a provider or dependency
-- **Areas:** existing: native map engine and map delivery; proposed: panel map decision
-- **Steps:** Use the tracking findings to compare feasible designs, terms, recurring costs and the list fallback.
-- **Deliverable:** A reviewed map and routing decision with cost assumptions.
-- **Acceptance:** The selected candidate meets attribution, availability and privacy needs within the recorded assumptions.
-- **Negative cases:** A map design depends on unrestricted upstream use or sends private tracks to an unreviewed provider.
-- **Validation:** V-DOC · migration: none · rollback: revert the planning record and preserve the decision history.
-- **Risks and assumptions:** License and cost assumptions need current primary sources when this task runs.
-- **Done when:** Map, fallback and server-routing decisions are recorded.
-
 ### EMP-GOV-009 — Decide organization billing: extend the Stripe/Asaas offer policy and confirm the store-policy position
 - **Meta:** module GOV · phase F0 · cut - · priority P2 · type DEC · size S · state TODO
 - **Objective:** Decide a separate organization billing offer without changing individual tiers.

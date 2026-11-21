@@ -23,13 +23,14 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
+import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class EnterpriseReferenceHttpClientTest {
     init {
         val tests = EnterpriseReferenceHttpClientTest::class.java.declaredMethods.filter { it.isAnnotationPresent(Test::class.java) }
-        check(tests.size == 5 && tests.all { it.returnType == Void.TYPE }) { "Reference HTTP tests must all be discoverable void methods" }
+        check(tests.size == 7 && tests.all { it.returnType == Void.TYPE }) { "Reference HTTP tests must all be discoverable void methods" }
     }
 
     private val account = "7b0e2a54-0000-4000-8000-000000000001"
@@ -41,6 +42,11 @@ class EnterpriseReferenceHttpClientTest {
     private val origin = "https://api.example.invalid"
     private val partition = EnterprisePartition.of(account, origin, organization)
     private val asset = """{"id":"$assetId","revision":1,"kind":"VEHICLE","usage_basis":"DISTANCE","state":"ACTIVE","name":"Caminhão <privado>","fleet_number":"F-1","plate":"ABC1D23","catalog":"fuel-products-v1","products":["DIESEL_S10"],"meters":[],"assignment":{"kind":"PRIMARY","valid_to":null}}"""
+
+    private val trip = "7b0e2a54-0000-4000-8000-000000000031"
+    private val context = EnterpriseContextSummary(partition, member, "Synthetic fleet")
+    private val voucher = """{"id":"$assetId","product":"DIESEL_S10","unit":"L","max_quantity_milli":20000,"max_centavos":12000,"valid_until":2000000000,"state":"ISSUED"}"""
+    private val tripAnswer = """{"schema_version":1,"request_id":"$requestId","membership_id":"$member","enrollment_id":"$enrollment","field":{"trip_id":"$trip","plan":null,"expired":1,"due_soon":2,"nearest_days":3,"open_maintenance":4,"voucher":$voucher}}"""
 
     /** A server-shaped answer to the exact request that reached the network. */
     private fun answer(request: Request, mode: String = "RESET", from: Long? = null, revision: Long = 1, withAsset: Boolean = true,
@@ -173,4 +179,43 @@ class EnterpriseReferenceHttpClientTest {
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { fixture.client.pull(fixture.attempt(), null, null) } }
         assertTrue(fixture.requests.isEmpty())
     }
+
+    @Test fun tripReferenceSignsExactBodyAndReturnsOnlyCorrelatedSummary(): Unit = runBlocking {
+        val fixture = Fixture { response(it, tripAnswer) }
+        val field = checkNotNull(fixture.client.read(context, trip))
+        assertEquals(trip, field.tripId)
+        assertEquals(12000L, field.voucher?.maxCentavos)
+        assertNull(field.plan)
+        val request = fixture.requests.single()
+        val raw = Buffer().also { request.body!!.writeTo(it) }.readByteArray()
+        assertEquals("/v1/orgs/$organization/sync/reference", fixture.signed.single().first)
+        assertArrayEquals(raw, fixture.signed.single().second)
+        val body = JSONObject(raw.decodeToString())
+        assertTrue(body.isNull("cursor"))
+        assertEquals(trip, body.getString("trip_id"))
+        assertEquals(member, body.getString("membership_id"))
+        assertEquals(enrollment, body.getString("enrollment_id"))
+        assertNull(Fixture { response(it, "{}", 404) }.client.read(context, trip))
+    }
+
+    @Test fun tripReferenceRejectsWrongBindingsPrivateFieldsAndLostAccess(): Unit = runBlocking {
+        val alien = "7b0e2a54-0000-4000-8000-000000000099"
+        val invalid = listOf(
+            tripAnswer.replace(requestId, alien), tripAnswer.replace(member, alien),
+            tripAnswer.replace(enrollment, alien), tripAnswer.replace(trip, alien),
+            tripAnswer.replace(voucher, voucher.dropLast(1) + ""","code":"unexpected"}"""),
+            tripAnswer + "{}",
+        )
+        for (answer in invalid) {
+            val fixture = Fixture { response(it, answer) }
+            assertThrows(IllegalArgumentException::class.java) { runBlocking { fixture.client.read(context, trip) } }
+        }
+        lateinit var fixture: Fixture
+        fixture = Fixture { fixture.fence.lock(); response(it, tripAnswer) }
+        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { fixture.client.read(context, trip) } }
+        val wrongMember = Fixture { error("an unrelated membership reached the network") }
+        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { wrongMember.client.read(context.copy(membershipId = alien), trip) } }
+        assertTrue(wrongMember.requests.isEmpty())
+    }
+
 }

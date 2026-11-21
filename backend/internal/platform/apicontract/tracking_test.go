@@ -365,3 +365,38 @@ func TestTrackingPolicyContractRoutesAndSchemas(t *testing.T) {
 		}
 	}
 }
+
+func TestTrackingF5RoutesAndMetadata(t *testing.T) {
+	doc := loadSpec(t)
+	_, router := companyRoutes(t)
+	if err := ValidateOrganizationRoutes(router, doc); err != nil {
+		t.Fatal(err)
+	}
+	expected := map[string]map[string]any{
+		"/v1/orgs/{org_id}/trips/{trip_id}/location/live/read":      {"permission": "gps.location.read_live", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/tracking/live/list":                      {"permission": "gps.location.read_live", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/trips/{trip_id}/track/replay":            {"permission": "gps.track.read", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/tracking/geofences/list":                 {"permission": "gps.geofence.manage", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/tracking/geofences/create":               {"permission": "gps.geofence.manage", "write": true, "fresh": true, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/tracking/geofences/{geofence_id}/change": {"permission": "gps.geofence.manage", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/routes/plans/read":                       {"permission": "route.plan.manage", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/routes/plans/save":                       {"permission": "route.plan.manage", "write": true, "fresh": true, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/routes/suggestions/evaluate":             {"permission": "route.plan.manage", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+	}
+	for path, want := range expected {
+		p := doc.Paths.Value(path)
+		if p == nil || p.Post == nil {
+			t.Fatal("missing F5 route in OpenAPI", path)
+		}
+		raw, _ := json.Marshal(p.Post.Extensions["x-abastevo-organization"])
+		var got map[string]any
+		if json.Unmarshal(raw, &got) != nil || len(got) != len(want) {
+			t.Fatal("F5 route guard metadata drift", path, got)
+		}
+		for k, v := range want {
+			if wantJSON, _ := json.Marshal(v); string(wantJSON) != string(mustJSON(t, got[k])) {
+				t.Fatal("F5 route guard metadata mismatch", path, k, string(wantJSON), string(mustJSON(t, got[k])))
+			}
+		}
+	}
+}

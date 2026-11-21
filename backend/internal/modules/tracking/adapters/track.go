@@ -15,14 +15,17 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// AuditDefinitions registers the recorded-track access vocabulary
-// (EMP-PRIV-005 LOCATION_TRACK, EMP-GPS-012).
-func AuditDefinitions() []audit.Definition { return audit.AccessDefinitions(audit.LocationTrack) }
+// AuditDefinitions registers the live-location and recorded-track access
+// vocabularies (EMP-PRIV-005 LOCATION_LIVE / LOCATION_TRACK, EMP-GPS-007/012).
+func AuditDefinitions() []audit.Definition {
+	return audit.AccessDefinitions(audit.LocationLive, audit.LocationTrack)
+}
 
 // TrackAuthority re-proves gps.track.read over one stored trip inside the
 // read transaction with the company proof (EMP-GPS-012).
@@ -102,6 +105,17 @@ func (s *TrackStore) ReadTrack(ctx context.Context, scope kernel.OrgScope, actor
 		case !errors.Is(err, app.ErrNotFound):
 			return err
 		}
+		effectiveEnd, retentionDays, dbNow, err := tripRetentionWindowTx(ctx, tx, scope, request.TripID)
+		if err != nil {
+			return err
+		}
+		expired, err := domain.RawTrackExpired(effectiveEnd, retentionDays, dbNow)
+		if err != nil {
+			return err
+		}
+		if expired {
+			return nil
+		}
 		rows, err := tx.Query(ctx, `SELECT seq,source,received_at,received_count,stored_count,duplicate_count,outside_session_count,mock_count,collected_at,lat_e7,lon_e7,accuracy_m,speed_cm_s,bearing_deg,coarse
  FROM org_tracking_segments WHERE org_id=$1 AND trip_id=$2 AND seq>$3 ORDER BY seq LIMIT $4`, scope.OrgID().String(), request.TripID, request.AfterSequence, request.Limit+1)
 		if err != nil {
@@ -123,7 +137,11 @@ func (s *TrackStore) ReadTrack(ctx context.Context, scope kernel.OrgScope, actor
 			}
 			g.ReceivedAt = g.ReceivedAt.UTC()
 			for i := range at {
-				g.Fixes = append(g.Fixes, app.TrackFix{At: at[i].UTC(), Lat: lat[i], Lon: lon[i], Accuracy: accuracy[i], Speed: speed[i], Bearing: bearing[i], Coarse: coarse[i]})
+				ts := at[i].UTC()
+				if effectiveEnd != nil && ts.After(effectiveEnd.UTC()) {
+					continue
+				}
+				g.Fixes = append(g.Fixes, app.TrackFix{At: ts, Lat: lat[i], Lon: lon[i], Accuracy: accuracy[i], Speed: speed[i], Bearing: bearing[i], Coarse: coarse[i]})
 			}
 			view.Segments = append(view.Segments, g)
 		}

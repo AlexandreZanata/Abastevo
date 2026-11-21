@@ -27,6 +27,7 @@ import {
   endDateError,
   forumBodyError,
   forumExcerptError,
+  forumLandingRouteError,
   forumTitleError,
   githubLoginError,
   isClaimState,
@@ -1136,6 +1137,8 @@ function renderSelectedForumPost(detail: ForumPostDetail): void {
   el<HTMLElement>('forum-detail-visibility').textContent = detail.visibility;
   el<HTMLElement>('forum-detail-revision').textContent = String(detail.revision);
   el<HTMLElement>('forum-detail-source').textContent = detail.source_name;
+  const landingRoute = detail.landing_route ?? detail.LandingRoute ?? '';
+  el<HTMLElement>('forum-detail-landing-route').textContent = landingRoute || '—';
   el<HTMLElement>('forum-detail-created').textContent = formatDateTime(detail.created_at);
   el<HTMLElement>('forum-detail-updated').textContent = formatDateTime(detail.updated_at);
   el<HTMLElement>('forum-detail-published').textContent = formatDateTime(detail.published_at);
@@ -1144,6 +1147,7 @@ function renderSelectedForumPost(detail: ForumPostDetail): void {
   el<HTMLInputElement>('forum-edit-title-input').value = detail.title;
   el<HTMLTextAreaElement>('forum-edit-excerpt-input').value = detail.excerpt;
   el<HTMLTextAreaElement>('forum-edit-body-input').value = detail.body_text;
+  el<HTMLInputElement>('forum-edit-landing-route-input').value = landingRoute;
   el<HTMLTextAreaElement>('forum-edit-reason').value = '';
   setAlert('forum-edit-error', '');
 
@@ -1212,6 +1216,7 @@ function wireForum(): void {
     const title = el<HTMLInputElement>('forum-create-title-input').value;
     const excerpt = el<HTMLTextAreaElement>('forum-create-excerpt-input').value;
     const bodyText = el<HTMLTextAreaElement>('forum-create-body-input').value;
+    const landingRoute = el<HTMLInputElement>('forum-create-landing-route-input').value;
     const reason = el<HTMLTextAreaElement>('forum-create-reason').value;
 
     const tErr = forumTitleError(title);
@@ -1229,6 +1234,11 @@ function wireForum(): void {
       setAlert('forum-create-error', bErr);
       return;
     }
+    const lrErr = forumLandingRouteError(landingRoute);
+    if (lrErr !== null) {
+      setAlert('forum-create-error', lrErr);
+      return;
+    }
     const rErr = reasonError(reason);
     if (rErr !== null) {
       setAlert('forum-create-error', rErr);
@@ -1242,11 +1252,13 @@ function wireForum(): void {
           title: title.trim(),
           excerpt: excerpt.trim(),
           bodyText: bodyText.trim(),
+          landingRoute: landingRoute.trim(),
           reason: reason.trim(),
         });
         el<HTMLInputElement>('forum-create-title-input').value = '';
         el<HTMLTextAreaElement>('forum-create-excerpt-input').value = '';
         el<HTMLTextAreaElement>('forum-create-body-input').value = '';
+        el<HTMLInputElement>('forum-create-landing-route-input').value = '';
         el<HTMLTextAreaElement>('forum-create-reason').value = '';
         setAlert('forum-create-error', '');
         selectedForumPost = post;
@@ -1268,6 +1280,7 @@ function wireForum(): void {
     const title = el<HTMLInputElement>('forum-edit-title-input').value;
     const excerpt = el<HTMLTextAreaElement>('forum-edit-excerpt-input').value;
     const bodyText = el<HTMLTextAreaElement>('forum-edit-body-input').value;
+    const landingRoute = el<HTMLInputElement>('forum-edit-landing-route-input').value;
     const reason = el<HTMLTextAreaElement>('forum-edit-reason').value;
 
     const tErr = forumTitleError(title);
@@ -1285,6 +1298,11 @@ function wireForum(): void {
       setAlert('forum-edit-error', bErr);
       return;
     }
+    const lrErr = forumLandingRouteError(landingRoute);
+    if (lrErr !== null) {
+      setAlert('forum-edit-error', lrErr);
+      return;
+    }
     const rErr = reasonError(reason);
     if (rErr !== null) {
       setAlert('forum-edit-error', rErr);
@@ -1298,6 +1316,7 @@ function wireForum(): void {
           title: title.trim(),
           excerpt: excerpt.trim(),
           bodyText: bodyText.trim(),
+          landingRoute: landingRoute.trim(),
           expectedRevision: selectedForumPost.revision,
           reason: reason.trim(),
         });

@@ -151,7 +151,7 @@ func TestForumPagesOnTheGeneratedPortal(t *testing.T) {
 		if !ok {
 			t.Fatalf("missing forum page %s", path)
 		}
-		if head := parseHead(body); head.Robots != "index,follow" {
+		if head := parseHead(body); head.Robots != robotsIndexable {
 			t.Errorf("%s robots = %q", path, head.Robots)
 		}
 	}
@@ -479,4 +479,68 @@ func TestForumSinglePostKeepsThreeInboundLinks(t *testing.T) {
 	if err != nil || result.MinInbound["forum"] < DefaultMinInboundLinks {
 		t.Fatalf("single-post forum link graph = %+v, %v", result.MinInbound, err)
 	}
+}
+
+func TestForumLandingRouteGuideChip(t *testing.T) {
+	t.Run("renders_chip_when_landing_enabled_and_route_allowlisted", func(t *testing.T) {
+		posts := seoForumFixture()
+		posts[0].LandingRoute = "/guias/etanol-ou-gasolina/"
+		posts[3].LandingRoute = "/ferramentas/etanol-ou-gasolina/"
+		posts[1].LandingRoute = "/guias/rota-nao-listada/"
+		snapshot := writeSEOFixtureWithoutForum(t)
+		writeForumSection(t, snapshot, posts)
+		out := filepath.Join(t.TempDir(), "portal")
+		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, Indexable: true, SiteURL: seoSite, LandingURL: seoSite}); err != nil {
+			t.Fatal(err)
+		}
+
+		post1 := readPortal(t, out, forumPost1)
+		wantChip1 := `<a class="tag" href="/guias/etanol-ou-gasolina/">Guia completo: quando o etanol compensa mais que a gasolina</a>`
+		if !strings.Contains(post1, wantChip1) {
+			t.Errorf("post 1 missing guide chip %q", wantChip1)
+		}
+
+		post4 := readPortal(t, out, forumPost4)
+		wantChip4 := `<a class="tag" href="/ferramentas/etanol-ou-gasolina/">Calculadora: etanol ou gasolina</a>`
+		if !strings.Contains(post4, wantChip4) {
+			t.Errorf("post 4 missing tool chip %q", wantChip4)
+		}
+
+		post2 := readPortal(t, out, forumPost2)
+		if strings.Contains(post2, "/guias/rota-nao-listada/") {
+			t.Error("unallowlisted landing route leaked as chip")
+		}
+
+		if _, err := Verify(out, VerifyOptions{SiteURL: seoSite}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := VerifyLinkGraph(out, LinkGraphOptions{SiteURL: seoSite}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("omits_chip_when_landing_disabled", func(t *testing.T) {
+		posts := seoForumFixture()
+		posts[0].LandingRoute = "/guias/etanol-ou-gasolina/"
+		snapshot := writeSEOFixtureWithoutForum(t)
+		writeForumSection(t, snapshot, posts)
+		out := filepath.Join(t.TempDir(), "portal")
+		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, Indexable: true, SiteURL: seoSite, LandingURL: ""}); err != nil {
+			t.Fatal(err)
+		}
+		post1 := readPortal(t, out, forumPost1)
+		if strings.Contains(post1, `href="/guias/etanol-ou-gasolina/"`) {
+			t.Error("landing guide chip rendered while LandingURL is empty")
+		}
+	})
+
+	t.Run("rejects_malformed_landing_route", func(t *testing.T) {
+		posts := seoForumFixture()
+		posts[0].LandingRoute = "/guias/etanol-ou-gasolina"
+		snapshot := writeSEOFixtureWithoutForum(t)
+		writeForumSection(t, snapshot, posts)
+		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: filepath.Join(t.TempDir(), "portal"), Indexable: true, SiteURL: seoSite, LandingURL: seoSite}); err == nil {
+			t.Fatal("malformed landing_route accepted by Generate")
+		}
+	})
 }

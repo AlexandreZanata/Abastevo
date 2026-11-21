@@ -62,6 +62,16 @@ func NewUUIDv4() (string, error) {
 		hexed[16:20] + "-" + hexed[20:32], nil
 }
 
+// NewVoucherCode mints one one-time voucher code from crypto/rand
+// (EMP-AGREE-004). Only its SHA-256 is ever stored or logged.
+func NewVoucherCode() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b[:]), nil
+}
+
 func mustUUID(text string) (pgtype.UUID, error) {
 	raw, err := hex.DecodeString(stripDashes(text))
 	if err != nil || len(raw) != 16 {

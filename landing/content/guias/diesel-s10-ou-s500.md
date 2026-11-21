@@ -4,6 +4,7 @@ headline: Diesel S10 ou S500: qual a diferença e qual usar no seu veículo
 description: O que significam S10 e S500, por que veículos a diesel mais novos exigem S10, o que acontece ao usar o diesel errado e como conferir a recomendação do fabricante.
 summary: O que o número indica, quem precisa de S10 e o que acontece se usar o diesel errado.
 slug: diesel-s10-ou-s500
+primaryQuery: diesel s10 ou s500
 category: escolher-combustivel
 tags: [diesel, diesel-s10, emissoes, qualidade, manutencao]
 datePublished: 2026-11-14

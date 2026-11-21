@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_mgmt_card_title">Field management</string>
+    <string name="enterprise_mgmt_compliance_expired">%1$d expired document(s) or licence(s) require attention.</string>
+    <string name="enterprise_mgmt_compliance_due_soon">%1$d document(s) or licence(s) expire soon (nearest in %2$d days).</string>
+    <string name="enterprise_mgmt_compliance_ok">All assigned documents and licences are within validity.</string>
+    <string name="enterprise_mgmt_maint_requests_open">%1$d open maintenance request(s) for this vehicle.</string>
+    <string name="enterprise_mgmt_internal_dispense_queued">%1$d internal tank dispensing record(s) queued offline.</string>
+    <string name="enterprise_mgmt_request_maintenance">Request maintenance</string>
+</resources>

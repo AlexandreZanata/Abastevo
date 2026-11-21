@@ -201,6 +201,9 @@ func TestChecklistRunQueueOrdersAttentionFirstAndIsOrganizationScoped(t *testing
 func TestChecklistRunQueueThroughComposedCompanyHTTP(t *testing.T) {
 	x := runFixture(t)
 	fx := x.deviceFixtureState
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_work_orders TO "+pgx.Identifier{x.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	router := chi.NewRouter()
 	runtimeAccounts := *x.accounts
 	runtimeAccounts.Store = accountpg.NewPGStore(x.f.Runtime)

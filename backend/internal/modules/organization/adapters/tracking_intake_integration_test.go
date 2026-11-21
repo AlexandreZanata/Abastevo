@@ -40,7 +40,21 @@ type trackingState struct {
 func trackingGrants(t *testing.T, fx legalFixtureState) {
 	t.Helper()
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
-	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_tracking_policies TO "+role+";GRANT SELECT,INSERT ON org_tracking_sessions,org_tracking_transitions,org_tracking_segments TO "+role); err != nil {
+	if _, err := fx.f.Admin.Exec(t.Context(), `GRANT SELECT ON org_tracking_policies TO `+role+`;
+ GRANT SELECT,INSERT ON org_tracking_sessions,org_tracking_transitions,org_tracking_segments TO `+role); err != nil {
+		t.Fatal(err)
+	}
+	var hasF5 bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('org_tracking_live_positions') IS NOT NULL`).Scan(&hasF5); err != nil {
+		t.Fatal(err)
+	}
+	if !hasF5 {
+		return
+	}
+	if _, err := fx.f.Admin.Exec(t.Context(), `GRANT SELECT,INSERT ON org_tracking_purge_receipts,org_tracking_geofence_events,org_tracking_alerts TO `+role+`;
+ GRANT SELECT,INSERT,UPDATE ON org_tracking_live_positions,org_tracking_geofence_states TO `+role+`;
+ GRANT SELECT ON org_tracking_settings,org_tracking_geofences TO `+role+`;
+ GRANT USAGE ON SEQUENCE org_tracking_live_revision_seq TO `+role); err != nil {
 		t.Fatal(err)
 	}
 }

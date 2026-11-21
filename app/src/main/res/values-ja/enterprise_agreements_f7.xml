@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_agreement_card_title">給油の承認</string>
+    <string name="enterprise_agreement_voucher_limits">最大 %1$d milli、%2$d センターボまで。</string>
+    <string name="enterprise_agreement_voucher_valid_until">%1$s まで有効。</string>
+    <string name="enterprise_agreement_voucher_expired">承認の有効期限が切れました。</string>
+    <string name="enterprise_agreement_voucher_locked">無効な試行のため承認がロックされました。</string>
+    <string name="enterprise_agreement_announced_source">ステーション告知価格は独立した商用ソースです。</string>
+    <string name="enterprise_agreement_promotions_active">提携ステーションのアクティブなプロモーション %1$d 件。</string>
+</resources>

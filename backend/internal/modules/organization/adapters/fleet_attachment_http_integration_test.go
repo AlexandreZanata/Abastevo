@@ -30,7 +30,7 @@ func TestFleetAttachmentsThroughComposedCompanyHTTP(t *testing.T) {
 	_ = attachmentStore(t, fx)
 	_ = meterStore(t, fx)
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
-	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role); err != nil {
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role+"; GRANT SELECT ON org_work_orders TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	accounts := &account.Service{Clock: onboardingClock{time.Now().UTC().Truncate(time.Second)}, Store: accountpg.NewPGStore(fx.f.Admin), Hasher: accountdomain.SHA256Hasher{}, IDGen: jobs.NewUUIDv4, TokenGen: accountdomain.GenerateToken, KeyGen: accountdomain.GenerateAccountKey}
@@ -185,10 +185,9 @@ func TestFleetAttachmentsThroughComposedCompanyHTTP(t *testing.T) {
 		}
 	}
 	availability := call("implement availability", base+"/"+harrow+"/availability/read", map[string]any{}, 200)
-	// EMP-TRIP-002 replaced the "no active-use source" port with trips, so
-	// only the maintenance-hold source is still missing (merge 2026-11-15).
-	if missing := availability["missing_sources"].([]any); availability["availability"] != "AVAILABLE" || len(missing) != 1 || missing[0] != "MAINTENANCE_HOLD" {
-		t.Fatal("implement availability with the trip source", availability)
+	// F6 maintenance holds joined active-use trips, so all sources are present.
+	if missing := availability["missing_sources"].([]any); availability["availability"] != "AVAILABLE" || len(missing) != 0 {
+		t.Fatal("implement availability with live maintenance hold source", availability)
 	}
 	// AUTH-006: both assets must be covered by fresh fleet.asset.manage.
 	login(sulFleet.family, sulFleet.token)

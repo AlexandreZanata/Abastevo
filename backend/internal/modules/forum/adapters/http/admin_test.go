@@ -678,6 +678,7 @@ func TestForumAdmin_ErrorMapping(t *testing.T) {
 		{domain.ErrTitleTooLong, http.StatusBadRequest, "forum.invalid"},
 		{domain.ErrExcerptTooLong, http.StatusBadRequest, "forum.invalid"},
 		{domain.ErrBodyTooLong, http.StatusBadRequest, "forum.invalid"},
+		{domain.ErrInvalidLandingRoute, http.StatusBadRequest, "forum.invalid"},
 		{domain.ErrInvalidTransition, http.StatusBadRequest, "forum.invalid"},
 		{domain.ErrInvalidCursor, http.StatusBadRequest, "forum.invalid"},
 	} {
@@ -695,5 +696,83 @@ func TestForumAdmin_ErrorMapping(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil || payload.Error.Code != tc.body {
 			t.Fatalf("err=%v expected code %s, got %s (body=%s)", tc.err, tc.body, payload.Error.Code, w.Body.String())
 		}
+	}
+}
+
+func TestForumAdmin_LandingRouteLifecycle(t *testing.T) {
+	h := setupTestHarness(true)
+	sourceID := "11111111-1111-4111-8111-111111111111"
+	h.store.sources[sourceID] = &domain.Source{
+		ID:                 sourceID,
+		Code:               "abastevo-editorial",
+		Name:               "Redação Abastevo",
+		Kind:               domain.SourceKindAbastevo,
+		RightsStatus:       domain.RightsApproved,
+		PublicationEnabled: true,
+	}
+
+	// Invalid landing_route -> 400 forum.invalid
+	badReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts", map[string]any{
+		"kind":          "EDITORIAL",
+		"category":      "FUELS",
+		"title":         "Rendimento do etanol no uso real",
+		"excerpt":       "Resumo.",
+		"body_text":     "Texto.",
+		"source_id":     sourceID,
+		"landing_route": "/en/guides/ethanol-vs-gasoline/",
+		"reason":        "testando validação de landing_route inválida",
+	})
+	wBad := httptest.NewRecorder()
+	h.router.ServeHTTP(wBad, badReq)
+	if wBad.Code != http.StatusBadRequest || !strings.Contains(wBad.Body.String(), `"forum.invalid"`) {
+		t.Fatalf("bad landing_route got %d: %s", wBad.Code, wBad.Body.String())
+	}
+
+	// Create with valid landing_route -> 201 + trimmed landing_route in JSON
+	createReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts", map[string]any{
+		"kind":          "EDITORIAL",
+		"category":      "FUELS",
+		"title":         "Rendimento do etanol no uso real",
+		"excerpt":       "Resumo.",
+		"body_text":     "Texto.",
+		"source_id":     sourceID,
+		"landing_route": "  /guias/etanol-ou-gasolina/  ",
+		"reason":        "criando editorial com vínculo explícito para guia",
+	})
+	wCreate := httptest.NewRecorder()
+	h.router.ServeHTTP(wCreate, createReq)
+	if wCreate.Code != http.StatusCreated {
+		t.Fatalf("create got %d: %s", wCreate.Code, wCreate.Body.String())
+	}
+	var created domain.Post
+	if err := json.Unmarshal(wCreate.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode created: %v", err)
+	}
+	if created.LandingRoute == nil || *created.LandingRoute != "/guias/etanol-ou-gasolina/" {
+		t.Fatalf("created.LandingRoute = %v, want /guias/etanol-ou-gasolina/", created.LandingRoute)
+	}
+
+	// Clear landing_route via edit with ""
+	clearReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts/"+created.ID+"/edit", map[string]any{
+		"category":          "FUELS",
+		"title":             created.Title,
+		"excerpt":           created.Excerpt,
+		"body_text":         created.BodyText,
+		"landing_route":     "",
+		"expected_revision": created.Revision,
+		"reason":            "limpando landing_route pela tela administrativa",
+	})
+	clearReq.Header.Set("Idempotency-Key", "88888888-8888-4888-8888-888888888888")
+	wClear := httptest.NewRecorder()
+	h.router.ServeHTTP(wClear, clearReq)
+	if wClear.Code != http.StatusOK {
+		t.Fatalf("clear edit got %d: %s", wClear.Code, wClear.Body.String())
+	}
+	var edited domain.Post
+	if err := json.Unmarshal(wClear.Body.Bytes(), &edited); err != nil {
+		t.Fatalf("decode edited: %v", err)
+	}
+	if edited.LandingRoute != nil {
+		t.Fatalf("edited.LandingRoute = %v, want nil", *edited.LandingRoute)
 	}
 }

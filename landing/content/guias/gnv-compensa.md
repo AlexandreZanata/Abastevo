@@ -4,6 +4,7 @@ headline: GNV compensa? Como fazer a conta antes de instalar o kit
 description: Quando o GNV compensa: custo do kit, instalação por oficina registrada no Inmetro, inspeção, perda de porta-malas e a conta de retorno pelo custo por quilômetro.
 summary: Custo por quilômetro, tempo de retorno do kit e os cuidados de regularização.
 slug: gnv-compensa
+primaryQuery: gnv compensa
 category: escolher-combustivel
 tags: [gnv, consumo, economia, custo-por-km, inmetro]
 datePublished: 2026-11-14

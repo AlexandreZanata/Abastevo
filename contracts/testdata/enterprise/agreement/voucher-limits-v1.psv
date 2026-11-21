@@ -1,0 +1,17 @@
+id|operation|args|expected
+issue-bounded|ISSUE|product=DIESEL_S10;unit=L;max_quantity_milli=200000;max_centavos=120000;valid_until=2026-12-10T23:59:59Z;now=2026-12-01T08:00:00Z|status=ACCEPTED;state=ISSUED
+issue-refuses-inverted-expiry|ISSUE|product=DIESEL_S10;unit=L;max_quantity_milli=200000;max_centavos=120000;valid_until=2026-11-01T00:00:00Z;now=2026-12-01T08:00:00Z|status=REJECTED;error=AUTHORIZATION_EXPIRY_INVALID
+issue-refuses-unbounded-quantity|ISSUE|product=DIESEL_S10;unit=L;max_quantity_milli=0;max_centavos=120000;valid_until=2026-12-10T23:59:59Z;now=2026-12-01T08:00:00Z|status=REJECTED;error=AUTHORIZATION_LIMITS_INVALID
+issue-refuses-unbounded-total|ISSUE|product=DIESEL_S10;unit=L;max_quantity_milli=200000;max_centavos=0;valid_until=2026-12-10T23:59:59Z;now=2026-12-01T08:00:00Z|status=REJECTED;error=AUTHORIZATION_LIMITS_INVALID
+issue-refuses-empty-product|ISSUE|product=;unit=L;max_quantity_milli=200000;max_centavos=120000;valid_until=2026-12-10T23:59:59Z;now=2026-12-01T08:00:00Z|status=REJECTED;error=AUTHORIZATION_PRODUCT_INVALID
+issue-refuses-empty-unit|ISSUE|product=DIESEL_S10;unit=;max_quantity_milli=200000;max_centavos=120000;valid_until=2026-12-10T23:59:59Z;now=2026-12-01T08:00:00Z|status=REJECTED;error=AUTHORIZATION_PRODUCT_INVALID
+cancel-issued|CANCEL|state=ISSUED;now=2026-12-02T08:00:00Z|status=ACCEPTED;state=CANCELLED
+cancel-redeemed-refused|CANCEL|state=REDEEMED;now=2026-12-02T08:00:00Z|status=REJECTED;error=AUTHORIZATION_TRANSITION_REFUSED
+cancel-locked-refused|CANCEL|state=LOCKED;now=2026-12-02T08:00:00Z|status=REJECTED;error=AUTHORIZATION_TRANSITION_REFUSED
+eligible-when-issued-and-live|ELIGIBLE|state=ISSUED;now=2026-12-02T08:00:00Z;valid_until=2026-12-10T23:59:59Z|status=ACCEPTED;eligible=true;derived_state=ISSUED
+expired-at-read|ELIGIBLE|state=ISSUED;now=2026-12-11T08:00:00Z;valid_until=2026-12-10T23:59:59Z|status=ACCEPTED;eligible=false;derived_state=EXPIRED
+ineligible-when-cancelled|ELIGIBLE|state=CANCELLED;now=2026-12-02T08:00:00Z;valid_until=2026-12-10T23:59:59Z|status=ACCEPTED;eligible=false;derived_state=CANCELLED
+ineligible-when-redeemed|ELIGIBLE|state=REDEEMED;now=2026-12-02T08:00:00Z;valid_until=2026-12-10T23:59:59Z|status=ACCEPTED;eligible=false;derived_state=REDEEMED
+ineligible-when-locked|ELIGIBLE|state=LOCKED;now=2026-12-02T08:00:00Z;valid_until=2026-12-10T23:59:59Z|status=ACCEPTED;eligible=false;derived_state=LOCKED
+attempt-locks-at-five|ATTEMPT|state=ISSUED;failed_attempts=4|status=ACCEPTED;state=LOCKED;failed_attempts=5
+attempt-below-bound-stays|ATTEMPT|state=ISSUED;failed_attempts=3|status=ACCEPTED;state=ISSUED;failed_attempts=4

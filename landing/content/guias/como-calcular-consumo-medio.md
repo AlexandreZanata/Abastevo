@@ -4,6 +4,7 @@ headline: Como calcular o consumo médio do carro, passo a passo
 description: Passo a passo do método tanque a tanque para medir o consumo médio do carro em km/l, os erros que distorcem a conta e como transformar consumo em custo por km.
 summary: O método tanque a tanque, os erros comuns e como chegar ao custo por quilômetro.
 slug: como-calcular-consumo-medio
+primaryQuery: como calcular consumo médio
 category: economia
 tags: [consumo, economia, custo-por-km, carro-flex, medicao]
 datePublished: 2026-11-14

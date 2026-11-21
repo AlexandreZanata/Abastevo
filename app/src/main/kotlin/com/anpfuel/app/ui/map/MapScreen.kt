@@ -182,6 +182,7 @@ fun MapScreen(
     }
 
     fun startGuidance() {
+        if (planner?.ui?.value?.tripPreview == true) return
         val request = planner?.request(routeLanguage) ?: return
         val permissions = buildList {
             if (!granted(Manifest.permission.ACCESS_FINE_LOCATION)) {
@@ -208,10 +209,10 @@ fun MapScreen(
         routeOnMap = false
     }
 
-    fun openPoint(point: RoutePoint) {
+    fun openPoint(point: RoutePoint, tripAvoid: Set<RoadAvoidance>? = null) {
         val activePlanner = planner ?: return
         guidance.clearInactiveStatus()
-        activePlanner.prepareDestination(point)
+        activePlanner.prepareDestination(point, tripAvoid)
         discovery?.clearSelection()
         sheet?.clear()
         routeError = false
@@ -235,6 +236,7 @@ fun MapScreen(
                 Toast.makeText(context, context.getString(R.string.map_route_stop_first), Toast.LENGTH_SHORT).show()
             } else when (routeTarget) {
                 is MapRouteTarget.Point -> openPoint(routeTarget.point)
+                is MapRouteTarget.TripStop -> openPoint(routeTarget.point, routeTarget.avoid)
                 is MapRouteTarget.Address -> {
                     guidance.clearInactiveStatus()
                     planner.prepareDestination(null)
@@ -248,7 +250,12 @@ fun MapScreen(
         }
     }
 
-    DisposableEffect(planner) { onDispose { planner?.cancelOriginLookup() } }
+    DisposableEffect(planner) {
+        onDispose {
+            if (planner?.ui?.value?.tripPreview == true) planner.cancel()
+            else planner?.cancelOriginLookup()
+        }
+    }
     BackHandler(enabled = (routeOnMap || guidanceUi.arrived) && !guidanceUi.active && !showRoute) { closeRoute() }
 
     LaunchedEffect(initialPlan?.id, planner) {
@@ -274,7 +281,7 @@ fun MapScreen(
         onSavePlan = saved?.let { vm -> { name, points, avoid -> vm.saveRoutePlan(name, points, avoid) } },
         savedMessage = savedUi?.message,
         initialDestinationQuery = destinationQuery,
-        onDestinationPicked = if (destinationQuery.isBlank()) null else ::openPoint,
+        onDestinationPicked = if (destinationQuery.isBlank()) null else { point -> openPoint(point) },
     )
 
     val overlayLabels = MapOverlayLabels(

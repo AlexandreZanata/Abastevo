@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_agreement_card_title">Autorizações de abastecimento</string>
+    <string name="enterprise_agreement_voucher_limits">Até %1$d milli e %2$d centavos.</string>
+    <string name="enterprise_agreement_voucher_valid_until">Válido até %1$s.</string>
+    <string name="enterprise_agreement_voucher_expired">Autorização expirada.</string>
+    <string name="enterprise_agreement_voucher_locked">Autorização bloqueada após tentativas inválidas.</string>
+    <string name="enterprise_agreement_announced_source">Preços anunciados pelo posto são uma fonte comercial separada.</string>
+    <string name="enterprise_agreement_promotions_active">%1$d promoção(ões) ativa(s) em postos conveniados.</string>
+</resources>

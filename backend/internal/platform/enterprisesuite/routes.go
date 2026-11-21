@@ -14,6 +14,9 @@ import (
 
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	agreepg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/adapters"
+	agreeweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/adapters/http"
+	agreeapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/application"
 	companypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters"
 	companyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/application"
@@ -30,6 +33,9 @@ import (
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	intelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/adapters"
+	intelweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/adapters/http"
+	intelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
 	maintweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters/http"
@@ -166,6 +172,10 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
 	definitions = append(definitions, trackingpg.AuditDefinitions()...)
 	definitions = append(definitions, trackingpg.PolicyAuditDefinitions()...)
+	definitions = append(definitions, trackingpg.GeofenceAuditDefinitions()...)
+	definitions = append(definitions, trackingpg.RoutePlanAuditDefinitions()...)
+	definitions = append(definitions, intelpg.AuditDefinitions()...)
+	definitions = append(definitions, agreepg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -206,6 +216,17 @@ func Register(router chi.Router, o Options) error {
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
+		{Class: "gps.geofence", Permissions: []string{"gps.geofence.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic geofence management inherits identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
+		{Class: "route.plan", Permissions: []string{"route.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic route plan revisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
+		{Class: "stock.tank", Permissions: []string{"stock.tank.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic fuel tank configuration inherits identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "stock.movement", Permissions: []string{"stock.movement.record"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic internal stock movements inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "maint.plan", Permissions: []string{"maint.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic preventive maintenance and compliance updates inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "maint.workorder", Permissions: []string{"maint.workorder.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic work order management inherits identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "maint.review", Permissions: []string{"maint.workorder.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic work order review decisions inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "find.finding", Permissions: []string{"find.finding.resolve"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic finding review decisions and detection runs inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "org.group", Permissions: []string{"org.group.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic multi-CNPJ consolidation grant management inherits identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "agree.agreement", Permissions: []string{"agree.agreement.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic station agreement proposals and lifecycle commands inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "agree.authorization", Permissions: []string{"agree.authorization.issue"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic bounded fueling authorization issuance and cancellation inherit identity v1 write 200/hour on every axis; production measurement remains required."},
 	})
 	if err != nil {
 		return err
@@ -230,10 +251,8 @@ func Register(router chi.Router, o Options) error {
 	}
 	fleetAuthority := &orgpg.FleetAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
 	// EMP-TRIP-002 (EDR-206): an IN_PROGRESS trip is BR-FLEET-010 open work;
-	// work orders join this source when the maintenance epic delivers them.
-	// Trips are the FLEET-007 active-use source (EDR-206); NoMaintenanceHolds
-	// stays the explicit "no source" answer until maintenance holds exist.
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
+	// work orders join this source in F6 via maintpg.MaintenanceHolds.
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: maintpg.MaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
@@ -465,6 +484,31 @@ func Register(router chi.Router, o Options) error {
 	if err := trackingweb.RegisterPolicy(router, trackingapp.PolicyService{Enabled: true, Repository: trackingPolicies}, cookies, gateway, policyAuthorization); err != nil {
 		return err
 	}
+	// EMP-GPS-007 / 009 / 013 / 014 / ROUTE-002..008 F5 live navigation & operations.
+	livePositions := &trackingpg.LiveStore{Pool: o.Pool, Authority: &orgpg.LiveAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure},
+		Access: auditpg.AccessLog{Runner: auditStore}, NewID: jobs.NewUUIDv4}
+	liveAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.LiveRecords{}, Structure: tripStructure, Now: time.Now}
+	if err := trackingweb.RegisterLive(router, trackingapp.LiveService{Enabled: true, Repository: livePositions}, cookies, gateway, liveAuthorization, tracks); err != nil {
+		return err
+	}
+	replays := &trackingpg.ReplayStore{Pool: o.Pool, Authority: &orgpg.TrackAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure},
+		Access: auditpg.AccessLog{Runner: auditStore}, NewID: jobs.NewUUIDv4}
+	if err := trackingweb.RegisterReplay(router, trackingapp.ReplayService{Enabled: true, Repository: replays}, cookies, gateway, trackAuthorization, tracks); err != nil {
+		return err
+	}
+	geofenceStructure := &orgpg.ResourceStructure{Kind: orgpg.GeofenceStructure, Pool: o.Pool}
+	geofences := &trackingpg.GeofenceStore{Pool: o.Pool, Authority: &orgpg.GeofenceAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: geofenceStructure},
+		Audit: auditStore, NewID: jobs.NewUUIDv4}
+	geofenceAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.GeofenceRecords{}, Structure: geofenceStructure, Now: time.Now}
+	if err := trackingweb.RegisterGeofences(router, trackingapp.GeofenceService{Enabled: true, Repository: geofences}, cookies, gateway, geofenceAuthorization); err != nil {
+		return err
+	}
+	routePlans := &trackingpg.RoutePlanStore{Pool: o.Pool, Authority: &orgpg.RoutePlanAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags},
+		Audit: auditStore, NewID: jobs.NewUUIDv4}
+	routeAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.RoutePlanRecords{}, Now: time.Now}
+	if err := trackingweb.RegisterRoutes(router, trackingapp.RoutePlanService{Enabled: true, Repository: routePlans, Now: time.Now}, cookies, gateway, routeAuthorization); err != nil {
+		return err
+	}
 
 	// EMP-TRIP-008 (EDR-231): mission planning under trip.mission.manage
 	// (structure: the mission's stored unit and asset) and the assignee's own
@@ -498,6 +542,21 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore, deviceStore); err != nil {
+		return err
+	}
+	intelStore := &intelpg.Store{Pool: o.Pool, Authority: &orgpg.ManagementAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4}
+	intelAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: intelweb.ManagementRecords{}, Now: time.Now}
+	if err := intelweb.RegisterManagement(router, intelapp.Service{Enabled: true, Repository: intelStore, Now: time.Now, NewID: jobs.NewUUIDv4}, cookies, gateway, intelAuthorization); err != nil {
+		return err
+	}
+
+	// EMP-AGREE-001..006 (Phase F7): station agreements, negotiated price
+	// terms, bounded fueling authorizations and the station's once-only
+	// redemption settlement reads under agree.agreement.manage and
+	// agree.authorization.issue.
+	agreementStore := &agreepg.Store{Pool: o.Pool, Authority: &orgpg.AgreementAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4}
+	agreementAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: agreeweb.AgreementRecords{}, Now: time.Now}
+	if err := agreeweb.RegisterCompany(router, agreeapp.Service{Enabled: true, Repository: agreementStore, Now: time.Now, NewID: jobs.NewUUIDv4, NewCode: jobs.NewVoucherCode}, cookies, gateway, agreementAuthorization); err != nil {
 		return err
 	}
 

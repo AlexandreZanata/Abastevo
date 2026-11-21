@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_mgmt_card_title">Gestion sur le terrain</string>
+    <string name="enterprise_mgmt_compliance_expired">%1$d document(s) ou permis expiré(s) nécessitent attention.</string>
+    <string name="enterprise_mgmt_compliance_due_soon">%1$d document(s) ou permis expirent bientôt (prochain dans %2$d jours).</string>
+    <string name="enterprise_mgmt_compliance_ok">Tous les documents et permis associés sont valides.</string>
+    <string name="enterprise_mgmt_maint_requests_open">%1$d demande(s) de maintenance ouverte(s) pour ce véhicule.</string>
+    <string name="enterprise_mgmt_internal_dispense_queued">%1$d ravitaillement(s) de cuve interne en file hors ligne.</string>
+    <string name="enterprise_mgmt_request_maintenance">Demander une maintenance</string>
+</resources>

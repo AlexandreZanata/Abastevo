@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_route_card_title">Маршрут поездки</string>
+    <string name="enterprise_route_waypoints_summary">Остановка %1$d из %2$d</string>
+    <string name="enterprise_route_heavy_vehicle_warning">Расчёт выполнен для профиля легкового автомобиля; ограничения по высоте, массе, нагрузке на ось и опасным грузам не проверяются.</string>
+    <string name="enterprise_route_driving_locked">Автомобиль в движении: подробное редактирование маршрута приостановлено до остановки.</string>
+    <string name="enterprise_route_arrival_prompt">Зафиксировано прибытие рядом с %1$s. Подтвердите вручную.</string>
+    <string name="enterprise_route_arrival_confirm">Прибыл</string>
+    <string name="enterprise_route_pending_revision">Доступна новая ревизия плана %1$d; примените после остановки.</string>
+    <string name="enterprise_route_apply_revision">Применить ревизию</string>
+    <string name="enterprise_route_recalculations">Маршрут пересчитан %1$d раз</string>
+    <string name="enterprise_route_text_stop_prompt">Текстовая остановка без координат требует подтверждения: %1$s</string>
+    <string name="enterprise_route_degraded_map_missing">Отсутствует офлайн-карта региона; поездка остаётся активной.</string>
+    <string name="enterprise_route_degraded_no_route">Не удалось построить маршрут между точками; поездка остаётся активной.</string>
+    <string name="enterprise_route_degraded_no_fix">Нет пригодного сигнала геопозиции; поездка остаётся активной.</string>
+    <string name="enterprise_route_degraded_voice_unavailable">Голосовые подсказки недоступны; визуальное ведение продолжается.</string>
+    <string name="enterprise_route_attribution">© Участники OpenStreetMap</string>
+</resources>

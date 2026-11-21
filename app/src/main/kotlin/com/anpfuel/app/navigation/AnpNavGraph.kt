@@ -640,6 +640,10 @@ fun AnpNavGraph(
                 // EMP-ROUTE-004 (EDR-345): the in-app address hand-off of the station action; the driver confirms the search result.
                 onNavigate = { query -> pendingRouteTarget = com.anpfuel.app.ui.map.MapRouteTarget.Address(query)
                     navController.navigateToTabBase(Routes.MAP) },
+                onNavigateTripStop = { target ->
+                    pendingRouteTarget = target
+                    navController.navigateToTabBase(Routes.MAP)
+                },
             )
         }
         composable(Routes.ENTERPRISE_REAUTH) {

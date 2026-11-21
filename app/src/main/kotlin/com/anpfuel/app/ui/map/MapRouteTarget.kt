@@ -1,10 +1,14 @@
 package com.anpfuel.app.ui.map
 
+import com.anpfuel.domain.routing.RoadAvoidance
 import com.anpfuel.domain.routing.RoutePoint
 
-/** A local handoff from a station action. Address matches require user selection. */
+/** Local route handoffs. Address matches require user selection. */
 sealed interface MapRouteTarget {
     data class Point(val point: RoutePoint) : MapRouteTarget
+    data class TripStop(val point: RoutePoint, val avoid: Set<RoadAvoidance>) : MapRouteTarget {
+        override fun toString(): String = "TripStop(redacted)"
+    }
     data class Address(val query: String) : MapRouteTarget
 
     companion object {

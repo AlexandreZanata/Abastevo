@@ -22,22 +22,6 @@ sequencing decision.
 - **Risks and assumptions:** Follow F7 activation, review staffing and applicable legal gates.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
 
-### EMP-ORG-012 — Organization groups and consolidation grants
-- **Meta:** module ORG · phase F6 · cut - · priority P2 · type API · size M · state TODO
-- **Objective:** Allow explicit read-only consolidation between authorized organizations.
-- **Rules and use cases:** BR-ORG-021, BR-ORG-022, BR-ORG-023, BR-ORG-024, BR-TEN-005, UC-ORG-10
-- **Depends on:** EMP-ORG-003, EMP-AUTH-006
-- **Read first:** [organization specification](../modules/organizations.md) §§4–5, [permission matrix](../permissions.md)
-- **Scope:** in: two-party grants, read-only aggregate allowlist and revocation · out: cross-organization raw data or writes
-- **Areas:** existing: organization scope and permission model · proposed: consolidation grants and read projection
-- **Steps:** Test consent, origin labels, revocation and read-time state. Prove the allowlist on synthetic organizations.
-- **Deliverable:** Scoped aggregation grants and source-labelled views.
-- **Acceptance:** Only accepted grant fields and periods are visible. Either side ends access and suspension pauses it.
-- **Negative cases:** Shared CNPJ grants visibility, expired proposal, foreign raw record, private attachments or a write through the grant.
-- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
-- **Risks and assumptions:** Separate this grant from membership and any agreement with stations.
-- **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
-
 ### EMP-ORG-013 — Archive and closure: open operations, export and retention schedule
 - **Meta:** module ORG · phase F8 · cut - · priority P2 · type API · size M · state TODO
 - **Objective:** Archive and close organizations with recoverable export and retention controls.

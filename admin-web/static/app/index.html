@@ -291,6 +291,10 @@
             Corpo do texto (até 4000 caracteres)
             <textarea id="forum-create-body-input" name="body" maxlength="4000" rows="8" required></textarea>
           </label>
+          <label class="admin-control" for="forum-create-landing-route-input">
+            Guia ou ferramenta relacionada (opcional, ex.: /guias/etanol-ou-gasolina/)
+            <input id="forum-create-landing-route-input" name="landing_route" type="text" maxlength="120" placeholder="Ex.: /guias/etanol-ou-gasolina/">
+          </label>
           <label class="admin-control" for="forum-create-reason">
             Motivo da criação (10 a 500 caracteres)
             <textarea id="forum-create-reason" name="reason" rows="2" required></textarea>
@@ -308,6 +312,7 @@
           <div><dt>Visibilidade</dt><dd id="forum-detail-visibility">—</dd></div>
           <div><dt>Revisão</dt><dd id="forum-detail-revision">—</dd></div>
           <div><dt>Fonte</dt><dd id="forum-detail-source">—</dd></div>
+          <div><dt>Guia vinculado</dt><dd id="forum-detail-landing-route">—</dd></div>
           <div><dt>Criada em</dt><dd id="forum-detail-created">—</dd></div>
           <div><dt>Atualizada em</dt><dd id="forum-detail-updated">—</dd></div>
           <div><dt>Publicada em</dt><dd id="forum-detail-published">—</dd></div>
@@ -351,6 +356,10 @@
           <label class="admin-control" for="forum-edit-body-input">
             Corpo do texto (até 4000 caracteres)
             <textarea id="forum-edit-body-input" name="body" maxlength="4000" rows="8" required></textarea>
+          </label>
+          <label class="admin-control" for="forum-edit-landing-route-input">
+            Guia ou ferramenta relacionada (opcional, ex.: /guias/etanol-ou-gasolina/)
+            <input id="forum-edit-landing-route-input" name="landing_route" type="text" maxlength="120" placeholder="Ex.: /guias/etanol-ou-gasolina/">
           </label>
           <label class="admin-control" for="forum-edit-reason">
             Motivo da edição (10 a 500 caracteres)

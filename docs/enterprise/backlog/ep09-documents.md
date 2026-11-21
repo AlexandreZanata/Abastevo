@@ -106,22 +106,6 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Risks and assumptions:** Original bytes follow the approved retention schedule rather than the convenience of a UI action.
 - **Done when:** Revision, race and denial tests pass with audit and history intact.
 
-### EMP-DOC-012 — Retention, deletion and legal hold by category
-- **Meta:** module DOC · phase F6 · cut - · priority P1 · type JOB · size M · state TODO
-- **Objective:** Enforce approved private document retention, legal holds and erasure.
-- **Rules and use cases:** OQ-04, LV-04, LV-11, BR-PRIV-009, BR-PRIV-010, BR-PRIV-011, VAL-38
-- **Depends on:** EMP-DOC-002, EMP-GOV-002
-- **Read first:** [privacy and security](../privacy-security.md) §§4 and 10, approved receipt scope, [validation scenarios](../testing.md) §4
-- **Scope:** in: reviewed category rules, holds, read-time expiration and recoverable cleanup · out: selecting retention without legal review
-- **Areas:** existing: deletion ledger and private storage conventions · proposed: organization document retention jobs
-- **Steps:** Require a recorded policy for each real-data category. Test originals, derivatives, backups and restoration with a controlled clock.
-- **Deliverable:** A tested retention and hold lifecycle for approved categories.
-- **Acceptance:** Expired files stay inaccessible during a cleanup outage. Approved holds and erasures remain scoped and survive replay.
-- **Negative cases:** Unreviewed duration becomes a default, a held object is erased, a derivative survives confirmed erasure, or a restore serves expired content.
-- **Validation:** V-SQL, V-JOB, V-ISO, V-IDEM, V-PRIV · migration: rehearsal with retained files and deletion history · rollback: preserve read-time denial and pending evidence
-- **Risks and assumptions:** This task does not amend community photo or claim-scan rules. Real receipts still require legal and production gates.
-- **Done when:** Expiry, hold, cleanup failure and isolated restore pass on real scoped fixtures.
-
 ### EMP-DOC-013 — Panel: document inbox, viewer, conference and allocation
 - **Meta:** module DOC · phase F3 · cut - · priority P1 · type WEB · size M · state TODO
 - **Objective:** Give company reviewers a scoped inbox, viewer and allocation workflow.

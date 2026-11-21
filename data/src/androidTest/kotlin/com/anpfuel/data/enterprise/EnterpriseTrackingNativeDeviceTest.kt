@@ -1,6 +1,7 @@
 package com.anpfuel.data.enterprise
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
@@ -83,8 +84,12 @@ import okhttp3.Dns
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import org.junit.Assert.*
+import org.junit.Rule
+import androidx.test.ext.junit.rules.ActivityScenarioRule
 import org.junit.Test
 import org.junit.runner.RunWith
+
+class TrackingFixtureActivity : Activity()
 
 /**
  * Opt-in two-process EMP-GPS-002/003 acceptance on the owned API 36 emulator against the private ordinary PostGIS/HTTPS
@@ -98,6 +103,11 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class EnterpriseTrackingNativeDeviceTest {
+    // Android only admits while-in-use GNSS requests from the visible fixture.
+    // Keep it resumed across each stage so the ordinary location grant governs the real provider.
+    @get:Rule
+    val foreground = ActivityScenarioRule(TrackingFixtureActivity::class.java)
+
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test

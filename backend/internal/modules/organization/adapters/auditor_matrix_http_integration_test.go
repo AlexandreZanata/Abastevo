@@ -60,6 +60,7 @@ func auditorRouter(t *testing.T, fx deviceFixtureState) (chi.Router, *jobs.Dispa
 	periodGrant(t, fx.f)
 	exportGrant(t, fx)
 	documentGrants(t, fx)
+	grantF6Tables(t, fx.f)
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+role+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+role+
 		"; GRANT SELECT,INSERT ON org_notification_recipients,org_notification_deliveries,org_notification_commands TO "+role+
@@ -231,6 +232,7 @@ var auditorTemplateParam = regexp.MustCompile(`\{[a-z_]+\}`)
 // auditorPositiveRoutes is the independent literal of the routes the
 // documented AUDITOR column grants at this head (B-BR-EMP-247).
 var auditorPositiveRoutes = []string{
+	"/v1/orgs/{org_id}/audit/events/list",
 	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
 	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/access",
@@ -251,6 +253,8 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
 	"/v1/orgs/{org_id}/fleet/assignments/mine/list",
+	"/v1/orgs/{org_id}/intelligence/findings/list",
+	"/v1/orgs/{org_id}/intelligence/kpis/overview",
 	"/v1/orgs/{org_id}/ownership-transfer/accept",
 	"/v1/orgs/{org_id}/ownership-transfer/cancel",
 	"/v1/orgs/{org_id}/ownership-transfer/read",
@@ -264,6 +268,7 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/settings/revision/read",
 	"/v1/orgs/{org_id}/tracking/policy/read",
 	"/v1/orgs/{org_id}/trips/{trip_id}/track/read",
+	"/v1/orgs/{org_id}/trips/{trip_id}/track/replay",
 }
 
 // The only positive AUDITOR write routes: the export request (an audited
@@ -368,6 +373,10 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if items, _ := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/list", map[string]any{"limit": 20}, 200, "", "")["items"].([]any); len(items) != 1 || items[0].(map[string]any)["id"] != reading || items[0].(map[string]any)["state"] != "VALID" {
 		t.Fatal("auditor reading history", items)
 	}
+	// F6 AUDITOR read routes: audit viewer, KPI overview, findings list.
+	call("/v1/orgs/{org_id}/audit/events/list", map[string]any{}, 200, "", "")
+	call("/v1/orgs/{org_id}/intelligence/findings/list", map[string]any{}, 200, "", "")
+	call("/v1/orgs/{org_id}/intelligence/kpis/overview", map[string]any{}, 200, "", "")
 	if matrixPrivateState(t, fx) != before || auditorExtraState(t, fx) != beforeExtra {
 		t.Fatal("a documented auditor read changed private source state")
 	}
@@ -379,10 +388,14 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	tracked.recordedTrack(t)
 	trackReadGrants(t, tracked)
 	values["{trip_id}"] = tracked.trip
+	values["{geofence_id}"] = onboardingID(t)
 	if page := call("/v1/orgs/{org_id}/trips/{trip_id}/track/read", map[string]any{}, 200, "", ""); page["trip_id"] != tracked.trip || len(page["segments"].([]any)) != 2 {
 		t.Fatal("auditor recorded-track read", page["trip_id"])
 	}
-	if issued, served := tracked.trackAccesses(t, auditor.member, tracked.trip); issued != 1 || served != 1 {
+	if replay := call("/v1/orgs/{org_id}/trips/{trip_id}/track/replay", map[string]any{}, 200, "", ""); replay["trip_id"] != tracked.trip {
+		t.Fatal("auditor track replay", replay["trip_id"])
+	}
+	if issued, served := tracked.trackAccesses(t, auditor.member, tracked.trip); issued != 2 || served != 2 {
 		t.Fatal("auditor track read not recorded once per stage", issued, served)
 	}
 	if cell := oracle["gps.location.read_live"]["AUDITOR"]; cell != "-" {
@@ -491,7 +504,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 166 || positive != 33 || denied != 133 {
+	if len(routes) != 205 || positive != 37 || denied != 168 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

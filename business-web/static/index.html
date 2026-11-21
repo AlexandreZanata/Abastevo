@@ -224,6 +224,93 @@
             </fieldset></form>
           </section>
         </section>
+        <section id="ops-panel" class="mission-board" aria-labelledby="ops-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow">OPERAÇÃO AO VIVO E ROTAS</p><h2 id="ops-title" tabindex="-1">Mapa operacional, trajetos e cercas</h2></div><div class="state-actions"><button id="ops-load" class="button-quiet" type="button">Atualizar mapa e alertas</button><button id="ops-toggle-view" class="button-quiet" type="button">Ver como lista</button></div></div>
+          <p class="field-help">Posições com classificação de atualização no servidor e modo lista acessível sem depender de mapas externos.</p>
+          <p id="ops-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <div id="ops-map-host"></div>
+          <section aria-labelledby="ops-alerts-title"><h3 id="ops-alerts-title">Alertas operacionais</h3><ul id="ops-alert-list" class="record-list" aria-labelledby="ops-alerts-title"></ul></section>
+          <section aria-labelledby="ops-geofences-title"><h3 id="ops-geofences-title">Cercas geográficas</h3><ul id="ops-geofence-list" class="record-list" aria-labelledby="ops-geofences-title"></ul>
+            <details><summary>Nova cerca circular</summary>
+              <form id="ops-geofence-form" autocomplete="off">
+                <div class="field-grid"><div><label for="ops-fence-name">Nome da cerca</label><input id="ops-fence-name" maxlength="160" required></div><div><label for="ops-fence-lat">Latitude (e7)</label><input id="ops-fence-lat" type="number" required></div><div><label for="ops-fence-lon">Longitude (e7)</label><input id="ops-fence-lon" type="number" required></div><div><label for="ops-fence-radius">Raio em metros (50 a 50000)</label><input id="ops-fence-radius" type="number" min="50" max="50000" value="300" required></div></div>
+                <button class="button-primary" type="submit">Criar cerca</button>
+              </form>
+            </details>
+          </section>
+          <section id="ops-replay-detail" class="employee-detail" aria-labelledby="ops-replay-title" hidden>
+            <h3 id="ops-replay-title">Replay da viagem</h3>
+            <p id="ops-replay-summary"></p>
+            <label for="ops-replay-cursor">Linha do tempo</label><input id="ops-replay-cursor" type="range" min="0" max="0" value="0">
+            <p id="ops-replay-cursor-readout" class="field-help"></p>
+            <ul id="ops-replay-logbook" class="record-list" aria-label="Diário da viagem"></ul>
+          </section>
+          <details><summary>Plano de rota</summary>
+            <form id="ops-route-form" autocomplete="off">
+              <div class="field-grid"><div><label for="ops-route-kind">Tipo de vínculo</label><select id="ops-route-kind"><option value="TRIP">Viagem</option><option value="MISSION">Missão</option></select></div><div><label for="ops-route-owner">ID da viagem ou missão</label><input id="ops-route-owner" required></div><div><label for="ops-route-origin">Origem</label><input id="ops-route-origin" required></div><div><label for="ops-route-olat">Latitude origem (e7)</label><input id="ops-route-olat" type="number" required></div><div><label for="ops-route-olon">Longitude origem (e7)</label><input id="ops-route-olon" type="number" required></div><div><label for="ops-route-dest">Destino</label><input id="ops-route-dest" required></div><div><label for="ops-route-dlat">Latitude destino (e7)</label><input id="ops-route-dlat" type="number" required></div><div><label for="ops-route-dlon">Longitude destino (e7)</label><input id="ops-route-dlon" type="number" required></div><div><label for="ops-route-distance">Distância planejada (m)</label><input id="ops-route-distance" type="number" min="1"></div><div><label for="ops-route-revision">Revisão atual (opcional)</label><input id="ops-route-revision" type="number" min="1"></div></div>
+              <button class="button-primary" type="submit">Salvar plano de rota</button>
+            </form>
+          </details>
+        </section>
+        <section id="intel-panel" class="employee-card" aria-labelledby="intel-title" hidden>
+          <div class="section-head">
+            <div><h2 id="intel-title">Gestão e inteligência</h2><p class="section-copy">Indicadores IND-001..IND-020, achados (não prova), manutenção preventiva/corretiva, tanques internos e auditoria.</p></div>
+            <div class="action-row">
+              <select id="intel-dimension" aria-label="Dimensão dos indicadores"><option value="ORG">Organização</option><option value="UNIT">Unidade</option><option value="ASSET">Ativo</option></select>
+              <label><input id="intel-include-pending" type="checkbox"> Incluir pendentes</label>
+              <button id="intel-load" class="button-secondary" type="button">Atualizar gestão</button>
+              <button id="intel-detect-btn" class="button-secondary" type="button">Executar detecção</button>
+            </div>
+          </div>
+          <p id="intel-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <section aria-labelledby="intel-kpis-title"><h3 id="intel-kpis-title">Indicadores e referências</h3><ul id="intel-kpi-list" class="record-list" aria-labelledby="intel-kpis-title"></ul></section>
+          <section aria-labelledby="intel-findings-title"><h3 id="intel-findings-title">Achados operacionais</h3><ul id="intel-finding-list" class="record-list" aria-labelledby="intel-findings-title"></ul></section>
+          <section aria-labelledby="intel-maint-title"><h3 id="intel-maint-title">Planos preventivos e ordens de serviço</h3><ul id="intel-maint-list" class="record-list" aria-labelledby="intel-maint-title"></ul>
+            <details><summary>Abrir ordem de serviço</summary>
+              <form id="intel-wo-form" autocomplete="off">
+                <div class="field-grid"><div><label for="intel-wo-asset">ID do ativo</label><input id="intel-wo-asset" required></div><div><label for="intel-wo-kind">Tipo</label><select id="intel-wo-kind"><option value="CORRECTIVE">Corretiva</option><option value="PREVENTIVE">Preventiva</option><option value="INSPECTION">Inspeção</option></select></div><div><label for="intel-wo-desc">Descrição</label><input id="intel-wo-desc" maxlength="500" required></div></div>
+                <button class="button-primary" type="submit">Criar OS</button>
+              </form>
+            </details>
+          </section>
+          <section aria-labelledby="intel-stock-title"><h3 id="intel-stock-title">Estoque interno de combustível</h3><ul id="intel-stock-list" class="record-list" aria-labelledby="intel-stock-title"></ul>
+            <details><summary>Novo tanque interno</summary>
+              <form id="intel-tank-form" autocomplete="off">
+                <div class="field-grid"><div><label for="intel-tank-name">Nome do tanque</label><input id="intel-tank-name" maxlength="120" required></div><div><label for="intel-tank-product">Produto</label><select id="intel-tank-product"><option value="DIESEL_S10">Diesel S10</option><option value="DIESEL_S500">Diesel S500</option><option value="GASOLINE_C">Gasolina C</option><option value="ETHANOL">Etanol</option></select></div><div><label for="intel-tank-cap">Capacidade (mL)</label><input id="intel-tank-cap" type="number" min="1000" value="5000000" required></div></div>
+                <button class="button-primary" type="submit">Salvar tanque</button>
+              </form>
+            </details>
+          </section>
+          <section aria-labelledby="intel-audit-title"><h3 id="intel-audit-title">Trilha de auditoria</h3><ul id="intel-audit-list" class="record-list" aria-labelledby="intel-audit-title"></ul></section>
+        </section>
+        <section id="agreements-panel" class="employee-card" aria-labelledby="agreements-title" hidden>
+          <div class="section-head">
+            <div><h2 id="agreements-title">Postos e acordos comerciais</h2><p class="section-copy">Convênios com postos, preços negociados, autorizações de abastecimento e resgates confirmados.</p></div>
+            <div class="action-row"><button id="agreements-refresh-button" class="button-secondary" type="button">Atualizar convênios</button></div>
+          </div>
+          <p id="agreements-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <section aria-labelledby="agreements-list-title"><h3 id="agreements-list-title">Convênios com postos</h3><ul id="agreements-list" class="record-list" aria-labelledby="agreements-list-title"></ul>
+            <details><summary>Propor novo convênio</summary>
+              <form id="agreement-propose-form" autocomplete="off">
+                <div class="field-grid"><div><label for="agreement-station-input">ID do posto</label><input id="agreement-station-input" required></div><div><label for="agreement-label-input">Nome da empresa no convênio</label><input id="agreement-label-input" maxlength="80" placeholder="Transportes Vale"></div><div><label for="agreement-from-input">Válido de</label><input id="agreement-from-input" type="datetime-local" required></div><div><label for="agreement-until-input">Válido até</label><input id="agreement-until-input" type="datetime-local" required></div><div><label for="agreement-product-input">Produto negociado</label><select id="agreement-product-input"><option value="DIESEL_S10">Diesel S10</option><option value="DIESEL_S500">Diesel S500</option><option value="GASOLINE_REGULAR">Gasolina comum</option><option value="ETHANOL">Etanol</option></select></div><div><label for="agreement-price-input">Preço negociado (milli-BRL por litro)</label><input id="agreement-price-input" type="number" min="1" max="1000000" value="5999" required></div></div>
+                <button id="agreement-propose-button" class="button-primary" type="button">Propor convênio</button>
+                <button id="agreement-suspend-button" class="button-secondary" type="button">Suspender convênio ativo</button>
+                <button id="agreement-end-button" class="button-secondary" type="button">Encerrar convênio</button>
+              </form>
+            </details>
+          </section>
+          <section aria-labelledby="authorizations-title"><h3 id="authorizations-title">Autorizações de abastecimento</h3><ul id="authorizations-list" class="record-list" aria-labelledby="authorizations-title"></ul>
+            <div id="authorization-code-note" aria-live="polite"></div>
+            <details><summary>Emitir autorização</summary>
+              <form id="authorization-issue-form" autocomplete="off">
+                <div class="field-grid"><div><label for="authorization-employee-input">ID do colaborador</label><input id="authorization-employee-input" required></div><div><label for="authorization-product-input">Produto autorizado</label><select id="authorization-product-input"><option value="DIESEL_S10">Diesel S10</option><option value="DIESEL_S500">Diesel S500</option><option value="GASOLINE_REGULAR">Gasolina comum</option><option value="ETHANOL">Etanol</option></select></div><div><label for="authorization-quantity-input">Limite de volume (milli)</label><input id="authorization-quantity-input" type="number" min="1" value="200000" required></div><div><label for="authorization-total-input">Limite de valor (centavos)</label><input id="authorization-total-input" type="number" min="1" value="300000" required></div><div><label for="authorization-until-input">Válido até</label><input id="authorization-until-input" type="datetime-local" required></div></div>
+                <button id="authorization-issue-button" class="button-primary" type="button">Emitir autorização</button>
+                <button id="authorization-cancel-button" class="button-secondary" type="button">Cancelar autorização emitida</button>
+              </form>
+            </details>
+          </section>
+          <section aria-labelledby="redemptions-title"><h3 id="redemptions-title">Resgates confirmados</h3><ul id="redemptions-list" class="record-list" aria-labelledby="redemptions-title"></ul></section>
+        </section>
       </section>
       <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>

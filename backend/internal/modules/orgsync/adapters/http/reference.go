@@ -39,6 +39,7 @@ type ReferenceOptions struct {
 	Verifier   auth.Verifier
 	Devices    DeviceSource
 	Repository app.ReferenceRepository
+	Trips      app.TripFieldRepository
 }
 type referenceEndpoint struct{ ReferenceOptions }
 
@@ -68,11 +69,12 @@ type referenceRequest struct {
 	MembershipID  string  `json:"membership_id"`
 	EnrollmentID  string  `json:"enrollment_id"`
 	Cursor        *string `json:"cursor"`
+	TripID        *string `json:"trip_id"`
 }
 
 func parseReferenceRequest(raw []byte) (referenceRequest, error) {
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil || len(fields) != 7 {
+	if json.Unmarshal(raw, &fields) != nil || len(fields) != 7 && len(fields) != 8 {
 		return referenceRequest{}, protocol.ErrInvalid
 	}
 	for _, key := range []string{"schema_version", "request_id", "family_id", "access_token", "membership_id", "enrollment_id", "cursor"} {
@@ -84,6 +86,9 @@ func parseReferenceRequest(raw []byte) (referenceRequest, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&v) != nil || decoder.More() || v.SchemaVersion != app.ReferenceSchema || !referenceUUID.MatchString(v.RequestID) || !referenceUUID.MatchString(v.FamilyID) || !referenceUUID.MatchString(v.MembershipID) || !referenceUUID.MatchString(v.EnrollmentID) || len(v.AccessToken) < 1 || len(v.AccessToken) > 512 || v.Cursor != nil && (len(*v.Cursor) < 1 || len(*v.Cursor) > 1024) {
+		return referenceRequest{}, protocol.ErrInvalid
+	}
+	if _, present := fields["trip_id"]; present && (v.TripID == nil || !referenceUUID.MatchString(*v.TripID) || v.Cursor != nil) {
 		return referenceRequest{}, protocol.ErrInvalid
 	}
 	for _, c := range []byte(v.AccessToken) {
@@ -215,6 +220,29 @@ func (e referenceEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	source := app.Source{Scope: scope, Origin: e.Origin, Actor: actor, MembershipID: state.MembershipID, EnrollmentID: state.ID}
+	if in.TripID != nil {
+		if reviewMissing(e.Trips) {
+			fail(app.ErrUnavailable)
+			return
+		}
+		snapshot, err := e.Trips.PullTripField(r.Context(), source, *in.TripID)
+		if err == nil {
+			err = confirmCurrentDevice(r.Context(), e.Devices, source)
+		}
+		if err != nil {
+			fail(err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(struct {
+			SchemaVersion int           `json:"schema_version"`
+			RequestID     string        `json:"request_id"`
+			MembershipID  string        `json:"membership_id"`
+			EnrollmentID  string        `json:"enrollment_id"`
+			Field         app.TripField `json:"field"`
+		}{app.ReferenceSchema, in.RequestID, state.MembershipID, state.ID, snapshot})
+		return
+	}
 	var cursor *app.ReferenceCursor
 	if in.Cursor != nil {
 		opened, err := app.OpenReferenceCursor(e.Secret, *in.Cursor)

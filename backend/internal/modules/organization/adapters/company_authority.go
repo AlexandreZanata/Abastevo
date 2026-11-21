@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/organization"
+	agreeapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/application"
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	intelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	checklists "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/application"
 	members "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
@@ -42,13 +44,16 @@ type companyAuthority struct {
 	// is read (EMP-GPS-012): its author is the own record and the trip's
 	// driver, and the read is a recorded track.
 	TrackedTrip bool
+	// LiveTrip states that the target is either the organization live list or
+	// a stored trip whose live position is read (EMP-GPS-007).
+	LiveTrip bool
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy, requestedRole ...permissions.Role) error {
-	if policy != exports.Policy(exports.ActionRequest) && policy != exports.Policy(exports.ActionRead) && policy != periods.PeriodPolicy(periods.PeriodRead) && policy != periods.PeriodPolicy(periods.PeriodClose) && policy != periods.PeriodPolicy(periods.PeriodReopen) && policy != fleet.MeterReviewPolicy(false) && policy != fleet.MeterReviewPolicy(true) && policy != tripapp.ReviewPolicy(tripapp.ReviewReadAction) && policy != tripapp.ReviewPolicy(tripapp.ReviewDecideAction) && policy != tripapp.ClosePolicy(tripapp.ClosureReadAction) && policy != tripapp.ClosePolicy(tripapp.ClosureWriteAction) && policy != tripapp.HandoverPolicy(tripapp.HandoverReadAction) && policy != tripapp.HandoverPolicy(tripapp.HandoverWriteAction) && policy != tripapp.MissionPolicy(tripapp.MissionRead) && policy != tripapp.MissionPolicy(tripapp.MissionManage) && policy != tripapp.MissionPolicy(tripapp.MissionOwnRead) && policy != fleet.Policy(false) && policy != fleet.Policy(true) && policy != fleet.AssignPolicy() && policy != fleet.ReservePolicy() && policy != checklists.Policy(checklists.TemplateRead) && policy != checklists.Policy(checklists.TemplateManage) && policy != checklists.IncidentPolicy(checklists.IncidentRead) && policy != checklists.IncidentPolicy(checklists.IncidentDecide) && policy != checklists.IncidentPolicy(checklists.IncidentOwn) && policy != app.SettingsMembersPolicy() && policy != members.DevicePolicy(false) && policy != members.DevicePolicy(true) && policy != members.EmployeeMergePolicy(false) && policy != members.EmployeeMergePolicy(true) && policy != members.MembershipAccessPolicy(members.MembershipAccessRead) && policy != members.MembershipAccessPolicy(members.MembershipSuspend) && policy != members.MembershipAccessPolicy(members.MembershipReactivate) && policy != members.InvitationPolicy(members.InvitationIssue) && policy != members.InvitationPolicy(members.InvitationRead) && policy != members.InvitationPolicy(members.InvitationRevoke) && policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) && policy != trackingapp.TrackPolicy() {
+	if policy != exports.Policy(exports.ActionRequest) && policy != exports.Policy(exports.ActionRead) && policy != periods.PeriodPolicy(periods.PeriodRead) && policy != periods.PeriodPolicy(periods.PeriodClose) && policy != periods.PeriodPolicy(periods.PeriodReopen) && policy != fleet.MeterReviewPolicy(false) && policy != fleet.MeterReviewPolicy(true) && policy != tripapp.ReviewPolicy(tripapp.ReviewReadAction) && policy != tripapp.ReviewPolicy(tripapp.ReviewDecideAction) && policy != tripapp.ClosePolicy(tripapp.ClosureReadAction) && policy != tripapp.ClosePolicy(tripapp.ClosureWriteAction) && policy != tripapp.HandoverPolicy(tripapp.HandoverReadAction) && policy != tripapp.HandoverPolicy(tripapp.HandoverWriteAction) && policy != tripapp.MissionPolicy(tripapp.MissionRead) && policy != tripapp.MissionPolicy(tripapp.MissionManage) && policy != tripapp.MissionPolicy(tripapp.MissionOwnRead) && policy != fleet.Policy(false) && policy != fleet.Policy(true) && policy != fleet.AssignPolicy() && policy != fleet.ReservePolicy() && policy != checklists.Policy(checklists.TemplateRead) && policy != checklists.Policy(checklists.TemplateManage) && policy != checklists.IncidentPolicy(checklists.IncidentRead) && policy != checklists.IncidentPolicy(checklists.IncidentDecide) && policy != checklists.IncidentPolicy(checklists.IncidentOwn) && policy != app.SettingsMembersPolicy() && policy != members.DevicePolicy(false) && policy != members.DevicePolicy(true) && policy != members.EmployeeMergePolicy(false) && policy != members.EmployeeMergePolicy(true) && policy != members.MembershipAccessPolicy(members.MembershipAccessRead) && policy != members.MembershipAccessPolicy(members.MembershipSuspend) && policy != members.MembershipAccessPolicy(members.MembershipReactivate) && policy != members.InvitationPolicy(members.InvitationIssue) && policy != members.InvitationPolicy(members.InvitationRead) && policy != members.InvitationPolicy(members.InvitationRevoke) && policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) && policy != trackingapp.TrackPolicy() && policy != trackingapp.LivePolicy() && policy != trackingapp.GeofencePolicy(false) && policy != trackingapp.GeofencePolicy(true) && policy != trackingapp.RoutePlanPolicy(false) && policy != trackingapp.RoutePlanPolicy(true) && policy != intelapp.TankPolicy(false) && policy != intelapp.TankPolicy(true) && policy != intelapp.MovementPolicy(false) && policy != intelapp.MovementPolicy(true) && policy != intelapp.PlanPolicy(false) && policy != intelapp.PlanPolicy(true) && policy != intelapp.WorkOrderPolicy(false) && policy != intelapp.WorkOrderPolicy(true) && policy != intelapp.WorkOrderReviewPolicy(false) && policy != intelapp.WorkOrderReviewPolicy(true) && policy != intelapp.MaintenanceRequestPolicy() && policy != intelapp.AssetDocumentManagePolicy() && policy != intelapp.KpiPolicy() && policy != intelapp.FindingReadPolicy() && policy != intelapp.FindingResolvePolicy(false) && policy != intelapp.FindingResolvePolicy(true) && policy != intelapp.SettingsManagePolicy() && policy != intelapp.AuditReadPolicy() && policy != intelapp.GroupManagePolicy(false) && policy != intelapp.GroupManagePolicy(true) && policy != agreeapp.AgreementPolicy(false) && policy != agreeapp.AgreementPolicy(true) && policy != agreeapp.AuthorizationPolicy(false) && policy != agreeapp.AuthorizationPolicy(true) {
 		return app.ErrUnavailable
 	}
-	write := policy.Effect == access.ConfigurationWrite
+	write := policy.Effect == access.ConfigurationWrite || policy.Effect == access.OperationalWrite
 	// Plain reads share the account and root rows, so they run concurrently
 	// while writers still wait for them. A settings read can initialize the
 	// first version under the root (org_settings_bootstrap locks it FOR
@@ -136,6 +141,13 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 	if policy.Permission == "org.ownership.respond" {
 		facts.AssignedTo = member
 	}
+	// EMP-AGREE-001: this organization authority always proves the fleet
+	// party of a station agreement; the station party acts through its own
+	// live station grant surface instead (BR-AGREE-001).
+	if policy == agreeapp.AgreementPolicy(false) || policy == agreeapp.AgreementPolicy(true) ||
+		policy == agreeapp.AuthorizationPolicy(false) || policy == agreeapp.AuthorizationPolicy(true) {
+		facts.AgreementSide = permissions.FleetParty
+	}
 	if len(requestedRole) == 1 {
 		facts.RequestedRole = requestedRole[0]
 	}
@@ -153,6 +165,23 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 			return err
 		}
 		facts.AuthoredBy, facts.TripDriver, facts.RecordedTrack = author, author, true
+	}
+	// EMP-GPS-007: live read of a stored trip carries author/driver without
+	// setting RecordedTrack so AUDITOR never passes on live location.
+	if guard.LiveTrip || policy == trackingapp.LivePolicy() {
+		if !guard.LiveTrip || policy != trackingapp.LivePolicy() {
+			return app.ErrUnavailable
+		}
+		if target != scope.OrgID().String() {
+			var author string
+			if err := tx.QueryRow(ctx, `SELECT author_membership_id::text FROM org_trips WHERE org_id=$1 AND id=$2`, scope.OrgID().String(), target).Scan(&author); err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return app.ErrNotFound
+				}
+				return err
+			}
+			facts.AuthoredBy, facts.TripDriver = author, author
+		}
 	}
 	// Under the retained locks and database time, the same structural lookup
 	// as Prepare (only for a current structural grant, EDR-161).

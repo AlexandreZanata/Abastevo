@@ -219,6 +219,7 @@ type Post struct {
 	Region              *Region
 	FuelProduct         *string
 	StationID           *string
+	LandingRoute        *string `json:"landing_route,omitempty"`
 	RightsSnapshot      *string
 	LikeCount           int64
 	DislikeCount        int64
@@ -320,7 +321,40 @@ func (p *Post) Validate() error {
 		}
 	}
 
+	if p.LandingRoute != nil {
+		if !ValidLandingRoute(*p.LandingRoute) {
+			return ErrInvalidLandingRoute
+		}
+	}
+
 	return nil
+}
+
+// ValidLandingRoute validates optional editorial links to owning landing guides
+// or calculators (/guias/{slug}/ or /ferramentas/{slug}/).
+func ValidLandingRoute(route string) bool {
+	if len(route) > 120 || !strings.HasSuffix(route, "/") {
+		return false
+	}
+	var slug string
+	switch {
+	case strings.HasPrefix(route, "/guias/"):
+		slug = strings.TrimSuffix(strings.TrimPrefix(route, "/guias/"), "/")
+	case strings.HasPrefix(route, "/ferramentas/"):
+		slug = strings.TrimSuffix(strings.TrimPrefix(route, "/ferramentas/"), "/")
+	default:
+		return false
+	}
+	if slug == "" || strings.HasPrefix(slug, "-") || strings.HasSuffix(slug, "-") || strings.Contains(slug, "--") {
+		return false
+	}
+	for i := 0; i < len(slug); i++ {
+		c := slug[i]
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 // IsPubliclyVisible returns true if the post is published and visible to anonymous readers.

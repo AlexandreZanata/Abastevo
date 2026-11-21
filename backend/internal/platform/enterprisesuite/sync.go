@@ -306,7 +306,7 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 			return now, nil
 		},
 	}
-	if err := syncweb.RegisterReference(router, syncweb.ReferenceOptions{Enabled: true, Origin: o.Origin, Secret: secret, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: reference}); err != nil {
+	if err := syncweb.RegisterReference(router, syncweb.ReferenceOptions{Enabled: true, Origin: o.Origin, Secret: secret, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: reference, Trips: reference}); err != nil {
 		return err
 	}
 	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Late: devices, State: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})

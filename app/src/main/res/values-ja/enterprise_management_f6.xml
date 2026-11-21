@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_mgmt_card_title">現場管理</string>
+    <string name="enterprise_mgmt_compliance_expired">期限切れの書類または免許が %1$d 件あり、対応が必要です。</string>
+    <string name="enterprise_mgmt_compliance_due_soon">%1$d 件の書類または免許の期限が近づいています（最短 %2$d 日以内）。</string>
+    <string name="enterprise_mgmt_compliance_ok">割り当てられた書類と免許はすべて有効です。</string>
+    <string name="enterprise_mgmt_maint_requests_open">この車両の未処理の整備依頼が %1$d 件あります。</string>
+    <string name="enterprise_mgmt_internal_dispense_queued">自社タンク給油の記録 %1$d 件がオフライン待機中です。</string>
+    <string name="enterprise_mgmt_request_maintenance">整備を依頼する</string>
+</resources>

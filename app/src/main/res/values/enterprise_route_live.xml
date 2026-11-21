@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_route_card_title">Trip route</string>
+    <string name="enterprise_route_waypoints_summary">Stop %1$d of %2$d</string>
+    <string name="enterprise_route_heavy_vehicle_warning">Calculated with passenger-car profile; bridge height, weight, axle load and hazmat restrictions are not verified.</string>
+    <string name="enterprise_route_driving_locked">Vehicle in motion: detailed route editing paused until stopped.</string>
+    <string name="enterprise_route_arrival_prompt">Arrival near %1$s detected. Confirm manually to mark this stop.</string>
+    <string name="enterprise_route_arrival_confirm">I arrived</string>
+    <string name="enterprise_route_pending_revision">New route plan revision %1$d available; apply when stopped.</string>
+    <string name="enterprise_route_apply_revision">Apply revision</string>
+    <string name="enterprise_route_recalculations">Route recalculated %1$d times</string>
+    <string name="enterprise_route_text_stop_prompt">Unlocated text stop requires confirmation: %1$s</string>
+    <string name="enterprise_route_degraded_map_missing">Offline map region missing for this route; trip remains active.</string>
+    <string name="enterprise_route_degraded_no_route">Could not calculate a route between these points; trip remains active.</string>
+    <string name="enterprise_route_degraded_no_fix">No usable location fix yet; trip remains active.</string>
+    <string name="enterprise_route_degraded_voice_unavailable">Voice guidance unavailable; visual instructions continue.</string>
+    <string name="enterprise_route_attribution">© OpenStreetMap contributors</string>
+</resources>

@@ -56,4 +56,4 @@ With recorded stock of 100 000 mL worth 60 000 centavos and a receipt of 50 000 
 
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
-[EP12](../backlog/ep12-fuel-stock.md) owns the tasks. VAL-32 proves one-cost recognition. Test concurrent issues, exact value conservation, foreign tanks/assets, replay, rollback and measurement adjustment on real PostGIS before dependent indicators.
+[EP12](../backlog/ep12-fuel-stock.md) owns the tasks (implemented in F6 under [EDR-376](../decisions.md)). VAL-32 proves one-cost recognition (`MOVING_AVG_UNIT_V1`, `contracts/testdata/enterprise/stock/stock-valuation-v1.psv`, Go `fuelstock/domain` + Kotlin `EnterpriseFuelStock`, and real PostGIS flow in `TestManagementF6EndToEndFlow`). Concurrent issues, exact value conservation, product/unit checks (`422 STOCK_PRODUCT_MISMATCH`), overdraft refusal (`409 STOCK_INSUFFICIENT`), transfers, replay, rollback, and measurement adjustments are verified locally before dependent indicators.

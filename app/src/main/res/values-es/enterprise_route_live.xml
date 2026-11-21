@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_route_card_title">Ruta del viaje</string>
+    <string name="enterprise_route_waypoints_summary">Parada %1$d de %2$d</string>
+    <string name="enterprise_route_heavy_vehicle_warning">Calculado con perfil de automóvil; no se verifican altura de puentes, peso, ejes ni mercancías peligrosas.</string>
+    <string name="enterprise_route_driving_locked">Vehículo en movimiento: edición detallada pausada hasta detenerse.</string>
+    <string name="enterprise_route_arrival_prompt">Llegada cerca de %1$s detectada. Confirme manualmente para registrar esta parada.</string>
+    <string name="enterprise_route_arrival_confirm">Llegué</string>
+    <string name="enterprise_route_pending_revision">Nueva revisión %1$d del plan disponible; aplíquela al detenerse.</string>
+    <string name="enterprise_route_apply_revision">Aplicar revisión</string>
+    <string name="enterprise_route_recalculations">Ruta recalculada %1$d veces</string>
+    <string name="enterprise_route_text_stop_prompt">Parada en texto sin coordenadas requiere confirmación: %1$s</string>
+    <string name="enterprise_route_degraded_map_missing">Falta la región de mapa sin conexión para esta ruta; el viaje sigue activo.</string>
+    <string name="enterprise_route_degraded_no_route">No se pudo calcular una ruta entre estos puntos; el viaje sigue activo.</string>
+    <string name="enterprise_route_degraded_no_fix">Sin posición utilizable por ahora; el viaje sigue activo.</string>
+    <string name="enterprise_route_degraded_voice_unavailable">Guía por voz no disponible; continúan las instrucciones visuales.</string>
+    <string name="enterprise_route_attribution">© Colaboradores de OpenStreetMap</string>
+</resources>

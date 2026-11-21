@@ -22,7 +22,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -72,6 +72,7 @@ type AdminListPostsRow struct {
 	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
 	FuelProduct            pgtype.Text        `json:"fuel_product"`
 	StationID              pgtype.UUID        `json:"station_id"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 	SourceName             pgtype.Text        `json:"source_name"`
 	SourceOriginUrl        pgtype.Text        `json:"source_origin_url"`
 	SourceAttribution      pgtype.Text        `json:"source_attribution"`
@@ -117,6 +118,7 @@ func (q *Queries) AdminListPosts(ctx context.Context, arg AdminListPostsParams) 
 			&i.RegionMunicipalityIbge,
 			&i.FuelProduct,
 			&i.StationID,
+			&i.LandingRoute,
 			&i.SourceName,
 			&i.SourceOriginUrl,
 			&i.SourceAttribution,
@@ -197,7 +199,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     p.like_count, p.dislike_count,
     s.name AS source_name,
@@ -236,6 +238,7 @@ type GetPostByIDRow struct {
 	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
 	FuelProduct            pgtype.Text        `json:"fuel_product"`
 	StationID              pgtype.UUID        `json:"station_id"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
 	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
@@ -279,6 +282,7 @@ func (q *Queries) GetPostByID(ctx context.Context, id pgtype.UUID) (GetPostByIDR
 		&i.RegionMunicipalityIbge,
 		&i.FuelProduct,
 		&i.StationID,
+		&i.LandingRoute,
 		&i.RightsSnapshot,
 		&i.BulletinKey,
 		&i.BulletinGroupKey,
@@ -304,7 +308,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id
 FROM forum_posts p
 WHERE p.id = $1
@@ -339,6 +343,7 @@ type GetPostByIDForUpdateRow struct {
 	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
 	FuelProduct            pgtype.Text        `json:"fuel_product"`
 	StationID              pgtype.UUID        `json:"station_id"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
 	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
@@ -377,6 +382,7 @@ func (q *Queries) GetPostByIDForUpdate(ctx context.Context, id pgtype.UUID) (Get
 		&i.RegionMunicipalityIbge,
 		&i.FuelProduct,
 		&i.StationID,
+		&i.LandingRoute,
 		&i.RightsSnapshot,
 		&i.BulletinKey,
 		&i.BulletinGroupKey,
@@ -397,7 +403,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     p.like_count, p.dislike_count,
     s.name AS source_name,
@@ -444,6 +450,7 @@ type GetPublicPostByIDRow struct {
 	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
 	FuelProduct            pgtype.Text        `json:"fuel_product"`
 	StationID              pgtype.UUID        `json:"station_id"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
 	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
@@ -487,6 +494,7 @@ func (q *Queries) GetPublicPostByID(ctx context.Context, id pgtype.UUID) (GetPub
 		&i.RegionMunicipalityIbge,
 		&i.FuelProduct,
 		&i.StationID,
+		&i.LandingRoute,
 		&i.RightsSnapshot,
 		&i.BulletinKey,
 		&i.BulletinGroupKey,
@@ -640,7 +648,7 @@ INSERT INTO forum_posts (
     publication_state, visibility, revision,
     comments_enabled, correction,
     region_uf, region_municipality_ibge,
-    fuel_product, station_id,
+    fuel_product, station_id, landing_route,
     author_operation_id, body_sha256, rights_snapshot, bulletin_key, bulletin_group_key, bulletin_provenance, supersedes_post_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
@@ -652,8 +660,8 @@ INSERT INTO forum_posts (
     $19, $20, $21,
     $22, $23,
     $24, $25,
-    $26, $27,
-    $28, $29, $30, $31, $32, $33, $34
+    $26, $27, $28,
+    $29, $30, $31, $32, $33, $34, $35
 )
 `
 
@@ -685,6 +693,7 @@ type InsertEditorialPostParams struct {
 	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
 	FuelProduct            pgtype.Text        `json:"fuel_product"`
 	StationID              pgtype.UUID        `json:"station_id"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 	AuthorOperationID      pgtype.UUID        `json:"author_operation_id"`
 	BodySha256             string             `json:"body_sha256"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
@@ -723,6 +732,7 @@ func (q *Queries) InsertEditorialPost(ctx context.Context, arg InsertEditorialPo
 		arg.RegionMunicipalityIbge,
 		arg.FuelProduct,
 		arg.StationID,
+		arg.LandingRoute,
 		arg.AuthorOperationID,
 		arg.BodySha256,
 		arg.RightsSnapshot,
@@ -1242,11 +1252,12 @@ SET title = $1,
     region_uf = $6,
     region_municipality_ibge = $7,
     station_id = $8,
-    comments_enabled = $9,
-    correction = $10,
-    local_updated_at = $11,
+    landing_route = $9,
+    comments_enabled = $10,
+    correction = $11,
+    local_updated_at = $12,
     revision = revision + 1
-WHERE id = $12 AND revision = $13
+WHERE id = $13 AND revision = $14
 `
 
 type UpdateEditorialPostParams struct {
@@ -1258,6 +1269,7 @@ type UpdateEditorialPostParams struct {
 	RegionUf               pgtype.Text        `json:"region_uf"`
 	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
 	StationID              pgtype.UUID        `json:"station_id"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 	CommentsEnabled        bool               `json:"comments_enabled"`
 	Correction             pgtype.Text        `json:"correction"`
 	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
@@ -1275,6 +1287,7 @@ func (q *Queries) UpdateEditorialPost(ctx context.Context, arg UpdateEditorialPo
 		arg.RegionUf,
 		arg.RegionMunicipalityIbge,
 		arg.StationID,
+		arg.LandingRoute,
 		arg.CommentsEnabled,
 		arg.Correction,
 		arg.UpdatedAt,

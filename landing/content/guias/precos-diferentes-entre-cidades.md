@@ -4,6 +4,7 @@ headline: Por que cidades vizinhas têm preços de combustível tão diferentes
 description: Frete, distância da base de distribuição, concorrência, custos do posto, estoque e impostos estaduais explicam por que o litro muda de uma cidade para a vizinha.
 summary: Frete, concorrência, custos locais, estoque e tributos que mudam o preço de uma cidade para outra.
 slug: precos-diferentes-entre-cidades
+primaryQuery: por que os preços variam entre cidades
 category: precos
 tags: [precos, concorrencia, logistica, icms, pesquisa-de-precos]
 datePublished: 2026-11-14

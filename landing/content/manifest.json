@@ -12,7 +12,8 @@
         "title": "Como funciona a pesquisa semanal de preços da ANP",
         "summary": "Amostragem semanal, o que a referência oficial mede e como ela convive com as observações da comunidade.",
         "category": "dados",
-        "tags": ["anp", "pesquisa-de-precos", "dados-abertos", "fonte-e-data"]
+        "tags": ["anp", "pesquisa-de-precos", "dados-abertos", "fonte-e-data"],
+        "primaryQuery": "como funciona a pesquisa da anp"
       }
     },
     {
@@ -21,7 +22,8 @@
         "title": "Etanol ou gasolina: a regra dos 70% e como calcular",
         "summary": "A paridade de 70%, quando ela varia e como medir a relação real no seu carro flex.",
         "category": "escolher-combustivel",
-        "tags": ["etanol", "gasolina", "carro-flex", "consumo", "economia"]
+        "tags": ["etanol", "gasolina", "carro-flex", "consumo", "economia"],
+        "primaryQuery": "etanol ou gasolina"
       }
     },
     {
@@ -30,7 +32,8 @@
         "title": "Como ler preços na bomba e na placa",
         "summary": "Fonte, data, condição de pagamento e os selos que separam a referência da ANP das observações da comunidade.",
         "category": "dados",
-        "tags": ["fonte-e-data", "direitos-do-consumidor", "preco-na-bomba", "anp"]
+        "tags": ["fonte-e-data", "direitos-do-consumidor", "preco-na-bomba", "anp"],
+        "primaryQuery": "como ler preços na bomba"
       }
     },
     { "route": "/como-usar/", "label": "Como usar o aplicativo abastevo", "source": "como-usar/index.html", "chrome": "shared", "lastmod": "2026-11-17" },

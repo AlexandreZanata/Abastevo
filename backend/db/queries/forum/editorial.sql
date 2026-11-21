@@ -22,7 +22,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     p.like_count, p.dislike_count,
     s.name AS source_name,
@@ -51,7 +51,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     p.like_count, p.dislike_count,
     s.name AS source_name,
@@ -72,7 +72,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id
 FROM forum_posts p
 WHERE p.id = @id
@@ -126,7 +126,7 @@ SELECT
     p.publication_state, p.visibility, p.revision,
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -153,7 +153,7 @@ INSERT INTO forum_posts (
     publication_state, visibility, revision,
     comments_enabled, correction,
     region_uf, region_municipality_ibge,
-    fuel_product, station_id,
+    fuel_product, station_id, landing_route,
     author_operation_id, body_sha256, rights_snapshot, bulletin_key, bulletin_group_key, bulletin_provenance, supersedes_post_id
 ) VALUES (
     @id, @kind, @category, @title, @excerpt, @body_text,
@@ -165,7 +165,7 @@ INSERT INTO forum_posts (
     @publication_state, @visibility, @revision,
     @comments_enabled, @correction,
     @region_uf, @region_municipality_ibge,
-    @fuel_product, @station_id,
+    @fuel_product, @station_id, @landing_route,
     @author_operation_id, @body_sha256, @rights_snapshot, @bulletin_key, @bulletin_group_key, @bulletin_provenance, @supersedes_post_id
 );
 
@@ -188,6 +188,7 @@ SET title = @title,
     region_uf = @region_uf,
     region_municipality_ibge = @region_municipality_ibge,
     station_id = @station_id,
+    landing_route = @landing_route,
     comments_enabled = @comments_enabled,
     correction = @correction,
     local_updated_at = @updated_at,

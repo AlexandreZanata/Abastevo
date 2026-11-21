@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSite } from '../scripts/build.mjs';
 import { loadSite } from '../scripts/content/site.mjs';
+import { listHtmlPages } from '../scripts/check.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,6 +84,18 @@ test('sitemap: valid XML, required indexable URLs present, no 404 and content-da
       const file = rel === '' ? 'index.html' : `${rel}index.html`;
       assert.ok(fs.existsSync(path.join(tmpOut, file)), `Sitemap URL has no emitted page: ${loc}`);
     }
+    // SEO-21: every sitemap URL is indexable and declares the rich directive.
+    for (const loc of [...sitemapContent.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])) {
+      const rel = loc.replace('https://abastevo.com.br/', '');
+      const file = rel === '' ? 'index.html' : `${rel}index.html`;
+      const html = fs.readFileSync(path.join(tmpOut, file), 'utf8');
+      const robots = [...html.matchAll(/<meta\s+name="robots"\s+content="([^"]*)"/g)];
+      assert.equal(robots.length, 1, `${loc} must declare exactly one robots meta`);
+      assert.equal(robots[0][1], 'index,follow,max-image-preview:large,max-snippet:-1', `${loc} robots directive`);
+    }
+    const notFound = fs.readFileSync(path.join(tmpOut, '404.html'), 'utf8');
+    assert.ok(notFound.includes('<meta name="robots" content="noindex, nofollow">'), '404.html stays noindex');
+    assert.ok(!notFound.includes('max-image-preview:large'), '404.html must not carry the indexable directive');
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }
@@ -180,6 +193,12 @@ test('preview mode: PREVIEW=1 injects noindex, production build does not leak no
     });
     const prevIndex = fs.readFileSync(path.join(tmpPrev, 'index.html'), 'utf8');
     assert.ok(prevIndex.includes('<meta name="robots" content="noindex, nofollow">'), 'Preview index.html must have noindex robots');
+    for (const rel of listHtmlPages(tmpPrev)) {
+      const html = fs.readFileSync(path.join(tmpPrev, rel), 'utf8');
+      const robots = [...html.matchAll(/<meta\s+name="robots"\s+content="([^"]*)"/g)];
+      assert.equal(robots.length, 1, `${rel} must declare exactly one robots meta in preview`);
+      assert.equal(robots[0][1], 'noindex, nofollow', `${rel} robots directive in preview`);
+    }
   } finally {
     delete process.env.PREVIEW;
     fs.rmSync(tmpProd, { recursive: true, force: true });

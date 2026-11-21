@@ -39,6 +39,6 @@ code and its tests are the final word on what ships today.
 
 ## Website
 
-- [Landing content](landing/content.md) and [educational guides](landing/guides.md).
+- [Landing content](landing/content.md), [educational guides](landing/guides.md) and the [organic growth and multilingual contract](landing/organic-growth-i18n-plan.md).
 
 Enterprise (Abastevo Empresas) rules live in [docs/enterprise/](../enterprise/README.md).

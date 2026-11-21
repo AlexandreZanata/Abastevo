@@ -108,8 +108,10 @@ and published by `android-release`. Details: [docs/operations/](docs/operations/
 ## Conventions
 
 - English for code, comments, docs, commits and PRs. User-facing strings go
-  through resources/i18n (`en` default, `pt-BR` and other locales); landing
-  content is pt-BR by design.
+  through resources/i18n (`en` default, `pt-BR` and other locales). The public
+  site is pt-BR first. Other locales ship only as reviewed translations under
+  [decision 026](docs/decisions/026-multilingual-public-site.md) and its
+  [multilingual contract](docs/product/landing/organic-growth-i18n-plan.md).
 - Conventional Commits: `type(scope): imperative subject` (≤ 72 chars), one
   logical change per commit, body explains why.
 - Never commit secrets, keystores, `local.properties`, personal data, precise

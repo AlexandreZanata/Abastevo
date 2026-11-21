@@ -94,7 +94,7 @@ Role assignment:
 
 `STATION_ADMIN` and `STATION_MANAGER` map to the existing representation roles `administrator` and `manager` (STATION_PROFILE_CONTRACT_FREEZE). No generic account role `OWNER` is created outside an organization; the existing freeze ("No `OWNER` role exists anywhere in this scope") keeps applying to station representation.
 
-### 7.2 Permission registry (`org-permissions-v5`)
+### 7.2 Permission registry (`org-permissions-v6`)
 
 Every permission used by any module is listed here. A module that needs a new key adds it here first.
 
@@ -207,6 +207,8 @@ Cell values: `O` allowed in the whole assigned scope; `S` allowed on own records
 | Report incident (`check.incident.report`) | S | S | S | S | — | — | S | S | — |
 | Handle incidents, release blocks (`check.incident.manage`) | O | O | O | O | — | — | — | — | — |
 | Maintain checklist templates (`check.template.manage`) | O | O | O | — | — | — | — | — | — |
+| Maintain geofences (`gps.geofence.manage`) | O | O | O | O | — | — | — | — | — |
+| Plan routes (`route.plan.manage`) | O | O | O | O | — | — | — | — | — |
 | See live location (`gps.location.read_live`) | O | O | O | O | — | — | S² | — | — |
 | See recorded track (`gps.track.read`) | O | O | O | O | — | — | S² | — | O³ |
 | Record fueling (`fuel.fueling.record`) | S | S | S | S | — | — | S | S | — |
@@ -455,5 +457,44 @@ AUDITOR gains nothing and 18 keys stay unassigned. Role assignments store role
 keys, not permissions or a catalog version, so no migration is needed and a
 current assignment gains the grants at its next evaluation. A grant is not a
 route: each key stays `NOT_YET_ROUTED` until its owning task routes it, and
-record rules such as the BR-CHECK-011 author exclusion remain that task's.
+not to be confused with the record owner's review gate, which remains that task's.
+
+F5 Live Navigation and Operations amendment (`org-permissions-v6`, EDR-370,
+B-BR-EMP-564): `org-permissions-v6` activates three tracking/routing keys
+across the four operational management roles (`OWNER`, `ADMIN`, `FLEET_MANAGER`,
+`SUPERVISOR`, `O` coverage) plus driver self-access where documented:
+`gps.geofence.manage` (`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`),
+`route.plan.manage` (`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`), and
+`gps.location.read_live` (`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`,
+`DRIVER` = `S` on own trips, `AUDITOR` = denied). Every existing v5 cell stays
+unchanged and `AUDITOR` remains limited to recorded tracks (`gps.track.read`),
+never live positions (VAL-16, VAL-21).
+
+F6 Management and Intelligence amendment (`org-permissions-v7`, EDR-375,
+B-BR-EMP-571): `org-permissions-v7` preserves every `v6` cell and all 13 fixed
+The F7 fleet-side amendment (B-BR-EMP-597, EDR-389) routes `agree.agreement.manage`
+(six endpoints: proposal, read, list, suspend, end and the redemption settlement list) and
+`agree.authorization.issue` (four endpoints: issue, read, list, cancel) on the same catalog,
+yielding `46` routed permissions (`460` matrix cells: `182` allowed, `278` denied) and `205`
+routed endpoints. Station-scope keys (`agree.redemption.confirm`, `stn.*`) stay unrouted on the
+organization matrix with the recorded station-scope reason: the station party acts through its
+live station grant surface, never an organization session.
+roles (with `DATA_MANAGER`, `STATION_*` denied on ordinary company routes) and
+activates the 11 F6 routed permission keys: `stock.tank.manage` (`OWNER`,
+`ADMIN`, `FLEET_MANAGER` = `O`), `stock.movement.record` (`OWNER`, `ADMIN`,
+`FLEET_MANAGER`, `SUPERVISOR`, `OPERATIONS_STAFF` = `O`), `maint.plan.manage`
+(`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`),
+`maint.workorder.manage` (`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`),
+`maint.workorder.review` (`OWNER`, `ADMIN`, `FINANCE`, `APPROVER` = `O`),
+`maint.request.create` (`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`;
+`DRIVER`, `OPERATIONS_STAFF` = `S` on own requests), `kpi.dashboard.read`
+(`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER`,
+`AUDITOR` = `O`), `find.finding.read` (`OWNER`, `ADMIN`, `FLEET_MANAGER`,
+`SUPERVISOR`, `FINANCE`, `APPROVER`, `AUDITOR` = `O`), `find.finding.resolve`
+(`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER` = `O`;
+`AUDITOR` = denied), `audit.event.read` (`OWNER`, `ADMIN`, `AUDITOR` = `O`), and
+`org.group.manage` (`OWNER`, `ADMIN` = `O` under fresh auth). Total catalog
+coverage yields `44` routed permissions (`440` role cells: `174` allowed, `266`
+denied) across `195` routed endpoints (`37` `AUDITOR` positive, `158` denied
+`FORBIDDEN`).
 Evidence

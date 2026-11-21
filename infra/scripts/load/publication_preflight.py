@@ -220,10 +220,10 @@ def verify_artifact(artifact, scope):
     home_name = "fiscalizacao" if mode == "official-only" else "consultar"
     home = artifact / home_name / "index.html"
     page = home.read_text(encoding="utf-8", errors="replace") if home.exists() else ""
-    if 'name="robots" content="index,follow"' not in page:
+    if 'name="robots" content="index,follow,max-image-preview:large,max-snippet:-1"' not in page:
         failures.append(f"{home_name} page is not indexable")
     else:
-        checks.append(("page_indexable", "PASS", "index,follow"))
+        checks.append(("page_indexable", "PASS", "index,follow,max-image-preview:large,max-snippet:-1"))
     return failures, checks, manifest
 
 

@@ -129,4 +129,25 @@ class NativeRouteViewModelTest {
         assertEquals(MapRouteTarget.Address("Rua XV, 100"), MapRouteTarget.fromStationQuery("Rua XV, 100", "Station"))
     }
 
+    @Test fun `a trip preview uses its own options and never persists private points`() = runTest {
+        val engine = mockk<MapEngine>(relaxed = true)
+        val request = slot<NativeRouteRequest>()
+        every { engine.buildRoute(capture(request), any()) } returns true
+        val saved = SavedStateHandle()
+        val vm = NativeRouteViewModel(engine, saved)
+        val personal = RoutePoint(-25.41, -49.25, "Personal")
+        vm.restorePlan(listOf(start, personal), setOf(RoadAvoidance.MOTORWAY))
+        vm.prepareDestination(end, setOf(RoadAvoidance.TOLL))
+        vm.buildFromCurrentLocation("pt") { start }
+        runCurrent()
+        assertTrue(vm.ui.value.tripPreview)
+        assertEquals(listOf(start, end), request.captured.points)
+        assertEquals(setOf(RoadAvoidance.TOLL), request.captured.avoid)
+        val restored = NativeRouteViewModel(engine, saved)
+        assertEquals(personal, restored.ui.value.destination)
+        assertEquals(setOf(RoadAvoidance.MOTORWAY), restored.ui.value.avoid)
+        vm.cancel()
+        assertNull(vm.ui.value.destination)
+    }
+
 }

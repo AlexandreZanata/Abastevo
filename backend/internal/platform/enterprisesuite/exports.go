@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	companyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
+	intelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/adapters"
 	member "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
 	accesspg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
@@ -29,7 +30,8 @@ var errExportComposition = errors.New("enterprisesuite: incomplete export compos
 // list readers re-check requesters through the given export authority.
 // Without configured storage every transfer is unavailable.
 func exportParts(o Options, requesters lists.Requesters) (exportapp.Registry, exportapp.Objects, error) {
-	formats, err := exportapp.NewRegistry(append(lists.New(o.Pool, requesters), o.ExportFormats...)...)
+	all := append(lists.New(o.Pool, requesters), intelpg.ExportFormats(o.Pool, requesters)...)
+	formats, err := exportapp.NewRegistry(append(all, o.ExportFormats...)...)
 	if err != nil {
 		return exportapp.Registry{}, nil, err
 	}

@@ -133,6 +133,7 @@ type createDraftDTO struct {
 	RegionUF               *string `json:"region_uf"`
 	RegionMunicipalityIBGE *int    `json:"region_municipality_ibge"`
 	StationID              *string `json:"station_id"`
+	LandingRoute           *string `json:"landing_route"`
 	Reason                 string  `json:"reason"`
 }
 
@@ -168,6 +169,7 @@ func (h AdminHandler) createDraft(w http.ResponseWriter, r *http.Request) {
 		RegionUF:               dto.RegionUF,
 		RegionMunicipalityIBGE: dto.RegionMunicipalityIBGE,
 		StationID:              dto.StationID,
+		LandingRoute:           dto.LandingRoute,
 	}
 
 	post, err := h.Service.CreateDraft(r.Context(), m, input)
@@ -196,6 +198,7 @@ type editPostDTO struct {
 	RegionUF               *string `json:"region_uf"`
 	RegionMunicipalityIBGE *int    `json:"region_municipality_ibge"`
 	StationID              *string `json:"station_id"`
+	LandingRoute           *string `json:"landing_route"`
 	Reason                 string  `json:"reason"`
 }
 
@@ -233,6 +236,7 @@ func (h AdminHandler) editPost(w http.ResponseWriter, r *http.Request) {
 		RegionUF:               dto.RegionUF,
 		RegionMunicipalityIBGE: dto.RegionMunicipalityIBGE,
 		StationID:              dto.StationID,
+		LandingRoute:           dto.LandingRoute,
 	}
 
 	post, err := h.Service.EditPost(r.Context(), m, input)
@@ -496,6 +500,7 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		errors.Is(err, domain.ErrInvalidBulletinInput),
 		errors.Is(err, domain.ErrBulletinContentTooLong),
 		errors.Is(err, domain.ErrBulletinArithmetic),
+		errors.Is(err, domain.ErrInvalidLandingRoute),
 		errors.Is(err, domain.ErrInvalidCursor):
 		writeError(w, r, http.StatusBadRequest, "forum.invalid")
 	default:

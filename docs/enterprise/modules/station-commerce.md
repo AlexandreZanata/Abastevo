@@ -6,7 +6,9 @@ Let a currently authorized station representative publish bounded commercial inf
 
 ## 2. Scope
 
-F7 follows the separate Stage D override, representation decision and staffing evidence. It adds commercial profile, announced prices, labelled promotions, replies and agreements. It cannot overwrite official records, moderate its own criticism or change trust.
+F7 follows the separate Stage D override, representation decision and staffing evidence; the maintainer recorded the commerce override for the delivered slice (EDR-386), while station claims, the station portal, replies, metrics and statement reconciliation stay gated. It adds commercial profile, announced prices, labelled promotions, replies and agreements. It cannot overwrite official records, moderate its own criticism or change trust.
+
+Delivery state (M7 local checkpoint, EDR-391): announced prices (`000260`), labelled promotions, bilateral agreements with private negotiated terms (`000261`), bounded single-use authorizations, the once-only station redemption and the cross-organization sharing guards are implemented and locally verified; the station-side surfaces stay behind the production composition boundary (`503`) until the recorded activation, exactly like the profile surface.
 
 ## 3. Entities and ownership
 
@@ -25,7 +27,7 @@ The organization owns profile revisions, announced price and promotion under one
 
 **UC-AGREE-01 — Establish terms.** Eligible representatives propose and explicitly accept an agreement. Suspension or ending stops new eligible transactions under its recorded policy. Neither party expands the allowlist unilaterally.
 
-**UC-AGREE-02 — Redeem.** A permitted station actor submits the valid transaction and voucher. Current server checks and one transaction record the result. Identical retry returns the result. Competing use cannot consume it twice. Typed ports create only the permitted internal fueling and receivable effects.
+**UC-AGREE-02 — Redeem.** A permitted station actor submits the valid transaction and voucher. Current server checks and one transaction record the result. A confirmation for the same voucher, product, unit and quantity returns the recorded result. A change to any settlement field is a conflict. The station receipt contains the settlement, agreement, voucher and station identifiers, the product, unit, quantity, negotiated unit price, total and confirmation time. An operation identifier already used to redeem another voucher is also a conflict. Typed ports create only the permitted internal fueling and receivable effects.
 
 ## 6. States and transitions
 

@@ -204,3 +204,66 @@ func TestReadSnapshotWithoutForumSection(t *testing.T) {
 		t.Fatalf("snapshot without forum = %+v, %v", snapshot.ForumPosts, err)
 	}
 }
+
+func TestForumLandingRouteExportAndValidation(t *testing.T) {
+	parent := t.TempDir()
+	build := func(name string, forum ForumSource) (Manifest, error) {
+		stations, prices := fixtureSources()
+		builder := Builder{Stations: stations, Prices: prices, Forum: forum, PageSize: 2}
+		return builder.Build(context.Background(), Options{
+			FromSurvey: "2026-10-01", ToSurvey: "2026-10-31", OutputDir: filepath.Join(parent, name),
+		})
+	}
+
+	withoutRoute := forumFixture()
+	baseManifest, err := build("without-route", withoutRoute)
+	if err != nil {
+		t.Fatalf("build without landing_route: %v", err)
+	}
+
+	route := "/guias/etanol-ou-gasolina/"
+	withRoute := forumFixture()
+	withRoute.rows[0].LandingRoute = &route
+	withRouteDir := filepath.Join(parent, "with-route")
+	stations, prices := fixtureSources()
+	withRouteManifest, err := (Builder{Stations: stations, Prices: prices, Forum: withRoute, PageSize: 2}).Build(
+		context.Background(),
+		Options{FromSurvey: "2026-10-01", ToSurvey: "2026-10-31", OutputDir: withRouteDir},
+	)
+	if err != nil {
+		t.Fatalf("build with landing_route: %v", err)
+	}
+	if withRouteManifest.ContentSHA256 == baseManifest.ContentSHA256 {
+		t.Fatal("adding landing_route did not change ContentSHA256")
+	}
+	snapshot, err := ReadSnapshot(withRouteDir)
+	if err != nil {
+		t.Fatalf("ReadSnapshot: %v", err)
+	}
+	var found string
+	for _, post := range snapshot.ForumPosts {
+		if post.PostID == "00000000-0000-4000-8000-0000000000f1" {
+			found = post.LandingRoute
+		}
+	}
+	if found != route {
+		t.Fatalf("snapshot ForumPost.LandingRoute = %q, want %q", found, route)
+	}
+
+	for name, badRoute := range map[string]string{
+		"missing-slash": "/guias/etanol-ou-gasolina",
+		"foreign":       "/en/guides/ethanol-vs-gasoline/",
+		"full-url":      "https://abastevo.com.br/guias/etanol-ou-gasolina/",
+	} {
+		invalid := forumFixture()
+		r := badRoute
+		invalid.rows[0].LandingRoute = &r
+		outName := "bad-" + name
+		if _, err := build(outName, invalid); err == nil {
+			t.Errorf("%s accepted invalid landing_route %q", name, badRoute)
+		}
+		if _, statErr := os.Stat(filepath.Join(parent, outName)); !os.IsNotExist(statErr) {
+			t.Errorf("%s left an output directory", name)
+		}
+	}
+}

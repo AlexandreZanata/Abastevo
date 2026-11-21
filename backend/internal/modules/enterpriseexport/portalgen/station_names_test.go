@@ -18,7 +18,7 @@ func TestPortalCanonicalNamesStaySearchableAndRenderSecondaryLegalName(t *testin
 		t.Fatal(err)
 	}
 	html := readPortal(t, out, "postos/"+stA+"/index.html")
-	if !strings.Contains(html, "<h1>Posto Alfa</h1>") || !strings.Contains(html, `class="station-legal-name muted">Comercial Sintética LTDA<`) || strings.Contains(html, "12345678909") {
+	if !strings.Contains(html, `<h1>Posto Alfa <span class="h1-place">– São Paulo (SP)</span></h1>`) || !strings.Contains(html, `class="station-legal-name muted">Comercial Sintética LTDA<`) || strings.Contains(html, "12345678909") {
 		t.Fatal("primary/secondary identity or privacy failed")
 	}
 	if strings.Contains(readPortal(t, out, "postos/"+stB+"/index.html"), `class="station-legal-name muted"`) {

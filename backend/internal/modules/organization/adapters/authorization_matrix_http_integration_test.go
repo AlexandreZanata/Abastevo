@@ -62,6 +62,22 @@ var matrixRepresentatives = []matrixRoute{
 	{"doc.document.view_content", "/documents/{document_id}/content/access", false, false},
 	{"rpt.export.run", "/reports/exports/list", true, false},
 	{"gps.track.read", "/trips/{trip_id}/track/read", false, false},
+	{"gps.geofence.manage", "/tracking/geofences/list", false, false},
+	{"gps.location.read_live", "/trips/{trip_id}/location/live/read", false, false},
+	{"route.plan.manage", "/routes/plans/read", false, false},
+	{"audit.event.read", "/audit/events/list", false, false},
+	{"find.finding.read", "/intelligence/findings/list", false, false},
+	{"find.finding.resolve", "/intelligence/findings/review/list", false, false},
+	{"kpi.dashboard.read", "/intelligence/kpis/overview", false, false},
+	{"maint.plan.manage", "/maintenance/plans/list", false, false},
+	{"maint.request.create", "/maintenance/requests/mine", false, false},
+	{"maint.workorder.manage", "/maintenance/work-orders/list", false, false},
+	{"maint.workorder.review", "/maintenance/work-orders/review/list", false, false},
+	{"org.group.manage", "/consolidation/grants/list", true, false},
+	{"stock.movement.record", "/stock/movements/list", false, false},
+	{"stock.tank.manage", "/stock/tanks/list", false, false},
+	{"agree.agreement.manage", "/station-agreements/list", false, false},
+	{"agree.authorization.issue", "/fueling-authorizations/list", false, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -71,7 +87,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		t.Fatal("authorization test location unavailable")
 	}
 	directory := filepath.Join(filepath.Dir(source), "../../../../../contracts/testdata/enterprise")
-	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v5.psv"))
+	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v7.psv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +131,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		} `json:"permissions"`
 	}
 	raw, err := os.ReadFile(filepath.Join(directory, "authorization-routes-v1.json"))
-	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v5" || len(inventory.Permissions) != 85 {
+	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v7" || len(inventory.Permissions) != 85 {
 		t.Fatal("independent route inventory unavailable or invalid")
 	}
 	routed := map[string]string{}
@@ -362,6 +378,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	exportGrant(t, fx)
 	tripReviewGrants(t, fx.f)
 	incidentGrants(t, fx.f)
+	grantF6Tables(t, fx.f)
+	grantF7AgreementTables(t, fx.f)
 	// EMP-GPS-012: one recorded track of a trip authored by another member of
 	// the organization's first unit, through the real signed intake.
 	tracked := trackingFixtureOn(t, tripFixtureOn(t, selfIntakeFixtureOn(t, syncFixtureOn(t, fx))))
@@ -432,6 +450,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "starts_at": start.Format(time.RFC3339Nano), "ends_at": start.Add(time.Hour).Format(time.RFC3339Nano), "purpose": "Synthetic matrix reservation"}
 				case "doc.document.attach":
 					return matrixDocumentDeclaration(t)
+				case "route.plan.manage":
+					return map[string]any{"owner_kind": "TRIP", "owner_id": tracked.trip}
 				default:
 					return map[string]any{}
 				}
@@ -459,10 +479,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				// fact substitutes for SELF. A SELF content cell is refused on
 				// another member's document. A DRIVER's own-trips track cell is
 				// refused on another member's trip (EMP-GPS-012).
-				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") || entry.permission == "doc.document.view_content" && strings.HasPrefix(cell, "S") || entry.permission == "gps.track.read" && strings.HasPrefix(cell, "S") {
+				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") || entry.permission == "doc.document.view_content" && strings.HasPrefix(cell, "S") || (entry.permission == "gps.track.read" || entry.permission == "gps.location.read_live") && strings.HasPrefix(cell, "S") {
 					want, code, key = 403, "FORBIDDEN", entry.permission
 					denied++
-				} else if strings.HasPrefix(cell, "O") || (entry.permission == "doc.document.attach" || entry.permission == "trip.trip.start" || entry.permission == "check.incident.report") && strings.HasPrefix(cell, "S") {
+				} else if strings.HasPrefix(cell, "O") || (entry.permission == "doc.document.attach" || entry.permission == "trip.trip.start" || entry.permission == "check.incident.report" || entry.permission == "maint.request.create") && strings.HasPrefix(cell, "S") {
 					// A SELF attach cell covers exactly the member's own new document;
 					// a trip.trip.start cell covers the member's own mission list; a
 					// SELF report cell the member's own report list (EMP-CHECK-003).
@@ -534,7 +554,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 						if entry.permission == "doc.document.attach" {
 							want = 201
 						}
-						if oracle[entry.permission][role] == "-" || (entry.permission == "fleet.asset.read" || entry.permission == "doc.document.view_content" || entry.permission == "gps.track.read") && strings.HasPrefix(oracle[entry.permission][role], "S") {
+						if oracle[entry.permission][role] == "-" || (entry.permission == "fleet.asset.read" || entry.permission == "doc.document.view_content" || entry.permission == "gps.track.read" || entry.permission == "gps.location.read_live") && strings.HasPrefix(oracle[entry.permission][role], "S") {
 							want, code, key = 403, "FORBIDDEN", entry.permission
 						}
 						organization := org
@@ -575,7 +595,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 						case "self-scope":
 							// A SELF-scoped assignment still covers the member's own new
 							// document; every other representative needs ORG scope.
-							if entry.permission != "org.ownership.respond" && !(entry.permission == "doc.document.attach" && want == 201) && !(entry.permission == "trip.trip.start" && want == 200) && !(entry.permission == "check.incident.report" && want == 200) {
+							if entry.permission != "org.ownership.respond" && !(entry.permission == "doc.document.attach" && want == 201) && !(entry.permission == "trip.trip.start" && want == 200) && !(entry.permission == "check.incident.report" && want == 200) && !(entry.permission == "maint.request.create" && want == 200) {
 								want, code, key = 403, "FORBIDDEN", entry.permission
 							}
 						case "unit-scope":
@@ -585,7 +605,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 							// ownership response and own documents are refused. The
 							// recorded track is of a trip whose stored unit is the
 							// scoped one, so an O cell covers it (EMP-GPS-012).
-							if !(entry.permission == "gps.track.read" && want == 200) {
+							if !((entry.permission == "gps.track.read" || entry.permission == "gps.location.read_live") && want == 200) {
 								want, code, key = 403, "FORBIDDEN", entry.permission
 							}
 						}
@@ -662,10 +682,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 300 || allowed != 121 || denied != 179 {
+	if exercised != 460 || allowed != 182 || denied != 278 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 54 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident report S cells cover only the own report list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 38 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident and maintenance request S cells cover only the own list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
 }
 
 // matrixAssignableAsset creates, through the owner's actual requests, one

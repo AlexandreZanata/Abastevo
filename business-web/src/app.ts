@@ -10,6 +10,12 @@ import { CheckPanelApi } from './checks.js';
 import { mountCheckPanel } from './checkpanel.js';
 import { OrganizationSetupApi } from './setup.js';
 import { mountOrganizationSetup } from './setuppanel.js';
+import { OperationsApi } from './operations.js';
+import { mountOperationsPanel } from './operationspanel.js';
+import { IntelligenceApi } from './intelligence.js';
+import { mountIntelligencePanel } from './intelligencepanel.js';
+import { AgreementsApi } from './agreements.js';
+import { mountAgreementsPanel } from './agreementspanel.js';
 
 const COPY: Partial<Record<Phase, [string, string]>> = {
   loading: ['Carregando seu espaço', 'Verificando seu acesso. Aguarde um instante.'],
@@ -39,6 +45,9 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   const panel = api ? mountEmployeeAccess(doc, browser, new EmployeeAccessApi(api), message => controller.reset(message)) : null;
   const missions = api ? mountMissionBoard(doc, browser, new MissionBoardApi(api), message => controller.reset(message)) : null;
   const checks = api ? mountCheckPanel(doc, browser, new CheckPanelApi(api), message => controller.reset(message)) : null;
+  const ops = api ? mountOperationsPanel(doc, browser, new OperationsApi(api), message => controller.reset(message)) : null;
+  const intel = api ? mountIntelligencePanel(doc, browser, new IntelligenceApi(api), message => controller.reset(message)) : null;
+  const agreements = api ? mountAgreementsPanel(doc, browser, new AgreementsApi(api), message => controller.reset(message)) : null;
   const setup = api ? mountOrganizationSetup(doc, browser, new OrganizationSetupApi(api), message => controller.reset(message), id => {
     if (target.kind !== 'create' && target.kind !== 'setup') return;
     const path = setupPath(id);
@@ -63,8 +72,8 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     // An unchanged tab-return recheck keeps focus, the pending choice and the
     // live region as they are; only the refreshed expiry deadline applies.
     if (unchanged) return;
-    if (state.phase === 'ready') { panel?.select(state.authority); missions?.select(state.authority); checks?.select(state.authority); }
-    else { panel?.clear(); missions?.clear(); checks?.clear(); }
+    if (state.phase === 'ready') { panel?.select(state.authority); missions?.select(state.authority); checks?.select(state.authority); ops?.select(state.authority); intel?.select(state.authority); agreements?.select(state.authority); }
+    else { panel?.clear(); missions?.clear(); checks?.clear(); ops?.clear(); intel?.clear(); agreements?.clear(); }
     if (state.phase === 'setup' && state.setupAccountId && (target.kind === 'create' || target.kind === 'setup')) setup?.select(state.setupAccountId, target.kind === 'setup' ? target.id : undefined);
     else setup?.clear();
     const busy = state.phase === 'loading' || state.phase === 'signing-out';

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "default": "pt-BR",
+  "locales": [
+    {
+      "code": "pt-BR",
+      "prefix": "",
+      "htmlLang": "pt-BR",
+      "hreflang": "pt-BR",
+      "ogLocale": "pt_BR",
+      "decimal": ",",
+      "enabled": true,
+      "reviewers": ["Equipe Editorial Abastevo"],
+      "segments": { "guias": "guias", "ferramentas": "ferramentas" }
+    },
+    {
+      "code": "en",
+      "prefix": "/en",
+      "htmlLang": "en",
+      "hreflang": "en",
+      "ogLocale": "en_US",
+      "decimal": ".",
+      "enabled": false,
+      "reviewers": [],
+      "segments": { "guias": "guides", "ferramentas": "tools" }
+    },
+    {
+      "code": "es",
+      "prefix": "/es",
+      "htmlLang": "es",
+      "hreflang": "es",
+      "ogLocale": "es_ES",
+      "decimal": ",",
+      "enabled": false,
+      "reviewers": [],
+      "segments": { "guias": "guias", "ferramentas": "herramientas" }
+    }
+  ]
+}

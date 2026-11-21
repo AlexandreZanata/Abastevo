@@ -202,22 +202,6 @@ The [subscription design](../modules/subscriptions.md) records the separate plan
 - **Risks and assumptions:** The [subscription design](../modules/subscriptions.md) and billing approvals govern detailed transitions, fiscal scope and activation. This recovery does not admit a provider or price.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
-### EMP-PUB-002 — Voluntary price publication from an enterprise fueling
-- **Meta:** module PUB · phase F6 · cut - · priority P2 · type API · size M · state TODO
-- **Objective:** Offer voluntary publication only through a reviewed public-field allowlist.
-- **Rules and use cases:** BR-SRC-001, BR-SRC-002, BR-SRC-003, BR-SRC-004, BR-PRIV-005
-- **Depends on:** EMP-FUEL-003
-- **Read first:** [decision register](../decisions.md), [state model](../state-model.md), [product vision](../product-vision.md) and [journeys](../journeys.md)
-- **Scope:** in: explicit action and permitted contribution data · out: automatic publishing or sharing receipts, contracts and employee records
-- **Areas:** existing: account entitlements, scoped capabilities and payment policy · proposed: independent organization catalog, billing state and consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** Public contribution follows existing eligibility, provenance and neutrality rules.
-- **Acceptance:** Public contribution follows existing eligibility, provenance and neutrality rules.
-- **Negative cases:** Private fields leak, plan changes trust or publication happens without explicit user action.
-- **Validation:** V-API, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** The [subscription design](../modules/subscriptions.md) and billing approvals govern detailed transitions, fiscal scope and activation. This recovery does not admit a provider or price.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
 ### EMP-PUB-003 — Personal vehicles and history stay personal, with explicit copy only
 - **Meta:** module PUB · phase F2 · cut - · priority P1 · type DOM · size S · state TODO
 - **Objective:** Preserve personal vehicle history and any separately authorized copy boundary.

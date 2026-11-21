@@ -321,6 +321,7 @@ sql:
   - engine: postgresql
     queries: db/queries/stationprofile
     schema:
+      - db/migrations/000260_station_commerce.sql
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
       - db/migrations/000036_station_profiles.sql
@@ -584,6 +585,7 @@ sql:
       - db/migrations/000162_forum_bulletin_provenance.sql
       - db/migrations/000163_forum_comment_review_queue.sql
       - db/migrations/000164_forum_reactions_live_events.sql
+      - db/migrations/000262_forum_post_landing_route.sql
     gen:
       go:
         package: forum

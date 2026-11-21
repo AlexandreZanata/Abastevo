@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport"
+	forumdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 )
 
@@ -149,7 +150,8 @@ func (g *generator) prepareForum(rows []enterpriseexport.ForumPost) error {
 		updated, errUpdated := time.Parse(time.RFC3339, row.UpdatedAt)
 		if errPublished != nil || errUpdated != nil || strings.TrimSpace(row.Title) == "" || row.Category == "" ||
 			(row.RegionUF != "" && !isUF(row.RegionUF)) || (row.RegionMunicipality != "" && (!isIBGE(row.RegionMunicipality) || row.RegionUF == "")) ||
-			(row.StationID != "" && !isUUID(row.StationID)) {
+			(row.StationID != "" && !isUUID(row.StationID)) ||
+			(row.LandingRoute != "" && !forumdomain.ValidLandingRoute(row.LandingRoute)) {
 			return fmt.Errorf("portalgen: invalid forum post %s", row.PostID)
 		}
 		category, ok := categories[row.Category]
@@ -431,6 +433,9 @@ func (g *generator) forumCategoryLinks(except *forumCategory) []moduleLink {
 // exist in this build.
 func (g *generator) forumRelated(post *forumPost) []moduleLink {
 	links := []moduleLink{}
+	if route := post.Row.LandingRoute; route != "" && LandingRoutes[route] && g.opts.LandingURL != "" {
+		links = append(links, moduleLink{Label: forumLandingLabel(route), Href: g.forumLandingHref(route)})
+	}
 	uf, code := post.Row.RegionUF, post.Row.RegionMunicipality
 	if uf != "" && g.statePages[uf] {
 		links = append(links, moduleLink{Label: "Preço dos combustíveis em " + ufName(uf), Href: stateRoute(uf)})

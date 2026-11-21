@@ -234,6 +234,7 @@ org.settings.manage O O - - - - - - -
 org.structure.manage O O - - - - - - -
 org.legal_entity.manage O O - - - - - - -
 org.ownership.transfer O - - - - - - - -
+org.group.manage O - - - - - - - -
 fleet.asset.manage O O O - - - - - -
 fleet.asset.read O O O O O O S S O
 fleet.asset.assign O O O O - - - - -
@@ -249,8 +250,10 @@ check.checklist.execute S S S S - - S S -
 check.incident.report S S S S - - S S -
 check.template.manage O O O - - - - - -
 check.incident.manage O O O O - - - - -
+route.plan.manage O O O O - - - - -
 gps.location.read_live O O O O - - S2 - -
 gps.track.read O O O O - - S2 - O3
+gps.geofence.manage O O O - - - - - -
 fuel.fueling.record S S S S - - S S -
 fuel.fueling.read O O O O O O S S O
 fuel.fueling.review O O O - O O - - -
@@ -266,9 +269,13 @@ fin.payment.record O - - - O - - - -
 fin.period.close O - - - O - - - -
 fin.period.reopen O - - - O - - - -
 maint.workorder.manage O O O - - - - - -
+maint.workorder.review O O - - O O - - -
+maint.plan.manage O O O - - - - - -
 maint.request.create S S O O - - S S -
+stock.tank.manage O O O - - - - - -
 stock.movement.record O O O - - - - O -
 kpi.dashboard.read O O O O O - - - O
+find.finding.read O O O - O - - - O
 find.finding.resolve O O O - O - - - -
 rpt.export.run O O O - O - - - O
 audit.event.read O O - - - - - - O

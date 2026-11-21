@@ -31,7 +31,7 @@ func TestFleetReservationsThroughComposedCompanyHTTP(t *testing.T) {
 	_ = reservationStore(t, fx)
 	_ = meterStore(t, fx)
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
-	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role); err != nil {
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role+"; GRANT SELECT ON org_work_orders TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	accounts := &account.Service{Clock: onboardingClock{time.Now().UTC().Truncate(time.Second)}, Store: accountpg.NewPGStore(fx.f.Admin), Hasher: accountdomain.SHA256Hasher{}, IDGen: jobs.NewUUIDv4, TokenGen: accountdomain.GenerateToken, KeyGen: accountdomain.GenerateAccountKey}
@@ -216,7 +216,7 @@ func TestFleetReservationsThroughComposedCompanyHTTP(t *testing.T) {
 		t.Fatal("reservation page", page)
 	}
 	available := call("availability", base+"/"+v+"/availability/read", map[string]any{}, 200)
-	if available["availability"] != "AVAILABLE" || len(available["causes"].([]any)) != 0 || len(available["missing_sources"].([]any)) != 1 || available["missing_sources"].([]any)[0] != "MAINTENANCE_HOLD" {
+	if available["availability"] != "AVAILABLE" || len(available["causes"].([]any)) != 0 || len(available["missing_sources"].([]any)) != 0 {
 		t.Fatal("availability before the window", available)
 	}
 

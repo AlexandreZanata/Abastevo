@@ -34,7 +34,11 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Quick verification
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # Measured: the F6 stacked-phase head finished in 9m30s and the F7 head
+    # reached the final secret-scan step when the former 12m bound expired
+    # (2026-11-20, run 44802147100), so the bound is 16m to cover the stacked
+    # phase diff plus runner variance. The gate itself never shrinks.
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
         with:

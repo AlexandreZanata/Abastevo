@@ -1,0 +1,13 @@
+id|operation|args|expected
+spec-10-5-group-ratios|RATIO_GROUP|i1_m=612000;i1_ml=180000;i1_c=116820;i2_m=588000;i2_ml=170000;i2_c=110330;i3_m=400000;i3_ml=40000;i3_c=23960|sum_m=1600000;sum_ml=390000;sum_c=251110;km_per_l_rat=160/39;km_per_l_2dp=4.10;l_per_100_2dp=24.38;c_per_km_2dp=157
+spec-10-5-tractor-hours|RATIO_HOURS|seconds=180000;ml=600000;cents=359400|l_per_h_rat=12;l_per_h_2dp=12.00;c_per_h=7188
+spec-10-5-operating-cost|OP_COST|fuel=227150;maint=84000;tolls=12640;parking=3000;dist_m=1250000|total_cents=326790;c_per_km_2dp=261
+spec-10-5-availability|AVAIL|active_s=2678400;unavail_s=194400|avail_s=2484000;avail_rat=115/124;avail_pct_1dp=92.7
+spec-10-7-price-case-a|PRICE_CMP|qty_ml=150000;paid_cents=97350;ref_milli=6090;fuel_cond=STANDARD;ref_cond=STANDARD;cov=8;age_days=2;max_age=14;min_cov=3|status=COMPUTED;ref_cents=91350;diff_cents=6000;diff_per_unit_milli=400
+spec-10-7-price-case-b|PRICE_CMP|qty_ml=150000;paid_cents=97350;ref_milli=6090;fuel_cond=CREDIT;ref_cond=CASH;cov=8;age_days=2;max_age=14;min_cov=3|status=INSUFFICIENT_DATA;reason=CONDITION_MISMATCH
+spec-10-9-ft001-dup|FIND_FT001|delta_min=13;window_min=30;same_key=false|raised=true;severity=MEDIUM
+spec-10-9-ft002-speed|FIND_FT002|delta_m=900000;delta_s=14400;max_kmh=150|raised=true;severity=MEDIUM
+spec-10-9-ft003-tank|FIND_FT003|qty_ml=300000;cap_ml=275000;tol_pct=5|raised=true;severity=MEDIUM
+spec-10-9-ft004-outlier|FIND_FT004|base_m=3600000;base_ml=1050000;test_m=500000;test_ml=200000;thresh_pct=20|raised=true;severity=MEDIUM
+spec-10-9-ft005-doc|FIND_FT005|rec_cents=97350;doc_cents=98350|raised=true;severity=MEDIUM
+spec-10-9-ft006-price|FIND_FT006|unit_milli=6490;ref_milli=6090;diff_cents=6000;pct=5;min_cents=1000|raised=true;severity=LOW

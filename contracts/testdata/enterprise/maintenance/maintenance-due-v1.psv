@@ -1,0 +1,13 @@
+id|operation|args|expected
+example1-upcoming-aug25|EVAL_PLAN|base_day=2026-05-10;base_m=120000000;int_m=10000000;lead_m=1000000;int_months=6;lead_days=15;eval_day=2026-08-25;eval_m=125950000|used_m=5950000;remaining_m=4050000;days_to_due=77;state=UPCOMING;trigger=NONE
+example1-upcoming-sep16|EVAL_PLAN|base_day=2026-05-10;base_m=120000000;int_m=10000000;lead_m=1000000;int_months=6;lead_days=15;eval_day=2026-09-16;eval_m=128600000|used_m=8600000;remaining_m=1400000;days_to_due=55;state=UPCOMING;trigger=NONE
+example1-due-sep21|EVAL_PLAN|base_day=2026-05-10;base_m=120000000;int_m=10000000;lead_m=1000000;int_months=6;lead_days=15;eval_day=2026-09-21;eval_m=129200000|used_m=9200000;remaining_m=800000;days_to_due=50;state=DUE;trigger=DISTANCE
+example1-overdue-sep24|EVAL_PLAN|base_day=2026-05-10;base_m=120000000;int_m=10000000;lead_m=1000000;int_months=6;lead_days=15;eval_day=2026-09-24;eval_m=130050000|used_m=10050000;remaining_m=-50000;days_to_due=47;state=OVERDUE;trigger=DISTANCE
+example1-date-due-oct26|EVAL_PLAN|base_day=2026-05-10;base_m=120000000;int_m=10000000;lead_m=1000000;int_months=6;lead_days=15;eval_day=2026-10-26;eval_m=124300000|used_m=4300000;remaining_m=5700000;days_to_due=15;state=DUE;trigger=TIME
+example1-date-overdue-nov11|EVAL_PLAN|base_day=2026-05-10;base_m=120000000;int_m=10000000;lead_m=1000000;int_months=6;lead_days=15;eval_day=2026-11-11;eval_m=124300000|used_m=4300000;remaining_m=5700000;days_to_due=-1;state=OVERDUE;trigger=TIME
+example2-hours-upcoming|EVAL_HOURS|base_s=5328000;int_s=900000;lead_s=90000;eval_s=6129000|used_s=801000;remaining_s=99000;state=UPCOMING;trigger=NONE
+example2-hours-due|EVAL_HOURS|base_s=5328000;int_s=900000;lead_s=90000;eval_s=6163200|used_s=835200;remaining_s=64800;state=DUE;trigger=HOURS
+example2-hours-overdue|EVAL_HOURS|base_s=5328000;int_s=900000;lead_s=90000;eval_s=6232500|used_s=904500;remaining_s=-4500;state=OVERDUE;trigger=HOURS
+example2-rebase-rules|REBASE_HOURS|due_s=6228000;done_s=6238800;int_s=900000|next_actual=7138800;next_scheduled=7128000
+example3-workorder-lines|EVAL_WO|approved=88000;tol_pct=10;oil_ml=18000;oil_price=32900;filter_u=1000;filter_price=89900;labor_s=5400;labor_rate=120000;discount=1210;paid=85000|overrun_ceiling=96800;parts_cents=68210;service_cents=18000;sum_cents=86210;mismatch=false;overrun=false;recognized_expense_cents=85000
+example4-corrected-reading|PROJECT_DUE|base_day=2026-05-10;base_m=120000000;int_m=10000000;lead_m=1000000;int_months=6;lead_days=15;eval_day=2026-09-24;eval_m=129550000;win_start_day=2026-08-25;win_start_m=125950000|used_m=9550000;remaining_m=450000;state=DUE;projected_day=2026-09-28

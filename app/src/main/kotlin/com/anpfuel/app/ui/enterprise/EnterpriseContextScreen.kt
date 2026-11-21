@@ -72,6 +72,8 @@ import com.anpfuel.app.ui.enterprise.tracking.MyTrackingHomeCard
 import com.anpfuel.app.ui.enterprise.tracking.MyTrackingPanel
 import com.anpfuel.app.ui.enterprise.tracking.MyTrackingViewModel
 import com.anpfuel.app.ui.enterprise.trip.TripPanel
+import com.anpfuel.app.ui.enterprise.trip.TripFieldCards
+import com.anpfuel.app.ui.map.MapRouteTarget
 import com.anpfuel.app.ui.enterprise.trip.TripViewModel
 import com.anpfuel.app.ui.enterprise.trip.TripsHomeCard
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
@@ -97,6 +99,7 @@ fun EnterpriseContextScreen(
     expenseViewModel: ExpenseViewModel = hiltViewModel(),
     /** EMP-ROUTE-004: opens the app's own route preview with an approved destination query; last, so positional callers stay valid. */
     onNavigate: (String) -> Unit = {},
+    onNavigateTripStop: (MapRouteTarget) -> Unit = {},
     /** EMP-GPS-015: the tracking indicator and "Meu rastreamento"; last, so positional callers stay valid. */
     trackingViewModel: MyTrackingViewModel = hiltViewModel(),
 ) {
@@ -109,6 +112,7 @@ fun EnterpriseContextScreen(
     var showAssets by remember { mutableStateOf(false) }
     var assetsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val tripState by tripViewModel.state.collectAsState()
+    val fieldView by tripViewModel.tripField.collectAsState()
     // EMP-DOC-004: one capture sheet owner; its unsaved photo stays in memory only (B-BR-EMP-453).
     val receiptState by receiptViewModel.state.collectAsState()
     val receiptPickers = rememberSystemReceiptPickers(receiptViewModel)
@@ -448,6 +452,17 @@ fun EnterpriseContextScreen(
                     if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) departureRun(renderedChecklist, choice.assetId) else null)
             },
             onLifecycle = { trip, command, reason -> if (tripsMatch) tripViewModel.lifecycle(trip, command, reason, renderedEpoch, tripState.generation) },
+            tripExtra = { trip ->
+                val snapshot = fieldView?.takeIf {
+                    tripsMatch && connected && it.context == renderedSelected && it.epoch == renderedEpoch &&
+                        it.generation == tripState.generation && it.value.tripId == trip.trip.tripId
+                }
+                if (snapshot != null) TripFieldCards(snapshot.value, trip.trip.state) { target ->
+                    if (currentGesture() && tripViewModel.tripField.value === snapshot && tripViewModel.connected.value) {
+                        onNavigateTripStop(target)
+                    }
+                }
+            },
             // EMP-ROUTE-004 (B-BR-EMP-532..535): the visible partition's own approved destination only; nothing is recorded or sent.
             onNavigate = if (BuildConfig.ENTERPRISE_MISSION_UI_ENABLED) { query -> if (tripsMatch) onNavigate(query) } else null,
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&

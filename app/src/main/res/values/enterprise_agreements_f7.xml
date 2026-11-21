@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_agreement_card_title">Fueling authorizations</string>
+    <string name="enterprise_agreement_voucher_limits">Up to %1$d milli and %2$d centavos.</string>
+    <string name="enterprise_agreement_voucher_valid_until">Valid until %1$s.</string>
+    <string name="enterprise_agreement_voucher_expired">Authorization expired.</string>
+    <string name="enterprise_agreement_voucher_locked">Authorization locked after invalid attempts.</string>
+    <string name="enterprise_agreement_announced_source">Announced station prices are a separate commercial source.</string>
+    <string name="enterprise_agreement_promotions_active">%1$d active promotion(s) at partner stations.</string>
+</resources>

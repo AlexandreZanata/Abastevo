@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadSite, renderSitemap, renderLlmsLinks } from './content/site.mjs';
+import { loadSite, renderSitemap, renderLlmsLinks, renderGuidesFeed } from './content/site.mjs';
 import {
   renderGuide,
   renderGuidesHub,
@@ -13,9 +13,14 @@ import {
   renderTool,
   renderPage,
   renderFooterColumns,
+  renderHomeHero,
   renderHomeStates,
   renderHomeGuides,
   renderHomeTools,
+  renderLocaleHome,
+  renderLocalizedHeader,
+  renderLocalizedFooter,
+  renderLanguageSwitch,
 } from './content/layouts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,6 +30,11 @@ const DEFAULT_ROOT = path.resolve(__dirname, '..');
 export function computeHash(content) {
   return crypto.createHash('sha256').update(content).digest('hex').slice(0, 8);
 }
+
+// SEO-21: every indexable page declares the rich preview directive; gated
+// pages keep their own noindex.
+export const ROBOTS_INDEXABLE = 'index,follow,max-image-preview:large,max-snippet:-1';
+const ROBOTS_META_RE = /<meta\s+name="robots"\s+content="[^"]*"\s*\/?>/;
 
 export function validateOrigin(origin) {
   if (!origin || typeof origin !== 'string') {
@@ -124,7 +134,12 @@ export function build(options = {}) {
   const staticDir = path.join(root, 'static');
 
   // Validate the content manifest and Markdown sources before touching outDir.
-  const site = loadSite(root);
+  const site = loadSite(root, {
+    enableLocales: options.enableLocales,
+    translationsDir: options.translationsDir,
+    enforceReviewGates: options.enforceReviewGates,
+  });
+  const defaultLocale = site.defaultLocale;
 
   // 1. Compile TypeScript to temp directory
   const tmpDir = path.join(root, '.build-tmp-' + crypto.randomBytes(4).toString('hex'));
@@ -275,6 +290,9 @@ export function build(options = {}) {
     // The sitemap is generated from the content manifest: indexable pages only,
     // each with the date its content last changed (never the build time).
     fs.writeFileSync(path.join(outDir, 'sitemap.xml'), renderSitemap(site, origin), 'utf8');
+    // SEO-22: guide feed, dated from content so it is reproducible.
+    fs.mkdirSync(path.join(outDir, 'guias'), { recursive: true });
+    fs.writeFileSync(path.join(outDir, 'guias', 'feed.xml'), renderGuidesFeed(site, origin), 'utf8');
 
     // Copy root favicon.ico if present
     const rootFavicon = path.join(staticDir, 'favicon.ico');
@@ -308,10 +326,11 @@ export function build(options = {}) {
     // The home owns the navigation and footer for every landing page. Its
     // footer columns and hub sections are generated from the manifest.
     const homeMarkers = {
-      '<!-- FOOTER_COLUMNS -->': renderFooterColumns(site),
-      '<!-- HOME_STATES -->': renderHomeStates(),
-      '<!-- HOME_GUIDES -->': renderHomeGuides(site),
-      '<!-- HOME_TOOLS -->': renderHomeTools(site),
+      '<!-- HOME_HERO -->': renderHomeHero(defaultLocale),
+      '<!-- FOOTER_COLUMNS -->': renderFooterColumns(site, defaultLocale),
+      '<!-- HOME_STATES -->': renderHomeStates(defaultLocale),
+      '<!-- HOME_GUIDES -->': renderHomeGuides(site, defaultLocale),
+      '<!-- HOME_TOOLS -->': renderHomeTools(site, defaultLocale),
     };
     let homeHtml = readStatic('index.html');
     for (const [marker, markup] of Object.entries(homeMarkers)) {
@@ -330,36 +349,54 @@ export function build(options = {}) {
 
     const pages = [];
     for (const entry of site.registry.values()) {
+      const locale = entry.locale ? site.localeByCode.get(entry.locale) : defaultLocale;
       let html;
       if (entry.kind === 'static' || entry.kind === 'html-guide') {
         html = entry.chrome === 'home' ? homeHtml : readStatic(entry.source);
+      } else if (entry.kind === 'locale-home') {
+        html = renderLocaleHome(site, origin, locale);
       } else if (entry.kind === 'guide') {
-        html = renderGuide(site, entry, origin);
+        html = renderGuide(site, entry, origin, locale);
       } else if (entry.kind === 'category') {
-        html = renderCategory(site, site.categories.find((c) => c.route === entry.route), origin);
+        html = renderCategory(site, site.categories.find((c) => c.route === entry.route), origin, locale);
       } else if (entry.kind === 'guides-hub') {
-        html = renderGuidesHub(site, origin);
+        html = renderGuidesHub(site, origin, locale);
       } else if (entry.kind === 'tools-hub') {
-        html = renderToolsHub(site, origin);
+        html = renderToolsHub(site, origin, locale);
       } else if (entry.kind === 'tool') {
-        html = renderTool(site, entry, origin);
+        html = renderTool(site, entry, origin, locale);
       } else if (entry.kind === 'page') {
-        html = renderPage(site, entry, origin);
+        html = renderPage(site, entry, origin, locale);
       } else {
         throw new Error(`Unknown page kind for ${entry.route}: ${entry.kind}`);
       }
       // Shared chrome markers: generated pages and "shared" pages take both,
-      // "footer" pages keep their own header and take the shared footer.
+      // "footer" pages keep their own header and take the shared footer, and
+      // locale pages take the localized chrome.
       const chrome = entry.chrome || 'shared';
+      const members = site.hreflangMembers(entry.route);
+      const switchList = site.switcherMembers(entry.route);
+      const languageSwitch = switchList.length >= 2 ? renderLanguageSwitch(switchList, entry.route, locale) : '';
       if (chrome !== 'home') {
         const header = ['<!-- SITE_HEADER -->', '<!-- LEARNING_HEADER -->'].find((m) => html.includes(m));
         const footer = ['<!-- SITE_FOOTER -->', '<!-- LEARNING_FOOTER -->'].find((m) => html.includes(m));
-        if (chrome === 'shared' && !header) throw new Error(`${entry.outputRel}: missing shared header marker`);
+        if ((chrome === 'shared' || chrome === 'locale') && !header) throw new Error(`${entry.outputRel}: missing shared header marker`);
         if (!footer) throw new Error(`${entry.outputRel}: missing shared footer marker`);
-        if (header) html = html.replace(header, sharedHeader);
-        html = html.replace(footer, sharedFooter);
+        if (header) html = html.replace(header, chrome === 'locale' ? renderLocalizedHeader(site, locale) : sharedHeader);
+        html = html.replace(footer, `${languageSwitch}${chrome === 'locale' ? renderLocalizedFooter(site, locale) : sharedFooter}`);
+      } else if (languageSwitch) {
+        html = html.replace('  <footer class="footer">', `  ${languageSwitch.trimEnd()}\n\n  <footer class="footer">`);
       }
-      pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, html });
+      // SEO-26: reciprocal hreflang for indexable members of this group.
+      if (members.length >= 2) {
+        const lines = members.map((member) => `  <link rel="alternate" hreflang="${member.hreflang}" href="${origin}${member.route}">`);
+        lines.push(`  <link rel="alternate" hreflang="x-default" href="${origin}${members[0].route}">`);
+        for (const member of members) {
+          if (member.route !== entry.route) lines.push(`  <meta property="og:locale:alternate" content="${member.ogLocale}">`);
+        }
+        html = html.replace('</head>', `${lines.join('\n')}\n</head>`);
+      }
+      pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, indexable: entry.indexable, html });
     }
 
     for (const page of pages) {
@@ -403,9 +440,20 @@ export function build(options = {}) {
         }
       }
 
-      // Preview mode indexing guard
-      if (isPreview && srcRel !== '404.html') {
-        if (!html.includes('robots')) {
+      // Indexable pages without their own robots meta (authored and generated)
+      // get the rich directive right after the viewport declaration.
+      if (page.indexable && !ROBOTS_META_RE.test(html)) {
+        const viewport = html.match(/<meta name="viewport"[^>]*>/);
+        if (!viewport) throw new Error(`${destRel}: missing viewport meta`);
+        html = html.replace(viewport[0], `${viewport[0]}\n  <meta name="robots" content="${ROBOTS_INDEXABLE}">`);
+      }
+
+      // Preview mode indexing guard: hide every page, including the ones that
+      // now carry the rich directive.
+      if (isPreview) {
+        if (ROBOTS_META_RE.test(html)) {
+          html = html.replace(new RegExp(ROBOTS_META_RE.source, 'g'), '<meta name="robots" content="noindex, nofollow">');
+        } else {
           html = html.replace('<head>', '<head>\n  <meta name="robots" content="noindex, nofollow">');
         }
       }
