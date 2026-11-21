@@ -168,3 +168,32 @@ it does not claim immediate refreshed portal content. The existing source
 scheduler is evidence for the mechanism, not for the live path or refresh.
 Live path/refresh proof remains OWED to ZD-08. No RBAC, DB credential or
 additional env rollout is granted to the agent by this amendment.
+
+## IndexNow submitter
+
+The IndexNow timer reads the public landing and portal sitemaps after releases
+and portal refreshes. It submits new URLs, URLs with a changed lastmod and URLs
+removed from the sitemaps. A failed fetch or refused batch leaves the last
+accepted state in place for the next run. The deploy workflow does not call the
+submitter. Submission is off by default.
+
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `ABASTEVO_INDEXNOW_ENABLED` | 0 | Set to 1 to enable requests. |
+| `ABASTEVO_INDEXNOW_ORIGIN` | https://abastevo.com.br | Origin without a path. Plain HTTP is only for a loopback test server. |
+| `ABASTEVO_INDEXNOW_KEY` | None | Required when enabled. Use the 32-character public key shipped at the landing root, without the `.txt` suffix. |
+| `ABASTEVO_INDEXNOW_ENDPOINT` | https://api.indexnow.org/indexnow | Endpoint that accepts URL batches. |
+| `ABASTEVO_INDEXNOW_SITEMAPS` | /sitemap.xml /sitemap-portal.xml | Space-separated sitemap paths on the origin. |
+| `ABASTEVO_INDEXNOW_STATE` | `indexnow-state.json` under `ABASTEVO_STATE_DIR` or `/var/lib/abastevo-deploy` | Last accepted sitemap state. The service user needs write access to its directory. |
+| `ABASTEVO_INDEXNOW_TIMEOUT` | 20 | Timeout in seconds per request. |
+
+Once the key file is served at the official origin, the owner installs
+`indexnow.py` in `/usr/local/lib/abastevo-deploy-agent/` and the
+`abastevo-indexnow.service` and `abastevo-indexnow.timer` units in
+`/etc/systemd/system/`. Set `ABASTEVO_INDEXNOW_KEY` and
+`ABASTEVO_INDEXNOW_ENABLED=1` in `/etc/abastevo-deploy/agent.env`. Then run
+`systemctl daemon-reload` and `systemctl enable --now abastevo-indexnow.timer`.
+The timer runs independently of the deploy agent.
+
+To disable submission, set `ABASTEVO_INDEXNOW_ENABLED=0`. To stop scheduling
+runs as well, run `systemctl disable --now abastevo-indexnow.timer`.

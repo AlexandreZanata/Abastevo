@@ -1,0 +1,28 @@
+[Unit]
+Description=Submit Abastevo sitemap changes to IndexNow
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=abastevo-deploy
+Group=abastevo-deploy
+EnvironmentFile=/etc/abastevo-deploy/agent.env
+ExecStart=/usr/bin/python3 /usr/local/lib/abastevo-deploy-agent/indexnow.py
+StateDirectory=abastevo-deploy
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/abastevo-deploy
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+UMask=0077
+TimeoutStartSec=20min
+Restart=no
