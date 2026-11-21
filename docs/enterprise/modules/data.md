@@ -70,8 +70,11 @@ commits.
 Reuse enterpriseexport source preparation and typed admitted read ports. Usage and report jobs use the existing queue. External source updates never rewrite a stored method snapshot. A member with current Data scope and the organization-wide key management
 permission can watch a fuel in an admitted regional dataset. Creation pins
 an exact prepared revision with a publishable sample. The queued worker
-checks every 24 hours and compares the station means of newer comparable
-revisions. It checks current plan and source admission before publishing.
+checks every 24 hours and compares the station means of the newer admitted
+revision with the latest survey end. A correction of an earlier week never
+replaces the latest survey. It checks current plan and source admission
+before publishing. When the last observed revision loses admission, the watch
+restarts from the newer admitted revision without a notice.
 A changed mean produces one in-app notice for the current permitted member,
 with the public source, survey end date and direction. Historical survey dates
 remain visible, and rights withdrawal, unavailable samples, lost access and

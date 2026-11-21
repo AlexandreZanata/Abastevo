@@ -12,7 +12,6 @@ import (
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	orgdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
-	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
@@ -189,9 +188,20 @@ func (w WatchWorker) observe(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 	if err != nil {
 		return 0, err
 	}
-	before, after, err := compareWatchBasis(ctx, catalog, plan, row, next)
-	if errors.Is(err, ErrDatasetNotFound) || errors.Is(err, domain.ErrRightsPending) || errors.Is(err, ErrSeriesUnavailable) {
+	fuel := kernel.Product(row.FuelProduct)
+	after, err := catalog.watchObservation(ctx, plan, row.DatasetKey, next, fuel)
+	if watchNotAdmitted(err) {
 		return row.LastRevision, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	before, err := catalog.watchObservation(ctx, plan, row.DatasetKey, row.LastRevision, fuel)
+	if watchNotAdmitted(err) {
+		// The stored basis lost admission (withdrawal, a later rights revision or
+		// another plan). Restart from the admitted survey without a notice;
+		// nothing from the unadmitted revision is compared or published.
+		return next, nil
 	}
 	if err != nil {
 		return 0, err
@@ -208,14 +218,8 @@ func (w WatchWorker) observe(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 	return next, nil
 }
 
-func compareWatchBasis(ctx context.Context, catalog Catalog, plan billing.PlanKey, row db.ReadWatchRow, next int64) (domain.WatchObservation, domain.WatchObservation, error) {
-	fuel := kernel.Product(row.FuelProduct)
-	before, err := catalog.watchObservation(ctx, plan, row.DatasetKey, row.LastRevision, fuel)
-	if err != nil {
-		return domain.WatchObservation{}, domain.WatchObservation{}, err
-	}
-	after, err := catalog.watchObservation(ctx, plan, row.DatasetKey, next, fuel)
-	return before, after, err
+func watchNotAdmitted(err error) bool {
+	return errors.Is(err, ErrDatasetNotFound) || errors.Is(err, domain.ErrRightsPending) || errors.Is(err, ErrSeriesUnavailable)
 }
 
 func (w WatchWorker) publish(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, row db.ReadWatchRow,

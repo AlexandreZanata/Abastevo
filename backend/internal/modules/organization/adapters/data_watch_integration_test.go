@@ -162,7 +162,7 @@ VALUES ('data','synthetic',1,$1,$2,'synthetic-watch-plan')`, dataset, revision);
 	if _, _, err := store.DisableWatch(ctx, foreign, fx.actor, fx.member, w.ID, onboardingID(t)); err == nil {
 		t.Fatal("foreign organization disabled the watch")
 	}
-	prepare("02", 6, 2)
+	observedPrice := prepare("02", 6, 2)
 	nextJob := func() jobs.Job {
 		t.Helper()
 		var j jobs.Job
@@ -208,6 +208,38 @@ VALUES ('data','synthetic',1,$1,$2,'synthetic-watch-plan')`, dataset, revision);
 	if err != nil || len(page.Items) != 1 || page.Items[0].LastObserved != 2 {
 		t.Fatalf("withdrawn survey changed the stored watch: %+v %v", page, err)
 	}
+	// The last observed survey can lose admission (a withdrawal, a later rights
+	// revision or a plan change). The watch then restarts from the next
+	// admitted survey without a notice instead of waiting forever.
+	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_data_source_reviews
+(source_code,source_digest,revision,status,decision_ref) VALUES ('S-ESP-02',$1,2,'WITHDRAWN','synthetic-observed-withdrawal')`,
+		observedPrice); err != nil {
+		t.Fatal(err)
+	}
+	prepare("04", 8, 4)
+	if err := worker.Handle(ctx, nextJob()); err != nil {
+		t.Fatalf("watch did not restart after its basis lost admission: %v", err)
+	}
+	count()
+	if page, err := store.ListWatches(ctx, fx.scope, fx.actor, fx.member, "", 10); err != nil || len(page.Items) != 1 || page.Items[0].LastObserved != 4 {
+		t.Fatalf("watch stayed on a basis that lost admission: %+v %v", page, err)
+	}
+	// A correction of an earlier week can receive a higher dataset revision;
+	// the next comparison still uses the latest admitted survey.
+	prepare("06", 9, 5)
+	prepare("05", 10, 6)
+	if err := worker.Handle(ctx, nextJob()); err != nil {
+		t.Fatalf("watch with a backfilled revision failed: %v", err)
+	}
+	var latest string
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT r.params->>'survey_end' FROM org_notification_notices n
+JOIN org_notification_requests r ON (r.org_id,r.id)=(n.org_id,n.request_id) WHERE n.org_id=$1 ORDER BY n.position DESC LIMIT 1`,
+		org).Scan(&latest); err != nil || latest != "2026-06-01" {
+		t.Fatalf("watch compared a backfilled survey instead of the latest one: %q %v", latest, err)
+	}
+	if page, err := store.ListWatches(ctx, fx.scope, fx.actor, fx.member, "", 10); err != nil || len(page.Items) != 1 || page.Items[0].LastObserved != 5 {
+		t.Fatalf("watch did not keep the latest observed survey: %+v %v", page, err)
+	}
 	pending := nextJob()
 	if row, _, err := store.DisableWatch(ctx, fx.scope, fx.actor, fx.member, w.ID, onboardingID(t)); err != nil || row.Active {
 		t.Fatalf("cannot close watch: %+v %v", row, err)
@@ -215,5 +247,8 @@ VALUES ('data','synthetic',1,$1,$2,'synthetic-watch-plan')`, dataset, revision);
 	if err := worker.Handle(ctx, pending); err != nil {
 		t.Fatal("disabled watch was not a terminal no-op", err)
 	}
-	count()
+	var delivered int
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT count(*) FROM org_notification_notices WHERE org_id=$1`, org).Scan(&delivered); err != nil || delivered != 2 {
+		t.Fatalf("disabled watch changed its notices: %d %v", delivered, err)
+	}
 }

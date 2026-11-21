@@ -39,4 +39,5 @@ FROM enterprise_data_plan_datasets p
 JOIN enterprise_regional_series s ON (s.dataset_key,s.dataset_revision)=(p.dataset_key,p.dataset_revision)
 WHERE (p.product_code,p.plan_code,p.plan_revision)=(sqlc.arg('product_code')::text,sqlc.arg('plan_code')::text,sqlc.arg('plan_revision')::bigint)
   AND p.dataset_key=sqlc.arg('dataset_key')::text AND p.dataset_revision>sqlc.arg('last_revision')::bigint
-ORDER BY p.dataset_revision DESC LIMIT 1;
+-- A correction of an earlier week may carry a higher revision; compare the latest survey.
+ORDER BY s.survey_end DESC,p.dataset_revision DESC LIMIT 1;
