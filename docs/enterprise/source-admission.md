@@ -268,19 +268,36 @@ a third-party license.
 Raw documents stay outside Git under private `/tmp`; only bytes, hashes
 and license-relevant extracts are recorded here.
 
+## F8 commercial rights review (EMP-GOV-016)
+
+On 2026-11-21, the [ANP station-price series](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/serie-historica-de-precos-de-combustiveis)
+again linked [its dataset metadata](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/metadados-serie-historica-precos-combustiveis-1.pdf).
+The new URL serves the same 191,035-byte PDF reviewed for S-ESP-02
+(`cfe58226…a4538`). It identifies the CSV series, the weekly contracted survey
+and the responsible ANP unit. Its text contains no dataset license or
+redistribution terms. The [registry metadata](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-dados-cadastrais-dos-revendedores-varejistas-de-combustiveis-automotivos/metadados-revendedores-varejistas-combustiveis-automoveis.pdf)
+matches the S-ESP-01 PDF already checked by OCR (`774259f8…ef8c98`).
+
+Articles 2–4 of [Decree 8.777/2016](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/d8777.htm)
+provide the federal open-data reuse framework, including attribution and
+disclosure of applicable third-party terms. For the F8 commercial rights
+decision, the maintainer still needs a record tying the applicable rights to
+the exact price and registry sources and the proposed derived reports and API
+delivery. Those sources remain `RIGHTS_PENDING`.
+
 ## Clarification request draft (NOT sent — for the maintainer to forward)
 
 > Subject: Licença de uso para redistribuição derivada — dados abertos ANP
 >
-> Para publicação de derivados estáticos com atribuição, solicitamos
-> confirmação escrita, por conjunto abaixo, da licença aplicável à
-> redistribuição de dados derivados (não apenas download):
+> Para publicações com atribuição à ANP, solicitamos confirmação escrita
+> da licença aplicável a cada conjunto e se ela permite distribuir dados
+> derivados em páginas públicas e em relatórios agregados ou APIs comerciais.
 > 1. Série histórica / levantamento semanal de preços de combustíveis
 >    (revendas LPC): existe licença de uso do conjunto que autorize
->    derivados públicos? O antigo PDF de metadados da série não é mais
->    servido (404).
+>    esses usos? O PDF atualmente vinculado pela ANP descreve a série
+>    e suas fontes, mas não indica licença ou termos de redistribuição.
 > 2. Dados cadastrais dos revendedores varejistas: existe licença de uso
->    do conjunto que autorize derivados públicos? O PDF de metadados não
+>    do conjunto que autorize esses usos? O PDF de metadados não
 >    declara licença (verificado inclusive por OCR).
 > 3. PMQC (monitoramento da qualidade): existe licença de uso do conjunto?
 >    O DOCX de metadados não declara licença.
