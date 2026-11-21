@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSite } from '../scripts/build.mjs';
@@ -147,6 +148,44 @@ test('robots: allows crawling and references canonical sitemap', () => {
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }
+});
+
+test('IndexNow public key is copied verbatim and excluded from the sitemap', t => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-indexnow-dist-'));
+  t.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
+  buildSite({ projectRoot: root, outDir });
+
+  const files = fs.readdirSync(outDir).filter(name => /^[a-f0-9]{32}\.txt$/.test(name));
+  assert.equal(files.length, 1);
+  assert.equal(fs.readFileSync(path.join(outDir, files[0]), 'utf8'), files[0].slice(0, -4));
+  assert.ok(!fs.readFileSync(path.join(outDir, 'sitemap.xml'), 'utf8').includes(files[0]));
+});
+
+test('IndexNow build rejects zero keys, multiple keys and content drift', t => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-indexnow-source-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
+  const projectRoot = path.join(temp, 'landing');
+  const staticDir = path.join(projectRoot, 'static');
+  const sourceStatic = path.join(root, 'static');
+  fs.cpSync(sourceStatic, staticDir, {
+    recursive: true,
+    filter: source => !/^[a-f0-9]{32}\.txt$/.test(path.basename(source)),
+  });
+  fs.symlinkSync(path.join(root, '../contracts'), path.join(temp, 'contracts'), 'dir');
+  for (const name of ['content', 'src', 'node_modules']) {
+    fs.symlinkSync(path.join(root, name), path.join(projectRoot, name), 'dir');
+  }
+  fs.copyFileSync(path.join(root, 'tsconfig.json'), path.join(projectRoot, 'tsconfig.json'));
+  const first = 'a'.repeat(32);
+  const second = 'b'.repeat(32);
+  assert.throws(() => buildSite({ projectRoot }), /IndexNow.*exactly one/i);
+
+  fs.writeFileSync(path.join(staticDir, first + '.txt'), first + '\n');
+  assert.throws(() => buildSite({ projectRoot }), /IndexNow.*content/i);
+
+  fs.writeFileSync(path.join(staticDir, first + '.txt'), first);
+  fs.writeFileSync(path.join(staticDir, second + '.txt'), second);
+  assert.throws(() => buildSite({ projectRoot }), /IndexNow.*exactly one/i);
 });
 
 test('discovery files: llms.txt and .well-known/security.txt exist and are populated', () => {

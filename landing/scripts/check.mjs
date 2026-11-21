@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { readIndexNowKey } from './indexnow.mjs';
 import { isPortalRoute } from './content/data.mjs';
 import { loadLocales } from './content/i18n.mjs';
 
@@ -459,6 +460,12 @@ export function checkDist(options = {}) {
     if (!robotsContent.includes('User-agent:')) {
       errors.push('robots.txt missing User-agent directive');
     }
+  }
+
+  try {
+    readIndexNowKey(distDir);
+  } catch (error) {
+    errors.push(error.message);
   }
 
   // llms.txt lists the content hubs and every generated page.
