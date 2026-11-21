@@ -78,7 +78,7 @@ connections are separate capabilities.
 
 ## 10. Data, formulas and examples
 
-Commercial numbers in [the product vision](../product-vision.md) remain hypotheses. Catalog and effective periods are data. Limits name measurable units and periods. Usage includes active assets or stations, admitted storage and API calls, with no invented production capacity. Money remains exact and source-bound.
+Commercial numbers in [the product vision](../product-vision.md) remain hypotheses. Catalog and effective periods are data. Limits name measurable units and periods. Usage includes active vehicles or stations, admitted storage and API calls, with no invented production capacity. The vehicle meter counts scoped fleet records of kind `VEHICLE` in state `ACTIVE`. The existing fleet root lock serializes changes that increase this count. A denied activation preserves the draft and creates no activation acknowledgement. Money remains exact and source-bound.
 
 ## 11. Screens
 

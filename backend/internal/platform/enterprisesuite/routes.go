@@ -235,8 +235,8 @@ func Register(router chi.Router, o Options) error {
 	}
 	gateway := orgapi.Gateway{Enabled: true, Origin: o.Origin, CursorSecret: o.CursorSecret, Now: time.Now, WriteAdmission: admission}
 	entitlements := accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}
+	plans := billpg.EntitlementStore{Pool: o.Pool, Capabilities: capabilities, Now: time.Now}
 	if o.BillingEnabled {
-		plans := billpg.EntitlementStore{Pool: o.Pool, Capabilities: capabilities, Now: time.Now}
 		entitlements.Plans = plans
 		flags.PlanWrites = plans
 	}
@@ -261,6 +261,9 @@ func Register(router chi.Router, o Options) error {
 	// EMP-TRIP-002 (EDR-206): an IN_PROGRESS trip is BR-FLEET-010 open work;
 	// work orders join this source in F6 via maintpg.MaintenanceHolds.
 	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: maintpg.MaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
+	if o.BillingEnabled {
+		assets.VehicleSlots = plans
+	}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}

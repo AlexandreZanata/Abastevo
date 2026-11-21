@@ -173,6 +173,9 @@ func (s *AssetStore) TransitionAsset(ctx context.Context, scope kernel.OrgScope,
 				if err := checkActualActivation(ctx, tx, scope, current.Ref, current.Profile, current.UnitID); err != nil {
 					return err
 				}
+				if err := s.checkVehicleSlot(ctx, tx, scope, current, next); err != nil {
+					return err
+				}
 			}
 			if fleet.ChecksOpenWork(v.Command) {
 				if err := s.openWork(ctx, tx, scope, v.AssetID); err != nil {
