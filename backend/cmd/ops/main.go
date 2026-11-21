@@ -83,6 +83,7 @@ const usage = `usage:
   ops enterprise capability show --org <uuid> --capability organizations [--operator <uuid>]
   ops enterprise capability set --org <uuid> --capability organizations --enabled|--disabled
       --operation-id <uuid> --expected-revision <n> [--operator <uuid>]
+  ops enterprise trial start --org <uuid> --grant-id <uuid> --operation-id <uuid> [--operator <uuid>]
 
 operator identity: --operator flag or ANPFUEL_OPERATOR_ID environment.
 no public admin path exists; every command appends audit history

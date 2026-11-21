@@ -62,6 +62,13 @@ Plan read and management require the current organization's named permissions. F
 
 Changes and purchases require the server. Existing field queues preserve creation context and current intake uses server history. Repeated provider events and manual adjustments are idempotent. Usage counters retain period and source and cannot be bypassed by merely rotating a credential.
 
+A reviewed trial grant records its organization, plan revision, acceptance
+window, duration and approval reference. The restricted operator path starts
+it with `ops enterprise trial start --org <uuid> --grant-id <uuid>
+--operation-id <uuid>`. The server clock establishes the original term.
+Retry with the same operation ID to read the original result. Trial grants are
+protected by organization scope. No grant, price or duration is seeded.
+
 ## 9. Events, notifications and integrations
 
 The organization settlement consumer can receive Stripe invoice events through
