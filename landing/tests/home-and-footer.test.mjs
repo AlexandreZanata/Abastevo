@@ -44,6 +44,26 @@ test('home shows popular guides and tools that resolve to built pages', () => {
   }
 });
 
+test('the open-data links each show their own decorative illustration in the built home', () => {
+  const section = home.match(/<section id="dados-abertos"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(section, 'open-data section exists');
+  const rows = [...section.matchAll(/<li class="persona">([\s\S]*?)<\/li>/g)].map(([, row]) => row);
+  for (const [href, filename] of [
+    ['/consultar/', 'station-search-thumbnail'],
+    ['/fiscalizacao/', 'official-inspection-thumbnail'],
+    ['/metodologia/', 'methodology-thumbnail'],
+  ]) {
+    const row = rows.find(row => row.includes(`href="${href}"`));
+    assert.ok(row, `open-data link ${href} exists`);
+    const image = row.match(/<span class="card-art" aria-hidden="true">\s*<img\b([^>]+)>/)?.[1];
+    assert.ok(image, `illustration for ${href} exists`);
+    assert.match(image, /\balt=""/);
+    const asset = image.match(/\bsrc="\/(assets\/art\/[^"]+)"/)?.[1];
+    assert.ok(asset?.startsWith(`assets/art/${filename}.`), `illustration matches ${href}`);
+    assert.ok(fs.existsSync(path.join(outDir, asset)), `illustration for ${href} is shipped`);
+  }
+});
+
 test('every landing page carries the shared footer hubs, with the forum link', () => {
   const footer = home.match(/<footer\b[\s\S]*?<\/footer>/)[0];
   const column = (label) => footer.match(new RegExp(`<nav aria-label="${label}"[^>]*>[\\s\\S]*?</nav>`))?.[0];
