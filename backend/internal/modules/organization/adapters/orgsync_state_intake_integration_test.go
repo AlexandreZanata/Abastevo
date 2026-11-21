@@ -489,7 +489,14 @@ func TestStateIntakeSchemaGuardsAndForeignHistory(t *testing.T) {
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_sync_state_intakes TO "+role); err != nil {
 		t.Fatal(err)
 	}
-	for _, verb := range []string{`UPDATE org_sync_state_intakes SET code='ORG_SUSPENDED'`, `DELETE FROM org_sync_state_intakes`, `TRUNCATE org_sync_state_intakes`} {
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON org_held_fuelings TO "+role); err != nil {
+		t.Fatal(err)
+	}
+	for _, verb := range []string{
+		`UPDATE org_sync_state_intakes SET code='ORG_SUSPENDED'`,
+		`DELETE FROM org_sync_state_intakes`,
+		`TRUNCATE org_sync_state_intakes,org_held_fuelings`,
+	} {
 		lateSQLCode(t, unitSchemaExec(t, x.legalFixtureState, verb), "55000")
 	}
 	insert := func(op protocol.Operation, condition, disposition, result, code string, declared time.Time) error {

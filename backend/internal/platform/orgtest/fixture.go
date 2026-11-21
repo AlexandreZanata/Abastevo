@@ -478,6 +478,14 @@ func (f *Fixture) GrantFleetUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_held_fuelings_asset_lookup') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id) ON org_held_fuelings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // GrantAssignmentReductions provisions only the columns the installed

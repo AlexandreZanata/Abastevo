@@ -171,6 +171,18 @@ VALUES('fleet','acceptance',1,'Synthetic fleet acceptance',ARRAY['organizations'
 		}
 	}
 	beforeHold := snapshot("org_assets")
+	assetWork := func() int64 {
+		t.Helper()
+		var operations int64
+		if err := database.WithOrgTx(ctx, x.f.Runtime, x.scope, func(tx pgx.Tx) error {
+			return tx.QueryRow(ctx, `SELECT (org_asset_current_usage($1,$2)->>'operations')::bigint`, org, x.vehicle.AssetID).Scan(&operations)
+		}); err != nil {
+			t.Fatalf("vehicle usage is unavailable: %v", err)
+		}
+		return operations
+	}
+	workBeforeHold := assetWork()
+	fuelingsBeforeHold, expensesBeforeHold := snapshot("org_fuelings"), snapshot("org_expenses")
 	earlier := x.op(t, driverDevice, x.declaredNow(t), nil)
 	change(billing.LifecycleEvent{Kind: billing.SuspendAccess, Source: billing.ReviewedOperator, ExpectedRevision: 1,
 		At: lifecycleDBNow(t, x.legalFixtureState), Reference: "synthetic-reviewed-hold"}, billing.Suspended)
@@ -190,6 +202,12 @@ VALUES('fleet','acceptance',1,'Synthetic fleet acceptance',ARRAY['organizations'
 	_, again, _ := lateHTTPBatch(t, httpFX, http.StatusOK, earlier)
 	if !bytes.Equal(first, again) {
 		t.Fatal("the plan hold retry changed the receipt")
+	}
+	if got := assetWork(); got != workBeforeHold+1 {
+		t.Fatalf("the replayed plan hold changed vehicle work from %d to %d, want %d", workBeforeHold, got, workBeforeHold+1)
+	}
+	if snapshot("org_fuelings") != fuelingsBeforeHold || snapshot("org_expenses") != expensesBeforeHold {
+		t.Fatal("the held vehicle work posted a fueling or expense")
 	}
 	retainedCompanyExport(t, fx, router, o, owner, base)
 	if snapshot("org_role_assignments") != roles || snapshot("org_assets") != beforeHold {

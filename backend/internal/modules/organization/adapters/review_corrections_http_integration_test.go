@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -146,11 +147,10 @@ func TestReviewCorrectionsActualCompanyHTTPMatchesContract(t *testing.T) {
 	if view["organization"].(map[string]any)["state"] != "SUSPENDED" || len(view["invitation_grants"].([]any)) != 0 {
 		t.Fatal("suspended organization read wire")
 	}
-	// Only read hints remain (the document-content hint is a read hint,
-	// EMP-CHECK-004 B-BR-EMP-507).
-	for _, p := range view["permissions"].([]any) {
-		if p != "idn.employee.read" && p != "doc.document.view_content" {
-			t.Fatal("suspended organization advertised a write control", p)
-		}
+	// Reads remain available. Fresh proof also keeps access to key listing
+	// and revocation through the existing Data management hint.
+	wantHints := []any{"idn.employee.read", "doc.document.view_content", "subs.plan.read", "data.usage.read", "fleet.asset.read", "data.key.manage"}
+	if hints := view["permissions"].([]any); !slices.Equal(hints, wantHints) {
+		t.Fatal("suspended organization permissions", hints)
 	}
 }

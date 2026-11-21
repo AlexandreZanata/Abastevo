@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -132,9 +133,10 @@ func TestAccountContextsThroughActualCompanyHTTP(t *testing.T) {
 		t.Fatal(e)
 	}
 	view = call("/v1/org-access/contexts/read", selected, 200, nil)
-	// A stale proof keeps only the read hints: the employee read and, since
-	// EMP-CHECK-004 (B-BR-EMP-507), the owner's document-content read hint.
-	if hints := view["permissions"].([]any); len(hints) != 2 || hints[0] != "idn.employee.read" || hints[1] != "doc.document.view_content" || len(view["invitation_grants"].([]any)) != 0 {
+	// A stale proof retains just the current read hints for the employee,
+	// document, plan, Data usage and fleet panels.
+	wantReadHints := []any{"idn.employee.read", "doc.document.view_content", "subs.plan.read", "data.usage.read", "fleet.asset.read"}
+	if hints := view["permissions"].([]any); !slices.Equal(hints, wantReadHints) || len(view["invitation_grants"].([]any)) != 0 {
 		t.Fatal("stale proof enabled private management", hints)
 	}
 	if view["employee_id"] != ownEmployee {

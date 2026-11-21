@@ -362,3 +362,7 @@ request at or after the stored deadline. Cancellation leaves the company
 archived. Finalization ends access and records the retention handoff. The
 retention process acts under approved category rules and holds. This
 transaction retains history and records no purge outcome.
+
+Membership reductions in an open organization continue to enforce last-owner
+coverage without reading closure records. A reduction under a closed root
+uses the terminal exception only when its closure request is completed.

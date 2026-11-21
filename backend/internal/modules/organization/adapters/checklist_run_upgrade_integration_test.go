@@ -177,6 +177,7 @@ func TestChecklistRunPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.
 	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
 		t.Fatal("remaining embedded chain after the 242 rehearsal", err)
 	}
+	f.GrantFleetUsage(t)
 	// The pre-existing template takes a BLOCKING run on the upgraded schema;
 	// the vehicle is then BLOCKED and the usage sources still answer.
 	tripGrants(t, x.legalFixtureState)

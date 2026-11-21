@@ -421,7 +421,16 @@ func TestFleetLifecycleRevertKeepsDisposalHistoryAndRecordsStayReadable(t *testi
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_asset_lifecycle_events TO "+role); err != nil {
 		t.Fatal(err)
 	}
-	for _, sql := range []string{`UPDATE org_asset_lifecycle_events SET reason='rewritten'`, `DELETE FROM org_asset_lifecycle_events`, `TRUNCATE org_asset_lifecycle_events`} {
+	references := "org_billing_vehicle_plan_archives,org_webhook_deliveries,org_sync_state_intakes,org_held_fuelings"
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON "+references+" TO "+role); err != nil {
+		t.Fatal(err)
+	}
+	// Include the F8 references to exercise the history trigger beyond the FK check.
+	for _, sql := range []string{
+		`UPDATE org_asset_lifecycle_events SET reason='rewritten'`,
+		`DELETE FROM org_asset_lifecycle_events`,
+		`TRUNCATE org_asset_lifecycle_events,` + references,
+	} {
 		if code := lifecycleSQLCode(exec(sql)); code != "55000" {
 			t.Fatal("lifecycle history rewritable", sql, code)
 		}
