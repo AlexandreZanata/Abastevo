@@ -35,12 +35,12 @@ const (
 func ppID(n int) string { return fmt.Sprintf("00000000-0000-4000-b000-%012d", n) }
 
 type ppStation struct {
-	n                  int
-	name, district     string
-	city, uf           string
-	lat, lon           float64
-	prices             map[int]map[string]int64
-	street, postalCode string
+	n              int
+	name, district string
+	city, uf       string
+	lat, lon       float64
+	prices         map[int]map[string]int64
+	street         string
 }
 
 func pricePagesFixture() ([]enterpriseexport.Station, []enterpriseexport.Revision, []enterpriseexport.Price) {
