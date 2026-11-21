@@ -144,6 +144,51 @@ exact term and displays its gross amount in BRL. It reports
 pending. Fiscal invoice issuance and accounting connections are separate
 capabilities.
 
+### Read-only provider sandbox replay
+
+Use an existing synthetic charge from the reviewed test merchant. The Stripe
+invoice's finalized subscription metadata names its organization and
+subscription. An Asaas charge's external reference names the organization and
+checkout. Use organization A from
+[the shared synthetic fixture](../../../contracts/testdata/enterprise/fixture-two-orgs-v1.json)
+and its `record_id` as the subscription ID. The case file contains exactly the
+reviewed identifiers rather than deriving them from the retrieved payment.
+
+Save one JSON object in a private file with mode `0600` and set
+`ANPFUEL_SANDBOX_COMPANY_BILLING_CASE` to its path. The fields are:
+
+- `channel` is `stripe_card`, `asaas_pix_manual` or `asaas_pix_automatic`.
+- `organization_id`, `subscription_id`, `event_id`, `resource_id`, `customer_id`,
+  `contract_id` and `offer_reference` are strings. For Stripe, use the invoice,
+  customer, subscription and price references. For manual Pix, the resource
+  and contract references are the same payment ID. For automatic Pix, the
+  contract reference is the reviewed authorization ID. The Asaas offer
+  reference is the reviewed internal reference.
+- `asaas_external_reference` is the exact reviewed reference for Pix and an
+  empty string for Stripe.
+- `amount_centavos` is an integer. `term_start` and `term_end` are RFC 3339
+  timestamps delimiting the current billable term. A Stripe case uses the
+  exact interval on the invoice line.
+
+Provide only the selected provider's test credential and merchant through the
+private test environment. Stripe uses `ANPFUEL_SANDBOX_STRIPE_SECRET` and
+`ANPFUEL_SANDBOX_STRIPE_MERCHANT`. Asaas uses `ANPFUEL_SANDBOX_ASAAS_KEY` and
+`ANPFUEL_SANDBOX_ASAAS_MERCHANT` with a current-format sandbox credential.
+[Stripe API keys](https://docs.stripe.com/keys) and
+[Asaas authentication](https://docs.asaas.com/docs/authentication-2) document
+the test credential formats.
+With `ANPFUEL_TEST_DATABASE_URL` pointing to disposable loopback PostGIS, run
+from `backend/` once per reviewed channel:
+
+```sh
+go test -race -tags=integration,sandbox -count=1 -run '^TestSandboxCompanyBillingReplay$' -v ./internal/modules/payments/adapters
+```
+
+The test submits a controlled inbox notification, reads canonical payment
+evidence from the selected sandbox and checks duplicate delivery against the
+disposable ledger. HTTPS GET requests are limited to the selected provider
+host. A missing case file is reported as skipped and earns no sandbox evidence.
+
 ## 10. Data, formulas and examples
 
 Commercial numbers in [the product vision](../product-vision.md) remain hypotheses. Catalog and effective periods are data. Limits name measurable units and periods. Usage includes active vehicles or stations, admitted storage and API calls, with no invented production capacity. The vehicle meter counts scoped fleet records of kind `VEHICLE` in state `ACTIVE`. The existing fleet root lock serializes changes that increase this count. A denied activation preserves the draft and creates no activation acknowledgement. Money remains exact and source-bound.

@@ -22,6 +22,11 @@ func TestSandboxConfigGating(t *testing.T) {
 		}
 		delete(env, "ANPFUEL_SANDBOX_STRIPE_SECRET")
 	}
+	env["ANPFUEL_SANDBOX_ASAAS_KEY"] = "$aact_" + "prod_" + "synthetic"
+	if _, _, err := readSandboxConfig(func(key string) string { return env[key] }); !errors.Is(err, errSandboxLiveRefused) {
+		t.Fatal("production Asaas key was admitted")
+	}
+	delete(env, "ANPFUEL_SANDBOX_ASAAS_KEY")
 	env["ANPFUEL_SANDBOX_STRIPE_SECRET"] = "sk_test_synthetic"
 	env["ANPFUEL_SANDBOX_STRIPE_PRICE"] = "price_synthetic"
 	env["ANPFUEL_SANDBOX_STRIPE_MERCHANT"] = "acct_synthetic"
