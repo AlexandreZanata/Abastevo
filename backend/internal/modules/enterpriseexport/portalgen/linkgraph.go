@@ -202,8 +202,16 @@ func routeFamily(route string) string {
 	case cityRoutePath.MatchString(route):
 		return "cidades"
 	case strings.HasPrefix(route, "/precos/") && route != "/precos/":
-		if len(strings.Trim(strings.TrimPrefix(route, "/precos/"), "/")) == 2 {
+		parts := strings.Split(strings.Trim(strings.TrimPrefix(route, "/precos/"), "/"), "/")
+		switch {
+		case route == parityRoute:
+			return "paridade"
+		case len(parts) == 1 && len(parts[0]) == 2:
 			return "estados"
+		case len(parts) == 2 && isFuelSlug(parts[0]):
+			return "combustivel-estado"
+		case len(parts) == 3 && isFuelSlug(parts[0]):
+			return "combustivel-cidade"
 		}
 		return "combustiveis"
 	default:

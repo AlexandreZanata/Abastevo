@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport"
 )
@@ -61,6 +63,14 @@ func TestDenseCityAndStatePagesFitTheHTMLBudget(t *testing.T) {
 	t.Logf("dense portal: pages=%d largest_html_gzip=%d", verified.Pages, verified.LargestHTMLGzipBytes)
 	if verified.LargestHTMLGzipBytes > DefaultMaxHTMLGzip/2 {
 		t.Errorf("largest page gzip %d leaves under half of the %d budget", verified.LargestHTMLGzipBytes, DefaultMaxHTMLGzip)
+	}
+	for route, body := range portalPages(t, out) {
+		if !strings.HasPrefix(route, "precos/") && !strings.HasPrefix(route, "postos/") {
+			continue
+		}
+		if title := parseHead(body).Title; utf8.RuneCountInString(title) > titleMax {
+			t.Fatalf("%s title exceeds %d runes: %q", route, titleMax, title)
+		}
 	}
 	graph, err := VerifyLinkGraph(out, LinkGraphOptions{SiteURL: seoSite})
 	if err != nil {

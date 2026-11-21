@@ -35,7 +35,7 @@ export const STATES = [
 const STATE_BY_UF = new Map(STATES.map((state) => [state.uf, state]));
 
 // Routes owned by the separately generated portal (same origin).
-export const PORTAL_PREFIXES = ['/precos/', '/postos/', '/consultar/', '/dados/', '/metodologia/', '/curiosidades/', '/fiscalizacao/'];
+export const PORTAL_PREFIXES = ['/precos/', '/postos/', '/consultar/', '/dados/', '/metodologia/', '/curiosidades/', '/fiscalizacao/', '/forum/'];
 
 const PORTAL_LABELS = {
   '/precos/': 'Preços de combustíveis por estado e cidade',
@@ -44,6 +44,7 @@ const PORTAL_LABELS = {
   '/metodologia/': 'Metodologia dos dados do abastevo',
   '/curiosidades/': 'Curiosidades dos dados de combustíveis',
   '/fiscalizacao/': 'Fiscalização da ANP: multas publicadas',
+  '/forum/': 'Fórum abastevo',
 };
 
 export function isPortalRoute(route) {

@@ -33,3 +33,13 @@ O abastevo é um projeto com código disponível sob licença de atribuição vi
 - Consultar postos e preços: {{CANONICAL_ORIGIN}}/consultar/
 - Metodologia: {{CANONICAL_ORIGIN}}/metodologia/
 - Fiscalização (multas publicadas pela ANP): {{CANONICAL_ORIGIN}}/fiscalizacao/
+- Baixar os dados em CSV (postos, preços e resumos): {{CANONICAL_ORIGIN}}/dados/
+- Perguntas respondidas com os dados: {{CANONICAL_ORIGIN}}/curiosidades/
+- Fórum (publicações da equipe): {{CANONICAL_ORIGIN}}/forum/
+- Manifesto da versão atual dos dados (JSON): {{CANONICAL_ORIGIN}}/portal-manifest.json
+
+## Feeds e sitemaps
+- Feed Atom dos guias: {{CANONICAL_ORIGIN}}/guias/feed.xml
+- Feed Atom do fórum: {{CANONICAL_ORIGIN}}/forum/feed.xml
+- Sitemap do site: {{CANONICAL_ORIGIN}}/sitemap.xml
+- Sitemap do portal de dados: {{CANONICAL_ORIGIN}}/sitemap-portal.xml

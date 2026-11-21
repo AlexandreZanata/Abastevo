@@ -133,6 +133,8 @@ type pageBase struct {
 	JSONLD template.JS
 	// HasForum adds the /forum/ navigation links (B-BR-SEO-08).
 	HasForum bool
+	// FeedHref is the Atom feed advertised in the head of the forum pages.
+	FeedHref string
 	// OGType is the og:type ("website" when empty); article pages also
 	// carry their published and modified instants.
 	OGType           string
@@ -163,6 +165,10 @@ type summaryRow struct {
 	Max          int64
 	Spread       int64
 	Insufficient bool
+	// Mean is the sample mean (B-BR-SEO-10); HasMean is false below the
+	// minimum sample.
+	Mean    int64
+	HasMean bool
 }
 
 type rankingRow struct {
@@ -221,6 +227,8 @@ type precosPage struct {
 	States        []stateLink
 	SearchRelease string
 	SearchFuels   []searchFuel
+	// ParityHref links the ethanol to gasoline ratio page when it exists.
+	ParityHref string
 }
 
 type statePage struct {
@@ -231,6 +239,9 @@ type statePage struct {
 	Summaries      []summaryRow
 	Rankings       []rankingView
 	Municipalities []municipalityLink
+	Comparison     *comparisonView
+	// Parity is the ethanol to gasoline ratio of the state, "" without one.
+	Parity string
 }
 
 type municipalityPage struct {
@@ -246,6 +257,10 @@ type municipalityPage struct {
 	Rows          []rankingRow
 	Insufficient  bool
 	Population    int
+	Comparison    *comparisonView
+	FAQ           []faqItem
+	// Parity is the ethanol to gasoline ratio of the city, "" without one.
+	Parity string
 }
 
 type stationView struct {
@@ -337,9 +352,25 @@ type generator struct {
 	cityRoutes map[string]string
 	statePages map[string]bool
 	cityPages  map[string]bool
-	cityState  map[string]string
-	fuelHubs   map[string]fuelHubLink
-	latest     *enterpriseexport.Revision
+	// fuelStatePages holds the planned /precos/{fuel}/{uf}/ pages, keyed by
+	// areaKey(fuel, uf) (B-BR-SEO-11).
+	fuelStatePages map[string]bool
+	// fuelCityPages holds the planned /precos/{fuel}/{uf}/{cidade}/ pages,
+	// keyed by areaKey(fuel, IBGE code).
+	fuelCityPages map[string]bool
+	// parity holds the ethanol to gasoline ratio of each area that has one,
+	// keyed by parityKey(level, code) (B-BR-SEO-12).
+	parity map[string]parityRow
+	// weeks are the snapshot's survey weeks, newest first, for the history
+	// tables of the fuel by area pages.
+	weeks     []surveyWeek
+	cityState map[string]string
+	fuelHubs  map[string]fuelHubLink
+	latest    *enterpriseexport.Revision
+	// previous is the survey before the latest, with its summaries indexed
+	// for the comparison block; nil when the snapshot has one survey.
+	previous          *enterpriseexport.Revision
+	previousSummaries map[summaryKey]analytics.Summary
 	// forum is the planned web forum (B-BR-SEO-08); nil without posts.
 	forum *forumPlan
 	// stationIndex maps a station id to its entry, for forum post links.
@@ -418,7 +449,7 @@ func Generate(opts Options) (Result, error) {
 	g.dataDate = g.buildDate
 	g.tmpl, err = template.New("portal").Funcs(template.FuncMap{
 		"brl": brl, "brlPtr": brlPtr, "dateBR": dateBR,
-		"periodLabel": periodLabel, "fuelLabel": fuelLabel, "plural": plural,
+		"periodLabel": periodLabel, "fuelLabel": fuelLabel, "plural": plural, "unitShort": unitShort,
 	}).Parse(templates)
 	if err != nil {
 		return Result{}, err
@@ -549,10 +580,12 @@ func Generate(opts Options) (Result, error) {
 	g.cityState = municipalityState
 	latestSummaries := summariesFor(projection, latest)
 	g.fuelHubs = planFuelHubs(latestSummaries)
+	g.weeks = surveyWeeks(snapshot.Revisions, projection)
 	g.latest = latest
 	latestRankings := rankingsFor(projection, latest)
 	previous := previousRevision(snapshot.Revisions, latest)
 	previousSummaries := summariesForRevision(projection, previous)
+	g.previous, g.previousSummaries = previous, indexSummaries(previousSummaries)
 	published := publicationLabel(manifest.BuiltAt)
 	period := ""
 	if latest != nil {
@@ -565,6 +598,8 @@ func Generate(opts Options) (Result, error) {
 	g.observed = obsByStation
 	g.prepareStationIndex(snapshot, stations, revisions, obsByStation)
 	g.prepareGeography(latestSummaries, municipalityState, municipalityName)
+	g.planFuelAreas(latestSummaries)
+	g.planParity(latestSummaries)
 	if err := g.prepareForum(snapshot.ForumPosts); err != nil {
 		return Result{}, err
 	}
@@ -596,6 +631,15 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	if err := g.generateFuelHubs(latestSummaries, municipalityName); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateFuelStates(latestSummaries, latestRankings, stations); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateFuelCities(latestSummaries, observations); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateParity(); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {

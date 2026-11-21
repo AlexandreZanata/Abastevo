@@ -97,8 +97,10 @@ Host tools: `cosign` v3.1.x, `oras` v1.3.x, `curl`, `jq`, `flock`, `tar`,
 ## Install and RBAC
 
 Files: `abastevo-deploy-agent` → `/usr/local/bin/`; `apply.sh`, `baseline.sh`,
-`safety.sh`, `status.sh`, `surge-capacity.py` and `runtime/k8s.sh` →
-`/usr/local/lib/abastevo-deploy-agent/`; `systemd/*` → `/etc/systemd/system/`.
+`safety.sh`, `status.sh`, `surge-capacity.py`, `indexnow.py` and `runtime/k8s.sh` →
+`/usr/local/lib/abastevo-deploy-agent/`. Install `abastevo-deploy-agent.service`,
+`abastevo-deploy-agent.timer`, `abastevo-indexnow.service` and
+`abastevo-indexnow.timer` from `systemd/` into `/etc/systemd/system/`.
 The service runs as the `abastevo-deploy` system user with
 `ProtectSystem=strict`, `NoNewPrivileges=yes` and a 20-minute bound; a drop-in
 adds `ReadWritePaths=` for the landing and backup roots. Upgrade an active host
@@ -117,14 +119,23 @@ ABASTEVO_KUBECONFIG_OUT=/etc/abastevo-deploy/kubeconfig \
 bash infra/deploy/agent/kubeconfig-from-serviceaccount.sh
 ```
 
+The optional IndexNow timer submits changes from the public sitemaps every
+30 minutes. It is off by default and runs independently of deploys. The owner
+installs `indexnow.py` and both IndexNow units at the paths above, then sets
+`ABASTEVO_INDEXNOW_KEY` and `ABASTEVO_INDEXNOW_ENABLED=1` in `agent.env` once the key
+file is served. Reload systemd and enable the timer with
+`systemctl enable --now abastevo-indexnow.timer`. Set `ABASTEVO_INDEXNOW_ENABLED=0`
+to disable requests. The [IndexNow runbook](../../../docs/operations/deploy-agent.md#indexnow-submitter)
+lists all environment variables and the timer commands.
+
 ## Tests
 
 ```sh
-make test-deploy-agent      # agent, status, surge capacity and rollout-probe harnesses
+make test-deploy-agent      # agent, status, surge capacity, IndexNow and rollout-probe harnesses
 cd backend && go test -tags=integration -count=1 ./cmd/worker -run TestOverlappingWorkersDoNotDuplicateEffects
 ```
 
-The harness stubs `oras`, `cosign`, `curl`, `kubectl`, `docker`, `helm` and
+The IndexNow tests use a loopback HTTP server. The deploy harness stubs `oras`, `cosign`, `curl`, `kubectl`, `docker`, `helm` and
 `systemctl`, makes no network request and writes only to a temporary
 directory. The Go test (disposable PostGIS) proves two overlapping workers
 never duplicate a job effect.

@@ -44,7 +44,7 @@ test('home shows popular guides and tools that resolve to built pages', () => {
   }
 });
 
-test('every landing page carries the shared footer hubs; no /forum/ link anywhere', () => {
+test('every landing page carries the shared footer hubs, with the forum link', () => {
   const footer = home.match(/<footer\b[\s\S]*?<\/footer>/)[0];
   const column = (label) => footer.match(new RegExp(`<nav aria-label="${label}"[^>]*>[\\s\\S]*?</nav>`))?.[0];
   const precos = column('Preços');
@@ -58,6 +58,7 @@ test('every landing page carries the shared footer hubs; no /forum/ link anywher
   assert.equal((ferramentas.match(/href="\/ferramentas\/[a-z-]+\/"/g) || []).length, 5);
   const projeto = column('Projeto');
   for (const href of ['/sobre/', '/politica-editorial/', 'https://github.com/AlexandreZanata/abastevo']) assert.ok(projeto.includes(`href="${href}"`), `projeto ${href}`);
+  assert.ok(projeto.includes('<a href="/forum/">Fórum</a>'), 'projeto links the editorial forum');
   const privacidade = column('Privacidade');
   for (const href of ['/privacidade/', '/excluir-conta/', '/termos/']) assert.ok(privacidade.includes(`href="${href}"`));
 
@@ -66,7 +67,7 @@ test('every landing page carries the shared footer hubs; no /forum/ link anywher
     const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
     const pageFooter = html.match(/<footer\b[\s\S]*?<\/footer>/)?.[0];
     assert.equal(pageFooter, rel === 'index.html' ? footer : shared, `${rel} uses the shared footer`);
-    assert.doesNotMatch(html, /href="\/forum\//, `${rel} must not link /forum/ yet`);
+    assert.equal((html.match(/href="\/forum\//g) || []).length, 1, `${rel} links /forum/ once, from the footer`);
   }
 });
 

@@ -73,13 +73,13 @@ The organic growth and multilingual items follow
 [decision 026](docs/decisions/026-multilingual-public-site.md). Their specifications are in the
 [multilingual contract](docs/product/landing/organic-growth-i18n-plan.md), section 10.
 
+- **Organic traffic expansion (owner decision).** Accept or amend the open decisions of the proposed [expansion plan](docs/product/landing/organic-traffic-expansion-plan.md) (G-D01 to G-D04 and G-D07 to G-D09). Its wave 1 is built: fuel by state and fuel by city pages, the sample mean, the comparison with the previous survey, dated answers, the ethanol to gasoline ratio page, the forum feed and the Search Console report. Still to build: price history, EV charging and vehicle pages, a glossary, more locales, an app page and the link program. (SEO-46–SEO-65)
 - **Translation owner inputs (owner).** Name the `en` and `es` reviewers before the first locale page ships, and optionally a named editor with a bio. Until then, authorship stays "Equipe abastevo". (SEO-18)
-- **Keyword map and cannibalization.** Add `primaryQuery` per landing page with a uniqueness check. Retarget the two editorial forum posts that duplicate `/guias/etanol-ou-gasolina/` and `/guias/pesquisa-anp/`. (SEO-20)
-- **Head and template polish.** Add `max-image-preview:large` and `max-snippet:-1` in both generators. Use descriptive home, city and station H1s. Emit Article `citation` from the "Fontes" links. (SEO-21)
-- **Feeds and IndexNow.** Atom feeds for guides and editorial posts. Submit changed URLs to IndexNow after each release smoke test, non-blocking. Bing, and ChatGPT search through Bing, otherwise wait for crawling. (SEO-22, SEO-23)
-- **Multilingual landing.** A locale registry and URL vectors in `contracts/i18n/`, shared by Node and Go. Locale-aware landing build with hreflang groups, switcher, per-locale sitemaps and the reviewed-only and stale gates. Localized calculators with locale-aware number parsing. (SEO-25–SEO-27)
+- **Forum post retarget (owner).** The keyword map is built. Still to do: apply the two payloads in the contract's section 7.1, so the editorial forum posts stop duplicating `/guias/etanol-ou-gasolina/` and `/guias/pesquisa-anp/`. (SEO-20)
+- **Wave 1 activation (owner).** Wave 1 is built and none of it is live. After its release: apply the web-tier ConfigMap so the new `robots.txt` is served; raise `ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS` from 5 to 12 in the worker environment so the history tables show 12 weeks; install the IndexNow script and timer, set the key, enable it and read the first run; then run the [search report](scripts/seo/README.md) for the first baseline. Steps: [deploy agent runbook](docs/operations/deploy-agent.md#indexnow-submitter). (SEO-23, SEO-40)
+- **Launch `en` and `es` on the landing.** The locale registry, the multilingual build and the localized calculators are built and switched off. Still to do: review both dictionaries and the four draft translations, translate the remaining calculators and pages, then enable each locale. (SEO-56)
 - **Multilingual portal.** A portalgen message catalog and `en`/`es` routes for price hubs, methodology, data and insights. Stations stay pt-BR. Per-locale indexation gates, sitemaps and link-graph checks. (SEO-28)
-- **Fuel × state pages.** `/precos/{fuel}/{uf}/`, indexable only when the state has that fuel in the current survey. Add BRL per gallon on `en` pages; a US$ value waits for an admitted exchange-rate source. (SEO-29, SEO-30)
+- **Units on `en` pages.** Add BRL per gallon on `en` pages; a US$ value waits for an admitted exchange-rate source. (SEO-30)
 - **Editorial wave 2.** 24 pt-BR pieces at 2 per week, each with primary sources and ≥ 10 internal links to data pages and tools. (SEO-31)
 - **International content.** About 20 reviewed `en`/`es` pages each: visitor and border guides, localized pillars and calculators. The tutorials follow with captures taken in the same locale. (SEO-32, SEO-33)
 - **App share links and App Links.** A share action that produces canonical web URLs, `/.well-known/assetlinks.json` and verified intent filters, so shared links open the app. (SEO-34)
@@ -90,7 +90,7 @@ The organic growth and multilingual items follow
 - **SEO measurement loop.** Monthly review by URL family and locale. Tune the station indexing window, prune pages that stay unindexed, and open Wave B locales only by the contract's demand rule. (SEO-17)
 - **Weekly bulletin pages.** `/boletim/{date}/` from the accepted ANP survey, noindex until an editor adds a summary. (SEO-14)
 - **Forum UGC indexing gate (later).** Index only moderated threads above a threshold, user links `rel="ugc nofollow"`; needs a privacy review. (SEO-13)
-- **Navigation hubs.** A home entry for `/forum/`, a states grid, and shared footer hubs across the landing and the portal. (SEO-11, SEO-15, SEO-24)
+- **Forum card on the home (owner design).** The landing footer links `/forum/` and the home states grid is live. A card in the home "Explore" grid needs art in the approved style. (SEO-24)
 - **Portal measurements.** Public capacity and browser campaign; live fine-link revalidation. (ESP-16, ESP-11)
 - **Search shard size (optional).** Bound the largest search shard (São Paulo 461 KB gzip) while `portalcheck` stays strict.
 - **Store-published switch.** When the Play listing goes live, change storeState/storeUrl, badge, MobileApplication JSON-LD, sameAs, sitemap and copy together, and recheck Play legal destinations. (D-L08)
