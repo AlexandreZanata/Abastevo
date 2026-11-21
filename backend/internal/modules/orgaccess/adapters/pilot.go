@@ -67,7 +67,7 @@ func (p PilotEntitlements) Check(ctx context.Context, scope kernel.OrgScope, sub
 				return app.ErrUnavailable
 			}
 			if governed {
-				if !allowed || state.Revision > 0 && !state.Enabled {
+				if state.Revision > 0 && !state.Enabled || !allowed && policy.Effect != app.RetainedExport {
 					return app.ErrEntitlementRequired
 				}
 				return nil

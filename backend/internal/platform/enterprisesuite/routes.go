@@ -236,7 +236,9 @@ func Register(router chi.Router, o Options) error {
 	gateway := orgapi.Gateway{Enabled: true, Origin: o.Origin, CursorSecret: o.CursorSecret, Now: time.Now, WriteAdmission: admission}
 	entitlements := accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}
 	if o.BillingEnabled {
-		entitlements.Plans = billpg.EntitlementStore{Pool: o.Pool, Capabilities: capabilities, Now: time.Now}
+		plans := billpg.EntitlementStore{Pool: o.Pool, Capabilities: capabilities, Now: time.Now}
+		entitlements.Plans = plans
+		flags.PlanWrites = plans
 	}
 	authorization := access.Authorization{Source: roles, Capabilities: entitlements, Records: orgweb.SetupRecords{}, Now: time.Now}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {

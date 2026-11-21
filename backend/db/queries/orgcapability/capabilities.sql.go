@@ -77,6 +77,26 @@ func (q *Queries) GetState(ctx context.Context, arg GetStateParams) (GetStateRow
 	return i, err
 }
 
+const lockEntitlementRead = `-- name: LockEntitlementRead :exec
+SELECT pg_catalog.pg_advisory_xact_lock_shared(
+    pg_catalog.hashtextextended('organization-entitlement:' || $1::text, 0))
+`
+
+func (q *Queries) LockEntitlementRead(ctx context.Context, orgID string) error {
+	_, err := q.db.Exec(ctx, lockEntitlementRead, orgID)
+	return err
+}
+
+const lockEntitlementWrite = `-- name: LockEntitlementWrite :exec
+SELECT pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('organization-entitlement:' || $1::text, 0))
+`
+
+func (q *Queries) LockEntitlementWrite(ctx context.Context, orgID string) error {
+	_, err := q.db.Exec(ctx, lockEntitlementWrite, orgID)
+	return err
+}
+
 const lockStateForWrite = `-- name: LockStateForWrite :one
 SELECT enabled, revision FROM org_capabilities
 WHERE org_id = CAST($1::text AS uuid) AND capability = $2

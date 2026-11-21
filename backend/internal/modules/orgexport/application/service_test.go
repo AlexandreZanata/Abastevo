@@ -19,7 +19,7 @@ import (
 // request writes.
 func TestPoliciesAreFreshExportRun(t *testing.T) {
 	request, read := app.Policy(app.ActionRequest), app.Policy(app.ActionRead)
-	if request != (access.Policy{Permission: "rpt.export.run", Capability: "organizations", Effect: access.ConfigurationWrite, Fresh: true}) ||
+	if request != (access.Policy{Permission: "rpt.export.run", Capability: "organizations", Effect: access.RetainedExport, Fresh: true}) ||
 		read != (access.Policy{Permission: "rpt.export.run", Capability: "organizations", Effect: access.Read, Fresh: true}) {
 		t.Fatal("export policies drifted", request, read)
 	}

@@ -49,7 +49,12 @@ when `ANPFUEL_ENTERPRISE_BILLING_ENABLED=true` on an enterprise-enabled
 deployment. Without subscription history, operator pilot flags remain the
 source. A subscription with a current entitlement can grant a capability
 only after role and proof checks. An explicit disabled operator flag can
-still block ordinary writes. The switch defaults off.
+still block ordinary writes. The transaction that applies a new write
+rechecks the capability under the same organization lock used for subscription
+changes and operator flags. An authorized retained export can be requested
+after the subscription stops allowing new work. Existing export proof,
+permissions, current organization state and operator denial still apply.
+The switch defaults off.
 
 Plan read and management require the current organization's named permissions. Fresh authentication applies where required. Billing authority does not authorize staff actions or private read scopes. Separate sensitive permissions still govern exports, documents and location.
 

@@ -89,7 +89,7 @@ const (
 func Policy(action Action) access.Policy {
 	switch action {
 	case ActionRequest:
-		return access.Policy{Permission: domain.Permission, Capability: "organizations", Effect: access.ConfigurationWrite, Fresh: true}
+		return access.Policy{Permission: domain.Permission, Capability: "organizations", Effect: access.RetainedExport, Fresh: true}
 	case ActionRead:
 		return access.Policy{Permission: domain.Permission, Capability: "organizations", Effect: access.Read, Fresh: true}
 	}

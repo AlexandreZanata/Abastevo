@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	db "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgbilling"
+	qcap "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgcapability"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
@@ -26,6 +27,9 @@ func (ledger SubscriptionLedger) ApplyTx(ctx context.Context, tx pgx.Tx, key dom
 	}
 	queries := db.New(tx)
 	org := event.Scope.OrgID().String()
+	if err := qcap.New(tx).LockEntitlementWrite(ctx, org); err != nil {
+		return domain.Transition{}, err
+	}
 	row, err := queries.GetSubscription(ctx, db.GetSubscriptionParams{OrgID: org, SubscriptionID: event.SubscriptionID})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):

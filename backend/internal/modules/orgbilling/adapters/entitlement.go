@@ -28,36 +28,50 @@ func (store EntitlementStore) PlanCapability(ctx context.Context, scope kernel.O
 	}
 
 	err = database.WithOrgTx(ctx, store.Pool, scope, func(tx pgx.Tx) error {
-		current, err := db.New(tx).ListCurrentSubscriptions(ctx, scope.OrgID().String())
-		if err != nil {
-			return err
-		}
-		governed = len(current) > 0
-		now := store.Now()
-		catalog := CatalogStore{DB: tx, Capabilities: store.Capabilities}
-		for _, row := range current {
-			key := domain.PlanKey{Product: row.ProductCode, Plan: row.PlanCode, Revision: row.PlanRevision}
-			subscription, err := domain.RestoreSubscription(domain.SubscriptionSnapshot{
-				Scope: scope, SubscriptionID: row.ID, Plan: key,
-				State: domain.SubscriptionState(row.State), PriorState: domain.SubscriptionState(row.PriorState),
-				Revision: row.Revision, LastEventAt: row.OccurredAt.Time,
-				Period: domain.Period{Start: row.TermStart.Time, End: row.TermEnd.Time},
-			})
-			if err != nil {
-				return err
-			}
-			plan, err := catalog.GetPlan(ctx, key)
-			if err != nil {
-				return err
-			}
-			if domain.CapabilityAllowed(scope, subscription, plan, code, now) {
-				allowed = true
-			}
-		}
-		return nil
+		var err error
+		governed, allowed, err = store.PlanCapabilityDBTX(ctx, tx, scope, code)
+		return err
 	})
 	if err != nil {
 		return false, false, err
 	}
 	return governed, allowed, nil
+}
+
+// PlanCapabilityDBTX reads the current plan in a retained organization
+// transaction. Write callers hold the shared organization entitlement lock.
+func (store EntitlementStore) PlanCapabilityDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, code string) (bool, bool, error) {
+	if store.Now == nil || store.Capabilities.Validate(code) != nil {
+		return false, false, capability.ErrUnavailable
+	}
+	if err := database.ValidateOrgDBTX(ctx, tx, scope); err != nil {
+		return false, false, err
+	}
+	current, err := db.New(tx).ListCurrentSubscriptions(ctx, scope.OrgID().String())
+	if err != nil {
+		return false, false, err
+	}
+	now := store.Now()
+	catalog := CatalogStore{DB: tx, Capabilities: store.Capabilities}
+	allowed := false
+	for _, row := range current {
+		key := domain.PlanKey{Product: row.ProductCode, Plan: row.PlanCode, Revision: row.PlanRevision}
+		subscription, err := domain.RestoreSubscription(domain.SubscriptionSnapshot{
+			Scope: scope, SubscriptionID: row.ID, Plan: key,
+			State: domain.SubscriptionState(row.State), PriorState: domain.SubscriptionState(row.PriorState),
+			Revision: row.Revision, LastEventAt: row.OccurredAt.Time,
+			Period: domain.Period{Start: row.TermStart.Time, End: row.TermEnd.Time},
+		})
+		if err != nil {
+			return false, false, err
+		}
+		plan, err := catalog.GetPlan(ctx, key)
+		if err != nil {
+			return false, false, err
+		}
+		if domain.CapabilityAllowed(scope, subscription, plan, code, now) {
+			allowed = true
+		}
+	}
+	return len(current) > 0, allowed, nil
 }
