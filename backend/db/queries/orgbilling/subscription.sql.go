@@ -54,6 +54,59 @@ func (q *Queries) GetSubscription(ctx context.Context, arg GetSubscriptionParams
 	return i, err
 }
 
+const listCurrentSubscriptions = `-- name: ListCurrentSubscriptions :many
+SELECT DISTINCT ON (subscription_id)
+       subscription_id::text AS id, product_code, plan_code, plan_revision,
+       state, prior_state, revision, term_start, term_end, occurred_at
+FROM org_billing_subscription_events
+WHERE org_id = CAST($1::text AS uuid)
+ORDER BY subscription_id, revision DESC
+`
+
+type ListCurrentSubscriptionsRow struct {
+	ID           string             `json:"id"`
+	ProductCode  string             `json:"product_code"`
+	PlanCode     string             `json:"plan_code"`
+	PlanRevision int64              `json:"plan_revision"`
+	State        string             `json:"state"`
+	PriorState   string             `json:"prior_state"`
+	Revision     int64              `json:"revision"`
+	TermStart    pgtype.Timestamptz `json:"term_start"`
+	TermEnd      pgtype.Timestamptz `json:"term_end"`
+	OccurredAt   pgtype.Timestamptz `json:"occurred_at"`
+}
+
+func (q *Queries) ListCurrentSubscriptions(ctx context.Context, orgID string) ([]ListCurrentSubscriptionsRow, error) {
+	rows, err := q.db.Query(ctx, listCurrentSubscriptions, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCurrentSubscriptionsRow
+	for rows.Next() {
+		var i ListCurrentSubscriptionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductCode,
+			&i.PlanCode,
+			&i.PlanRevision,
+			&i.State,
+			&i.PriorState,
+			&i.Revision,
+			&i.TermStart,
+			&i.TermEnd,
+			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordSubscriptionEvent = `-- name: RecordSubscriptionEvent :execrows
 INSERT INTO org_billing_subscription_events
 (org_id, subscription_id, revision, product_code, plan_code, plan_revision,

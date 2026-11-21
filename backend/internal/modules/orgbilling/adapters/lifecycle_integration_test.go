@@ -142,4 +142,23 @@ FROM org_billing_subscription_events WHERE org_id=$1 AND subscription_id=$2 AND 
 		t.Fatalf("database allowed old billing evidence to be rewritten: %v", err)
 	}
 
+	entitlements := adapters.EntitlementStore{Pool: f.Runtime, Capabilities: known, Now: func() time.Time { return at.Add(5 * time.Hour) }}
+	expect := func(scope kernel.OrgScope, governed, allowed bool) {
+		t.Helper()
+		bound, enabled, err := entitlements.PlanCapability(ctx, scope, "organizations")
+		if err != nil || bound != governed || enabled != allowed {
+			t.Fatalf("scoped entitlement: got (%t,%t) %v want (%t,%t)", bound, enabled, err, governed, allowed)
+		}
+	}
+	expect(scopeA, true, true)
+	expect(scopeB, false, false)
+	finish := d.LifecycleEvent{
+		Scope: scopeA, SubscriptionID: a.RecordID, ExpectedRevision: 3, Kind: d.ConfirmCancellation,
+		Source: d.VerifiedBilling, At: at.Add(3 * time.Hour), Reference: "synthetic-cancellation",
+	}
+	if transition, err := apply(scopeA, finish); err != nil || transition.To != d.Cancelled {
+		t.Fatalf("verified cancellation: %+v %v", transition, err)
+	}
+	expect(scopeA, true, false)
+
 }

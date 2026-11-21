@@ -61,3 +61,18 @@ func TestEnterpriseMeterPlausibilityDefaultsOnAndValidatesSwitch(t *testing.T) {
 		}
 	}
 }
+
+func TestEnterpriseBillingDefaultsOffAndValidatesSwitch(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil || cfg.EnterpriseBillingEnabled {
+		t.Fatal("enterprise billing enabled by default", err)
+	}
+	cfg, err = load(envFunc(map[string]string{keyEnterpriseBillingEnabled: "true"}))
+	if err != nil || !cfg.EnterpriseBillingEnabled || cfg.EnterpriseEnabled {
+		t.Fatal("billing switch failed or enabled the root organization surface", err)
+	}
+	if _, err := load(envFunc(map[string]string{keyEnterpriseBillingEnabled: "invalid-private-value"})); err == nil ||
+		!strings.Contains(err.Error(), keyEnterpriseBillingEnabled) || strings.Contains(err.Error(), "invalid-private-value") {
+		t.Fatal("billing switch accepted or disclosed invalid input", err)
+	}
+}

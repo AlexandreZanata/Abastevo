@@ -51,6 +51,7 @@ import (
 	org "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
+	billpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
@@ -83,12 +84,13 @@ import (
 )
 
 type Options struct {
-	Enabled      bool
-	Origin       string
-	CursorSecret []byte
-	Pool         *pgxpool.Pool
-	Accounts     *account.Service
-	DeviceLimit  int64
+	Enabled        bool
+	BillingEnabled bool
+	Origin         string
+	CursorSecret   []byte
+	Pool           *pgxpool.Pool
+	Accounts       *account.Service
+	DeviceLimit    int64
 	// The synthetic runtime owns the immutable meter producer and its explicit
 	// transport allowance. Additional owners supply their actual follow-up plans;
 	// production measurement and Android producer activation remain separate.
@@ -232,7 +234,11 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	gateway := orgapi.Gateway{Enabled: true, Origin: o.Origin, CursorSecret: o.CursorSecret, Now: time.Now, WriteAdmission: admission}
-	authorization := access.Authorization{Source: roles, Capabilities: accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}, Records: orgweb.SetupRecords{}, Now: time.Now}
+	entitlements := accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}
+	if o.BillingEnabled {
+		entitlements.Plans = billpg.EntitlementStore{Pool: o.Pool, Capabilities: capabilities, Now: time.Now}
+	}
+	authorization := access.Authorization{Source: roles, Capabilities: entitlements, Records: orgweb.SetupRecords{}, Now: time.Now}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {
 		return err
 	}

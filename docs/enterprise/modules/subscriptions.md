@@ -44,6 +44,13 @@ cancellation or the recorded term boundary. Reactivation preserves prior periods
 
 ## 7. Roles and permissions
 
+The plan capability source is composed with the existing authorization gate
+when `ANPFUEL_ENTERPRISE_BILLING_ENABLED=true` on an enterprise-enabled
+deployment. Without subscription history, operator pilot flags remain the
+source. A subscription with a current entitlement can grant a capability
+only after role and proof checks. An explicit disabled operator flag can
+still block ordinary writes. The switch defaults off.
+
 Plan read and management require the current organization's named permissions. Fresh authentication applies where required. Billing authority does not authorize staff actions or private read scopes. Separate sensitive permissions still govern exports, documents and location.
 
 ## 8. Offline, concurrency, idempotency and corrections
