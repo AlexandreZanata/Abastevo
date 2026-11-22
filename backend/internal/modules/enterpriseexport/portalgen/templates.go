@@ -14,6 +14,7 @@ const templates = `
   <meta property="og:type" content="{{if .OGType}}{{.OGType}}{{else}}website{{end}}">
   <meta property="og:site_name" content="abastevo">
   <meta property="og:locale" content="pt_BR">
+  {{template "alternates" (languageLinks .Route)}}
   <meta property="og:url" content="{{.Canonical}}">
   <meta property="og:title" content="{{.HeadTitle}}">
   <meta property="og:description" content="{{.Description}}">
@@ -58,6 +59,7 @@ const templates = `
       </div>
     </div>
   </header>
+  {{with languageMenu .Route}}<nav class="wrap portal-nav-inner" aria-label="Idiomas">{{template "languageMenuLinks" $.Route}}</nav>{{end}}
   <nav class="portal-nav" aria-label="Navegação do portal">
     <div class="wrap portal-nav-inner">
       {{if .OfficialOnly}}
@@ -74,6 +76,12 @@ const templates = `
     </div>
   </nav>
 {{end}}
+
+{{define "alternates"}}{{range .}}<link rel="alternate" hreflang="{{.Code}}" href="{{.URL}}">
+  {{if .OG}}<meta property="og:locale:alternate" content="{{.OG}}">{{end}}
+  {{end}}{{end}}
+
+{{define "languageMenuLinks"}}{{$route := .}}{{range languageMenu .}}<a lang="{{.Code}}" href="{{.Path}}"{{if eq .Path $route}} aria-current="page"{{end}}>{{.Label}}</a> {{end}}{{end}}
 
 {{define "foot"}}
   <footer class="footer">

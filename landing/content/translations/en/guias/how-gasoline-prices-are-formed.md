@@ -12,8 +12,8 @@ dateModified: 2026-11-21
 translationOf: /guias/como-e-formado-o-preco-da-gasolina/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/guides/icms-fuel-tax-explained/
   - /en/guides/anp-weekly-price-survey/
@@ -153,12 +153,12 @@ also explains why two neighboring stations react at different times. The guide
 
 The safest way to know whether the price in your area went up or down is to
 compare the same source, in the same week, for the same fuel. On abastevo, the
-[reference prices by state and city](/precos/) (in Portuguese) come from the
+[reference prices by state and city](/en/fuel-prices/) come from the
 ANP weekly survey and always show the collection date.
 
 Remember that this survey is a sample: it does not visit every station and
 does not record the price right now. What it measures, and what it does not,
-is explained in the [data methodology](/metodologia/) (in Portuguese) and in
+is explained in the [data methodology](/en/methodology/) and in
 the guide
 [how the ANP weekly survey works](/en/guides/anp-weekly-price-survey/).
 

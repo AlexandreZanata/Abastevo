@@ -26,5 +26,6 @@ supersedes it, never by editing history.
 | [025](025-private-abastevo-empresas-organization-boundary.md) | Organization boundary for private Abastevo Empresas data |
 | [026](026-multilingual-public-site.md) | Multilingual public site, pt-BR first, reviewed `en`/`es` translations |
 | [027](027-ai-reviewed-landing-translations.md) | AI-reviewed translations for the `en` and `es` landing, disclosed to readers |
+| [028](028-ai-reviewed-portal-translations.md) | AI-reviewed English and Spanish portal catalogs and localized city eligibility |
 
 Enterprise-suite decisions are recorded in [enterprise/decisions.md](../enterprise/decisions.md).

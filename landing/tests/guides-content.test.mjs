@@ -75,6 +75,45 @@ test('guides content: pages exist with bounded titles, descriptions, breadcrumbs
   }
 });
 
+test('fuel price and survey guides keep their primary citations in every locale', () => {
+  const tmpOut = path.join(root, '.test-guides-citations-' + Math.random().toString(36).slice(2, 8));
+  const guides = [
+    {
+      routes: ['/guias/como-ler-precos/', '/en/guides/how-to-read-fuel-prices/', '/es/guias/como-leer-los-precios/'],
+      citations: [
+        'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/decreto/d10634.htm',
+        'https://www.in.gov.br/web/dou/-/resolucao-anp-n-948-de-5-de-outubro-de-2023-515293933',
+      ],
+      obsolete: /858\/2021/,
+    },
+    {
+      routes: ['/guias/pesquisa-anp/', '/en/guides/anp-weekly-price-survey/', '/es/guias/encuesta-semanal-anp/'],
+      citations: [
+        'https://www.gov.br/anp/pt-br/acesso-a-informacao/transparencia/rg/relatorio-gestao-2025.pdf',
+        'https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/precos-revenda-e-de-distribuicao-combustiveis/arquivos-metodologia/metodologia-coleta.pdf',
+      ],
+      obsolete: /amostragem probabilística estratificada|stratified probability sampling|muestreo probabilístico estratificado/,
+    },
+  ];
+  try {
+    buildSite({ projectRoot: root, outDir: tmpOut, canonicalOrigin: 'https://abastevo.com.br', storeState: 'prelaunch' });
+    const sitemap = fs.readFileSync(path.join(tmpOut, 'sitemap.xml'), 'utf8');
+    for (const { routes, citations, obsolete } of guides) {
+      for (const route of routes) {
+        const html = fs.readFileSync(path.join(tmpOut, route.slice(1), 'index.html'), 'utf8');
+        const article = html.match(/<article\b[\s\S]*?<\/article>/)?.[0] || '';
+        for (const url of citations) {
+          assert.ok(article.includes(`href="${url}"`), `${route} must cite ${url} in the article`);
+        }
+        assert.doesNotMatch(article, obsolete, `${route} must omit the superseded claim`);
+        assert.ok(sitemap.includes(`<loc>https://abastevo.com.br${route}</loc>`), `${route} remains indexable`);
+      }
+    }
+  } finally {
+    fs.rmSync(tmpOut, { recursive: true, force: true });
+  }
+});
+
 test('guides schemas and discovery: JSON-LD graphs, sitemap and llms.txt', () => {
   const tmpOut = path.join(root, '.test-guides-schema-' + Math.random().toString(36).slice(2, 8));
   try {

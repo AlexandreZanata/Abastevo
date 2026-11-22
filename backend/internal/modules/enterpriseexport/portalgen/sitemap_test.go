@@ -59,18 +59,18 @@ func TestBuildSitemapsSplitsFamiliesUnderTheURLLimit(t *testing.T) {
 			t.Errorf("%s breaks the size or field contract", file.Path)
 		}
 	}
-	want := []string{"sitemaps/portal-hubs-1.xml", "sitemaps/portal-precos-1.xml", "sitemaps/portal-postos-1.xml", "sitemaps/portal-postos-2.xml"}
+	want := []string{"sitemaps/portal-hubs-pt-BR-1.xml", "sitemaps/portal-precos-pt-BR-1.xml", "sitemaps/portal-postos-pt-BR-1.xml", "sitemaps/portal-postos-pt-BR-2.xml"}
 	if strings.Join(paths, ",") != strings.Join(want, ",") {
 		t.Fatalf("sitemap files = %v, want %v", paths, want)
 	}
-	if counts["sitemaps/portal-postos-1.xml"] != SitemapChunkURLs || counts["sitemaps/portal-postos-2.xml"] != 1 || counts["sitemaps/portal-hubs-1.xml"] != 2 {
+	if counts["sitemaps/portal-postos-pt-BR-1.xml"] != SitemapChunkURLs || counts["sitemaps/portal-postos-pt-BR-2.xml"] != 1 || counts["sitemaps/portal-hubs-pt-BR-1.xml"] != 2 {
 		t.Errorf("sitemap counts = %v", counts)
 	}
 	var doc sitemapIndexDoc
 	if err := xml.Unmarshal(index, &doc); err != nil || doc.XMLName.Local != "sitemapindex" || len(doc.Sitemaps) != 4 {
 		t.Fatalf("index = %s (%v)", index, err)
 	}
-	if doc.Sitemaps[0].Loc != "https://abastevo.example/sitemaps/portal-hubs-1.xml" || doc.Sitemaps[0].LastMod != "2026-10-20" ||
+	if doc.Sitemaps[0].Loc != "https://abastevo.example/sitemaps/portal-hubs-pt-BR-1.xml" || doc.Sitemaps[0].LastMod != "2026-10-20" ||
 		doc.Sitemaps[2].LastMod != "2026-09-01" || doc.Sitemaps[3].LastMod != "2026-10-15" {
 		t.Errorf("index entries = %+v", doc.Sitemaps)
 	}
@@ -89,9 +89,40 @@ func TestBuildSitemapsSplitsFamiliesUnderTheURLLimit(t *testing.T) {
 		{Route: "/forum/combustiveis/", Family: familyForumCategory, LastMod: "2026-10-22"},
 		{Route: "/forum/combustiveis/etanol-f0000001/", Family: familyForumPost, LastMod: "2026-10-20"},
 	}, SitemapChunkURLs)
-	if err != nil || len(forum) != 2 || forum[1].Path != "sitemaps/portal-forum-1.xml" || !sitemapChildPath.MatchString(forum[1].Path) ||
-		strings.Count(string(forum[1].Body), "<loc>") != 3 || !strings.Contains(string(forumIndex), "portal-forum-1.xml</loc>\n    <lastmod>2026-10-22") {
+	if err != nil || len(forum) != 2 || forum[1].Path != "sitemaps/portal-forum-pt-BR-1.xml" || !sitemapChildPath.MatchString(forum[1].Path) ||
+		strings.Count(string(forum[1].Body), "<loc>") != 3 || !strings.Contains(string(forumIndex), "portal-forum-pt-BR-1.xml</loc>\n    <lastmod>2026-10-22") {
 		t.Errorf("forum sitemap family = %v %v\n%s", forum, err, forumIndex)
+	}
+}
+
+func TestBuildSitemapsPartitionsPricesByLocale(t *testing.T) {
+	entries := []sitemapEntry{
+		{Route: "/precos/mt/", Locale: "pt-BR", Family: familyState, LastMod: "2026-11-14"},
+		{Route: "/en/fuel-prices/mt/", Locale: "en", Family: familyState, LastMod: "2026-11-14"},
+		{Route: "/en/fuel-prices/sp/", Locale: "en", Family: familyState, LastMod: "2026-11-07"},
+		{Route: "/es/precios/mt/", Locale: "es", Family: familyState, LastMod: "2026-11-14"},
+	}
+	files, _, err := buildSitemaps(seoSite, entries, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != len(entries) {
+		t.Fatalf("got %d sitemaps, want %d", len(files), len(entries))
+	}
+	chunks := map[string]int{}
+	for i, entry := range entries {
+		chunks[entry.Locale]++
+		expected := fmt.Sprintf("sitemaps/portal-precos-%s-%d.xml", entry.Locale, chunks[entry.Locale])
+		if files[i].Path != expected {
+			t.Errorf("got %s, want %s", files[i].Path, expected)
+		}
+		var set sitemapSet
+		if err := xml.Unmarshal(files[i].Body, &set); err != nil {
+			t.Fatal(err)
+		}
+		if len(set.URLs) != 1 || set.URLs[0] != (sitemapURL{Loc: seoSite + entry.Route, LastMod: entry.LastMod}) {
+			t.Errorf("unexpected URLs in %s: %+v", expected, set.URLs)
+		}
 	}
 }
 
@@ -103,17 +134,17 @@ func TestGeneratedSitemapIndexAndDataDates(t *testing.T) {
 	index := readPortal(t, out, "sitemap.xml")
 	for _, want := range []string{
 		"<sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
-		"<loc>https://portal.example/sitemaps/portal-hubs-1.xml</loc>",
-		"<loc>https://portal.example/sitemaps/portal-precos-1.xml</loc>",
-		"<loc>https://portal.example/sitemaps/portal-postos-1.xml</loc>",
+		"<loc>https://portal.example/sitemaps/portal-hubs-pt-BR-1.xml</loc>",
+		"<loc>https://portal.example/sitemaps/portal-precos-pt-BR-1.xml</loc>",
+		"<loc>https://portal.example/sitemaps/portal-postos-pt-BR-1.xml</loc>",
 	} {
 		if !strings.Contains(index, want) {
 			t.Errorf("sitemap index missing %q", want)
 		}
 	}
-	precos := readPortal(t, out, "sitemaps/portal-precos-1.xml")
-	postos := readPortal(t, out, "sitemaps/portal-postos-1.xml")
-	hubs := readPortal(t, out, "sitemaps/portal-hubs-1.xml")
+	precos := readPortal(t, out, "sitemaps/portal-precos-pt-BR-1.xml")
+	postos := readPortal(t, out, "sitemaps/portal-postos-pt-BR-1.xml")
+	hubs := readPortal(t, out, "sitemaps/portal-hubs-pt-BR-1.xml")
 	for _, check := range []struct{ body, loc, lastmod string }{
 		{precos, "https://portal.example/precos/sp/sao-paulo/", "2026-10-18"},
 		{postos, "https://portal.example/postos/" + stA + "/", "2026-10-15"},
@@ -150,15 +181,15 @@ func TestVerifyRejectsSitemapIndexTampering(t *testing.T) {
 	}
 	cases := map[string]func(t *testing.T, out string){
 		"index points to a missing child": func(t *testing.T, out string) {
-			rewrite(t, out, "sitemap.xml", "portal-postos-1.xml", "portal-postos-9.xml")
+			rewrite(t, out, "sitemap.xml", "portal-postos-pt-BR-1.xml", "portal-postos-pt-BR-9.xml")
 		},
 		"unreferenced child": func(t *testing.T, out string) {
-			if err := os.WriteFile(filepath.Join(out, "sitemaps", "portal-postos-2.xml"), []byte(readPortal(t, out, "sitemaps/portal-postos-1.xml")), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(out, "sitemaps", "portal-postos-pt-BR-2.xml"), []byte(readPortal(t, out, "sitemaps/portal-postos-pt-BR-1.xml")), 0o600); err != nil {
 				t.Fatal(err)
 			}
 		},
 		"child lists a noindex page": func(t *testing.T, out string) {
-			rewrite(t, out, "sitemaps/portal-postos-1.xml", "/postos/"+stA+"/", "/postos/"+stB+"/")
+			rewrite(t, out, "sitemaps/portal-postos-pt-BR-1.xml", "/postos/"+stA+"/", "/postos/"+stB+"/")
 		},
 		"page is not self-canonical": func(t *testing.T, out string) {
 			rewrite(t, out, "metodologia/index.html", `<link rel="canonical" href="https://portal.example/metodologia/">`, `<link rel="canonical" href="https://portal.example/consultar/">`)

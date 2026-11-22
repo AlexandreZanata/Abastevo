@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /ferramentas/etanol-ou-gasolina/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/guides/ethanol-or-gasoline/
   - /en/guides/how-to-read-fuel-prices/
@@ -72,7 +72,7 @@ methods.
 - Very small differences (less than one percentage point) are inside the error
   margin of any home measurement.
 - The price changes between stations and weeks. To compare your city, check the
-  [reference prices by state](/precos/) (in Portuguese) with the collection
+  [reference prices by state](/en/fuel-prices/) with the collection
   date.
 
 To understand where the 70% comes from and when it changes, read the guide

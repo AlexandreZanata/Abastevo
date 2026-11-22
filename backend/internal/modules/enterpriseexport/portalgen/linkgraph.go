@@ -40,17 +40,21 @@ type LinkGraphResult struct {
 }
 
 var (
-	anchorTag       = regexp.MustCompile(`(?s)<a\b[^>]*\bhref="([^"]*)"[^>]*>(.*?)</a>`)
-	anyHref         = regexp.MustCompile(`\bhref="([^"]*)"`)
-	tagPattern      = regexp.MustCompile(`<[^>]+>`)
-	cityRoutePath   = regexp.MustCompile(`^/precos/[a-z]{2}/[a-z0-9-]+/$`)
-	genericAnchors  = map[string]bool{"clique aqui": true, "aqui": true, "saiba mais": true, "leia mais": true, "veja mais": true, "link": true, "mais": true, "acesse": true}
+	anchorTag      = regexp.MustCompile(`(?s)<a\b[^>]*\bhref="([^"]*)"[^>]*>(.*?)</a>`)
+	anyHref        = regexp.MustCompile(`\bhref="([^"]*)"`)
+	tagPattern     = regexp.MustCompile(`<[^>]+>`)
+	cityRoutePath  = regexp.MustCompile(`^/precos/[a-z]{2}/[a-z0-9-]+/$`)
+	genericAnchors = map[string]bool{
+		"clique aqui": true, "aqui": true, "saiba mais": true, "leia mais": true, "veja mais": true, "link": true, "mais": true, "acesse": true,
+		"click here": true, "here": true, "learn more": true, "read more": true, "more": true,
+		"haz clic aquí": true, "haga clic aquí": true, "aquí": true, "más información": true, "leer más": true, "más": true,
+	}
 	mainOpenMarker  = []byte(`<main id="conteudo"`)
 	mainCloseMarker = []byte(`</main>`)
 )
 
 type graphPage struct {
-	route      string
+	locale     string
 	robots     string
 	canonical  string
 	contextual map[string]bool
@@ -61,7 +65,8 @@ type graphPage struct {
 // every indexable page is in the sitemap; no root-relative link targets a
 // missing route (landing routes are the LandingRoutes allowlist); no body
 // anchor is generic; every indexable page has at least MinInbound body links
-// from distinct pages, except stations, held to min(MinInbound, n) where n
+// from distinct pages in its own language, except stations, held to
+// min(MinInbound, n) where n
 // is the number of indexable stations linking the same city page.
 func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error) {
 	minInbound := opts.MinInbound
@@ -72,11 +77,16 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 	if err != nil {
 		return LinkGraphResult{}, err
 	}
+	locales, err := loadPortalLocales(localizationAssets)
+	if err != nil {
+		return LinkGraphResult{}, err
+	}
 	exists := map[string]bool{}
 	for _, rel := range files {
 		exists[rel] = true
 	}
 	pages := map[string]*graphPage{}
+	languagePages := map[string]portalLanguagePage{}
 	for _, rel := range files {
 		if !strings.HasSuffix(rel, "index.html") {
 			continue
@@ -86,12 +96,20 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 			return LinkGraphResult{}, err
 		}
 		route := "/" + strings.TrimSuffix(rel, "index.html")
-		page := &graphPage{route: route, contextual: map[string]bool{}}
+		page := &graphPage{contextual: map[string]bool{}}
 		if match := metaRobots.FindSubmatch(body); match != nil {
 			page.robots = string(match[1])
 		}
 		if match := canonicalLink.FindSubmatch(body); match != nil {
 			page.canonical = string(match[1])
+		}
+		languagePage, err := collectPortalLanguagePage(route, page.canonical, page.robots == robotsIndexable, body, locales)
+		if err != nil {
+			return LinkGraphResult{}, err
+		}
+		page.locale = languagePage.locale.Code
+		if languagePage.identity != "" || len(languagePage.alternates) > 0 {
+			languagePages[route] = languagePage
 		}
 		for _, match := range anyHref.FindAllSubmatch(body, -1) {
 			if target, internal := internalTarget(string(match[1])); internal && !targetExists(target, exists) {
@@ -111,6 +129,9 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 		pages[route] = page
 	}
 	site := strings.TrimRight(opts.SiteURL, "/")
+	if err := checkPortalLanguagePages(languagePages, site); err != nil {
+		return LinkGraphResult{}, err
+	}
 	result := LinkGraphResult{Pages: len(pages), MinInbound: map[string]int{}}
 	indexable := map[string]bool{}
 	for route, page := range pages {
@@ -123,7 +144,7 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 		}
 	}
 	result.Indexable = len(indexable)
-	listed, err := sitemapRoutes(dir, exists)
+	listed, err := sitemapRoutes(dir, exists, locales)
 	if err != nil {
 		return LinkGraphResult{}, err
 	}
@@ -135,7 +156,7 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 		}
 	}
 	for route := range indexable {
-		if _, ok := listed[route]; !ok && len(listed) > 0 {
+		if _, ok := listed[route]; !ok {
 			return LinkGraphResult{}, fmt.Errorf("linkgraph: indexable %s is absent from the sitemap", route)
 		}
 	}
@@ -144,7 +165,9 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 	stationCity := map[string]string{}
 	for route, page := range pages {
 		for target := range page.contextual {
-			inbound[target]++
+			if resolved := pages[target]; resolved != nil && resolved.locale == page.locale {
+				inbound[target]++
+			}
 		}
 		if indexable[route] && strings.HasPrefix(route, "/postos/") {
 			for _, target := range sortedKeys(page.contextual) {
@@ -159,6 +182,9 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 	var violations []string
 	for _, route := range sortedKeys(indexable) {
 		required, family := minInbound, routeFamily(route)
+		if localized, ok := languagePages[route]; ok && localized.locale.Code != defaultPortalLocale {
+			family = localized.locale.Code + ":" + routeFamily(localized.identity)
+		}
 		if family == "postos" {
 			n := cityStations[stationCity[route]]
 			if n == 0 {
@@ -253,7 +279,7 @@ func mainContent(body []byte) []byte {
 }
 
 // sitemapRoutes maps every child-sitemap URL path to its loc.
-func sitemapRoutes(dir string, exists map[string]bool) (map[string]string, error) {
+func sitemapRoutes(dir string, exists map[string]bool, locales map[string]portalLocale) (map[string]string, error) {
 	out := map[string]string{}
 	if !exists["sitemap.xml"] {
 		return out, nil
@@ -271,7 +297,16 @@ func sitemapRoutes(dir string, exists map[string]bool) (map[string]string, error
 		if err != nil {
 			return nil, fmt.Errorf("linkgraph: invalid sitemap index entry")
 		}
-		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(parsed.Path, "/"))))
+		child := strings.TrimPrefix(parsed.Path, "/")
+		partition := sitemapChildPath.FindStringSubmatch(child)
+		if partition == nil || !exists[child] {
+			return nil, fmt.Errorf("linkgraph: invalid child sitemap path")
+		}
+		language := partition[2]
+		if language == "" {
+			language = defaultPortalLocale
+		}
+		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(child)))
 		if err != nil {
 			return nil, fmt.Errorf("linkgraph: child sitemap unavailable")
 		}
@@ -283,6 +318,12 @@ func sitemapRoutes(dir string, exists map[string]bool) (map[string]string, error
 			loc, err := url.Parse(entry.Loc)
 			if err != nil {
 				return nil, fmt.Errorf("linkgraph: invalid sitemap URL")
+			}
+			if err := checkSitemapPartition(loc.Path, partition[1], language, locales); err != nil {
+				return nil, err
+			}
+			if _, duplicate := out[loc.Path]; duplicate {
+				return nil, fmt.Errorf("linkgraph: duplicate sitemap URL %s", entry.Loc)
 			}
 			out[loc.Path] = entry.Loc
 		}

@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /ferramentas/encher-o-tanque/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/guias/como-leer-los-precios/
   - /es/guias/encuesta-semanal-anp/
@@ -65,7 +65,7 @@ habitual pagar con Pix o tarjeta.
   (en portugués).
 
 Para saber si el precio del litro está alto o bajo en tu región, compáralo con
-los [precios de referencia por estado](/precos/) (en portugués), mirando
+los [precios de referencia por estado](/es/precios/), mirando
 siempre la fecha de recolección.
 
 ## En la app

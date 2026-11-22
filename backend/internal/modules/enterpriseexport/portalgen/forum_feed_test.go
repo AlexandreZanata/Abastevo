@@ -29,7 +29,7 @@ func TestForumFeedListsEditorialPostsNewestFirst(t *testing.T) {
 		t.Fatalf("feed has %d entries, want %d", len(feed.Entries), len(seoForumFixture()))
 	}
 
-	sitemap := readPortal(t, out, "sitemaps/portal-forum-1.xml")
+	sitemap := readPortal(t, out, "sitemaps/portal-forum-pt-BR-1.xml")
 	var newest, previous time.Time
 	for i, entry := range feed.Entries {
 		published, err := time.Parse(time.RFC3339, entry.Published)

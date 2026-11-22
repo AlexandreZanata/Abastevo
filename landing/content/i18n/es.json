@@ -1,8 +1,8 @@
 {
   "_review": {
     "status": "reviewed",
-    "reviewedBy": "AI review (Claude)",
-    "reviewedAt": "2026-11-21"
+    "reviewedBy": "AI review (Codex)",
+    "reviewedAt": "2026-11-22"
   },
   "home": {
     "title": "Precios de gasolina (nafta) y diésel en Brasil por estado",
@@ -100,9 +100,11 @@
     "browserRequirements": "El cálculo interactivo usa JavaScript; la fórmula y el ejemplo funcionan sin él.",
     "pageUpdated": "Actualizado el {date} · {team}",
     "footerPrices": "Precios por estado",
-    "footerConsult": "Consultar datos",
+    "footerConsult": "Buscar una estación de servicio (en portugués)",
     "footerEnforcement": "Fiscalización",
     "footerMethodology": "Metodología",
+    "footerData": "Datos abiertos",
+    "footerInsights": "Curiosidades",
     "footerAllGuides": "Todas las guías",
     "footerHowTo": "Cómo usar la app",
     "footerApp": "Aplicación",

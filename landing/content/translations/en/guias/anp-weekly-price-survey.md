@@ -7,12 +7,12 @@ category: dados
 tags: [anp, price-survey, open-data, source-and-date]
 primaryQuery: "how the anp fuel price survey works"
 datePublished: 2026-11-21
-dateModified: 2026-11-21
+dateModified: 2026-11-22
 translationOf: /guias/pesquisa-anp/
-sourceRevision: 2026-11-17
+sourceRevision: 2026-11-22
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/guides/how-to-read-fuel-prices/
   - /en/guides/how-gasoline-prices-are-formed/
@@ -21,37 +21,29 @@ related:
 ---
 
 ANP, Brazil's oil and fuels regulator (Agência Nacional do Petróleo, Gás
-Natural e Biocombustíveis), periodically surveys fuel prices and marketing
-margins in Brazil. Understand how this survey works, what its reach is and why
-it serves as a regulatory and historical reference, but not as real-time
-information.
+Natural e Biocombustíveis), tracks fuel prices in Brazil every week. This guide
+explains what the survey covers, how to use its historical data and why prices
+can change between visits.
 
 ## What the ANP price survey is
 
-The ANP survey is an official statistical survey meant to monitor the prices
-charged by the retail market (retail stations) and by distributors in several
-regions of the country. It covers common automotive fuels, such as regular
-gasoline and additive gasoline (gasolina aditivada), hydrous ethanol (E100),
-diesel and CNG (compressed natural gas for vehicles, called GNV in Brazil).
-
-The survey is carried out by research companies hired by the agency through
-public bidding, following predefined statistical criteria.
+The [ANP Fuel Price Survey](https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/precos-revenda-e-de-distribuicao-combustiveis/informacoes-levantamento-de-precos-de-combustiveis)
+tracks the retail prices consumers pay. It covers automotive fuels including
+regular gasoline, gasoline with additives (gasolina aditivada), hydrous ethanol
+(E100), diesel and CNG (compressed natural gas for vehicles, called GNV in
+Brazil). A company hired by ANP collects the prices in the field.
 
 ## Sampling methodology and coverage
 
-The ANP survey does not visit every fuel station in Brazil. The country has
-more than 40,000 authorized retail stations, which makes an exhaustive
-in-person check of each one every few days unfeasible.
+[ANP's 2025 Management Report](https://www.gov.br/anp/pt-br/acesso-a-informacao/transparencia/rg/relatorio-gestao-2025.pdf)
+records more than 40,000 retail automotive fuel stations in Brazil. The weekly
+survey visits a sample of those stations.
 
-For that reason, the agency adopts **stratified probability sampling**:
-
-- Only a share of Brazilian municipalities is surveyed regularly (generally
-  state capitals, metropolitan regions and municipalities of greater economic
-  or population relevance).
-- Within each selected municipality, a sample of stations is drawn to receive
-  the field researchers.
-- Smaller municipalities or stations on remote highways are often not part of
-  the periodic sample.
+- The survey selects locations based on factors such as income, population,
+  vehicle fleet size and number of stations.
+- Under the [methodology published by ANP](https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/precos-revenda-e-de-distribuicao-combustiveis/arquivos-metodologia/metodologia-coleta.pdf),
+  the survey team randomly chooses the stations to visit each week in each
+  surveyed municipality, taking geographic coverage into account.
 
 ## Frequency and the time lag
 

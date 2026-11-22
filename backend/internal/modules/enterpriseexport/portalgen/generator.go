@@ -9,6 +9,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -72,7 +73,8 @@ type Options struct {
 	// LandingURL is the optional landing origin (scheme and host only). When
 	// set, the shared header and footer link back to landing pages with
 	// absolute URLs; when empty the artifact stays fully self-contained.
-	LandingURL string
+	LandingURL   string
+	localeAssets fs.FS
 }
 
 type Result struct {
@@ -110,6 +112,8 @@ type pageBase struct {
 	// Indexable is the per-page decision (global switch and pageIndexable);
 	// Robots renders it and only indexable pages enter a sitemap.
 	Indexable    bool
+	IndexFacts   indexFacts
+	Language     string
 	Robots       string
 	Canonical    string
 	OGImage      string
@@ -343,11 +347,15 @@ type generator struct {
 	searchPartsReady bool
 	// searchRelease/searchFuels/searchFiscal describe the v2 search index
 	// of a full build; empty in official-only builds.
-	searchRelease string
-	searchFuels   []searchFuel
-	searchFiscal  bool
-	sitemap       []sitemapEntry
-	hasSitemap    bool
+	searchRelease      string
+	searchFuels        []searchFuel
+	searchFiscal       bool
+	sitemap            []sitemapEntry
+	hasSitemap         bool
+	locales            map[string]portalLocale
+	localizations      []localizedSource
+	languageGroups     map[string][]languageLink
+	languageNavigation map[string][]languageLink
 	// cityRoutes maps an IBGE code to its readable /precos/{uf}/{slug}/ route.
 	cityRoutes map[string]string
 	statePages map[string]bool
@@ -447,10 +455,23 @@ func Generate(opts Options) (Result, error) {
 		g.landingPrefix = opts.LandingURL
 	}
 	g.dataDate = g.buildDate
+	localeAssets := opts.localeAssets
+	if localeAssets == nil {
+		localeAssets = localizationAssets
+	}
+	g.locales, err = loadPortalLocales(localeAssets)
+	if err != nil {
+		return Result{}, err
+	}
+	g.languageGroups = map[string][]languageLink{}
+	g.languageNavigation = map[string][]languageLink{}
 	g.tmpl, err = template.New("portal").Funcs(template.FuncMap{
 		"brl": brl, "brlPtr": brlPtr, "dateBR": dateBR,
-		"periodLabel": periodLabel, "fuelLabel": fuelLabel, "plural": plural, "unitShort": unitShort,
-	}).Parse(templates)
+		"msg":           portalLocale.text,
+		"languageLinks": func(route string) []languageLink { return g.languageGroups[route] },
+		"languageMenu":  g.languageMenu,
+		"periodLabel":   periodLabel, "fuelLabel": fuelLabel, "plural": plural, "unitShort": unitShort,
+	}).Parse(templates + localizedTemplates)
 	if err != nil {
 		return Result{}, err
 	}
@@ -652,6 +673,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	if err := g.generateStatic(); err != nil {
+		return Result{}, err
+	}
+	if err := g.writeLocalizations(latestSummaries, latestCoverage, observations, municipalityStations); err != nil {
 		return Result{}, err
 	}
 	if err := g.writeSitemap(); err != nil {
@@ -973,16 +997,20 @@ func (g *generator) writeRoute(templateName string, data routedPage) error {
 	if !strings.HasPrefix(base.Route, "/") || !strings.HasSuffix(base.Route, "/") {
 		return fmt.Errorf("portalgen: invalid page route")
 	}
+	if base.Language == defaultPortalLocale {
+		g.queueLocalizations(data)
+	}
 	if err := g.writePage(strings.TrimPrefix(base.Route, "/")+"index.html", templateName, data); err != nil {
 		return err
 	}
 	if base.Indexable {
-		g.sitemap = append(g.sitemap, sitemapEntry{Route: base.Route, Family: base.Family, LastMod: base.LastMod})
+		g.sitemap = append(g.sitemap, sitemapEntry{Route: base.Route, Family: base.Family, LastMod: base.LastMod, Locale: base.Language})
 	}
 	return nil
 }
 
 type sitemapEntry struct {
+	Locale  string
 	Route   string
 	Family  pageFamily
 	LastMod string

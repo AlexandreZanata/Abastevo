@@ -12,8 +12,8 @@ dateModified: 2026-11-21
 translationOf: /guias/diesel-s10-ou-s500/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/tools/trip-fuel-cost-calculator/
   - /en/tools/fuel-consumption-calculator/
@@ -134,7 +134,7 @@ right after filling up, see the guide
 
 Because the two products have different specifications, the prices also tend
 to be different. To compare with official data, use the
-[reference prices by state and city](/precos/) (in Portuguese), which list S10
+[reference prices by state and city](/en/fuel-prices/), which list S10
 and S500 separately and with the collection date. To estimate the cost of a
 route, the
 [trip fuel cost calculator](/en/tools/trip-fuel-cost-calculator/) works with

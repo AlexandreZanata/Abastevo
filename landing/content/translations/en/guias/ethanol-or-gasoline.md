@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /guias/etanol-ou-gasolina/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/tools/ethanol-or-gasoline-calculator/
   - /en/guides/how-gasoline-prices-are-formed/
@@ -89,7 +89,7 @@ with the prices you find. To measure consumption, follow
 (in Portuguese) or use the
 [fuel consumption calculator](/en/tools/fuel-consumption-calculator/). For the
 official regional reference, check
-[prices by state and city](/precos/) (in Portuguese), always with the
+[prices by state and city](/en/fuel-prices/), always with the
 collection date.
 
 ## In the app

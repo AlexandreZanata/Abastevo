@@ -2,7 +2,8 @@
 
 Accepted by the owner on 2026-11-21. This decision amends rule 5 of
 [ADR-026](026-multilingual-public-site.md) ("reviewed translations only", by a
-fluent human) for the landing pages of the `en` and `es` locales. It answers
+fluent human) for the landing pages of the `en` and `es` locales. [ADR-028](028-ai-reviewed-portal-translations.md) extends the
+review workflow to the portal. ADR-027 answers
 the open inputs I18N-D05 of the
 [multilingual contract](../product/landing/organic-growth-i18n-plan.md) and
 G-D01 of the

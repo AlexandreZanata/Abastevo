@@ -8,12 +8,12 @@ category: dados
 tags: [source-and-date, consumer-rights, pump-price, anp]
 primaryQuery: "how to read fuel prices in brazil"
 datePublished: 2026-11-21
-dateModified: 2026-11-21
+dateModified: 2026-11-22
 translationOf: /guias/como-ler-precos/
-sourceRevision: 2026-11-17
+sourceRevision: 2026-11-22
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/guides/anp-weekly-price-survey/
   - /en/guides/how-gasoline-prices-are-formed/
@@ -28,13 +28,19 @@ information avoids improper charges and supports smarter decisions.
 
 ## Sign price vs. pump price
 
-Brazilian federal law (in particular the Consumer Protection Code and Decree
-10,634/2021) requires the price sign or totem at the station entrance to
-display the real price for upfront payment charged to the ordinary consumer,
-in characters that are legible and visible to the driver from a distance.
+Article 20 of [ANP Resolution No. 948/2023](https://www.in.gov.br/web/dou/-/resolucao-anp-n-948-de-5-de-outubro-de-2023-515293933)
+requires stations to post the upfront prices for all automotive fuels on the
+sign at the entrance. The sign must be visible from a distance, day and night.
+If deferred payment is available, those prices must also be on the sign.
 
-The amount that appears on the pump display at the moment the nozzle is lifted
-must match exactly the amount advertised on the sign for that payment method.
+Article 2 of [Brazilian Decree No. 10,634/2021](https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/decreto/d10634.htm)
+covers how regular and promotional prices are displayed. If a discount depends
+on a loyalty app, the station must highlight the regular price and disclose
+the promotional price and the discount.
+
+If the price or payment term varies for the same fuel, Article 21 of the
+resolution requires the pump or nozzle to identify the applicable terms and
+show the total payable on those terms.
 
 ## Payment conditions (Law 13,455/2017)
 
@@ -70,14 +76,15 @@ location. It indicates the exact date and time of the observation (e.g.
 
 Retail stations in Brazil fall into two main categories:
 
-- **Branded stations:** businesses tied by contractual exclusivity to a large
-  fuel distributor (e.g. Ipiranga, Shell, Vibra/Petrobras). They display the
-  distributor's brand on their canopy fascia and totems.
-- **Unbranded (independent) stations:** stations that buy fuel from different
-  distributors authorized by ANP, looking for better wholesale costs. By
-  determination of ANP (Resolution No. 858/2021), unbranded stations are
-  required to display on each pump the name and the CNPJ (company tax
-  registration number) of the distributor that supplied the fuel in that tank.
+- **Branded stations:** display a distributor's brand. If they sell fuel from
+  another supplier, they must display that supplier's trade name alongside the
+  product identification (Article 20, paragraph 2).
+- **Unbranded (independent) stations:** choose to operate without displaying a
+  distributor's brand.
+
+At either type of station, look on the liquid fuel pump for the supplying
+distributor's CNPJ (company tax ID), legal name or trade name. The rule is in
+Article 27 of [ANP Resolution No. 948/2023](https://www.in.gov.br/web/dou/-/resolucao-anp-n-948-de-5-de-outubro-de-2023-515293933).
 
 ## Consumer rights at the pump
 

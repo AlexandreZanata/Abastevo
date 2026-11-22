@@ -80,7 +80,7 @@ var (
 // root-relatively when the landing shares the portal origin. Any other
 // root-relative link must resolve to an artifact file.
 var LandingRoutes = map[string]bool{
-	"/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
+	"/": true, "/en/": true, "/es/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
 	"/excluir-conta/": true, "/termos/": true, "/sobre/": true, "/politica-editorial/": true,
 	"/guias/etanol-ou-gasolina/": true, "/guias/como-ler-precos/": true, "/guias/pesquisa-anp/": true,
 	"/guias/combustivel-adulterado/": true, "/guias/como-calcular-consumo-medio/": true,
@@ -778,8 +778,13 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 	if maxShard <= 0 {
 		maxShard = DefaultMaxShardGzip
 	}
+	locales, err := loadPortalLocales(localizationAssets)
+	if err != nil {
+		return VerifyResult{}, err
+	}
 	indexable := map[string]bool{}
 	canonicals := map[string]string{}
+	languagePages := map[string]portalLanguagePage{}
 	sitemapSeen := false
 	sizer := newGzipSizer()
 	for path := range files {
@@ -821,6 +826,14 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			if canonical := canonicalLink.FindSubmatch(body); len(canonical) == 2 {
 				canonicals[path] = string(canonical[1])
 			}
+			route := "/" + strings.TrimSuffix(path, "index.html")
+			languagePage, err := collectPortalLanguagePage(route, canonicals[path], indexable[path], body, locales)
+			if err != nil {
+				return VerifyResult{}, err
+			}
+			if languagePage.identity != "" || len(languagePage.alternates) > 0 {
+				languagePages[route] = languagePage
+			}
 			if err := checkHTMLReferences(dir, files, path, body); err != nil {
 				return VerifyResult{}, err
 			}
@@ -861,7 +874,10 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			}
 		}
 	}
-	sitemapURLs, err := checkSitemap(dir, files, indexable, canonicals, sitemapSeen, opts.SiteURL)
+	if err := checkPortalLanguagePages(languagePages, opts.SiteURL); err != nil {
+		return VerifyResult{}, err
+	}
+	sitemapURLs, err := checkSitemap(dir, files, indexable, canonicals, sitemapSeen, opts.SiteURL, locales)
 	if err != nil {
 		return VerifyResult{}, err
 	}
@@ -1007,7 +1023,7 @@ func checkMixedVersionAssets(dir string, files map[string]FileDigest) error {
 // origin, no duplicates, valid lastmod, size limits, every URL an indexable
 // self-canonical artifact page, every indexable page listed, and no child
 // file left unreferenced.
-func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]bool, canonicals map[string]string, sitemapSeen bool, siteURL string) (int, error) {
+func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]bool, canonicals map[string]string, sitemapSeen bool, siteURL string, locales map[string]portalLocale) (int, error) {
 	robotsRaw, err := os.ReadFile(filepath.Join(dir, "robots.txt"))
 	if err != nil {
 		return 0, fmt.Errorf("portalcheck: robots.txt unavailable")
@@ -1090,6 +1106,11 @@ func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]
 			return 0, fmt.Errorf("portalcheck: sitemap index entry has no child sitemap")
 		}
 		referenced[child] = true
+		part := sitemapChildPath.FindStringSubmatch(child)
+		language := part[2]
+		if language == "" {
+			language = defaultPortalLocale
+		}
 		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(child)))
 		if err != nil {
 			return 0, fmt.Errorf("portalcheck: child sitemap unavailable")
@@ -1122,6 +1143,9 @@ func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]
 			}
 			if !indexable[target] {
 				return 0, fmt.Errorf("portalcheck: sitemap lists a noindex page")
+			}
+			if err := checkSitemapPartition(parsed.Path, part[1], language, locales); err != nil {
+				return 0, err
 			}
 			if canonicals[target] != entry.Loc {
 				return 0, fmt.Errorf("portalcheck: sitemap URL is not self-canonical: %s", entry.Loc)

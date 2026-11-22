@@ -12,8 +12,8 @@ dateModified: 2026-11-21
 translationOf: /guias/diesel-s10-ou-s500/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/herramientas/calculadora-costo-de-viaje/
   - /es/herramientas/calculadora-costo-por-km/
@@ -138,7 +138,7 @@ potencia justo después de la carga, mira la guía
 
 Como los dos productos tienen especificaciones distintas, los precios también
 suelen ser distintos. Para comparar con datos oficiales, usa los
-[precios de referencia por estado y ciudad](/precos/) (en portugués), que traen
+[precios de referencia por estado y ciudad](/es/precios/), que traen
 S10 y S500 por separado y con la fecha de recolección. Para estimar el gasto de
 una ruta, la
 [calculadora de costo de viaje](/es/herramientas/calculadora-costo-de-viaje/)

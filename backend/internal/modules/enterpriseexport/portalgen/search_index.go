@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"sort"
 	"strings"
@@ -393,7 +394,7 @@ func buildSearchIndexes(snapshot enterpriseexport.Snapshot, observations []obser
 
 // GeneratorRevision names the generator's output contract; bump it when
 // pure Go changes alter the emitted files without touching templates/assets.
-const GeneratorRevision = "2026-11-14-seo-forum"
+const GeneratorRevision = "2026-11-22-portal-locales"
 
 // GenerationKey identifies every non-data input of a generation: generator
 // revision, templates, embedded assets, the search script bytes and the
@@ -406,7 +407,25 @@ func GenerationKey(opts Options) (string, error) {
 		return "", err
 	}
 	fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%t\x00%t\x00%d\x00%d\x00", GeneratorRevision, opts.SiteURL, strings.TrimRight(opts.LandingURL, "/"), opts.Indexable, opts.OfficialOnly, opts.MaxPages, opts.MaxBytes)
-	hash.Write([]byte(templates))
+	hash.Write([]byte(templates + localizedTemplates))
+	locAssets := opts.localeAssets
+	if locAssets == nil {
+		locAssets = localizationAssets
+	}
+	if err := fs.WalkDir(locAssets, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		raw, err := fs.ReadFile(locAssets, path)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(hash, "%s\x00%d\x00", path, len(raw))
+		hash.Write(raw)
+		return nil
+	}); err != nil {
+		return "", fmt.Errorf("portalgen: localization assets: %w", err)
+	}
 	hash.Write(css)
 	hash.Write(ibgeMunicipalitiesRaw)
 	if opts.SearchScriptPath != "" {
