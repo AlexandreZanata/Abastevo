@@ -407,7 +407,7 @@ func GenerationKey(opts Options) (string, error) {
 		return "", err
 	}
 	fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%t\x00%t\x00%d\x00%d\x00", GeneratorRevision, opts.SiteURL, strings.TrimRight(opts.LandingURL, "/"), opts.Indexable, opts.OfficialOnly, opts.MaxPages, opts.MaxBytes)
-	hash.Write([]byte(templates + localizedTemplates))
+	hash.Write([]byte(templates + localizedTemplates + stationForumTemplates + searchEnforcementTemplates))
 	locAssets := opts.localeAssets
 	if locAssets == nil {
 		locAssets = localizationAssets

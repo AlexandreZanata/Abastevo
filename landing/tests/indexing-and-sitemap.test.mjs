@@ -75,9 +75,11 @@ test('sitemap: valid XML, required indexable URLs present, no 404 and content-da
     assert.ok(emittedPages.length >= 20, `expected emitted subpages, got ${emittedPages.length}`);
     for (const rel of emittedPages) {
       const urlPath = `/${rel.slice(0, -'/index.html'.length)}/`;
-      assert.ok(
-        sitemapContent.includes(`<loc>https://abastevo.com.br${urlPath}</loc>`),
-        `Emitted page missing from sitemap: ${urlPath}`
+      const html = fs.readFileSync(path.join(tmpOut, rel), 'utf8');
+      const noindex = /<meta\s+name="robots"\s+content="[^"]*noindex/.test(html);
+      assert.equal(
+        sitemapContent.includes(`<loc>https://abastevo.com.br${urlPath}</loc>`), !noindex,
+        `Sitemap membership must match robots for ${urlPath}`
       );
     }
     for (const loc of [...sitemapContent.matchAll(/<loc>(https:\/\/abastevo\.com\.br[^<]*)<\/loc>/g)].map((m) => m[1])) {

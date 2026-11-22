@@ -41,7 +41,8 @@ test('locale routes: the shared vectors match localeRoute', () => {
   const registry = loadLocales(root);
   const vectors = JSON.parse(fs.readFileSync(path.join(root, '..', 'contracts', 'testdata', 'i18n', 'routes.json'), 'utf8'));
   assert.deepEqual(new Set(vectors.map((vector) => vector.kind)),
-    new Set(['guide', 'tool', 'page', 'prices', 'methodology', 'data', 'insights']));
+    new Set(['guide', 'tool', 'page', 'prices', 'methodology', 'data', 'insights',
+      'search', 'stations', 'forum', 'enforcement', 'enforcementPage', 'enforcementRecord']));
   for (const vector of vectors) {
     const locale = registry.locales.find((entry) => entry.code === vector.locale);
     assert.ok(locale, `vector locale ${vector.locale} exists in the registry`);
@@ -50,6 +51,9 @@ test('locale routes: the shared vectors match localeRoute', () => {
   assert.equal(localeRoute(registry.locales[0], 'guide', 'gnv-compensa'), '/guias/gnv-compensa/');
   assert.throws(() => localeRoute(registry.locales[0], 'hub', 'guias'), /unknown kind/);
   const en = registry.locales.find((entry) => entry.code === 'en');
+  assert.throws(() => localeRoute(en, 'forum', 'data/../../outside'), /invalid forum suffix/);
+  assert.throws(() => localeRoute(en, 'enforcementRecord', 'invalid'), /invalid enforcementRecord identifier/);
+  assert.throws(() => localeRoute(en, 'enforcementPage', '1'), /invalid enforcementPage identifier/);
   assert.throws(() => localeRoute(en, 'prices', 'unknown'), /unknown fuel slug/);
   assert.throws(() => localeRoute(en, 'prices', '', 'PR'), /invalid state or city/);
   assert.throws(() => localeRoute(en, 'prices', '', '', 'foz-do-iguacu'), /invalid state or city/);

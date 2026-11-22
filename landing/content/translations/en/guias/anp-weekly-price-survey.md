@@ -105,5 +105,5 @@ screen in Sorriso, MT; and the weeks available to download, with the week of
 November 8 to 14, 2026 marked as current and downloaded.
 
 The full walkthrough is in the tutorials
-[Check the ANP table](/como-usar/precos-anp/) (in Portuguese) and
-[Switch or download a week](/como-usar/semanas-anp/) (in Portuguese).
+[Check the ANP table](/en/how-to/check-anp-prices/) and
+[Switch or download a week](/en/how-to/switch-or-download-a-week/).

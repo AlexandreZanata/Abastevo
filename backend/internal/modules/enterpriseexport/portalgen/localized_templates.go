@@ -11,7 +11,7 @@ const localizedTemplates = `
   {{template "tabIcons" .}}
   <meta name="description" content="{{.Description}}">
   {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{{if .OGType}}{{.OGType}}{{else}}website{{end}}">
   <meta property="og:site_name" content="{{msg .Locale "brand"}}">
   <meta property="og:locale" content="{{.Locale.OGLocale}}">
   {{template "alternates" .Links}}
@@ -23,6 +23,9 @@ const localizedTemplates = `
   <meta name="twitter:title" content="{{.HeadTitle}}">
   <meta name="twitter:description" content="{{.Description}}">
   <meta name="twitter:image" content="{{.OGImage}}">{{end}}
+  {{if .ArticlePublished}}<meta property="article:published_time" content="{{.ArticlePublished}}">{{end}}
+  {{if .ArticleModified}}<meta property="article:modified_time" content="{{.ArticleModified}}">{{end}}
+  {{if .FeedHref}}<link rel="alternate" type="application/atom+xml" title="{{msg .Locale "title.forum"}}" href="{{.FeedHref}}">{{end}}
   {{if .JSONLD}}<script type="application/ld+json">{{.JSONLD}}</script>{{end}}
   <link rel="stylesheet" href="{{.CSSURL}}">
   {{if .ScriptURL}}<script type="module" src="{{.ScriptURL}}" defer></script>{{end}}
@@ -48,10 +51,16 @@ const localizedTemplates = `
   <nav class="wrap portal-nav-inner" aria-label="{{msg $locale "language"}}">{{template "languageMenuLinks" .Route}}</nav>
   <nav class="wrap breadcrumbs" aria-label="{{msg $locale "breadcrumb"}}">{{range $i, $c := .Breadcrumbs}}{{if $i}} · {{end}}{{if $c.Current}}<span aria-current="page">{{$c.Label}}</span>{{else}}<a href="{{$c.Href}}">{{$c.Label}}</a>{{end}}{{end}}</nav>
   <main id="conteudo" class="wrap">
+    {{if .Station}}{{template "localizedStation" .}}
+    {{else if .Forum}}{{template "localizedForum" .}}
+    {{else}}
     <h1>{{.Title}}</h1>
     {{if .Lead}}<p class="lead">{{.Lead}}</p>{{end}}
     {{if .ShowPeriod}}<p><strong>{{msg $locale "period.label"}}</strong> · {{.Period}}</p>{{end}}
-    <p><strong>{{msg $locale "source"}}</strong> <a href="https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/serie-historica-de-precos-de-combustiveis">{{msg $locale "agency"}}</a></p>
+    {{if not (or .Enforcement .EnforcementRecord)}}<p><strong>{{msg $locale "source"}}</strong> <a href="https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/serie-historica-de-precos-de-combustiveis">{{msg $locale "agency"}}</a></p>{{end}}
+    {{if .Search}}{{template "localizedSearch" .}}{{end}}
+    {{if .Enforcement}}{{template "localizedEnforcement" .}}{{end}}
+    {{if .EnforcementRecord}}{{template "localizedEnforcementRecord" .}}{{end}}
     {{if .IsPrice}}<p>{{msg $locale "price.note"}}</p>
     {{if .NoPrices}}<p class="notice">{{msg $locale "price.empty"}}</p>{{else}}<p>{{msg $locale "price.sample"}}</p>{{end}}{{end}}
     {{if .Explorer}}{{template "localizedExplorer" .}}{{end}}
@@ -69,7 +78,7 @@ const localizedTemplates = `
       <h2>{{.Title}}</h2><p>{{.Body}}</p>
       {{if or .Detail .SourceHref $.Insights}}<p class="qa-meta">{{if .Detail}}{{.Detail}}{{else if $.Insights}}{{msg $locale "insights.caveat"}}{{end}}{{if .SourceHref}} <a href="{{.SourceHref}}">{{msg $locale "source.link"}}</a>{{end}}</p>{{end}}
     </section>{{end}}
-    {{template "modules" .}}
+    {{end}}{{template "modules" .}}
   </main>
   <footer class="footer">
     <div class="wrap">
@@ -78,8 +87,8 @@ const localizedTemplates = `
         <nav aria-label="{{.Title}}"><h2>{{.Title}}</h2>{{template "localizedLinks" .Links}}</nav>
       {{end}}</div>
       <div class="footer-legal">
-        <p>{{msg $locale "description.source"}} {{msg $locale "footer.license"}}</p>
-        <p>{{msg $locale "publication.label"}} {{.PublishedAt}} · {{msg $locale "period.label"}} {{.Period}}</p>
+        <p>{{if or .Enforcement .EnforcementRecord}}{{template "localizedFinesSource" $locale}}. {{else}}{{msg $locale "description.source"}} {{end}}{{msg $locale "footer.license"}}</p>
+        <p>{{msg $locale "publication.label"}} {{.PublishedAt}} {{if not (or .Enforcement .EnforcementRecord)}} · {{msg $locale "period.label"}} {{.Period}}{{end}}</p>
         <p>{{msg $locale "disclosure"}}</p>
       </div>
     </div>
@@ -98,7 +107,7 @@ const localizedTemplates = `
 </table></div>{{end}}
 
 {{define "localizedExplorer"}}{{$locale := .Locale}}{{with .Explorer}}
-<section class="explorer" data-portal-prices data-shard-base="/dados/busca/" data-release="{{.Release}}" data-locale="{{$locale.Code}}" data-portal-copy="{{.Copy}}" aria-labelledby="explorar-precos">
+<section class="explorer" data-portal-prices data-shard-base="/dados/busca/" data-release="{{.Release}}" data-locale="{{$locale.Code}}" data-portal-copy="{{.Copy}}" data-station-prefix="{{.StationPrefix}}" aria-labelledby="explorar-precos">
   <h2 id="explorar-precos">{{msg $locale "explorer.title"}}</h2>
   <div class="form-row">
     <div><label for="prices-fuel">{{msg $locale "col.fuel"}}</label><select id="prices-fuel" data-prices-fuel>{{range .Fuels}}<option value="{{.Code}}" data-fuel-label="{{.Label}}" data-fuel-unit="{{.Unit}}">{{.Label}} ({{.Count}})</option>{{end}}</select></div>

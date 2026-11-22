@@ -27,20 +27,20 @@ test('localized homes retain the Portuguese modules and usable controls without 
       const section = html.match(new RegExp(`<section id="${name}"[\\s\\S]*?</section>`))?.[0] || '';
       return [...section.matchAll(/<li>/g)].length;
     };
-    for (const [html, location, type, portuguese] of [
-      [en, 'Choose a state', 'Station, CNPJ or brand', 'Search results are in Portuguese.'],
-      [es, 'Elige un estado', 'Estación de servicio, CNPJ o marca', 'Los resultados de la búsqueda están en portugués.'],
+    for (const [html, location, type, route] of [
+      [en, 'Choose a state', 'Station, CNPJ or brand', '/en/search/'],
+      [es, 'Elige un estado', 'Estación de servicio, CNPJ o marca', '/es/buscar/'],
     ]) {
       assert.deepEqual(sections(html), sections(pt));
       assert.equal(faqItems(html), faqItems(pt));
       assert.equal(tiles(html, 'guias-populares'), tiles(pt, 'guias-populares'));
       assert.equal(tiles(html, 'ferramentas'), tiles(pt, 'ferramentas'));
-      assert.match(html, /<form class="lp-search" action="\/consultar\/" method="get"/);
+      assert.ok(html.includes(`<form class="lp-search" action="${route}" method="get"`));
       assert.equal([...html.matchAll(/<option value="[A-Z]{2}">/g)].length, 27);
       assert.ok(html.includes(`<option value="">${location}</option>`));
       assert.match(html, /<input type="search" name="q" maxlength="80" autocomplete="off"/);
       assert.ok(html.includes(`placeholder="${type}"`));
-      assert.ok(html.includes(portuguese));
+      assert.doesNotMatch(html, /Search results are in Portuguese|resultados de la búsqueda están en portugués/);
       assert.match(html, /data-copy-target="#btn-github" data-copy-success="[^"]+"/);
       assert.equal([...html.matchAll(/class="app-shot"/g)].length, [...pt.matchAll(/class="app-shot"/g)].length);
       assert.doesNotMatch(html, /<img[^>]*\/assets\/app\//, 'no screenshots of the app in Portuguese on a translated page');

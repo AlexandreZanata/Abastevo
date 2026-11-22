@@ -93,6 +93,7 @@ export function checkLinkUrl(raw) {
   const url = String(raw).trim();
   if (/[\s\u0000-\u001f\u007f"'<>`\\]/.test(url)) throw new MarkdownError(`Unsafe link URL: ${JSON.stringify(raw)}`);
   if (/^#[A-Za-z0-9\-_]+$/.test(url)) return { url, kind: 'anchor' };
+  if (/^tel:\+[1-9][0-9]{6,14}$/.test(url)) return { url, kind: 'phone' };
   if (INTERNAL_PATH_RE.test(url) && !url.includes('..')) return { url, kind: 'internal' };
   if (url.startsWith('https://')) {
     let parsed;
@@ -105,7 +106,7 @@ export function checkLinkUrl(raw) {
       return { url, kind: 'external' };
     }
   }
-  throw new MarkdownError(`Unsafe link URL: ${JSON.stringify(raw)} (allowed: https://, /internal paths, #anchors)`);
+  throw new MarkdownError(`Unsafe link URL: ${JSON.stringify(raw)} (allowed: https://, /internal paths, #anchors, international phone numbers)`);
 }
 
 function checkImageSrc(raw) {

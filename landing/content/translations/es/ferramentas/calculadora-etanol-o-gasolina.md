@@ -98,4 +98,4 @@ Las capturas de pantalla están en la página en portugués, muestran la interfa
 en portugués y son del 17 de noviembre de 2026. La primera muestra las medias de la ANP en São Paulo, SP,
 de la semana del 8 al 14 de noviembre de 2026: la media del etanol dividida
 por la de la gasolina regular es 4,09 ÷ 6,34 ≈ 0,65. Consulta el tutorial
-[Consultar la tabla de la ANP](/como-usar/precos-anp/) (en portugués).
+[Consultar la tabla de la ANP](/es/como-usar/consultar-precios-anp/).

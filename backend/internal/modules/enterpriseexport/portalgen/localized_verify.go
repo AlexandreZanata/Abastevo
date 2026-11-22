@@ -6,6 +6,7 @@ import (
 	"maps"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -22,10 +23,42 @@ func localeForPortalRoute(route string, locales map[string]portalLocale) portalL
 // Portuguese route of the same page. The inverse mapping admits only the
 // translated families and keeps fuel, state and municipality identity.
 func portalRouteIdentity(route string, locale, source portalLocale) string {
-	for _, kind := range []string{"methodology", "data", "insights"} {
+	for _, kind := range []string{"methodology", "data", "insights", "search", "enforcement", "forum"} {
 		if route == locale.route(kind, "", "", "") {
 			return source.route(kind, "", "", "")
 		}
+	}
+	for _, kind := range []string{"stations", "forum", "enforcementPage", "enforcementRecord"} {
+		prefix := locale.route(kind, "", "", "")
+		if kind == "enforcementPage" || kind == "enforcementRecord" {
+			prefix = strings.TrimSuffix(prefix, "/")
+		}
+		tail, ok := strings.CutPrefix(route, prefix)
+		if !ok || !strings.HasSuffix(tail, "/") {
+			continue
+		}
+		slug := strings.TrimSuffix(tail, "/")
+		switch kind {
+		case "stations":
+			if !isUUID(slug) {
+				return ""
+			}
+		case "forum":
+			parts := strings.Split(slug, "/")
+			if len(parts) > 2 || !routeSlug.MatchString(parts[0]) || len(parts) == 2 && !routeSlug.MatchString(parts[1]) {
+				return ""
+			}
+		case "enforcementPage":
+			page, err := strconv.Atoi(slug)
+			if err != nil || page < 2 || strconv.Itoa(page) != slug {
+				return ""
+			}
+		case "enforcementRecord":
+			if !fiscalRecordIDShape.MatchString(slug) {
+				return ""
+			}
+		}
+		return source.route(kind, slug, "", "")
 	}
 	prices := locale.route("prices", "", "", "")
 	if route == prices {
@@ -88,12 +121,13 @@ var (
 )
 
 type portalLanguagePage struct {
-	route      string
-	identity   string
-	locale     portalLocale
-	indexable  bool
-	canonical  string
-	alternates map[string]string
+	route         string
+	identity      string
+	locale        portalLocale
+	indexable     bool
+	forumOriginal bool
+	canonical     string
+	alternates    map[string]string
 }
 
 func collectPortalLanguagePage(route, canonical string, indexable bool, body []byte, locales map[string]portalLocale) (portalLanguagePage, error) {
@@ -106,6 +140,12 @@ func collectPortalLanguagePage(route, canonical string, indexable bool, body []b
 		}
 		if !page.locale.Enabled || !page.locale.reviewed() {
 			return page, fmt.Errorf("portalcheck: route %s uses an inactive locale", route)
+		}
+		if strings.HasPrefix(page.identity, "/forum/") && strings.Count(page.identity, "/") == 4 {
+			page.forumOriginal = bytes.Contains(body, []byte(`lang="pt-BR" data-forum-original`))
+			if page.forumOriginal && page.indexable {
+				return page, fmt.Errorf("portalcheck: untranslated forum content is indexable on %s", route)
+			}
 		}
 	}
 	head, _, _ := bytes.Cut(body, []byte("</head>"))
@@ -144,7 +184,7 @@ func checkPortalLanguagePages(pages map[string]portalLanguagePage, siteURL strin
 		page := pages[route]
 		if page.locale.Code != defaultPortalLocale {
 			source, ok := pages[page.identity]
-			if !ok || source.indexable != page.indexable {
+			if !ok || (source.indexable != page.indexable && !(page.forumOriginal && !page.indexable)) {
 				return fmt.Errorf("portalcheck: %s must share the Portuguese counterpart's indexation", route)
 			}
 			if source.canonical != "" || page.canonical != "" || page.indexable {

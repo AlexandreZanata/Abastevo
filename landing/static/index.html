@@ -128,7 +128,7 @@
       <div class="shell lp-hero">
         <div class="lp-hero-copy">
           <!-- HOME_HERO -->
-          <form class="lp-search" action="/consultar/" method="get" role="search" aria-label="{{HOME_TEXT:search.label}}">
+          <form class="lp-search" action="{{HOME_SEARCH_ACTION}}" method="get" role="search" aria-label="{{HOME_TEXT:search.label}}">
             <div class="field-stack">
               <label class="field">
                 <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-3.6-3.8-6.5-7.300-6.500-11a6.500 6.500 0 0 1 13 0c0 3.700-2.900 7.200-6.500 11Z"/><circle cx="12" cy="10" r="2"/></svg></span>
@@ -176,7 +176,6 @@
               <a class="text-link" href="#aplicativo">{{HOME_TEXT:search.app}}</a>
             </div>
           </form>
-          <!-- HOME_SEARCH_LANGUAGE -->
           <p class="fine">{{HOME_STORE_TEXT:hero.status}}</p>
         </div>
         <figure class="lp-hero-art" aria-label="{{HOME_TEXT:hero.artLabel}}">

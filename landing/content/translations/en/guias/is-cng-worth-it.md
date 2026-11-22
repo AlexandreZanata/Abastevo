@@ -82,7 +82,7 @@ The Abastevo Android app is in development. The [screenshots in the Portuguese g
 2. Record the CNG reference and the gasoline or ethanol reference from the same week, then compare the cost per kilometer.
 3. Under **Vehicles**, use **Vehicle name**, **Propulsion** and **Tank capacity (liters)** to register the vehicle and track fuel costs.
 
-The captures show the ANP badge, prices and station counts for Diesel S500, Diesel S10, CNG and LPG (13 kg) in São Paulo, SP, for November 8–14, 2026. The **Add vehicle** form shows a vehicle named My car with **Combustion (ICE)** selected and a 50-liter tank. See the [ANP table](/como-usar/precos-anp/) and [vehicles and tank estimate](/como-usar/veiculos/) tutorials in Portuguese.
+The captures show the ANP badge, prices and station counts for Diesel S500, Diesel S10, CNG and LPG (13 kg) in São Paulo, SP, for November 8–14, 2026. The **Add vehicle** form shows a vehicle named My car with **Combustion (ICE)** selected and a 50-liter tank. See the [ANP table](/en/how-to/check-anp-prices/) and [vehicles and tank estimate](/en/how-to/vehicles-and-tank-estimate/) tutorials.
 
 ## Sources
 

@@ -52,5 +52,17 @@
   {"locale": "es", "kind": "prices", "slug": "diesel-s500", "route": "/es/precios/diesel-s500/"},
   {"locale": "es", "kind": "prices", "slug": "gnv", "route": "/es/precios/gnv/"},
   {"locale": "es", "kind": "prices", "slug": "glp", "route": "/es/precios/glp/"},
-  {"locale": "es", "kind": "prices", "slug": "gasolina-comum", "area": "pr", "route": "/es/precios/gasolina-comun/pr/"}
+  {"locale": "es", "kind": "prices", "slug": "gasolina-comum", "area": "pr", "route": "/es/precios/gasolina-comun/pr/"},
+  {"locale": "en", "kind": "search", "route": "/en/search/"},
+  {"locale": "es", "kind": "search", "route": "/es/buscar/"},
+  {"locale": "en", "kind": "stations", "slug": "00000000-0000-4000-8000-000000000001", "route": "/en/stations/00000000-0000-4000-8000-000000000001/"},
+  {"locale": "es", "kind": "stations", "slug": "00000000-0000-4000-8000-000000000001", "route": "/es/estaciones/00000000-0000-4000-8000-000000000001/"},
+  {"locale": "en", "kind": "forum", "slug": "dados/edicao-44093819", "route": "/en/forum/dados/edicao-44093819/"},
+  {"locale": "es", "kind": "forum", "slug": "dados", "route": "/es/foro/dados/"},
+  {"locale": "en", "kind": "enforcement", "route": "/en/enforcement/"},
+  {"locale": "es", "kind": "enforcement", "route": "/es/fiscalizacion/"},
+  {"locale": "en", "kind": "enforcementPage", "slug": "2", "route": "/en/enforcement/page/2/"},
+  {"locale": "es", "kind": "enforcementPage", "slug": "2", "route": "/es/fiscalizacion/pagina/2/"},
+  {"locale": "en", "kind": "enforcementRecord", "slug": "0123456789abcdef01234567", "route": "/en/enforcement/record/0123456789abcdef01234567/"},
+  {"locale": "es", "kind": "enforcementRecord", "slug": "0123456789abcdef01234567", "route": "/es/fiscalizacion/registro/0123456789abcdef01234567/"}
 ]

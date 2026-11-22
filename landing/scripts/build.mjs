@@ -14,6 +14,7 @@ import {
   renderToolsHub,
   renderTool,
   renderPage,
+  renderTutorial,
   renderFooterColumns,
   renderHomeMain,
   t,
@@ -379,6 +380,8 @@ export function build(options = {}) {
         html = renderTool(site, entry, origin, locale);
       } else if (entry.kind === 'page') {
         html = renderPage(site, entry, origin, locale);
+      } else if (entry.kind === 'tutorial' || entry.kind === 'tutorial-hub') {
+        html = renderTutorial(site, entry, origin, locale);
       } else {
         throw new Error(`Unknown page kind for ${entry.route}: ${entry.kind}`);
       }

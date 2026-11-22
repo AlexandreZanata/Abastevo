@@ -130,9 +130,9 @@ export function isCNPJQuery(value: string): boolean {
   return !/\s/.test(raw) && /^[0-9A-Z]{12}\d{2}$/.test(normalized) && /[A-Z]/.test(normalized) && /\d/.test(normalized.slice(0, 12));
 }
 
-export function formatCNPJ(value?: string): string {
+export function formatCNPJ(value?: string, missing = 'CNPJ não informado'): string {
   const clean = (value ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
-  if (clean.length !== 14) return value || 'CNPJ não informado';
+  if (clean.length !== 14) return value || missing;
   return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5, 8)}/${clean.slice(8, 12)}-${clean.slice(12)}`;
 }
 
@@ -204,9 +204,10 @@ export function filterStations(stations: SearchStation[], query: string, scope: 
   return matches.slice(0, Math.min(Math.max(limit, 1), MAX_RESULTS * 4));
 }
 
-interface PricesLocale {
+interface PortalSearchLocale {
   code: 'en' | 'es';
   copy: Record<string, string>;
+  number(count: number): string;
   stations(count: number): string;
   price(amount: number): string;
 }
@@ -214,7 +215,7 @@ interface PricesLocale {
 export interface PlaceSuggestion { scope: SearchScope; label: string; detail: string }
 
 /** States and cities whose names start with (first) or contain the query. */
-export function placeSuggestions(query: string, municipalities: SearchMunicipality[], within: SearchScope | null, limit = MAX_SUGGESTIONS, locale?: PricesLocale): PlaceSuggestion[] {
+export function placeSuggestions(query: string, municipalities: SearchMunicipality[], within: SearchScope | null, limit = MAX_SUGGESTIONS, locale?: PortalSearchLocale): PlaceSuggestion[] {
   const q = normalizeSearchText(query);
   if (q.length < 2) return [];
   const out: PlaceSuggestion[] = [];
@@ -405,7 +406,7 @@ function place(row: { mn?: string; u?: string }): string {
 
 interface FinderOptions {
   stations: boolean;
-  locale?: PricesLocale;
+  locale?: PortalSearchLocale;
   onChange: () => void;
   onPickStation?: (station: SearchStation) => void;
 }
@@ -512,7 +513,7 @@ function setupFinder(root: Element, doc: Document, store: SearchStore, options: 
             if (next.length >= MAX_SUGGESTIONS * 2) break;
             next.push({
               label: station.n,
-              detail: [formatCNPJ(station.c), station.a || place(station)].filter(Boolean).join(' · '),
+              detail: [formatCNPJ(station.c, options.locale?.copy.cnpjMissing), station.a || place(station)].filter(Boolean).join(' · '),
               pick: () => options.onPickStation?.(station),
             });
           }
@@ -580,10 +581,28 @@ function appendLegalName(doc: Document, parent: HTMLElement, primary: string, le
   parent.append(line);
 }
 
-function stationItem(doc: Document, station: SearchStation): HTMLElement {
+function searchText(locale: PortalSearchLocale | undefined, key: string, fallback: string, fields: Record<string, string> = {}): string {
+  return interpolate(locale?.copy[key] ?? fallback, fields);
+}
+
+function searchArea(locale: PortalSearchLocale | undefined, scope: SearchScope | null): string {
+  return scope ? searchText(locale, 'area', 'em {place}', { place: scope.label }) : locale?.copy.country ?? 'no Brasil';
+}
+
+const stationIDPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
+const recordIDPattern = /^[0-9a-f]{24}$/;
+
+function resultHref(prefix: string | undefined, id: string, fallback: string, idPattern: RegExp): string {
+  // Localized route prefixes are supplied by the generator. Accept only
+  // locale paths and validated shard identifiers before using a prefix.
+  const localized = prefix && /^\/(?:en|es)(?:\/[a-z-]+){1,2}\/$/.test(prefix) && idPattern.test(id);
+  return (localized ? prefix : fallback) + encodeURIComponent(id) + '/';
+}
+
+function stationItem(doc: Document, station: SearchStation, locale: PortalSearchLocale | undefined, prefix: string | undefined): HTMLElement {
   const item = doc.createElement('li');
   const link = doc.createElement('a');
-  link.href = `/postos/${encodeURIComponent(station.i)}/`;
+  link.href = resultHref(prefix, station.i, '/postos/', stationIDPattern);
   link.textContent = station.n;
   item.append(link);
   appendLegalName(doc, item, station.n, station.ln);
@@ -591,10 +610,12 @@ function stationItem(doc: Document, station: SearchStation): HTMLElement {
   meta.className = 'muted';
   const fuelCount = station.p ? Object.keys(station.p).length : station.f ?? 0;
   const priceText = fuelCount
-    ? `${fuelCount} ${plural(fuelCount, 'combustível com preço', 'combustíveis com preço')}`
-    : 'sem preço nesta pesquisa';
+    ? searchText(locale, fuelCount === 1 ? 'fuelOne' : 'fuelMany',
+        '{count} ' + plural(fuelCount, 'combustível com preço', 'combustíveis com preço'),
+        { count: locale?.number(fuelCount) ?? String(fuelCount) })
+    : searchText(locale, 'noPrice', 'sem preço nesta pesquisa');
   const where = station.a || place(station);
-  meta.textContent = ` — ${formatCNPJ(station.c)}${where ? ` · ${where}` : ''} · ${priceText}`;
+  meta.textContent = ` — ${formatCNPJ(station.c, locale?.copy.cnpjMissing)}${where ? ` · ${where}` : ''} · ${priceText}`;
   item.append(meta);
   return item;
 }
@@ -604,26 +625,33 @@ function setupConsultar(form: HTMLElement, doc: Document, store: SearchStore, ru
   const results = form.querySelector<HTMLElement>('[data-finder-results]');
   if (!status || !results) return;
   const navigate = runtime.navigate ?? ((href: string) => location.assign(href));
+  const locale = portalSearchLocale(form);
+  const prefix = locale ? form.dataset.stationPrefix : undefined;
   let ticket = 0;
   const finder = setupFinder(form, doc, store, {
     stations: true,
+    locale,
     onChange: () => void render(),
-    onPickStation: (station) => navigate(`/postos/${encodeURIComponent(station.i)}/`),
+    onPickStation: (station) => navigate(resultHref(prefix, station.i, '/postos/', stationIDPattern)),
   });
   if (!finder) return;
 
-  const show = (stations: SearchStation[], total: number, where: string): void => {
-    results.replaceChildren(...stations.map((station) => stationItem(doc, station)));
+  const show = (stations: SearchStation[], total: number, scope: SearchScope | null): void => {
+    const area = searchArea(locale, scope);
+    const count = locale?.number(total) ?? String(total);
+    results.replaceChildren(...stations.map((station) => stationItem(doc, station, locale, prefix)));
     if (stations.length === 0) {
       const empty = doc.createElement('li');
-      empty.textContent = 'Nenhum posto encontrado.';
+      empty.textContent = searchText(locale, 'emptyItem', 'Nenhum posto encontrado.');
       results.append(empty);
-      status.textContent = `Nenhum posto encontrado${where}.`;
+      status.textContent = searchText(locale, 'empty', 'Nenhum posto encontrado {area}.', { area });
       return;
     }
     status.textContent = total > stations.length
-      ? `Mostrando ${stations.length} de ${total} postos${where}. Refine pelo nome ou CNPJ.`
-      : `${total} ${plural(total, 'posto encontrado', 'postos encontrados')}${where}.`;
+      ? searchText(locale, 'some', 'Mostrando {shown} de {total} postos {area}. Refine pelo nome ou CNPJ.',
+          { shown: locale?.number(stations.length) ?? String(stations.length), total: count, area })
+      : searchText(locale, total === 1 ? 'one' : 'many',
+          '{total} ' + plural(total, 'posto encontrado', 'postos encontrados') + ' {area}.', { total: count, area });
   };
 
   const render = async (): Promise<void> => {
@@ -632,11 +660,11 @@ function setupConsultar(form: HTMLElement, doc: Document, store: SearchStore, ru
     const query = finder.query();
     try {
       if (scope && scope.kind === 'city') {
-        status.textContent = `Carregando postos de ${scope.label}...`;
+        status.textContent = searchText(locale, 'loading', 'Carregando postos de {place}...', { place: scope.label });
         const shard = await store.city(scope.code);
         if (id !== ticket) return;
         const all = filterStations(shard.stations, query, null, shard.stations.length || 1);
-        show(all.slice(0, MAX_TABLE_ROWS), all.length, ` em ${scope.label}`);
+        show(all.slice(0, MAX_TABLE_ROWS), all.length, scope);
         return;
       }
       if (scope && scope.kind === 'uf' && searchTokens(query).length === 0 && !isCNPJQuery(query)) {
@@ -648,7 +676,7 @@ function setupConsultar(form: HTMLElement, doc: Document, store: SearchStore, ru
           const button = doc.createElement('button');
           button.type = 'button';
           button.className = 'link-button';
-          button.textContent = `${city.n} — ${city.k} ${plural(city.k, 'posto', 'postos')}`;
+          button.textContent = `${city.n} — ${locale?.stations(city.k) ?? `${city.k} ${plural(city.k, 'posto', 'postos')}`}`;
           button.addEventListener('click', () => {
             finder.setScope({ kind: 'city', code: city.m, uf: city.u, label: `${city.n}/${city.u}` });
             void render();
@@ -656,39 +684,39 @@ function setupConsultar(form: HTMLElement, doc: Document, store: SearchStore, ru
           item.append(button);
           return item;
         }));
-        status.textContent = `Escolha uma cidade de ${scope.label} ou digite o nome do posto.`;
+        status.textContent = searchText(locale, 'pickCity', 'Escolha uma cidade de {place} ou digite o nome do posto.', { place: scope.label });
         return;
       }
       if (scope && scope.kind === 'uf') {
-        status.textContent = `Carregando postos de ${scope.label}...`;
+        status.textContent = searchText(locale, 'loading', 'Carregando postos de {place}...', { place: scope.label });
         const shard = await store.uf(scope.uf);
         if (id !== ticket) return;
         const all = filterStations(shard.stations, query, null, shard.stations.length || 1);
-        show(all.slice(0, MAX_RESULTS), all.length, ` em ${scope.label}`);
+        show(all.slice(0, MAX_RESULTS), all.length, scope);
         return;
       }
       if (normalizeSearchText(query).length === 0) {
         results.replaceChildren();
-        status.textContent = 'Digite o nome do posto, parte do CNPJ, uma cidade ou um estado.';
+        status.textContent = searchText(locale, 'enterQuery', 'Digite o nome do posto, parte do CNPJ, uma cidade ou um estado.');
         return;
       }
       const index = await store.index();
       const key = prefixKeyFor(query, index);
       if (!key) {
         results.replaceChildren();
-        status.textContent = 'Digite ao menos 3 letras de um termo do nome (ex.: Shell, Ipiranga) ou 3 dígitos do CNPJ, ou escolha uma cidade.';
+        status.textContent = searchText(locale, 'shortQuery', 'Digite ao menos 3 letras de um termo do nome (ex.: Shell, Ipiranga) ou 3 dígitos do CNPJ, ou escolha uma cidade.');
         return;
       }
-      status.textContent = 'Buscando em todo o Brasil...';
+      status.textContent = searchText(locale, 'searching', 'Buscando em todo o Brasil...');
       const shard = await store.prefix(key);
       if (id !== ticket) return;
       const all = filterStations(shard.stations, query, null, shard.stations.length || 1);
-      show(all.slice(0, MAX_RESULTS), all.length, ' no Brasil');
+      show(all.slice(0, MAX_RESULTS), all.length, null);
     } catch (error) {
       if (id !== ticket) return;
       if ((error as { name?: string }).name === 'AbortError') return;
       results.replaceChildren();
-      status.textContent = 'Índice de busca indisponível. Use a navegação por estado abaixo.';
+      status.textContent = searchText(locale, 'unavailable', 'Índice de busca indisponível. Use a navegação por estado abaixo.');
     }
   };
 
@@ -730,7 +758,7 @@ function interpolate(template: string, fields: Record<string, string>): string {
   return template.replace(/\{([a-z]+)\}/g, (match, key: string) => fields[key] ?? match);
 }
 
-function pricesLocale(section: HTMLElement): PricesLocale | undefined {
+function portalSearchLocale(section: HTMLElement): PortalSearchLocale | undefined {
   const code = section.dataset.locale;
   if (code !== 'en' && code !== 'es') return;
   const messages = section.dataset.portalCopy;
@@ -740,6 +768,7 @@ function pricesLocale(section: HTMLElement): PricesLocale | undefined {
   const amount = new Intl.NumberFormat(code, { minimumFractionDigits: 2, maximumFractionDigits: 3 });
   return {
     code, copy,
+    number: (count) => numbers.format(count),
     stations: (count) => `${numbers.format(count)} ${count === 1 ? copy.station : copy.stations}`,
     price: (milli) => 'R$ ' + amount.format(milli / 1000),
   };
@@ -749,14 +778,15 @@ const englishCollectionDate = new Intl.DateTimeFormat('en', {
   year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC',
 });
 
-function localizedCollectionDate(value: string | undefined, locale: PricesLocale | undefined): string {
+function localizedCollectionDate(value: string | undefined, locale: PortalSearchLocale | undefined): string {
   const date = formatDateBR(value);
   if (locale?.code !== 'en' || !date) return date;
-  return englishCollectionDate.format(new Date(value + 'T00:00:00Z'));
+  const instant = new Date(value + 'T00:00:00Z');
+  return Number.isNaN(instant.getTime()) ? '' : englishCollectionDate.format(instant);
 }
 
 function priceStatus(
-  locale: PricesLocale,
+  locale: PortalSearchLocale,
   fuel: string,
   unit: string,
   count: number,
@@ -781,7 +811,7 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
   const body = section.querySelector<HTMLElement>('[data-prices-body]');
   if (!fuel || !order || !status || !table || !body) return;
   let ticket = 0;
-  const locale = pricesLocale(section);
+  const locale = portalSearchLocale(section);
   const finder = setupFinder(section, doc, store, { stations: false, locale, onChange: () => void render() });
   if (!finder) return;
 
@@ -798,7 +828,7 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
         const tr = doc.createElement('tr');
         const name = doc.createElement('td');
         const link = doc.createElement('a');
-        link.href = `/postos/${encodeURIComponent(row.i)}/`;
+        link.href = resultHref(locale ? section.dataset.stationPrefix : undefined, row.i, '/postos/', stationIDPattern);
         link.textContent = row.n;
         name.append(link);
         appendLegalName(doc, name, row.n, row.ln);
@@ -842,7 +872,9 @@ function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore, ru
   let selection = '';
   let index: SearchIndex | null = null;
   let interacted = false;
-  const finder = setupFinder(section, doc, store, { stations: false, onChange: () => { interacted = true; void render(); } });
+  const locale = portalSearchLocale(section);
+  const prefix = locale ? section.dataset.recordPrefix : undefined;
+  const finder = setupFinder(section, doc, store, { stations: false, locale, onChange: () => { interacted = true; void render(); } });
   if (!finder) return;
 
   const option = (value: string, label: string): HTMLOptionElement => {
@@ -854,7 +886,9 @@ function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore, ru
     state.value = scope?.uf ?? '';
     const cities = index.municipalities.filter((row) => row.u === state.value)
       .sort((a,b) => a.n.localeCompare(b.n,'pt-BR'));
-    city.replaceChildren(option('', state.value ? 'Todas as cidades' : 'Selecione um estado primeiro'),
+    city.replaceChildren(option('', state.value
+      ? searchText(locale, 'allCities', 'Todas as cidades')
+      : searchText(locale, 'selectState', 'Selecione um estado primeiro')),
       ...cities.map((row) => option(row.m, row.n)));
     city.disabled = !state.value;
     city.value = scope?.kind === 'city' ? scope.code : '';
@@ -869,7 +903,7 @@ function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore, ru
     results.replaceChildren();
     if (directory) directory.hidden = true;
     if (more) more.hidden = true;
-    status.textContent = 'Carregando registros...';
+    status.textContent = searchText(locale, 'loading', 'Carregando registros...');
     try {
       const shard = await store.fiscal();
       if (id !== ticket) return;
@@ -877,32 +911,40 @@ function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore, ru
       results.replaceChildren(...rows.slice(0, visible).map((row) => {
         const item = doc.createElement('li');
         const link = doc.createElement('a');
-        link.href = `/fiscalizacao/registro/${encodeURIComponent(row.r)}/`;
+        link.href = resultHref(prefix, row.r, '/fiscalizacao/registro/', recordIDPattern);
         link.textContent = row.n || formatCNPJ(row.c);
         item.append(link);
         appendLegalName(doc,item,row.n ?? '',row.ln);
         const meta = doc.createElement('span');
         meta.className = 'muted';
-        const parts = [row.st, row.a, formatDateBR(row.d) || row.d, place(row),
-          row.n ? formatCNPJ(row.c) : 'sem posto vinculado'];
+        const statusLabel = locale?.copy['status.' + row.st.trim().toLowerCase()];
+        const publishedStatus = statusLabel && statusLabel !== row.st ? `${statusLabel} (${row.st})` : row.st;
+        const isoDate = row.d?.replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, '$3-$2-$1');
+        const parts = [publishedStatus, row.a, localizedCollectionDate(isoDate, locale) || row.d, place(row),
+          row.n ? formatCNPJ(row.c) : searchText(locale, 'noStation', 'sem posto vinculado')];
         meta.textContent = ` · ${parts.filter(Boolean).join(' · ')}`;
         item.append(meta);
         return item;
       }));
       if (rows.length === 0) {
         const empty = doc.createElement('li');
-        empty.textContent = 'Nenhum registro encontrado neste recorte. Ausência de registro não é certidão negativa.';
+        empty.textContent = searchText(locale, 'empty', 'Nenhum registro encontrado neste recorte. Ausência de registro não é certidão negativa.');
         results.append(empty);
       }
       if (more) more.hidden = rows.length <= visible;
-      const where = scope ? ` em ${scope.label}` : ' no Brasil';
-      const note = scope ? ' A localização considera apenas vínculos seguros com postos.' : '';
-      status.textContent = `${rows.length} ${plural(rows.length, 'registro encontrado', 'registros encontrados')}${where}${rows.length > visible ? ` (mostrando ${visible})` : ''}.${note}`;
+      const area = searchArea(locale, scope);
+      const limit = rows.length > visible
+        ? searchText(locale, 'limit', ' (mostrando {count})', { count: locale?.number(visible) ?? String(visible) })
+        : '';
+      const note = scope ? ' ' + searchText(locale, 'safeLinks', 'A localização considera apenas vínculos seguros com postos.') : '';
+      status.textContent = searchText(locale, rows.length === 1 ? 'one' : 'many',
+        '{count} ' + plural(rows.length, 'registro encontrado', 'registros encontrados') + ' {area}{limit}.',
+        { count: locale?.number(rows.length) ?? String(rows.length), area, limit }) + note;
     } catch {
       if (id !== ticket) return;
       results.replaceChildren();
       if (directory) directory.hidden = false;
-      status.textContent = 'Busca de registros indisponível nesta publicação. A lista paginada abaixo continua disponível.';
+      status.textContent = searchText(locale, 'unavailable', 'Busca de registros indisponível nesta publicação. A lista paginada abaixo continua disponível.');
     }
   };
   state?.addEventListener('change', () => {
@@ -924,7 +966,7 @@ function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore, ru
   void store.index().then((loaded) => {
     index = loaded;
     if (state) {
-      state.replaceChildren(option('','Todos os estados'), ...Object.entries(UF_NAMES)
+      state.replaceChildren(option('', searchText(locale, 'allStates', 'Todos os estados')), ...Object.entries(UF_NAMES)
         .sort((a,b) => a[1].localeCompare(b[1],'pt-BR')).map(([uf,name]) => option(uf,`${name} (${uf})`)));
       state.disabled = false;
     }

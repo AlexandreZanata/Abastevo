@@ -251,7 +251,10 @@ class Classifier(unittest.TestCase):
 
     def test_shared_route_vectors(self):
         families = {"guide": "guias", "tool": "ferramentas", "page": "institucional",
-                    "methodology": "metodologia", "data": "dados", "insights": "curiosidades"}
+                    "methodology": "metodologia", "data": "dados", "insights": "curiosidades",
+                    "search": "consultar", "stations": "posto", "forum": "forum",
+                    "enforcement": "fiscalizacao", "enforcementPage": "fiscalizacao",
+                    "enforcementRecord": "fiscalizacao"}
         vectors = json.loads((ROOT / "contracts/testdata/i18n/routes.json").read_text(encoding="utf-8"))
         self.assertEqual({vector["locale"] for vector in vectors}, {"pt-BR", "en", "es"})
         for vector in vectors:

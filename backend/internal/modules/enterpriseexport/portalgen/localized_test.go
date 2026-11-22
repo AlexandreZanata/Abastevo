@@ -54,7 +54,7 @@ func TestLocalizedPortalRoutesAndIndexation(t *testing.T) {
 	}
 	for _, path := range []string{"en/fuel-prices/mt/varzea-grande", "es/precios/mt/sorriso",
 		"en/fuel-prices/regular-gasoline/mt/cuiaba", "es/precios/gasolina-comun/mt/cuiaba",
-		"en/stations", "es/puestos", "en/consultar", "es/fiscalizacion", "en/forum"} {
+		"en/consultar", "es/puestos", "en/fiscalizacao", "es/enforcement"} {
 		if _, err := os.Stat(filepath.Join(out, path)); !os.IsNotExist(err) {
 			t.Errorf("unexpected localized route %s: %v", path, err)
 		}
@@ -187,10 +187,10 @@ func TestPortalCatalogParityRejectsMissingKeysAndChangedPlaceholders(t *testing.
 func TestLocalizedPortalKeepsComparablePublicFields(t *testing.T) {
 	out := generateSEOPortal(t, true)
 	for _, paths := range []struct {
-		prices, fuel, state, area, city, methodology, data, insights string
+		prices, fuel, state, area, city, methodology, data, insights, enforcement string
 	}{
-		{"en/fuel-prices", "en/fuel-prices/regular-gasoline", "en/fuel-prices/mt", "en/fuel-prices/regular-gasoline/mt", "en/fuel-prices/sp/sao-paulo", "en/methodology", "en/data", "en/insights"},
-		{"es/precios", "es/precios/gasolina-comun", "es/precios/mt", "es/precios/gasolina-comun/mt", "es/precios/sp/sao-paulo", "es/metodologia", "es/datos", "es/curiosidades"},
+		{"en/fuel-prices", "en/fuel-prices/regular-gasoline", "en/fuel-prices/mt", "en/fuel-prices/regular-gasoline/mt", "en/fuel-prices/sp/sao-paulo", "en/methodology", "en/data", "en/insights", "/en/enforcement/"},
+		{"es/precios", "es/precios/gasolina-comun", "es/precios/mt", "es/precios/gasolina-comun/mt", "es/precios/sp/sao-paulo", "es/metodologia", "es/datos", "es/curiosidades", "/es/fiscalizacion/"},
 	} {
 		for _, check := range []struct {
 			path    string
@@ -203,7 +203,7 @@ func TestLocalizedPortalKeepsComparablePublicFields(t *testing.T) {
 			{paths.city, []string{`id="unranked-observations"`, `IBGE 3550308`}},
 			{paths.methodology, []string{`id="media-da-amostra"`, `abastevo-metrics-v1`}},
 			{paths.data, []string{`id="download-release"`, `id="notas"`}},
-			{paths.insights, []string{`class="qa-meta"`, `/fiscalizacao/`}},
+			{paths.insights, []string{`class="qa-meta"`, `href="` + paths.enforcement + `"`}},
 		} {
 			body := readPortal(t, out, check.path+"/index.html")
 			for _, marker := range check.markers {
@@ -248,6 +248,45 @@ func TestPortalTabBrandingUsesConfiguredLandingOrigin(t *testing.T) {
 				first, second, third := strings.Index(body, ico), strings.Index(body, dark), strings.Index(body, light)
 				if first < 0 || second <= first || third <= second {
 					t.Errorf("/%s/ lacks the ICO fallback followed by dark and light SVG favicons", route)
+				}
+			}
+		})
+	}
+}
+
+func TestLocalizedSearchAndEnforcementUsePublishedData(t *testing.T) {
+	out := generateSEOPortal(t, true)
+	for _, tc := range []struct {
+		locale, search, enforcement, record, searchTitle, enforcementTitle, disclaimer, fineStatus string
+	}{
+		{"en", "search", "enforcement", "record", "Search for fuel stations", "ANP enforcement fines", "A fine alone", "Fine issued"},
+		{"es", "buscar", "fiscalizacion", "registro", "Buscar estaciones de servicio", "Multas de fiscalización de la ANP", "Una multa por sí sola", "Multa impuesta"},
+	} {
+		t.Run(tc.locale, func(t *testing.T) {
+			searchRoute := "/" + tc.locale + "/" + tc.search + "/"
+			enforcementRoute := "/" + tc.locale + "/" + tc.enforcement + "/"
+			for _, check := range []struct {
+				route   string
+				markers []string
+			}{
+				{searchRoute, []string{tc.searchTitle, `data-portal-finder`, `data-finder-input`, `action="` + searchRoute + `"`, `href="/consultar/"`}},
+				{enforcementRoute, []string{tc.enforcementTitle, tc.disclaimer, `data-portal-fiscal`, `data-fiscal-state`, `data-fiscal-city`, enforcementRoute + tc.record + "/", `href="/fiscalizacao/"`}},
+			} {
+				body := readPortal(t, out, strings.TrimPrefix(check.route, "/")+"index.html")
+				for _, marker := range append(check.markers, `data-locale="`+tc.locale+`"`, `data-portal-copy=`) {
+					if !strings.Contains(body, marker) {
+						t.Errorf("%s is missing %q", check.route, marker)
+					}
+				}
+			}
+			file := strings.TrimPrefix(enforcementRoute, "/") + tc.record + "/" + officialRecordID("f1") + "/index.html"
+			body := readPortal(t, out, file)
+			for _, marker := range []string{
+				`<h1>` + tc.fineStatus + `</h1>`, "Multa aplicada", "fines.csv:2", "04.218.406/0001-04",
+				`href="` + enforcementRoute + `"`, `content="noindex,follow"`,
+			} {
+				if !strings.Contains(body, marker) {
+					t.Errorf("%s is missing %q", file, marker)
 				}
 			}
 		})

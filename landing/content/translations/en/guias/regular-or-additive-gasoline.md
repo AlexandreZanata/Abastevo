@@ -83,7 +83,7 @@ The Abastevo Android app is in development. The [screenshots in the Portuguese g
 2. Open **Stations** from a card and use **Fuel** to switch between grades. **Premium gasoline** is a separate option.
 3. Check each station entry's collection date before comparing.
 
-The captures show ethanol, regular gasoline and gasoline with additives in São Paulo, SP, for November 8–14, 2026. Each card has an ANP badge and the number of stations surveyed. The fuel selector has ethanol selected and includes the gasoline grades, diesel, CNG and LPG. See the [ANP table](/como-usar/precos-anp/) and [find and navigate to a station](/como-usar/postos/) tutorials in Portuguese.
+The captures show ethanol, regular gasoline and gasoline with additives in São Paulo, SP, for November 8–14, 2026. Each card has an ANP badge and the number of stations surveyed. The fuel selector has ethanol selected and includes the gasoline grades, diesel, CNG and LPG. See the [ANP table](/en/how-to/check-anp-prices/) and [find and navigate to a station](/en/how-to/find-and-navigate-to-a-station/) tutorials.
 
 ## Sources
 

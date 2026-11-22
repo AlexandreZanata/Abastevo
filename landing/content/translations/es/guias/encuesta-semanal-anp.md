@@ -111,5 +111,5 @@ muestra la semana del 8 al 14 de noviembre de 2026 marcada como actual y
 descargada, y el botón de descarga en las semanas anteriores.
 
 El paso a paso completo está en los tutoriales
-[Consultar la tabla de la ANP](/como-usar/precos-anp/) (en portugués) y
-[Cambiar o descargar una semana](/como-usar/semanas-anp/) (en portugués).
+[Consultar la tabla de la ANP](/es/como-usar/consultar-precios-anp/) y
+[Cambiar o descargar una semana](/es/como-usar/cambiar-o-descargar-una-semana/).

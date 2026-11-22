@@ -186,8 +186,8 @@ regular en Sorriso, MT, con un gráfico de barras de cuatro semanas y el
 promedio de cada semana.
 
 El paso a paso completo está en los tutoriales
-[Cambiar o descargar una semana](/como-usar/semanas-anp/) (en portugués) y
-[Leer el historial](/como-usar/historico/) (en portugués).
+[Cambiar o descargar una semana](/es/como-usar/cambiar-o-descargar-una-semana/) y
+[Leer el historial](/es/como-usar/leer-el-historial/).
 
 ## Fuentes
 

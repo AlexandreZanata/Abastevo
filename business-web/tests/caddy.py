@@ -26,11 +26,19 @@ def run():
     registry = json.loads((ROOT / "contracts/i18n/locales.json").read_text())
     translated = [locale for locale in registry["locales"] if locale["prefix"] and locale["enabled"]]
     portal_hubs = [locale["prefix"] + "/" + locale["segments"][section]
-                   for locale in translated for section in ("precos", "metodologia", "dados", "curiosidades")]
+                   for locale in translated for section in
+                   ("precos", "metodologia", "dados", "curiosidades", "consultar", "forum", "fiscalizacao")]
     portal_pages = [hub + "/" for hub in portal_hubs] + [
         "/en/fuel-prices/regular-gasoline/pr/", "/es/precios/pr/foz-do-iguacu/",
+        "/en/stations/00000000-0000-4000-8000-000000000001/",
+        "/es/estaciones/00000000-0000-4000-8000-000000000001/",
+        "/en/enforcement/record/0123456789abcdef01234567/",
+        "/es/fiscalizacion/pagina/2/",
+        "/en/forum/dados/edicao-44093819/", "/es/foro/dados/",
     ]
-    landing_pages = [locale["prefix"] + "/" for locale in translated] + ["/en/guides/", "/es/guias/"]
+    landing_pages = [locale["prefix"] + "/" for locale in translated] + [
+        "/en/guides/", "/es/guias/", "/en/how-to/", "/es/como-usar/", "/en/privacy/", "/es/privacidad/",
+    ]
     # The reviewed digest already pinned by the staging/production edge.
     image = os.environ.get("ANPFUEL_TEST_CADDY_IMAGE",
                            "caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d")
@@ -154,7 +162,7 @@ def run():
                 assert headers["Cache-Control"] == "public, max-age=0, must-revalidate", route
             for route in landing_pages:
                 assert request(route)[:3:2] == (200, f"Synthetic landing page for {route}".encode()), route
-            for route in ["/en/fuel-prices/missing/", "/es/precios/missing/", "/en/stations/", "/es/fiscalizacion/", "/es/forum/", "/en/consultar/"]:
+            for route in ["/en/fuel-prices/missing/", "/es/precios/missing/", "/en/stations/", "/es/fiscalizacion/missing/", "/es/forum/", "/en/consultar/"]:
                 assert request(route)[0] == 404, route
             print("PASS: Caddy localized portal routing and canonical redirects")
             print("PASS: Caddy company entry, canonical deep links, private cache/conditional rules without validators, fingerprinted-only immutable assets, revalidated licences, real 404s, public/admin separation, official-origin indexing with private noindex")

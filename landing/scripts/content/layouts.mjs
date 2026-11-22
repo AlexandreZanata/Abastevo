@@ -7,6 +7,7 @@ import { escapeHtml as esc } from './markdown.mjs';
 import { htmlTitle, relatedGuides } from './site.mjs';
 import { STATES, GITHUB_URL, TOOL_FORMS, TOOL_NAV_LABELS } from './data.mjs';
 import { localeRoute } from './i18n.mjs';
+import { renderTutorialContent } from './tutorials.mjs';
 
 const NATIVE_NAMES = { 'pt-BR': 'Português', en: 'English', es: 'Español' };
 
@@ -613,6 +614,50 @@ ${tool.html}
 }
 
 // ---------------------------------------------------------------------------
+// Translated app tutorials.
+
+export function renderTutorial(site, entry, origin, locale) {
+  const hub = entry.kind === 'tutorial-hub';
+  const url = `${origin}${entry.route}`;
+  const title = hub ? entry.title : `${entry.title} | ${entry.tutorial.common.metaLabel}`;
+  const crumbs = [homeCrumb(locale)];
+  if (!hub) {
+    const hubEntry = site.registry.get(entry.tutorial.hubRoute);
+    crumbs.push({ name: hubEntry.title, route: hubEntry.route });
+  }
+  crumbs.push({ name: entry.title, route: entry.route });
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': hub ? 'CollectionPage' : 'Article',
+        '@id': `${url}#webpage`,
+        url,
+        name: htmlTitle(title),
+        description: entry.description,
+        dateModified: entry.lastmod,
+        inLanguage: locale.htmlLang,
+        isPartOf: { '@id': `${origin}/#website` },
+        publisher: publisherNode(origin, locale),
+      },
+      breadcrumbNode(crumbs, origin, url),
+    ],
+  };
+  const navigation = (route, label) => localizedNavigationLink(site, locale, route, label);
+  const main = `${breadcrumbNav(crumbs, locale)}
+      ${renderTutorialContent(entry, navigation)}`;
+  return documentHtml({
+    head: headHtml({
+      origin, route: entry.route, title, description: entry.description,
+      ogType: hub ? 'website' : 'article', jsonLd, locale,
+    }),
+    bodyClass: `landing-home learning-page${hub ? ' learning-hub' : ''}`,
+    main,
+    locale,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // E-E-A-T pages (/sobre/, /politica-editorial/).
 
 export function renderPage(site, page, origin, locale) {
@@ -645,11 +690,15 @@ export function renderPage(site, page, origin, locale) {
     });
   }
   const updated = `<time datetime="${page.dateModified}">${formatDateLong(page.dateModified, locale)}</time>`;
+  const legalNotice = page.legal
+    ? `<p class="callout">${esc(t(locale, 'chrome.legalTranslation'))} <a href="${esc(page.translationOf)}" hreflang="pt-BR" lang="pt-BR">Português</a></p>`
+    : '';
   const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
         <h1>${esc(page.headline)}</h1>
         <p class="article-lead">${esc(page.description)}</p>
         <p class="article-meta">${t(locale, 'chrome.pageUpdated', { date: updated, team: esc(t(locale, 'chrome.team')) })}</p>${page.stale ? `\n        ${staleBanner(page, locale)}` : ''}
+${legalNotice}
 ${page.html}
       </article>`;
   return documentHtml({
@@ -661,8 +710,8 @@ ${page.html}
       imageAlt: page.headline,
       jsonLd: { '@context': 'https://schema.org', '@graph': graph },
       locale,
-      robots: page.stale ? 'noindex,follow' : undefined,
-      canonical: !page.stale,
+      robots: page.legal || page.stale ? 'noindex,follow' : undefined,
+      canonical: !page.legal && !page.stale,
     }),
     bodyClass: 'landing-home legal-document',
     main,
@@ -796,6 +845,7 @@ export function renderHomeMain(template, site, locale, storeState) {
     return `href="${esc(href)}"${locale.prefix && href === source ? ' hreflang="pt-BR"' : ''}`;
   };
   let main = template
+    .replace('{{HOME_SEARCH_ACTION}}', () => esc(localeRoute(locale, 'search')))
     .replace('<!-- HOME_HERO -->', () => renderHomeHero(locale))
     .replace('<!-- HOME_STATES -->', () => renderHomeStates(locale))
     .replace('<!-- HOME_GUIDES -->', () => renderHomeGuides(site, locale))
@@ -813,8 +863,7 @@ export function renderHomeMain(template, site, locale, storeState) {
         </div>`;
     main = main
       .replace(/<!-- HOME_CAPTURES -->[\s\S]*?<!-- \/HOME_CAPTURES -->/, () => gallery)
-      .replace('<!-- HOME_CAPTURE_LINK -->', () => `<a class="text-link" href="/#aplicativo" hreflang="pt-BR">${copy('app.portugueseCaptures')}</a>`)
-      .replace('<!-- HOME_SEARCH_LANGUAGE -->', () => `<p class="muted">${copy('search.portugueseResults')}</p>`);
+      .replace('<!-- HOME_CAPTURE_LINK -->', () => `<a class="text-link" href="/#aplicativo" hreflang="pt-BR">${copy('app.portugueseCaptures')}</a>`);
   }
   if (/\{\{HOME_/.test(main)) throw new Error('Unrendered home template marker for ' + locale.code);
   return main;

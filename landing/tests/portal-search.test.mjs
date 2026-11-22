@@ -513,3 +513,65 @@ test('multipart search reconstructs every family and rejects incomplete, foreign
     if(file==='SP.json') assert.deepEqual(await loadShard('SP','rel','/dados/busca/',fetcher),original);
   }
 });
+
+function localizedCopy(locale, prefix) {
+  const { messages } = JSON.parse(fs.readFileSync(path.join(root, '../backend/internal/modules/enterpriseexport/portalgen/assets/messages', locale + '.json'), 'utf8'));
+  return Object.fromEntries(Object.entries(messages).flatMap(([key, value]) => {
+    if (key.startsWith(prefix + '.')) return [[key.slice(prefix.length + 1), value]];
+    if (/^explorer\.(area|country|state|city|remove|station|stations)$/.test(key)) return [[key.split('.')[1], value]];
+    return [];
+  }));
+}
+
+test('localized station finder retains the signed search shard and links its language counterpart', async () => {
+  const { setupPortalSearch } = await searchModule();
+  const page = fakePage('[data-portal-finder]', {
+    ...FINDER, '[data-finder-status]': 'p', '[data-finder-results]': 'ul',
+  });
+  Object.assign(page.root.dataset, {
+    locale: 'en', portalCopy: JSON.stringify(localizedCopy('en', 'search.runtime')), stationPrefix: '/en/stations/',
+  });
+  const urls = [];
+  const result = station();
+  setupPortalSearch({ document: page.doc, search: '?uf=SP&q=alfa',
+    fetch: jsonFetch({ '/dados/busca/rel/SP.json': shard([result]) }, urls),
+  });
+  await wait();
+  assert.deepEqual(urls, ['/dados/busca/rel/SP.json']);
+  assert.equal(page.el['[data-finder-scope]'].children[0].textContent, 'State: São Paulo (SP)');
+  assert.equal(page.el['[data-finder-status]'].textContent, '1 station found in São Paulo (SP).');
+  const first = page.el['[data-finder-results]'].children[0];
+  assert.equal(first.children[0].href, '/en/stations/' + result.i + '/');
+  assert.match(first.children.at(-1).textContent, /1 fuel with a price/);
+});
+
+test('localized enforcement filters and results preserve published IDs and source status', async () => {
+  const { setupPortalSearch } = await searchModule();
+  const page = fakePage('[data-portal-fiscal]', {
+    ...FINDER, '[data-fiscal-state]': 'select', '[data-fiscal-city]': 'select',
+    '[data-fiscal-status]': 'p', '[data-fiscal-results]': 'ul',
+  });
+  Object.assign(page.root.dataset, {
+    locale: 'es', portalCopy: JSON.stringify(localizedCopy('es', 'fiscal.runtime')), recordPrefix: '/es/fiscalizacion/registro/',
+  });
+  const record = { r: '1'.repeat(24), c: '04218406000104', st: 'Multa aplicada', n: 'Posto Alfa', m: '5107925', mn: 'Sorriso', u: 'MT' };
+  const urls = [];
+  setupPortalSearch({ document: page.doc,
+    fetch: jsonFetch({
+      '/dados/busca/rel/indice.json': INDEX,
+      '/dados/busca/rel/fiscalizacao.json': { schema: 'abastevo-search-fiscal-v1', release: 'rel', count: 1, records: [record] },
+    }, urls),
+  });
+  await wait();
+  assert.equal(page.el['[data-fiscal-state]'].children[0].textContent, 'Todos los estados');
+  assert.equal(page.el['[data-fiscal-city]'].children[0].textContent, 'Elige primero un estado');
+  const first = page.el['[data-fiscal-results]'].children[0];
+  assert.equal(first.children[0].href, '/es/fiscalizacion/registro/' + record.r + '/');
+  assert.match(first.children[1].textContent, /Multa impuesta.*Multa aplicada/);
+  page.el['[data-fiscal-state]'].value = 'SP';
+  page.el['[data-fiscal-state]'].dispatch('change');
+  await wait();
+  assert.match(page.el['[data-fiscal-status]'].textContent, /^0 registros encontrados en São Paulo.*vínculos verificados/);
+  assert.match(page.el['[data-fiscal-results]'].children[0].textContent, /No se encontraron registros/);
+  assert.deepEqual(urls, ['/dados/busca/rel/indice.json', '/dados/busca/rel/fiscalizacao.json']);
+});

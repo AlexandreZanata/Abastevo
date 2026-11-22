@@ -27,10 +27,10 @@ var embeddedAssets embed.FS
 
 const (
 	SchemaVersion = "enterprise-portal-v2"
-	// defaultMaxPages leaves ~1.9x headroom over the real national portal
-	// measured on staging 2026-10-26 (52,578 pages, 48,750 stations).
-	defaultMaxPages   = 100_000
-	defaultMaxBytes   = int64(2 << 30)
+	// The Portuguese snapshot measured 60,503 pages and about 906 MB on
+	// staging. Two station locale variants add about 98,000 HTML pages.
+	defaultMaxPages   = 200_000
+	defaultMaxBytes   = int64(4 << 30)
 	maxRankingPerPage = 20
 	minMunicipality   = 5
 )
@@ -287,25 +287,29 @@ type stationView struct {
 }
 
 type observationView struct {
-	Fuel      string
-	Unit      string
-	Condition string
-	Amount    int64
-	Collected string
-	Period    string
+	Fuel         string
+	FuelCode     string
+	Unit         string
+	Condition    string
+	Amount       int64
+	Collected    string
+	CollectedISO string
+	Period       string
 }
 
 type historyPointView struct {
-	Period    string
-	Collected string
-	Amount    *int64
-	Missing   bool
+	Period                               string
+	Collected                            string
+	Amount                               *int64
+	Missing                              bool
+	SurveyStart, SurveyEnd, CollectedISO string
 }
 
 type historyView struct {
-	Fuel   string
-	Unit   string
-	Points []historyPointView
+	Fuel     string
+	FuelCode string
+	Unit     string
+	Points   []historyPointView
 }
 
 type sourceView struct {
@@ -475,7 +479,7 @@ func Generate(opts Options) (Result, error) {
 		"languageLinks": func(route string) []languageLink { return g.languageGroups[route] },
 		"languageMenu":  g.languageMenu,
 		"periodLabel":   periodLabel, "fuelLabel": fuelLabel, "plural": plural, "unitShort": unitShort,
-	}).Parse(templates + localizedTemplates)
+	}).Parse(templates + localizedTemplates + stationForumTemplates + searchEnforcementTemplates)
 	if err != nil {
 		return Result{}, err
 	}
@@ -667,9 +671,6 @@ func Generate(opts Options) (Result, error) {
 	if err := g.generateParity(); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {
-		return Result{}, err
-	}
 	if err := g.generateForum(); err != nil {
 		return Result{}, err
 	}
@@ -679,7 +680,11 @@ func Generate(opts Options) (Result, error) {
 	if err := g.generateStatic(); err != nil {
 		return Result{}, err
 	}
-	if err := g.writeLocalizations(latestSummaries, latestCoverage, observations, municipalityStations, official); err != nil {
+	localizationViews := g.localizationViews(latestSummaries, latestCoverage, observations, municipalityStations, official)
+	if err := g.generateStations(snapshot, stations, revisions, official, localizationViews); err != nil {
+		return Result{}, err
+	}
+	if err := g.writeLocalizations(localizationViews); err != nil {
 		return Result{}, err
 	}
 	if err := g.writeSitemap(); err != nil {
@@ -1001,7 +1006,7 @@ func (g *generator) writeRoute(templateName string, data routedPage) error {
 	if !strings.HasPrefix(base.Route, "/") || !strings.HasSuffix(base.Route, "/") {
 		return fmt.Errorf("portalgen: invalid page route")
 	}
-	if base.Language == defaultPortalLocale {
+	if base.Language == defaultPortalLocale && base.Family != familyStation {
 		g.queueLocalizations(data)
 	}
 	if err := g.writePage(strings.TrimPrefix(base.Route, "/")+"index.html", templateName, data); err != nil {

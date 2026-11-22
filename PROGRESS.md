@@ -1,5 +1,7 @@
 # Current delivery
 
+- Public web localization extends English and Spanish to search, station details, enforcement, the editorial forum, app tutorials and informative legal pages. Public source data and authorization rules stay in place. Verify the protected release, public locale navigation and the refreshed portal artifact before declaring publication complete.
+
 - Web localization (SEO-28/SEO-56) restores the home controls and section content, guide and calculator navigation, and the portal's price explorer and comparable data sections in English and Spanish. The public guide set has 13 editorial translations and five category pages per locale. Follow the protected `dev` to `main` release and verify the landing bundle and subsequent portal snapshot on the official origin.
 
 - Phase F8, Abastevo Empresas. The maintained `dev` branch targets integrated main `e4a67580fc368a59bc1c0f1e0466fc011313f330` through [PR #240](https://github.com/AlexandreZanata/Abastevo/pull/240), open for review. Earlier draft workflows skipped their checks. Verification of required checks for the final head, protected integration and production deployment are pending.

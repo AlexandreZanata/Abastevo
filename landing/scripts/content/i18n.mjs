@@ -13,8 +13,15 @@ export const PORTAL_SECTIONS = {
   methodology: 'metodologia',
   data: 'dados',
   insights: 'curiosidades',
+  search: 'consultar',
+  stations: 'postos',
+  forum: 'forum',
+  enforcement: 'fiscalizacao',
 };
-const SEGMENT_KEYS = ['guias', 'ferramentas', ...Object.values(PORTAL_SECTIONS)];
+const SEGMENT_KEYS = [
+  'guias', 'ferramentas', 'como-usar', 'fiscal-pagina', 'fiscal-registro', 'privacidade', 'excluir-conta', 'termos',
+  ...Object.values(PORTAL_SECTIONS),
+];
 const LANDING_KINDS = ['guide', 'tool', 'page'];
 const AREA_RE = /^[a-z]{2}$/;
 
@@ -142,6 +149,14 @@ export function localeRoute(locale, kind, slug = '', area = '', city = '') {
   }
   if (Object.hasOwn(PORTAL_SECTIONS, kind)) {
     const base = `${locale.prefix}/${locale.segments[PORTAL_SECTIONS[kind]]}/`;
+    if (kind === 'stations' || kind === 'forum') {
+      if (typeof slug !== 'string') throw new LocaleConfigError(`localeRoute: invalid ${kind} suffix`);
+      const parts = slug ? slug.split('/') : [];
+      if (area || city || parts.length > (kind === 'stations' ? 1 : 2) || parts.some((part) => !SLUG_RE.test(part))) {
+        throw new LocaleConfigError(`localeRoute: invalid ${kind} suffix`);
+      }
+      return slug ? `${base}${slug}/` : base;
+    }
     if (kind !== 'prices') {
       if (slug || area || city) throw new LocaleConfigError(`localeRoute: ${kind} takes no slug or area`);
       return base;
@@ -155,6 +170,12 @@ export function localeRoute(locale, kind, slug = '', area = '', city = '') {
     if (slug && city && locale.prefix) throw new LocaleConfigError('localeRoute: fuel by city is available only in pt-BR');
     const parts = [slug && locale.fuelSlugs[slug], area, city].filter(Boolean);
     return parts.length ? `${base}${parts.join('/')}/` : base;
+  }
+  if (kind === 'enforcementPage' || kind === 'enforcementRecord') {
+    const id = kind === 'enforcementPage' ? /^(?:[2-9]|[1-9][0-9]+)$/ : /^[0-9a-f]{24}$/;
+    if (area || city || typeof slug !== 'string' || !id.test(slug)) throw new LocaleConfigError(`localeRoute: invalid ${kind} identifier`);
+    const segment = locale.segments[kind === 'enforcementPage' ? 'fiscal-pagina' : 'fiscal-registro'];
+    return `${localeRoute(locale, 'enforcement')}${segment}/${slug}/`;
   }
   if (!LANDING_KINDS.includes(kind)) throw new LocaleConfigError(`localeRoute: unknown kind "${kind}"`);
   if (typeof slug !== 'string' || !SLUG_RE.test(slug)) throw new LocaleConfigError(`localeRoute: invalid slug ${JSON.stringify(slug)}`);

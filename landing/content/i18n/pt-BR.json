@@ -22,7 +22,6 @@
       "state": "Estado",
       "statePrompt": "Escolha o estado",
       "query": "Posto, CNPJ ou marca",
-      "portugueseResults": "Resultados em português.",
       "app": "Conheça o aplicativo"
     },
     "explore": {
@@ -295,7 +294,8 @@
     "navConsultData": "Consultar dados",
     "navExplore": "Explorar",
     "navQuestions": "Perguntas",
-    "footerLegal": "Código sob licença de atribuição visível Abastevo. Não afiliado à ANP. Dados de preços da ANP: gov.br/anp. Marcas e nomes citados pertencem a seus titulares. Consultar preços não exige conta nem localização; este site não usa cookies nem rastreadores."
+    "footerLegal": "Código sob licença de atribuição visível Abastevo. Não afiliado à ANP. Dados de preços da ANP: gov.br/anp. Marcas e nomes citados pertencem a seus titulares. Consultar preços não exige conta nem localização; este site não usa cookies nem rastreadores.",
+    "legalTranslation": "Tradução informativa. A versão original em português prevalece."
   },
   "tools": {
     "common": {

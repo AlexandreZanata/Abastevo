@@ -22,13 +22,12 @@
       "state": "State",
       "statePrompt": "Choose a state",
       "query": "Station, CNPJ or brand",
-      "portugueseResults": "Search results are in Portuguese.",
       "app": "Explore the app"
     },
     "explore": {
       "title": "Explore what you can do",
       "consult": {
-        "title": "Search (in Portuguese)",
+        "title": "Search",
         "body": "Prices by city, with source and date."
       },
       "source": {
@@ -40,7 +39,7 @@
         "body": "Photo of the price at the pump (planned)."
       },
       "enforcement": {
-        "title": "Enforcement (in Portuguese)",
+        "title": "Enforcement",
         "body": "Official fines published by ANP."
       }
     },
@@ -59,32 +58,32 @@
         "title": "Small fleet operator",
         "body": "Keep track of fuel costs for a small fleet."
       },
-      "tutorial": "See how to use the app (in Portuguese)",
+      "tutorial": "See how to use the app",
       "guides": "Read the guides"
     },
     "data": {
       "title": "Open data in your browser",
       "intro": "Find stations, prices and official ANP records on free public pages, without an account or an installation. Each figure shows its period, source and sample.",
       "search": {
-        "title": "Find stations and prices (in Portuguese)",
+        "title": "Find stations and prices",
         "body": "Search by state, municipality, name or CNPJ. Results show the collection date."
       },
       "enforcement": {
-        "title": "Official enforcement (in Portuguese)",
+        "title": "Official enforcement",
         "body": "Fines published by ANP, with the source and an explanation of the data limits."
       },
       "methodology": {
         "title": "Methodology",
         "body": "Where the data comes from, how it is updated and the limits of what it can tell you."
       },
-      "consult": "Search data (in Portuguese)",
+      "consult": "Search data",
       "seeMethodology": "See the methodology"
     },
     "app": {
       "title": "What you can do in the app",
       "featuresLabel": "App features",
       "portugueseCaptures": "See the actual screenshots on the Portuguese site",
-      "tutorial": "See the step-by-step app guide (in Portuguese)",
+      "tutorial": "See the step-by-step app guide",
       "android": {
         "prelaunch": "Follow the Android test releases on GitHub. The app is not yet available on Google Play.",
         "published": "The Android app is available on Google Play."
@@ -295,7 +294,8 @@
     "navConsultData": "Find stations",
     "navExplore": "Explore",
     "navQuestions": "FAQ",
-    "footerLegal": "Code under the Abastevo visible-attribution license. Abastevo is independent of ANP. ANP price data: gov.br/anp. The trademarks and names mentioned belong to their owners. Checking prices requires no account or location access. This site uses no cookies or trackers."
+    "footerLegal": "Code under the Abastevo visible-attribution license. Abastevo is independent of ANP. ANP price data: gov.br/anp. The trademarks and names mentioned belong to their owners. Checking prices requires no account or location access. This site uses no cookies or trackers.",
+    "legalTranslation": "This translation is for information. The original Portuguese version prevails."
   },
   "tools": {
     "common": {

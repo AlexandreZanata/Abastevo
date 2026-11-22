@@ -113,7 +113,7 @@ La app Android de Abastevo está en desarrollo. Las [capturas de la guía en por
 3. Toca **Guardar**. La carga aparece en **Registros** y queda en el dispositivo.
 4. Con dos cargas de tanque lleno, divide la distancia entre ellas por los litros de la segunda.
 
-Las capturas muestran los botones de carga y gasto, el campo de eficiencia estimada en km/l, que es opcional, y la lista vacía. Luego muestran una carga ilustrativa de 40 L por R$ 250,00 a los 12.500 km. En **Registros**, esa carga aparece con 40 L, R$ 250,00 y la marca **Local**. Consulta el [tutorial de vehículos y estimación del tanque](/como-usar/veiculos/) en portugués.
+Las capturas muestran los botones de carga y gasto, el campo de eficiencia estimada en km/l, que es opcional, y la lista vacía. Luego muestran una carga ilustrativa de 40 L por R$ 250,00 a los 12.500 km. En **Registros**, esa carga aparece con 40 L, R$ 250,00 y la marca **Local**. Consulta el [tutorial de vehículos y estimación del tanque](/es/como-usar/vehiculos-y-estimacion-del-tanque/).
 
 ## Fuentes
 

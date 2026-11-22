@@ -5,7 +5,7 @@ description: "abastevo es un proyecto independiente de transparencia de precios 
 slug: sobre
 schemaType: AboutPage
 datePublished: 2026-11-21
-dateModified: 2026-11-21
+dateModified: 2026-11-22
 translationOf: /sobre/
 sourceRevision: 2026-11-21
 translationStatus: reviewed
@@ -21,8 +21,8 @@ frentes:
 
 - **Datos públicos en el navegador:** páginas de
   [precios de referencia por estado y ciudad](/es/precios/),
-  [consulta de estaciones de servicio](/consultar/) (en portugués) y
-  [fiscalización](/fiscalizacao/) (en portugués), generadas a partir de datos
+  [consulta de estaciones de servicio](/es/buscar/) y
+  [fiscalización](/es/fiscalizacion/), generadas a partir de datos
   oficiales publicados por la ANP, el regulador brasileño del petróleo y los
   combustibles.
 - **Guías y herramientas:** [guías sobre combustibles](/es/guias/) y
@@ -31,7 +31,7 @@ frentes:
 - **Aplicación Android en desarrollo:** una app para consultar la referencia de
   la ANP y, en un bloque separado, observaciones enviadas por la comunidad. La
   app todavía no está publicada en Google Play; mira
-  [cómo usar la aplicación](/como-usar/) (en portugués).
+  [cómo usar la aplicación](/es/como-usar/).
 
 ## Independencia
 
@@ -86,7 +86,7 @@ personas que ayudan de forma continua aparecen en la página de
 
 Consultar precios no exige cuenta ni ubicación, y este sitio no usa cookies ni
 rastreadores de terceros. Los detalles están en la
-[política de privacidad](/privacidade/) (en portugués).
+[política de privacidad](/es/privacidad/).
 
 ## Contacto
 

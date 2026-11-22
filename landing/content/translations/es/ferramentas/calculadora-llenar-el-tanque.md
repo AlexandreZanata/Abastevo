@@ -88,4 +88,4 @@ son del 17 de noviembre de 2026. Su ejemplo es un vehículo con tanque de
 50 litros y la estimación para ese tanque de 50 L en Sorriso, Mato Grosso, con
 la referencia de la ANP, el regulador brasileño del petróleo y los
 combustibles, del 8 al 14 de noviembre de 2026. Consulta el tutorial
-[Vehículos y estimación del tanque](/como-usar/veiculos/) (en portugués).
+[Vehículos y estimación del tanque](/es/como-usar/vehiculos-y-estimacion-del-tanque/).

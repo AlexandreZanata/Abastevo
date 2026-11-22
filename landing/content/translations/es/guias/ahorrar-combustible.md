@@ -84,7 +84,7 @@ La app Android de Abastevo está en desarrollo. Las [capturas de la guía en por
 3. Desde una estación, toca **Ruta e ir** para ver tiempo y distancia. Compara el ahorro posible con el combustible del desvío.
 4. Agrega el auto en **Vehículos** para ver el **Costo de llenar el tanque** en el inicio.
 
-Las capturas muestran los precios mínimos de la ANP para etanol, gasolina regular y gasolina con aditivos en São Paulo, SP, del 8 al 14 de noviembre de 2026. La lista de etanol se ordena por precio e incluye el botón **Más barato cerca de mí**. En Sorriso, MT, el mapa marca una ruta en azul de 8 minutos y 5,1 km y permite iniciar la navegación. El ejemplo del costo de carga usa un tanque de 50 L. Consulta los tutoriales de la [tabla de la ANP](/como-usar/precos-anp/), [navegación a una estación](/como-usar/postos/) y [vehículos y estimación del tanque](/como-usar/veiculos/) en portugués.
+Las capturas muestran los precios mínimos de la ANP para etanol, gasolina regular y gasolina con aditivos en São Paulo, SP, del 8 al 14 de noviembre de 2026. La lista de etanol se ordena por precio e incluye el botón **Más barato cerca de mí**. En Sorriso, MT, el mapa marca una ruta en azul de 8 minutos y 5,1 km y permite iniciar la navegación. El ejemplo del costo de carga usa un tanque de 50 L. Consulta los tutoriales de la [tabla de la ANP](/es/como-usar/consultar-precios-anp/), [navegación a una estación](/es/como-usar/encontrar-una-estacion-y-navegar/) y [vehículos y estimación del tanque](/es/como-usar/vehiculos-y-estimacion-del-tanque/).
 
 ## Fuentes
 

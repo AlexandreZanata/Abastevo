@@ -24,10 +24,11 @@ func TestLinkGraphOfTheGeneratedPortal(t *testing.T) {
 			t.Errorf("%s minimum inbound = %d, want >= %d", family, result.MinInbound[family], DefaultMinInboundLinks)
 		}
 	}
-	// Sorriso and Belo Horizonte have one indexable station each and
-	// Rondonópolis two: those four are held to the min(3, n) city bound;
-	// every other indexable station has at least three inbound body links.
-	if result.StationsBelowTarget != 4 || result.MinInbound["postos"] < 1 {
+	// Four Portuguese station pages qualify for the smaller city bound.
+	// English and Spanish each have seven: Sorriso, Rondonópolis and
+	// Várzea Grande have no translated city price page, and Belo Horizonte
+	// has only one eligible station.
+	if result.StationsBelowTarget != 4+2*7 || result.MinInbound["postos"] < 1 {
 		t.Errorf("station bound = %d below target, min inbound %d", result.StationsBelowTarget, result.MinInbound["postos"])
 	}
 	again, err := VerifyLinkGraph(generateSEOPortal(t, true), LinkGraphOptions{SiteURL: seoSite})

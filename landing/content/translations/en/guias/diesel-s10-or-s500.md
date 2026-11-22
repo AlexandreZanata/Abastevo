@@ -171,8 +171,8 @@ reference for São Paulo, SP, in the week of November 8 to 14, 2026, and the
 Diesel S10 history in Sorriso, MT.
 
 The full walkthrough is in the tutorials
-[Check the ANP table](/como-usar/precos-anp/) (in Portuguese) and
-[Read the history](/como-usar/historico/) (in Portuguese).
+[Check the ANP table](/en/how-to/check-anp-prices/) and
+[Read the history](/en/how-to/read-price-history/).
 
 ## Sources
 

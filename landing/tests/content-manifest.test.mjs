@@ -21,8 +21,8 @@ const validGuide = () => ({
 const ctx = { categories: new Set(['precos']), expectedSlug: 'guia-teste' };
 
 // Copies landing/content into a throwaway project root so a fixture can be
-// broken. The app-capture provenance comes along: Markdown that shows a capture
-// is resolved against it.
+// broken. The app-capture provenance and original tutorial sources come along
+// so the Markdown images and localized tutorial steps still resolve.
 function withContent(mutate) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-content-'));
   const tmp = path.join(base, 'landing');
@@ -33,6 +33,8 @@ function withContent(mutate) {
   const provenanceRel = path.join('static', 'assets', 'app', 'provenance.json');
   fs.mkdirSync(path.dirname(path.join(tmp, provenanceRel)), { recursive: true });
   fs.copyFileSync(path.join(root, provenanceRel), path.join(tmp, provenanceRel));
+  const tutorials = path.join('static', 'como-usar');
+  fs.cpSync(path.join(root, tutorials), path.join(tmp, tutorials), { recursive: true });
   try {
     mutate(path.join(tmp, 'content'));
     return () => loadSite(tmp);
@@ -91,10 +93,10 @@ test('the shipped content manifest and Markdown sources validate', () => {
   const site = loadSite(root);
   const count = (entries) => entries.reduce((acc, e) => ({ ...acc, [e.kind]: (acc[e.kind] || 0) + 1 }), {});
   const kinds = count([...site.registry.values()].filter((e) => !e.locale));
-  // Each launched locale ships the five calculators, thirteen guides and two pages.
+  // Each locale ships editorial, legal and tutorial pages alongside its calculators.
   for (const code of ['en', 'es']) {
     const localized = count([...site.registry.values()].filter((e) => e.locale === code && !e.hub));
-    assert.deepEqual(localized, { guide: 13, tool: 5, page: 2 }, `${code} translations`);
+    assert.deepEqual(localized, { 'tutorial-hub': 1, tutorial: 16, guide: 13, tool: 5, page: 5 }, `${code} translations`);
   }
   assert.equal(kinds.tool, 5);
   assert.equal(kinds.page, 2);
@@ -114,7 +116,7 @@ test('the shipped content manifest and Markdown sources validate', () => {
   const keywordPages = [...site.registry.values()].filter((entry) => !entry.locale && (entry.kind === 'guide' || entry.kind === 'html-guide' || entry.kind === 'tool'));
   assert.equal(keywordPages.length, 18, '13 guides and 5 tools carry the keyword map');
   for (const code of ['en', 'es']) {
-    const localized = [...site.registry.values()].filter((entry) => entry.locale === code && !entry.hub && entry.kind !== 'page');
+    const localized = [...site.registry.values()].filter((entry) => entry.locale === code && ['guide', 'tool'].includes(entry.kind));
     const queries = localized.map((entry) => normalizeQuery(entry.primaryQuery || ''));
     assert.ok(queries.every(Boolean), `every ${code} guide and tool names its query`);
     assert.equal(new Set(queries).size, queries.length, `${code} queries are unique`);

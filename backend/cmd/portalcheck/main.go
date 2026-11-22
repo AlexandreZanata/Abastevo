@@ -19,7 +19,7 @@ func main() {
 	flag.StringVar(&compare, "compare", "", "second candidate for reproducible comparison")
 	flag.StringVar(&siteURL, "site-url", "", "expected public origin (optional)")
 	flag.IntVar(&maxFiles, "max-files", 0, "maximum files (default pages + 1000)")
-	flag.Int64Var(&maxBytes, "max-bytes", 0, "maximum total bytes (default 2 GiB)")
+	flag.Int64Var(&maxBytes, "max-bytes", 0, "maximum total bytes (zero uses the verifier default)")
 	flag.Int64Var(&maxHTML, "max-html-gzip", 0, "maximum gzip bytes per HTML page (default 100 KiB)")
 	flag.Int64Var(&maxScript, "max-script-gzip", 0, "maximum gzip bytes per script (default 100 KiB)")
 	flag.Int64Var(&maxShard, "max-shard-gzip", 0, "maximum gzip bytes per search shard (default 512 KiB)")

@@ -1,0 +1,971 @@
+{
+  "lastmod": "2026-11-22",
+  "common": {
+    "metaLabel": "Tutorial",
+    "available": "Disponible",
+    "planned": "Planificado",
+    "soon": "Próximamente",
+    "chapters": "Ver capítulos",
+    "all": "Todos los tutoriales",
+    "step": "Paso",
+    "expected": "Resultado esperado",
+    "recovery": "Si el paso falla",
+    "noCapture": "Paso descrito sin captura",
+    "originalCapture": "Ver captura original (en portugués)",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "index": "Índice",
+    "navigation": "Navegar entre capítulos",
+    "explore": "Sigue explorando",
+    "guides": "Guías educativas",
+    "tools": "Calculadoras",
+    "home": "Volver al inicio",
+    "github": "Ver el código en GitHub",
+    "context": "Lección",
+    "stepCount": "{total} pasos",
+    "describedCount": "{total} sin captura",
+    "portuguese": "Las capturas originales en portugués se tomaron el 17 de noviembre de 2026 en un emulador, con datos públicos de la ANP."
+  },
+  "hub": {
+    "title": "Cómo usar la aplicación Abastevo",
+    "description": "Aprende a usar Abastevo en Android paso a paso. Elige ciudad, consulta los precios de la ANP, usa la comunidad y navega sin conexión.",
+    "intro": "Sigue los tutoriales de la app Android de Abastevo en desarrollo. Cada capítulo explica qué control usar, qué resultado esperar y qué hacer si algo falla. Los enlaces a las capturas originales abren la versión en portugués.",
+    "statuses": "Los capítulos marcados como Disponible incluyen las instrucciones completas. Los marcados como Próximamente o Planificado aparecen sin enlace hasta su publicación.",
+    "start": "Por dónde empezar",
+    "journeys": [
+      {
+        "title": "Conductores, ciudades y semanas",
+        "description": "Elige ciudad, usa Explorar y lee la tabla y el historial de la ANP."
+      },
+      {
+        "title": "Comunidad, cuenta y precios",
+        "description": "Crea una cuenta con nombre de usuario, aporta precios y sigue tus envíos."
+      },
+      {
+        "title": "Estaciones y ajustes",
+        "description": "Consulta el perfil de estaciones y administra vehículos, alertas y ajustes."
+      },
+      {
+        "title": "Ayuda y uso sin conexión",
+        "description": "Recupérate sin internet y consulta las reglas de la comunidad."
+      }
+    ],
+    "sourcesTitle": "Fuentes y contexto de las capturas",
+    "sources": "Las capturas originales en portugués se tomaron el 17 de noviembre de 2026 en un emulador, con ubicación simulada y datos públicos de la ANP. Muestran la encuesta del 8 al 14 de noviembre de 2026, salvo indicación en el paso, o un estado vacío declarado. Consulta la estación para saber el precio actual en el surtidor. Las pantallas protegidas o con fallos conocidos se describen en texto."
+  },
+  "pending": {
+    "TU01": {
+      "title": "Primeros pasos",
+      "summary": "Sincronización inicial y elección de ciudad."
+    },
+    "TU03": {
+      "title": "Entender Explorar",
+      "summary": "Tarjetas de combustible y controles del tema."
+    },
+    "TU04": {
+      "title": "Buscar ciudades y estaciones",
+      "summary": "La opción de búsqueda aún no se ha observado en el dispositivo."
+    },
+    "TU11": {
+      "title": "Crear una cuenta gratuita",
+      "summary": "La pantalla de usuario se verificó. Android bloquea las capturas de esta pantalla."
+    },
+    "TU12": {
+      "title": "Entrar con la clave y guardar un respaldo",
+      "summary": "Android protege las pantallas de claves con FLAG_SECURE y bloquea las capturas."
+    },
+    "TU15": {
+      "title": "Recortar la foto y revisar los valores",
+      "summary": "Requiere una imagen sintética de un cartel de precios creada para la prueba."
+    },
+    "TU16": {
+      "title": "Entender el envío y la cola",
+      "summary": "Los estados de la cola requieren envíos de prueba en un entorno descartable."
+    },
+    "TU18": {
+      "title": "Valorar, comentar y responder",
+      "summary": "Requiere una cuenta. Las capturas se hacen sin enviar aportes."
+    },
+    "TU19": {
+      "title": "Confirmar o impugnar un precio",
+      "summary": "Requiere una cuenta. Las capturas se hacen sin emitir votos."
+    },
+    "TU20": {
+      "title": "Marcar un aporte como útil o no útil",
+      "summary": "En el tutorial original, la implementación en Android figura pendiente."
+    },
+    "TU22": {
+      "title": "Sugerir una estación que falta",
+      "summary": "La opción no se observó en las pantallas alcanzadas durante la prueba."
+    },
+    "TU24": {
+      "title": "Solicitar la representación de una estación",
+      "summary": "La opción aún no se ha observado. El repositorio no guarda solicitudes reales en PDF."
+    },
+    "TU25": {
+      "title": "Administrar información autorizada",
+      "summary": "La opción aún no se ha observado. El alcance aprobado está pendiente."
+    },
+    "TU27": {
+      "title": "Alertas locales",
+      "summary": "El interruptor se observó desactivado. El permiso del sistema operativo está pendiente."
+    }
+  },
+  "chapters": {
+    "TU02": {
+      "slug": "elegir-ciudad",
+      "title": "Elegir ciudad",
+      "description": "Elige tu ciudad en la aplicación Abastevo. Usa la ubicación del dispositivo una vez o busca un estado y municipio manualmente.",
+      "summary": "6 pasos para usar la ubicación del dispositivo o elegir un estado y un municipio.",
+      "related": {
+        "/precos/": "Precios de referencia por estado",
+        "/guias/precos-diferentes-entre-cidades/": "Por qué varían los precios entre ciudades",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu02-s1": {
+          "title": "Elegir manualmente",
+          "instruction": "Al abrir la app por primera vez, verás “¿Encontrar su ciudad automáticamente?”. Toca “Usar mi ubicación” para detectarla una vez o “Elegir manualmente” para buscarla en la lista.",
+          "expected": "“Elegir manualmente” abre “Seleccionar ubicación” con la lista de estados.",
+          "recovery": "Si deniegas el permiso de ubicación, puedes elegir la ciudad manualmente.",
+          "visual": "Pregunta inicial con el botón “Usar mi ubicación” y el enlace “Elegir manualmente”."
+        },
+        "tu02-s2": {
+          "title": "Usar ubicación actual",
+          "instruction": "“Seleccionar ubicación” muestra los estados. Toca el tuyo o usa “Usar ubicación actual” para que la app detecte tu ciudad.",
+          "expected": "Al tocar un estado, se abre su lista de municipios.",
+          "recovery": "La flecha superior te devuelve a la pantalla anterior sin cambiar la ciudad.",
+          "visual": "Selector con “Usar ubicación actual”, “Buscar estado” y la lista que empieza por Acre y Alagoas."
+        },
+        "tu02-s3": {
+          "title": "Buscar estado",
+          "instruction": "Escribe parte del nombre en “Buscar estado” y toca el estado.",
+          "expected": "Solo quedan los estados que coinciden, como São Paulo en el ejemplo.",
+          "recovery": "Borra el texto para volver a ver la lista completa.",
+          "visual": "El campo de búsqueda contiene Sao y la lista solo muestra São Paulo, SP."
+        },
+        "tu02-s4": {
+          "title": "Buscar municipio",
+          "instruction": "Al seleccionar el estado, verás sus municipios en orden alfabético, bajo un título como “Municipios en São Paulo”. Desplázate o usa “Buscar municipio”.",
+          "expected": "La lista agrupa los municipios por su letra inicial.",
+          "recovery": "Si elegiste otro estado por error, toca la flecha y vuelve a elegir.",
+          "visual": "Lista alfabética de municipios de São Paulo con “Buscar municipio” arriba."
+        },
+        "tu02-s5": {
+          "title": "Resultado de la búsqueda de municipio",
+          "instruction": "Escribe el nombre en “Buscar municipio” y toca el resultado.",
+          "expected": "La app guarda la ciudad y vuelve a la pantalla de inicio.",
+          "recovery": "Si no hay resultados, revisa la ortografía. La búsqueda acepta nombres sin tildes.",
+          "visual": "La búsqueda contiene sao paulo y muestra SÃO PAULO entre los resultados."
+        },
+        "tu02-s6": {
+          "title": "Ciudad en la pantalla de inicio",
+          "instruction": "La pantalla de inicio muestra arriba la ciudad y la semana activa. Toca el nombre para cambiar de ciudad más adelante.",
+          "expected": "Los precios, las estaciones y el mapa usan la ciudad elegida. El ejemplo muestra São Paulo, SP, del 8 al 14 de noviembre de 2026.",
+          "recovery": "La ciudad queda guardada en el dispositivo para la próxima vez que abras la app.",
+          "visual": "Inicio con SÃO PAULO, SP, del 8 al 14 de noviembre de 2026, el selector ANP y Comunidad y “Precios en tu ciudad”."
+        }
+      }
+    },
+    "TU05": {
+      "slug": "consultar-precios-anp",
+      "title": "Consultar la tabla de la ANP",
+      "description": "Consulta los precios semanales de la ANP en Abastevo con sus fechas, promedio, mínimo, máximo y cantidad de estaciones encuestadas.",
+      "summary": "5 pasos sobre el promedio semanal, el orden y el menor precio relevado por combustible.",
+      "related": {
+        "/guias/pesquisa-anp/": "Cómo funciona la encuesta semanal de la ANP",
+        "/metodologia/": "Metodología de los datos",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu05-s1": {
+          "title": "Precios en tu ciudad",
+          "instruction": "En “Explorar”, desplázate a “Precios en tu ciudad”. Cada tarjeta muestra el promedio semanal de la ANP, el número de estaciones encuestadas y el sello ANP.",
+          "expected": "La línea de referencia indica la semana, del 8 al 14 de noviembre de 2026 en el ejemplo. Consulta la estación para saber el precio actual en el surtidor.",
+          "recovery": "Si faltan tarjetas, revisa la ciudad de arriba y usa “Sincronizar ahora” en Ajustes.",
+          "visual": "Referencia de São Paulo, SP, del 8 al 14 de noviembre de 2026, con el sello ANP en etanol, gasolina regular y gasolina con aditivos."
+        },
+        "tu05-s2": {
+          "title": "Tarjetas de combustible",
+          "instruction": "Desplázate para ver diésel S500, diésel S10, GNC y GLP (13 kg).",
+          "expected": "Cada tarjeta muestra el valor de referencia, el número de estaciones encuestadas y el sello ANP.",
+          "recovery": "El precio de GLP corresponde a una garrafa de 13 kg.",
+          "visual": "Tarjetas de diésel S500, diésel S10, GNC y GLP (13 kg) con valor de referencia, cantidad y sello ANP."
+        },
+        "tu05-s3": {
+          "title": "Ver en el mapa",
+          "instruction": "Al final de la lista, “Ver en el mapa” abre el mapa de la ciudad. Los accesos de abajo llevan a “Ubicación”, “Historial de precios”, “Estaciones”, “Vehículos” y “Ajustes”.",
+          "expected": "Cada acceso abre su pantalla.",
+          "recovery": "También puedes abrirlas desde “Perfil”, en “Herramientas y referencias”.",
+          "visual": "Fin de la lista de precios con “Ver en el mapa” y los cinco accesos directos."
+        },
+        "tu05-s4": {
+          "title": "Filtros",
+          "instruction": "Toca “Filtros” para abrir “Ordenar precios”. Elige “Precio medio”, “Menor precio” o “Mayor precio”.",
+          "expected": "Tu elección se aplica a todas las tarjetas.",
+          "recovery": "Toca fuera del diálogo para cerrarlo sin cambios.",
+          "visual": "Diálogo con “Precio medio” seleccionado y las opciones “Menor precio” y “Mayor precio”."
+        },
+        "tu05-s5": {
+          "title": "Menor precio",
+          "instruction": "“Menor precio” muestra el valor más bajo relevado para cada combustible en la semana.",
+          "expected": "Junto a “Filtros” aparece “Menor precio”. En el ejemplo, el etanol pasa del promedio de R$ 4,09 al mínimo de R$ 3,49.",
+          "recovery": "Vuelve a “Precio medio” para comparar con el promedio de la ciudad.",
+          "visual": "Mínimos de R$ 3,49 para etanol, R$ 5,49 para gasolina regular y R$ 5,79 para gasolina con aditivos, con el sello ANP."
+        }
+      }
+    },
+    "TU06": {
+      "slug": "cambiar-o-descargar-una-semana",
+      "title": "Cambiar o descargar una semana",
+      "description": "Cambia la semana de encuesta de la ANP en Abastevo, descarga semanas del archivo para consultarlas sin internet y vuelve a la más reciente.",
+      "summary": "6 pasos para abrir el panel, descargar una semana anterior y activarla.",
+      "related": {
+        "/guias/pesquisa-anp/": "Cómo funciona la encuesta semanal de la ANP",
+        "/como-usar/offline-e-recuperacao/": "Usar la aplicación sin internet",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu06-s1": {
+          "title": "Comenzar",
+          "instruction": "Al abrir la app por primera vez, “Elija la semana de encuesta” pregunta cuál quieres descargar. Toca “Comenzar” para elegir u “Omitir por ahora” para sincronizar después.",
+          "expected": "“Comenzar” abre la lista de semanas disponibles.",
+          "recovery": "Si omites este paso, puedes sincronizar desde el inicio o en Ajustes.",
+          "visual": "Pantalla inicial para elegir la semana, con “Comenzar” y “Omitir por ahora”."
+        },
+        "tu06-s2": {
+          "title": "Semana de encuesta",
+          "instruction": "En el inicio, toca la semana junto a la ciudad, del 8 al 14 de noviembre de 2026 en el ejemplo, para abrir “Semana de encuesta”.",
+          "expected": "El panel muestra “Usar la semana más reciente”, “Cada semana incluye” y la lista de semanas.",
+          "recovery": "Desliza el panel hacia abajo para cerrarlo sin cambiar de semana.",
+          "visual": "Inicio en Sorriso, MT, con el panel de semanas, el botón de semana más reciente y el resumen de contenidos."
+        },
+        "tu06-s3": {
+          "title": "Descargar",
+          "instruction": "Cada semana indica cuándo se actualizó. Toca “Descargar” para guardar una semana anterior en el dispositivo.",
+          "expected": "La semana en uso figura como “Actual” y “Descargada”. Las otras ofrecen “Descargar”.",
+          "recovery": "Necesitas conexión para descargar una semana.",
+          "visual": "Del 8 al 14 de noviembre de 2026 figura como actual y descargada. Del 1 al 7 de noviembre y del 18 al 24 de octubre de 2026 tienen botón de descarga."
+        },
+        "tu06-s4": {
+          "title": "Descargando semana",
+          "instruction": "“Descargando semana” muestra el progreso mientras la app descarga e importa los datos de la ANP. Espera o toca “Cancelar”.",
+          "expected": "Cuando termina, la semana queda marcada como “Descargada”.",
+          "recovery": "Al cancelar no se guarda nada. Toca “Descargar” para volver a intentarlo.",
+          "visual": "Barra de progreso para los datos de la ANP del 1 al 7 de noviembre de 2026, con el enlace para cancelar."
+        },
+        "tu06-s5": {
+          "title": "Descargada",
+          "instruction": "Una semana marcada como “Descargada” está guardada en el dispositivo y se puede consultar sin conexión.",
+          "expected": "En el ejemplo están descargadas las semanas del 8 al 14 y del 1 al 7 de noviembre de 2026.",
+          "recovery": "Para liberar espacio, busca la opción de borrar todos los datos importados en Ajustes.",
+          "visual": "Las dos semanas de noviembre están descargadas. Del 18 al 24 de octubre de 2026 todavía muestra un botón de descarga."
+        },
+        "tu06-s6": {
+          "title": "Semana activa en la parte superior",
+          "instruction": "Toca una semana descargada para activarla. Para volver, abre el panel y toca “Usar la semana más reciente”.",
+          "expected": "Cambian la semana de arriba y la referencia ANP. El ejemplo muestra del 4 al 10 de octubre de 2026 y las tarjetas muestran esos valores.",
+          "recovery": "Revisa siempre la semana de arriba antes de comparar los valores.",
+          "visual": "Sorriso, MT, con la semana del 4 al 10 de octubre de 2026 activa y las tarjetas de etanol, gasolina regular y gasolina con aditivos."
+        }
+      }
+    },
+    "TU07": {
+      "slug": "leer-el-historial",
+      "title": "Leer el historial",
+      "description": "Lee los precios semanales de referencia de la ANP en el historial de Abastevo. Compara las semanas descargadas y cambia el combustible.",
+      "summary": "4 pasos para leer las semanas descargadas, cambiar de combustible y ver el valor semanal.",
+      "related": {
+        "/guias/como-e-formado-o-preco-da-gasolina/": "Cómo se forma el precio de la gasolina",
+        "/como-usar/semanas-anp/": "Descargar semanas anteriores",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu07-s1": {
+          "title": "Historial de precios",
+          "instruction": "Abre “Historial de precios” desde el final de la pantalla de inicio o entra a “Historial de precios ANP” desde “Perfil”. El gráfico compara el promedio de la ciudad por semana descargada.",
+          "expected": "La lista debajo muestra los promedios de la semana más reciente a la más antigua.",
+          "recovery": "Si solo aparece una, descarga semanas anteriores en “Semana de encuesta”.",
+          "visual": "Cuatro barras de gasolina regular en Sorriso, MT, con R$ 6,71 del 8 al 14 de noviembre, R$ 6,59 del 1 al 7 de noviembre y R$ 6,75 del 18 al 24 de octubre de 2026."
+        },
+        "tu07-s2": {
+          "title": "Combustible",
+          "instruction": "Toca “Combustible” y elige otro para el gráfico.",
+          "expected": "La lista incluye etanol, gasolina regular, gasolina con aditivos, diésel S500 y S10, GNC, GLP (13 kg) y gasolina prémium.",
+          "recovery": "Toca fuera de la lista para cerrarla sin cambiar el combustible.",
+          "visual": "Lista de combustibles con gasolina regular seleccionada y los otros siete productos disponibles."
+        },
+        "tu07-s3": {
+          "title": "Diésel S10",
+          "instruction": "Elige “Diésel S10”. El gráfico y la lista pasan a mostrar su promedio para las mismas semanas.",
+          "expected": "En el ejemplo, la referencia ANP es R$ 7,60 del 8 al 14 de noviembre, R$ 7,63 del 1 al 7 de noviembre y R$ 7,70 del 18 al 24 de octubre de 2026.",
+          "recovery": "Si falta un valor, puede que ese combustible no se haya incluido en la encuesta de esa ciudad en ese período.",
+          "visual": "Gráfico de diésel S10 en Sorriso, MT, y lista semanal con los valores R$ 7,60, R$ 7,63 y R$ 7,70 para esas fechas."
+        },
+        "tu07-s4": {
+          "title": "Barra de la semana",
+          "instruction": "Toca una barra para ver su semana y valor.",
+          "expected": "La barra queda resaltada y la leyenda muestra del 1 al 7 de noviembre de 2026 · R$ 7,63 en el ejemplo.",
+          "recovery": "Toca otra barra para comparar semanas.",
+          "visual": "Gráfico de diésel S10 con la barra del 1 al 7 de noviembre de 2026 resaltada a R$ 7,63."
+        }
+      }
+    },
+    "TU08": {
+      "slug": "encontrar-una-estacion-y-navegar",
+      "title": "Encontrar una estación y navegar hasta ella",
+      "description": "Busca estaciones por nombre en Abastevo, ordena por menor precio, filtra el mapa y abre los datos de la ANP de una estación con sus fechas.",
+      "summary": "7 pasos sobre la lista por combustible, búsqueda, filtros del mapa y ficha de la estación.",
+      "related": {
+        "/consultar/": "Consultar estaciones y precios en el navegador",
+        "/como-usar/perfil-do-posto/": "Consultar el perfil de la estación",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu08-s1": {
+          "title": "Resumen de la lista",
+          "instruction": "Toca una tarjeta de combustible en el inicio. “Estaciones” enumera las estaciones encuestadas de menor a mayor precio.",
+          "expected": "“Resumen de la lista” confirma la ciudad, el combustible y el orden de menor precio primero.",
+          "recovery": "“Más barato cerca de mí” usa la ubicación. La lista por precio sigue disponible sin el permiso.",
+          "visual": "Estaciones de etanol en São Paulo, SP, con selector “Combustible”, búsqueda por nombre, resumen y “Más barato cerca de mí”."
+        },
+        "tu08-s2": {
+          "title": "Tarjeta de la estación",
+          "instruction": "Cada tarjeta muestra el precio, la marca, la dirección pública informada a la ANP y la fecha de recolección.",
+          "expected": "El primer ejemplo muestra R$ 3,49, una estación sin marca y recolección del 10 de noviembre de 2026.",
+          "recovery": "La fecha corresponde a la encuesta de la ANP. El precio en el surtidor puede haber cambiado.",
+          "visual": "Tarjetas con precio, marca, dirección pública y fecha. La primera muestra R$ 3,49, “BRANCA” y el 10 de noviembre de 2026."
+        },
+        "tu08-s3": {
+          "title": "Combustible",
+          "instruction": "Para cambiar sin volver atrás, toca “Combustible” arriba de la lista y elige otro producto.",
+          "expected": "La lista se actualiza para ese combustible.",
+          "recovery": "Toca fuera de la lista para cerrarla sin cambios.",
+          "visual": "Selector sobre Estaciones con etanol seleccionado, gasolina regular y con aditivos, diésel S500 y S10, GNC, GLP (13 kg) y gasolina prémium."
+        },
+        "tu08-s4": {
+          "title": "Buscar por nombre de estación",
+          "instruction": "Escribe parte del nombre en el campo de búsqueda para filtrar las estaciones.",
+          "expected": "Solo quedan las coincidencias. En el ejemplo se busca jardim para gasolina regular.",
+          "recovery": "Borra el texto para volver a ver todas las estaciones.",
+          "visual": "Búsqueda de jardim para gasolina regular en São Paulo, SP, con un resultado a R$ 5,49 relevado el 9 de noviembre de 2026."
+        },
+        "tu08-s5": {
+          "title": "Mapa",
+          "instruction": "Toca “Mapa” en la barra inferior. Los iconos naranjas son estaciones de combustible y los verde azulados son puntos de recarga.",
+          "expected": "El mapa abre la ciudad elegida con “Filtros” y “Descargar” abajo.",
+          "recovery": "Si el mapa está en blanco, toca “Descargar” para guardar el mapa de la región.",
+          "visual": "Mapa de Sorriso, MT, con marcadores de estaciones y recarga, “Buscar estaciones…”, “Filtros” y “Descargar”."
+        },
+        "tu08-s6": {
+          "title": "Filtros",
+          "instruction": "En “Filtros”, elige ciudad, “Fuente de precios” (“ANP” o “Comunidad”), “Servicio” (“Combustible” o “Recarga”) y “Producto de combustible”. Toca “Aplicar”.",
+          "expected": "El mapa muestra solo los resultados de los filtros elegidos.",
+          "recovery": "“Cancelar” cierra el panel sin cambios.",
+          "visual": "Filtros de Sorriso con fuente ANP, Combustible y Recarga, gasolina regular y los botones Cancelar y Aplicar."
+        },
+        "tu08-s7": {
+          "title": "Ruta e ir",
+          "instruction": "Toca una estación para ver el precio, “Fuente del precio”, semana de encuesta y fecha de recolección. “Ruta e ir” traza el camino. “Ver perfil” abre la página de la estación.",
+          "expected": "El ejemplo muestra gasolina regular a R$ 6,25 por litro del 8 al 14 de noviembre de 2026, relevada el 10 de noviembre. Es la referencia ANP de esa semana.",
+          "recovery": "La primera vez, “Ruta e ir” abre el diálogo de permisos de ubicación de Android.",
+          "visual": "Ficha en Sorriso, MT, con fuente ANP, R$ 6,25 por litro, semana y fecha, y acciones de ruta, perfil, informar precio y favoritos."
+        }
+      }
+    },
+    "TU09": {
+      "slug": "entender-los-precios-de-una-estacion",
+      "title": "Entender los precios de una estación",
+      "description": "Lee los precios del perfil de una estación en Abastevo, con los aportes de la comunidad separados de la referencia semanal de la ANP.",
+      "summary": "4 pasos para leer la tarjeta comunitaria y la referencia oficial por separado.",
+      "related": {
+        "/guias/como-ler-precos/": "Cómo leer precios en el surtidor y el cartel",
+        "/metodologia/": "Metodología de los datos",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu09-s1": {
+          "title": "Perfil de la estación",
+          "instruction": "Toca la estación en la lista o “Ver perfil” en su ficha del mapa. El perfil muestra el nombre, la marca y la dirección pública.",
+          "expected": "Debajo aparecen “Ruta e ir” y la opción de actualizar el precio. Desplázate para ver los precios.",
+          "recovery": "La flecha de arriba te lleva a la lista o al mapa.",
+          "visual": "Perfil con ilustración de Abastevo, nombre, marca VIBRA, dirección pública en São Paulo, SP, y acciones de ruta y actualización."
+        },
+        "tu09-s2": {
+          "title": "Precios de la comunidad (beta)",
+          "instruction": "Elige el combustible con los botones de arriba. “Precios de la comunidad (beta)” muestra los aportes recientes de esa estación.",
+          "expected": "Si no hay aportes recientes, la tarjeta lo indica. El aviso explica que los aportes no son garantía y que la encuesta oficial de la ANP tiene fecha.",
+          "recovery": "Si falta un precio comunitario, revisa la referencia fechada de la ANP que aparece debajo.",
+          "visual": "Gasolina regular seleccionada, sin precio comunitario reciente y una tarjeta ANP separada a R$ 5,77."
+        },
+        "tu09-s3": {
+          "title": "Precio de referencia ANP",
+          "instruction": "La tarjeta “Precio de referencia ANP” muestra el valor oficial, la fecha de recolección y la semana.",
+          "expected": "El ejemplo muestra R$ 5,77 por litro, relevado el 10 de noviembre de 2026 para la semana del 8 al 14 de noviembre de 2026.",
+          "recovery": "Confirma el precio actual del surtidor antes de cargar.",
+          "visual": "Tarjeta ANP a R$ 5,77 por litro con fecha y semana, seguida de la opción para consultar análisis de calidad."
+        },
+        "tu09-s4": {
+          "title": "Comunidad",
+          "instruction": "En el inicio, cambia entre “ANP” y “Comunidad”. “Comunidad” muestra solo los precios enviados por conductores.",
+          "expected": "Si no hay aportes recientes para la ciudad, la app indica que no hay precios comunitarios actuales y muestra “Aportar precio”.",
+          "recovery": "Toca “ANP” para volver a la referencia semanal.",
+          "visual": "Inicio en Sorriso, MT, con Comunidad seleccionada, aviso de que no hay precios actuales y botón para aportar."
+        }
+      }
+    },
+    "TU10": {
+      "slug": "usar-la-comunidad",
+      "title": "Usar la Comunidad",
+      "description": "Consulta precios aportados por conductores en Abastevo, filtra por orden y combustible, conoce la verificación y participa en el foro.",
+      "summary": "8 pasos, 1 descrito sin captura, sobre precios de la comunidad, foro y comentarios.",
+      "related": {
+        "/termos/": "Términos de uso y moderación",
+        "/como-usar/fotografar-preco/": "Aportar un precio con una foto",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu10-s1": {
+          "title": "Comunidad",
+          "instruction": "Toca “Comunidad” en la barra inferior. La pestaña reúne “Aportar precio”, “Foro Abastevo” y “Precios de la comunidad”.",
+          "expected": "Puedes leer sin cuenta. Para calificar, comentar y votar necesitas una cuenta gratuita.",
+          "recovery": "Toca el botón para actualizar junto a “Precios de la comunidad” y vuelve a cargar la lista.",
+          "visual": "Comunidad en Sorriso, MT, con el mensaje de ayuda entre conductores, el botón de aporte, el foro y la sección de precios comunitarios."
+        },
+        "tu10-s2": {
+          "title": "Más recientes",
+          "instruction": "En “Precios de la comunidad”, elige el orden, como “Más recientes”, y el combustible.",
+          "expected": "Si no hay precios recientes, la aplicación lo indica e invita a aportar. Las reglas de verificación comunitaria explican cómo se comprueban.",
+          "recovery": "Prueba otro combustible o consulta la referencia de la ANP en “Explorar”.",
+          "visual": "Filtros de más recientes y gasolina regular, aviso de que no hay precios recientes, botón de aporte y enlace a las reglas."
+        },
+        "tu10-s3": {
+          "title": "Foro Abastevo",
+          "instruction": "Toca “Foro Abastevo” para leer publicaciones. Cada elemento muestra autor, categoría y tiempo desde la publicación.",
+          "expected": "Las publicaciones del equipo tienen un sello de verificado y la categoría “Editorial”.",
+          "recovery": "Toca actualizar arriba para volver a cargar la lista.",
+          "visual": "Foro con Todos, Combustibles y Electromovilidad y dos publicaciones editoriales sobre la ANP y etanol o gasolina."
+        },
+        "tu10-s4": {
+          "title": "Combustibles",
+          "instruction": "Usa las pestañas “Todos”, “Combustibles”, “Electromovilidad” y las siguientes para filtrar la lista.",
+          "expected": "Solo quedan las publicaciones de esa categoría.",
+          "recovery": "Toca “Todos” para volver a ver la lista completa.",
+          "visual": "Pestaña de Combustibles seleccionada con una publicación editorial sobre etanol o gasolina."
+        },
+        "tu10-s5": {
+          "title": "Publicación",
+          "instruction": "Toca una publicación para leer el texto completo.",
+          "expected": "“Publicación” muestra autor, sello “Editorial”, título y texto completo.",
+          "recovery": "La flecha superior vuelve a la lista del foro.",
+          "visual": "Publicación editorial sobre cómo calcular si conviene el etanol o la gasolina."
+        },
+        "tu10-s6": {
+          "title": "Comentarios",
+          "instruction": "Al final están “Leer en la fuente: abastevo.com.br”, los botones de comentar, Me gusta, No me gusta y compartir, además de “Comentarios” con la marca “En vivo”.",
+          "expected": "Puedes ordenar por “Más relevantes”. Si no hay comentarios, la app invita a participar.",
+          "recovery": "Toca actualizar arriba para volver a cargar la publicación.",
+          "visual": "Final de una publicación con enlace de fuente, cuatro iconos y la sección de comentarios en vivo con el campo vacío."
+        },
+        "tu10-s7": {
+          "title": "Publicar",
+          "instruction": "Inicia sesión con una cuenta gratuita, escribe hasta 280 caracteres y toca “Publicar”.",
+          "expected": "El contador indica los caracteres usados, 38/280 en el ejemplo. Los comentarios nuevos pasan por moderación. La captura muestra un borrador que no se envió.",
+          "recovery": "“Publicar” se activa cuando hay texto en el campo.",
+          "visual": "Borrador de 38 de 280 caracteres con “Publicar” activo. El comentario no se envió."
+        },
+        "tu10-s8": {
+          "title": "Nuevo tema",
+          "instruction": "Toca el lápiz en “Foro Abastevo” para abrir “Nuevo tema”. Completa “Título”, “Categoría” y “Contenido”. Estado, municipio, combustible y nombre público son opcionales. Toca “Publicar tema” para enviar.",
+          "expected": "Los temas siguen las mismas reglas de moderación que los comentarios.",
+          "recovery": "Si cambias de idea, vuelve con la flecha superior. No se envía nada.",
+          "visual": "En la versión de la app documentada, los botones de categoría y combustible muestran códigos internos. El paso se describe en texto hasta que se pueda capturar la pantalla corregida."
+        }
+      }
+    },
+    "TU13": {
+      "slug": "cuenta-privacidad-y-eliminacion",
+      "title": "Cuenta, privacidad y eliminación",
+      "description": "Acepta los términos de Abastevo, crea una cuenta gratuita solo con nombre de usuario, revisa la privacidad y consulta cómo eliminar tu cuenta.",
+      "summary": "8 pasos, 2 descritos sin captura, sobre términos, cuenta gratuita, privacidad y eliminación.",
+      "related": {
+        "/privacidade/": "Política de privacidad",
+        "/excluir-conta/": "Eliminar la cuenta y los datos",
+        "/termos/": "Términos de uso y moderación",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu13-s1": {
+          "title": "Antes de comenzar",
+          "instruction": "Al iniciar por primera vez, “Antes de comenzar” muestra los Términos de uso y la Política de privacidad. Abre los enlaces para leer ambos documentos.",
+          "expected": "Los enlaces se abren en el navegador. La pantalla muestra la versión de cada documento.",
+          "recovery": "Si no hay navegador, la app muestra la dirección para abrirla manualmente.",
+          "visual": "Resumen inicial con enlaces a los Términos y a la Política de privacidad y la casilla de aceptación sin marcar."
+        },
+        "tu13-s2": {
+          "title": "Aceptar y continuar",
+          "instruction": "Marca la casilla que confirma que aceptas los Términos de uso y leíste la Política de privacidad. Toca “Aceptar y continuar”. El botón se activa al marcar la casilla.",
+          "expected": "Se abren las pantallas de bienvenida. El aviso aclara que esta aceptación no autoriza el uso opcional de fotos para entrenamiento.",
+          "recovery": "Usa la opción de salir si no aceptas los términos.",
+          "visual": "Pantalla de términos con la casilla marcada, el botón para continuar y la opción de salir sin aceptar."
+        },
+        "tu13-s3": {
+          "title": "Iniciar sesión o crear cuenta gratuita",
+          "instruction": "La consulta de precios funciona sin cuenta. En “Perfil”, el “Modo invitado” ofrece “Entrar o crear una cuenta gratuita” para calificar, comentar y votar.",
+          "expected": "El botón abre “Cuenta gratuita”.",
+          "recovery": "Si ya tienes una cuenta, toca “Ya tengo una clave” y usa la que guardaste.",
+          "visual": "Perfil de invitado con botón de cuenta, panel del conductor, relatos privados y tema oscuro desactivado."
+        },
+        "tu13-s4": {
+          "title": "Crear cuenta",
+          "instruction": "Escribe un “Nombre de usuario” de 3 a 20 letras y números que empiece por una letra y toca “Crear cuenta”. No necesitas correo ni contraseña.",
+          "expected": "“Tu cuenta está lista” muestra la clave. Guárdala para entrar a la cuenta desde otro dispositivo.",
+          "recovery": "Si el nombre está ocupado, elige otro. Puedes exportar la clave más adelante en “Perfil”.",
+          "visual": "Las pantallas de cuenta están protegidas para que la clave nunca aparezca en una captura."
+        },
+        "tu13-s5": {
+          "title": "Sesión iniciada",
+          "instruction": "Después de crear la cuenta, “Perfil” muestra “Sesión iniciada” y el estado de cuenta gratuita activa.",
+          "expected": "Ya puedes comentar en el foro y aportar precios. Las funciones pagas nunca afectan la clasificación ni la confianza.",
+          "recovery": "La cuenta permanece en el dispositivo hasta que cierres sesión o la elimines.",
+          "visual": "Perfil con sesión iniciada, cuenta gratuita activa, plan y beneficios Premium, panel del conductor y relatos privados."
+        },
+        "tu13-s6": {
+          "title": "Privacidad",
+          "instruction": "En “Perfil”, abre “Privacidad”. La pantalla resume las reglas, enlaza a la política completa y a la eliminación de cuenta en el sitio, e indica cuándo aceptaste los términos en este dispositivo.",
+          "expected": "El resumen dice que el GPS preciso no se publica y que las fotos son evidencia temporal de verificación.",
+          "recovery": "Los documentos también están en el sitio, en Privacidad y Términos.",
+          "visual": "Resumen de Privacidad y participación con enlaces a la política completa, eliminación de cuenta y fecha de aceptación."
+        },
+        "tu13-s7": {
+          "title": "Eliminar mi cuenta",
+          "instruction": "Abre “Perfil”, toca “Gestionar cuenta” y “Eliminar mi cuenta”. En “¿Eliminar la cuenta?”, elige “Sí, eliminar”.",
+          "expected": "Antes de borrar, la app explica que elimina la cuenta, desconecta el dispositivo y conserva los precios aportados de forma anónima.",
+          "recovery": "Sin conexión no se completa. Vuelve a intentarlo en línea o usa la página de eliminación de cuenta y datos de este sitio.",
+          "visual": "Las pantallas de cuenta están protegidas para que la clave nunca aparezca en una captura."
+        },
+        "tu13-s8": {
+          "title": "Modo invitado",
+          "instruction": "Después de eliminar la cuenta, la app vuelve a “Modo invitado”.",
+          "expected": "La consulta de precios sigue funcionando sin cuenta.",
+          "recovery": "Para volver a participar, crea otra cuenta gratuita.",
+          "visual": "Perfil de vuelta a Modo invitado, con la opción de entrar o crear una cuenta gratuita."
+        }
+      }
+    },
+    "TU14": {
+      "slug": "fotografiar-un-precio",
+      "title": "Fotografiar un precio",
+      "description": "Aporta un precio en Abastevo. Elige la estación, fotografía el cartel, revisa los valores detectados y envíalos para su verificación.",
+      "summary": "7 pasos, 3 descritos sin captura, para elegir una estación, fotografiar y enviar precios.",
+      "related": {
+        "/guias/direitos-do-consumidor-no-posto/": "Derechos del consumidor en la estación",
+        "/como-usar/minhas-contribuicoes/": "Seguir tus contribuciones",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu14-s1": {
+          "title": "Elegir ciudad",
+          "instruction": "En “Comunidad”, toca “Aportar precio”. La pantalla “Fotografiar precios” te pide elegir la estación. Revisa la ciudad y toca “Elegir ciudad” si necesitas cambiarla.",
+          "expected": "La app lista estaciones de la ciudad con sus direcciones públicas.",
+          "recovery": "Si te pide iniciar sesión, crea una cuenta gratuita en “Perfil”. La consulta de precios sigue disponible sin cuenta.",
+          "visual": "Pantalla “Elige la estación de este precio” en Sorriso, MT, con selector de ciudad, nombre y lista de estaciones."
+        },
+        "tu14-s2": {
+          "title": "Nombre de la estación",
+          "instruction": "Usa “Nombre de la estación” y toca el resultado correcto.",
+          "expected": "La lista muestra solo las estaciones que coinciden.",
+          "recovery": "Si no la encuentras, revisa la ciudad elegida.",
+          "visual": "La búsqueda dallas devuelve una estación con dirección pública en Sorriso, MT."
+        },
+        "tu14-s3": {
+          "title": "Fotografiar precios",
+          "instruction": "Después de elegir la estación, toca “Fotografiar precios”. Si te equivocaste, usa “Cambiar estación”.",
+          "expected": "Se abre la cámara del dispositivo.",
+          "recovery": "Revisa el nombre antes de tomar la foto. La imagen corresponde a la estación elegida.",
+          "visual": "Estación elegida resaltada, con “Cambiar estación” y “Fotografiar precios”."
+        },
+        "tu14-s4": {
+          "title": "Permiso de cámara",
+          "instruction": "La primera vez, Android pregunta si la app puede tomar fotos. Elige “Mientras usas la aplicación” o “Solo esta vez”.",
+          "expected": "Si permites el acceso, se abre la cámara.",
+          "recovery": "Si eliges “No permitir”, todavía puedes aportar un precio sin foto.",
+          "visual": "Diálogo de Android para tomar fotos y videos, con las dos opciones de permitir y “No permitir”."
+        },
+        "tu14-s5": {
+          "title": "Cámara del dispositivo",
+          "instruction": "Cuando se abra la cámara, fotografía solo el cartel, de frente y con los valores legibles. Evita personas y matrículas.",
+          "expected": "La foto aparece adjunta en “Fotografiar precios”.",
+          "recovery": "Si quedó borrosa o cortada, toca “Tomar otra foto”.",
+          "visual": "La cámara del emulador muestra una escena de prueba sin un cartel de precios real."
+        },
+        "tu14-s6": {
+          "title": "Recortar al encuadre",
+          "instruction": "Con la foto adjunta, usa “Recortar al encuadre” para centrar los precios o toca “Volver a leer esta foto”.",
+          "expected": "El aviso indica que la foto se guarda con el precio en la bandeja de salida. La app intenta leer los valores.",
+          "recovery": "Si no puede leerlos, escribe los precios manualmente.",
+          "visual": "La escena de prueba del emulador no contiene un cartel de precios real para este paso."
+        },
+        "tu14-s7": {
+          "title": "Añadir combustible",
+          "instruction": "Revisa los valores leídos o toca “Añadir combustible” y escribe el precio de cada combustible de la foto. Luego toca el botón de envío.",
+          "expected": "Los combustibles sin precio quedan fuera. El aporte pasa a la cola de verificación comunitaria y aparece en “Mis aportes”.",
+          "recovery": "Si falla el envío, la app te avisa y no envía nada. Vuelve a intentarlo.",
+          "visual": "En la versión en portugués documentada, el botón de envío usa el plural para un solo precio. El paso queda en texto hasta poder capturar la pantalla corregida."
+        }
+      }
+    },
+    "TU17": {
+      "slug": "mis-contribuciones",
+      "title": "Mis aportes",
+      "description": "Revisa tus envíos, elementos en cola y cancelaciones en Mis aportes de Abastevo. La lista se guarda en el dispositivo actual.",
+      "summary": "2 pasos para seguir envíos, la cola y cancelaciones guardadas en el dispositivo.",
+      "related": {
+        "/como-usar/fotografar-preco/": "Aportar un precio con una foto",
+        "/privacidade/": "Política de privacidad",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu17-s1": {
+          "title": "Mis aportes",
+          "instruction": "En “Perfil”, abre “Mis aportes” para revisar envíos, elementos en cola y cancelaciones.",
+          "expected": "La pantalla avisa que la lista es solo de este dispositivo y que nada allí es público. Si está vacía, indica que aún no hay contribuciones.",
+          "recovery": "Si cambias de dispositivo, la lista local empieza vacía en el nuevo.",
+          "visual": "Mis aportes con aviso de lista local, botón de aporte y mensaje de que todavía no hay contribuciones."
+        },
+        "tu17-s2": {
+          "title": "Aportar precio",
+          "instruction": "Toca “Aportar precio” en esta pantalla para iniciar un envío.",
+          "expected": "Se abre “Fotografiar precios” para elegir la estación.",
+          "recovery": "Después de enviarlo, vuelve a esta pantalla para verlo en la lista.",
+          "visual": "Mis aportes con dos botones para empezar un aporte de precio."
+        }
+      }
+    },
+    "TU21": {
+      "slug": "denunciar-abusos",
+      "title": "Denunciar abusos",
+      "description": "Denuncia abusos en Abastevo, conoce cómo se revisan las denuncias, bloquea una cuenta y consulta las reglas de moderación o apelación.",
+      "summary": "4 pasos, 2 descritos sin captura, para denunciar, bloquear y revisar bloqueos.",
+      "related": {
+        "/termos/": "Términos de uso y moderación",
+        "/como-usar/ajuda-e-regras/": "Ayuda y reglas de la comunidad",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu21-s1": {
+          "title": "Denunciar un tema",
+          "instruction": "En un tema o comentario de otra persona, abre el menú de tres puntos de más acciones. Elige denunciar el tema, el comentario o al usuario. Selecciona el motivo y toca “Enviar denuncia”.",
+          "expected": "La denuncia es privada y la revisa moderación. El contenido sigue visible hasta la revisión. La denuncia no elimina nada automáticamente.",
+          "recovery": "No puedes denunciar tu propio contenido. Si estás sin conexión, vuelve a intentarlo en línea.",
+          "visual": "El entorno de prueba solo tenía publicaciones editoriales oficiales, que no muestran este menú."
+        },
+        "tu21-s2": {
+          "title": "Bloquear usuario",
+          "instruction": "En el mismo menú, elige “Bloquear usuario”. Confirma con “Bloquear”.",
+          "expected": "Sus publicaciones del foro y comentarios en estaciones se ocultan para ti. No se le avisa y las demás personas siguen viendo el contenido.",
+          "recovery": "Si bloqueaste a alguien por error, deshazlo en “Usuarios bloqueados”.",
+          "visual": "El entorno de prueba solo tenía publicaciones editoriales oficiales, que no muestran este menú."
+        },
+        "tu21-s3": {
+          "title": "Usuarios bloqueados",
+          "instruction": "Abre “Perfil”, elige “Gestionar cuenta” y “Usuarios bloqueados” para revisar los bloqueos.",
+          "expected": "La pantalla explica que su contenido se oculta para ti en el foro y en las páginas de estaciones. No se les avisa. Puedes desbloquearlos en cualquier momento.",
+          "recovery": "La lista aparece solo con una sesión iniciada.",
+          "visual": "Pantalla de usuarios bloqueados con la explicación de visibilidad y el aviso de que no hay usuarios bloqueados."
+        },
+        "tu21-s4": {
+          "title": "Denunciar y apelar",
+          "instruction": "En “Perfil”, abre “Ayuda y reglas de la comunidad” y lee la tarjeta “Denunciar y apelar”.",
+          "expected": "Cualquier cuenta activa puede denunciar abusos. Moderación revisa cada caso. Si no estás de acuerdo, una nueva denuncia con otro motivo abre un nuevo caso para revisión.",
+          "recovery": "Fuera de la app, lee los Términos de uso y moderación en este sitio.",
+          "visual": "Ayuda y reglas de la comunidad con “Aporta correctamente”, “Reglas de la comunidad” y “Denunciar y apelar”."
+        }
+      }
+    },
+    "TU23": {
+      "slug": "consultar-el-perfil-de-una-estacion",
+      "title": "Consultar el perfil de una estación",
+      "description": "Consulta la razón social, la marca, la dirección pública, los análisis de calidad y las acciones disponibles en el perfil de Abastevo.",
+      "summary": "5 pasos sobre acciones, calidad, correcciones y representación de una estación.",
+      "related": {
+        "/guias/combustivel-adulterado/": "Combustible adulterado: señales y denuncia",
+        "/fiscalizacao/": "Fiscalización oficial publicada por la ANP",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu23-s1": {
+          "title": "Ruta e ir",
+          "instruction": "El perfil muestra el nombre, la marca y la dirección pública de la estación. “Ruta e ir” traza el camino y la acción para actualizar precios permite aportar un precio de esa estación.",
+          "expected": "La pantalla muestra la ilustración estándar de Abastevo.",
+          "recovery": "Si el nombre o la dirección no coinciden, desplázate hasta “Sugerir una corrección”.",
+          "visual": "Perfil en São Paulo, SP, con ilustración estándar, nombre, marca VIBRA, dirección y acciones de ruta y precios."
+        },
+        "tu23-s2": {
+          "title": "Consultar análisis de calidad",
+          "instruction": "Toca “Consultar análisis de calidad” para ver los resultados de las recolecciones de la ANP por combustible para esa estación.",
+          "expected": "“Calidad del combustible” avisa que los resultados de la ANP no garantizan la calidad actual. Si faltan datos oficiales para la revisión, lo indica.",
+          "recovery": "Revisa la fecha de cada recolección. Un resultado aislado no clasifica toda la estación.",
+          "visual": "Calidad del combustible con el aviso, los botones de combustible y el mensaje de que no hay datos oficiales para esta revisión."
+        },
+        "tu23-s3": {
+          "title": "Experiencia de los conductores",
+          "instruction": "La sección de experiencia de los conductores reúne valoraciones y comentarios de la estación. En la versión documentada aparece un aviso de verificación.",
+          "expected": "En la versión mostrada, las valoraciones y los comentarios figuran como próximos.",
+          "recovery": "La fuente y la fecha de cada precio siguen disponibles en el perfil.",
+          "visual": "Aviso de verificación de la experiencia y tarjeta que pregunta si administras la estación, con opción para saber cómo funciona."
+        },
+        "tu23-s4": {
+          "title": "Sugerir una corrección",
+          "instruction": "Toca “Sugerir una corrección” y elige el nombre, “Calle y número” o “Informar de un cierre definitivo”.",
+          "expected": "El formulario avisa que revisarán la sugerencia antes de modificar el mapa. En la captura está en blanco. No se envió nada.",
+          "recovery": "“Cancelar” cierra el formulario sin enviar.",
+          "visual": "Formulario vacío con nombre, calle y número, cierre definitivo y botones para cancelar y enviar."
+        },
+        "tu23-s5": {
+          "title": "Entender cómo funciona",
+          "instruction": "En la tarjeta que pregunta si administras la estación, toca la opción para saber más. Se abre la guía para representar a tu empresa.",
+          "expected": "La guía explica los pasos y avisa que la gestión todavía no está disponible en beta. El texto no envía solicitudes ni recopila documentos.",
+          "recovery": "La representación es independiente de los precios y de las valoraciones comunitarias.",
+          "visual": "Guía para representar a la empresa con los pasos y el aviso de disponibilidad en beta."
+        }
+      }
+    },
+    "TU26": {
+      "slug": "vehiculos-y-estimacion-del-tanque",
+      "title": "Vehículos y estimación del tanque",
+      "description": "Registra vehículos en Abastevo, elige combustible y referencia de precio, activa alertas, estima el costo del tanque y registra tus cargas.",
+      "summary": "8 pasos sobre registro de vehículos, costo del tanque, alerta de precio y registros.",
+      "related": {
+        "/ferramentas/encher-o-tanque/": "Calculadora del costo de llenar el tanque",
+        "/ferramentas/consumo-medio/": "Calculadora de consumo promedio",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu26-s1": {
+          "title": "Agregar vehículo",
+          "instruction": "Abre “Vehículos” desde el acceso al final del inicio o “Mis vehículos” en “Perfil”. Toca “+” para agregar uno.",
+          "expected": "Se abre “Agregar vehículo”. Puedes registrar hasta 3 vehículos.",
+          "recovery": "Los vehículos se guardan en el dispositivo. Puedes hacerlo sin cuenta.",
+          "visual": "Pantalla de Vehículos vacía con la indicación de hasta 3 vehículos y el botón para agregar."
+        },
+        "tu26-s2": {
+          "title": "Capacidad del tanque (litros)",
+          "instruction": "Completa “Nombre del vehículo”, elige “Propulsión” e introduce “Capacidad del tanque (litros)”.",
+          "expected": "El ejemplo usa Mi auto, “Combustión (ICE)” y 50 litros.",
+          "recovery": "Busca la capacidad en el manual del vehículo y escríbela en litros.",
+          "visual": "Formulario con Mi auto, “Combustión (ICE)” y capacidad de 50 litros."
+        },
+        "tu26-s3": {
+          "title": "Avisar cuando baje el precio",
+          "instruction": "Elige el tipo de combustible y la “Referencia de precio”, “Estación más barata” o “Estación específica”. Activa “Avisar cuando baje el precio” si quieres un aviso.",
+          "expected": "La app puede mostrar una notificación local tras la importación semanal si baja el precio seguido.",
+          "recovery": "Sincroniza los datos semanales para que la app pueda comprobar si bajó el precio.",
+          "visual": "Formulario con gasolina regular, “Estación más barata” y alerta de baja de precio activada."
+        },
+        "tu26-s4": {
+          "title": "Vehículo guardado",
+          "instruction": "Guarda el formulario. La lista muestra vehículo, combustible, capacidad y referencia de precio.",
+          "expected": "El ejemplo es Mi auto, gasolina regular (50 L) y “Estación más barata”. El icono de lista abre sus “Registros”.",
+          "recovery": "El icono de papelera elimina el vehículo tras una confirmación.",
+          "visual": "Mi auto en Vehículos con gasolina regular, tanque de 50 L, referencia de estación más barata e iconos de registros y eliminación."
+        },
+        "tu26-s5": {
+          "title": "Costo de llenar el tanque",
+          "instruction": "En el inicio, “Costo de llenar el tanque” multiplica la capacidad por el precio de referencia de la estación elegida.",
+          "expected": "El ejemplo es R$ 312,50 para 50 L, con referencia ANP del 8 al 14 de noviembre de 2026. La opción de ir a la estación abre la ruta.",
+          "recovery": "La estimación corresponde al tanque completo. Lo que pagas depende de cuánto falte y del precio en el surtidor.",
+          "visual": "Inicio en Sorriso, MT, con R$ 312,50 para Mi auto (50 L), la estación de referencia y el botón para ir."
+        },
+        "tu26-s6": {
+          "title": "Carga",
+          "instruction": "Desde la lista de vehículos, toca el icono de lista para abrir sus registros. Elige “Carga” o “Gasto” para crear uno nuevo.",
+          "expected": "La pantalla también tiene el campo opcional de eficiencia estimada en km/l y un acceso mensual.",
+          "recovery": "Si no guardaste ningún dato, “Registros” aparece vacío.",
+          "visual": "Mi auto con “Carga”, “Gasto”, eficiencia estimada opcional, acceso mensual y registros vacíos."
+        },
+        "tu26-s7": {
+          "title": "Guardar",
+          "instruction": "En “Nuevo registro”, introduce “Cantidad (L)”, marca “Lleno” o “Parcial” y completa “Total (R$)” y “Odómetro (km)”. Toca “Guardar”.",
+          "expected": "El ejemplo de demostración usa 40 L, tanque lleno, R$ 250,00 y 12.500 km.",
+          "recovery": "“Cancelar” cierra sin guardar. El precio por litro es opcional.",
+          "visual": "Carga de ejemplo de 40 L, tanque lleno, R$ 250,00, 12.500 km y botones Cancelar y Guardar."
+        },
+        "tu26-s8": {
+          "title": "Registros",
+          "instruction": "La carga aparece en “Registros” y queda guardada solo en el dispositivo.",
+          "expected": "El ejemplo muestra “R$ 250,00 • 40 L” con el sello “Local”.",
+          "recovery": "Registra siempre el odómetro para poder calcular el consumo entre cargas.",
+          "visual": "Registros del vehículo con una carga de R$ 250,00 y 40 L marcada como Local."
+        }
+      }
+    },
+    "TU28": {
+      "slug": "configuracion",
+      "title": "Ajustes",
+      "description": "Consulta las opciones de idioma, sincronización, semana de encuesta, retención de datos, almacenamiento y cuenta en la app Abastevo.",
+      "summary": "4 pasos sobre sincronización, idioma, retención de datos y almacenamiento.",
+      "related": {
+        "/privacidade/": "Política de privacidad",
+        "/como-usar/semanas-anp/": "Cambiar o descargar una semana",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu28-s1": {
+          "title": "Sincronizar ahora",
+          "instruction": "Abre “Ajustes” desde el acceso de inicio o desde los ajustes de la aplicación en “Perfil”. “Sincronizar ahora” busca los datos más recientes. “Cambiar semana de encuesta” abre la lista.",
+          "expected": "En Preferencias puedes sincronizar detalles en segundo plano, “Descargar automáticamente la semana más reciente”, elegir “Sincronización automática solo con Wi‑Fi” y “Mostrar historial de precios”.",
+          "recovery": "Si activas solo Wi‑Fi, la sincronización automática espera esa conexión.",
+          "visual": "Ajustes con sincronización inmediata, cambio de semana y cuatro preferencias activadas."
+        },
+        "tu28-s2": {
+          "title": "Idioma",
+          "instruction": "En “Idioma”, elige la lengua de la app. En búsqueda y datos, define el radio de “Más barato cerca de mí”: 3, 5, 10 o 15 km.",
+          "expected": "El idioma elegido se aplica a la app. La distancia se usa en la búsqueda de estaciones cercanas.",
+          "recovery": "La app ofrece ocho idiomas. El selector del sitio cambia el idioma del sitio.",
+          "visual": "Cuadrícula con portugués de Brasil, inglés, español, francés, chino, ruso, alemán y japonés, con portugués seleccionado y un radio de 3 km."
+        },
+        "tu28-s3": {
+          "title": "Mantener actualizado el directorio público",
+          "instruction": "En “Retención de datos de estaciones”, elige 4, 8, 12 o 24 semanas. En “Directorio público de la ciudad”, decide si quieres “Mantener actualizado el directorio público”.",
+          "expected": "La copia sin conexión nunca descarga detalles, contribuciones ni ubicación.",
+          "recovery": "“Borrar directorio público” elimina la copia guardada y conserva las semanas descargadas.",
+          "visual": "Ajustes con retención de 12 semanas, actualización del directorio desactivada y opción para borrarlo."
+        },
+        "tu28-s4": {
+          "title": "Cuenta y privacidad",
+          "instruction": "Abajo, “Borrar caché de estaciones” y “Borrar todos los datos importados” liberan espacio. En Cuenta y privacidad, abre Cuenta o Privacidad. El enlace oficial de la ANP lleva a la fuente.",
+          "expected": "Cada opción abre su pantalla correspondiente.",
+          "recovery": "“Borrar todos los datos importados” elimina las semanas descargadas. Sincroniza de nuevo para recuperarlas.",
+          "visual": "Acciones de almacenamiento, Cuenta y Privacidad y una sección de la app con opción de compartir y enlace oficial de la ANP."
+        }
+      }
+    },
+    "TU29": {
+      "slug": "sin-conexion-y-recuperacion",
+      "title": "Mapas sin conexión y recuperación",
+      "description": "Usa Abastevo sin internet. Descarga el mapa regional y las semanas de la ANP, traza la ruta a una estación y navega sin conexión.",
+      "summary": "9 pasos sobre mapas sin conexión, semanas descargadas, rutas y navegación.",
+      "related": {
+        "/como-usar/semanas-anp/": "Cambiar o descargar una semana",
+        "/como-usar/postos/": "Encontrar una estación y navegar hasta ella",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu29-s1": {
+          "title": "Descargar",
+          "instruction": "Abre el mapa de una ciudad sin mapa sin conexión. La app ofrece la descarga de la región, por ejemplo “Descargar el mapa de Mato Grosso (116 MB)”. Toca “Descargar”.",
+          "expected": "La app abre “Descargas” e inicia la descarga.",
+          "recovery": "“Ahora no” cierra la sugerencia. Puedes tocar “Descargar” abajo del mapa más adelante.",
+          "visual": "Mapa de Sorriso, MT, aún sin calles, con sugerencia de 116 MB y botones Ahora no y Descargar."
+        },
+        "tu29-s2": {
+          "title": "Descargas",
+          "instruction": "“Descargas” muestra el progreso total y los paquetes, como “Mapa de la región” y el mapa base mundial.",
+          "expected": "“Solo Wi-Fi” indica que la descarga no usa datos móviles.",
+          "recovery": "De forma predeterminada, necesitas Wi-Fi para descargar.",
+          "visual": "Paquete de Mato Grosso al 46%, 54 MB de 116 MB, con Solo Wi-Fi, mapa de la región y mapa base mundial."
+        },
+        "tu29-s3": {
+          "title": "Buscar actualizaciones",
+          "instruction": "Al terminar, el paquete figura como “Activo”. “Buscar actualizaciones” busca otra versión. “OK” vuelve al mapa.",
+          "expected": "El mapa regional ya funciona sin internet.",
+          "recovery": "El paquete ocupa espacio. Revisa el tamaño antes de descargarlo.",
+          "visual": "Descargas con el paquete de Mato Grosso activo, Solo Wi-Fi y los botones Buscar actualizaciones y OK."
+        },
+        "tu29-s4": {
+          "title": "Mapa sin conexión",
+          "instruction": "Al volver al mapa, las calles y las estaciones aparecen a partir del paquete sin conexión.",
+          "expected": "Los marcadores de las estaciones aparecen sobre las calles.",
+          "recovery": "Descarga las semanas aparte para consultar precios sin internet. El paquete del mapa no incluye los precios de la encuesta.",
+          "visual": "Mapa sin conexión de Sorriso, MT, con calles, barrios, marcadores y botones Filtros y Descargar."
+        },
+        "tu29-s5": {
+          "title": "Descargar una semana",
+          "instruction": "Para usar precios sin internet, abre “Semana de encuesta” y toca “Descargar” en las semanas que quieras guardar.",
+          "expected": "Cuando se guarda, la semana figura como “Descargada”.",
+          "recovery": "Conéctate a internet antes de descargar.",
+          "visual": "Del 8 al 14 de noviembre de 2026 figura como actual y descargada. Del 1 al 7 de noviembre y del 18 al 24 de octubre de 2026 muestran Descargar."
+        },
+        "tu29-s6": {
+          "title": "Descargada",
+          "instruction": "Las semanas marcadas como “Descargada” se pueden consultar sin internet, con promedios, estaciones encuestadas e historial.",
+          "expected": "Las semanas guardadas siguen visibles sin conexión, con su fecha de encuesta.",
+          "recovery": "Si la semana no está descargada, conéctate y toca “Descargar”.",
+          "visual": "Panel con las semanas del 8 al 14 y del 1 al 7 de noviembre de 2026 marcadas como descargadas."
+        },
+        "tu29-s7": {
+          "title": "Iniciar navegación",
+          "instruction": "En la ficha de una estación, “Ruta e ir” traza el camino desde tu ubicación y muestra tiempo y distancia.",
+          "expected": "El ejemplo muestra 8 min · 5,1 km. Edita la ruta para ajustarla o inicia la navegación para recibir indicaciones.",
+          "recovery": "Si falta el punto de partida, concede el permiso de ubicación en los ajustes de Android.",
+          "visual": "Ruta azul en Sorriso, MT, con 8 min · 5,1 km y acciones para iniciar navegación, editar la ruta o ver maniobras."
+        },
+        "tu29-s8": {
+          "title": "Maniobras",
+          "instruction": "Abre “Maniobras” para leer los giros antes de salir.",
+          "expected": "La lista muestra las instrucciones en orden de recorrido.",
+          "recovery": "La X de arriba cierra la vista previa.",
+          "visual": "Vista previa en Sorriso, MT, con la lista de maniobras abierta."
+        },
+        "tu29-s9": {
+          "title": "Detener la navegación",
+          "instruction": "Al iniciar la navegación, el mapa sin conexión te guía giro a giro. Puedes ajustar el zoom, la voz y volver a centrar el mapa.",
+          "expected": "Arriba aparecen la próxima indicación y su distancia. Abajo están el tiempo y la distancia restantes.",
+          "recovery": "Usa el botón para detener la navegación en cualquier momento.",
+          "visual": "Navegación en Sorriso, MT, con próxima indicación a 100 m, controles de zoom, voz, centrado y detención y 8 min · 5,1 km restantes."
+        }
+      }
+    },
+    "TU30": {
+      "slug": "ayuda-y-reglas-de-la-comunidad",
+      "title": "Ayuda y reglas de la comunidad",
+      "description": "Lee las reglas de Abastevo para contribuir con honestidad, validar por consenso, denunciar abusos y proteger la privacidad de las fotos de 24 horas.",
+      "summary": "3 pasos sobre aportes, reglas de la comunidad y denuncias.",
+      "related": {
+        "/termos/": "Términos de uso y moderación",
+        "/politica-editorial/": "Política editorial",
+        "/como-usar/": "Todos los tutoriales",
+        "/guias/": "Guías educativas"
+      },
+      "steps": {
+        "tu30-s1": {
+          "title": "Aporta con honestidad",
+          "instruction": "En la bienvenida, “Aporta con honestidad” resume las reglas de contribución.",
+          "expected": "Fotografía carteles de precio solo desde lugares públicos seguros, mantén los valores legibles, elige la condición exacta y nunca inventes precios ni personas.",
+          "recovery": "El botón de volver te lleva a la pantalla anterior de bienvenida.",
+          "visual": "Pantalla de bienvenida con reglas de contribución y botones de volver y avanzar."
+        },
+        "tu30-s2": {
+          "title": "Reglas de la comunidad",
+          "instruction": "Después, abre “Ayuda y reglas de la comunidad” en “Perfil”. Verás “Aporta correctamente”, “Reglas de la comunidad” y “Denunciar y apelar”.",
+          "expected": "Los precios se validan por consenso. Los datos fechados de la ANP se mantienen separados de los aportes en vivo. Pagar nunca compra confianza, clasificación ni posición.",
+          "recovery": "Lee los Términos de uso y moderación de este sitio para conocer las reglas completas.",
+          "visual": "Ayuda y reglas de la comunidad con las tarjetas de aportes, reglas y denuncias y apelaciones."
+        },
+        "tu30-s3": {
+          "title": "Denunciar y apelar",
+          "instruction": "“Denunciar y apelar” explica cómo solicitar una revisión de contenido.",
+          "expected": "Cualquier cuenta activa puede denunciar abusos. Las denuncias no eliminan contenido por sí solas. Moderación revisa cada caso.",
+          "recovery": "Si no estás de acuerdo con una decisión, presenta otra denuncia con un nuevo motivo para que se revise como un nuevo caso.",
+          "visual": "Tarjeta de Denunciar y apelar destacada debajo de Aporta correctamente y Reglas de la comunidad."
+        }
+      }
+    }
+  }
+}

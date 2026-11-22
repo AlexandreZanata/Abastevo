@@ -193,8 +193,7 @@ SP, for the week of November 8 to 14, 2026, and the ANP reference of one
 station, collected on November 10, 2026.
 
 The full walkthrough is in the tutorial
-[Understand the prices of a station](/como-usar/precos-do-posto/)
-(in Portuguese).
+[Understand the prices of a station](/en/how-to/understand-station-prices/).
 
 ## Sources
 

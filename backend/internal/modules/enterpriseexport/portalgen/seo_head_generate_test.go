@@ -28,8 +28,10 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		}
 		// Forum post pages are articles (B-BR-SEO-08); hubs stay websites.
 		ogType := "website"
-		if strings.HasPrefix(path, "forum/") && strings.Count(path, "/") == 3 {
-			ogType = "article"
+		for _, forum := range []string{"forum/", "en/forum/", "es/foro/"} {
+			if post, ok := strings.CutPrefix(path, forum); ok && strings.Count(post, "/") == 2 {
+				ogType = "article"
+			}
 		}
 		ogLocale := "pt_BR"
 		switch {

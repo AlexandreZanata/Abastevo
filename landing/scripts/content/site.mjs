@@ -6,13 +6,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseFrontMatter, renderMarkdown } from './markdown.mjs';
 import { isPortalRoute, portalRouteLabel, TOOL_FORMS } from './data.mjs';
-import { loadLocales, localeRoute } from './i18n.mjs';
+import { loadLocales, localeRoute, PORTAL_SECTIONS } from './i18n.mjs';
+import { loadTutorials } from './tutorials.mjs';
 
 export class ContentError extends Error {}
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TAG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ROUTE_RE = /^\/(?:[a-z0-9-]+\/)*$/;
+const LEGAL_ROUTES = new Set(['/privacidade/', '/excluir-conta/', '/termos/']);
 export const TITLE_BOUNDS = [25, 65];
 export const DESCRIPTION_BOUNDS = [110, 165];
 // Element ids emitted by the layouts; Markdown headings never reuse them.
@@ -259,7 +261,7 @@ function validateManifest(manifest, errors) {
 
 function resolveRouteLabel(registry, route, locales) {
   const entry = registry.get(route);
-  if (entry) return entry.indexable === false && !entry.stale ? null : entry.title || entry.label || '';
+  if (entry) return entry.indexable === false && !entry.stale && !entry.legal ? null : entry.title || entry.label || '';
   return portalRouteLabel(route, locales);
 }
 
@@ -305,6 +307,7 @@ export function loadSite(root, options = {}) {
       kind: page.guide ? 'html-guide' : 'static',
       source: page.source,
       chrome: page.chrome,
+      legal: LEGAL_ROUTES.has(page.route),
       lastmod: page.lastmod,
       indexable: page.indexable !== false,
       title: page.guide?.title,
@@ -419,7 +422,11 @@ export function loadSite(root, options = {}) {
   const sourceKinds = { guide: ['guide', 'html-guide'], tool: ['tool'], page: ['page'] };
   const pairs = new Set();
   for (const locale of locales) {
-    for (const [dirName, kind] of [['guias', 'guide'], ['ferramentas', 'tool'], ['paginas', 'page']]) {
+    if (locale.enabled) {
+      for (const entry of loadTutorials(root, locale)) add(entry);
+    }
+    for (const [dirName, kind] of [['guias', 'guide'], ['ferramentas', 'tool'], ['paginas', 'page'], ['legais', 'page']]) {
+      const legal = dirName === 'legais';
       for (const { file, expectedSlug } of readMarkdownDir(path.join(translationsDir, locale.code, dirName))) {
         const where = path.relative(root, file);
         let parsed;
@@ -457,9 +464,12 @@ export function loadSite(root, options = {}) {
             problems.push(`${where}: translationOf must be a pt-BR route`);
           } else if (!source || source.locale) {
             problems.push(`${where}: translationOf ${data.translationOf} is not an existing pt-BR page`);
-          } else if (!sourceKinds[kind].includes(source.kind)) {
+          } else if (legal ? !source.legal : !sourceKinds[kind].includes(source.kind)) {
             problems.push(`${where}: translationOf ${data.translationOf} is not a ${kind === 'guide' ? 'guide' : kind}`);
           }
+        }
+        if (legal && source?.legal && data.slug !== locale.segments[source.route.slice(1, -1)]) {
+          problems.push(`${where}: legal slug must match the locale registry`);
         }
         if (problems.length > 0) {
           errors.push(...problems);
@@ -479,6 +489,7 @@ export function loadSite(root, options = {}) {
           kind,
           locale: locale.code,
           translationOf: data.translationOf,
+          legal,
           sourceDate,
           sourceRevision: data.sourceRevision,
           stale: sourceDate > data.sourceRevision,
@@ -498,7 +509,7 @@ export function loadSite(root, options = {}) {
           sources: extractSources(parsed.body),
           formSlug: kind === 'tool' ? source.slug : undefined,
           where,
-          indexable: !(sourceDate > data.sourceRevision),
+          indexable: !legal && !(sourceDate > data.sourceRevision),
           chrome: 'locale',
         });
       }
@@ -624,6 +635,13 @@ export function loadSite(root, options = {}) {
         languageName: loc.messages.languageName,
       }));
     const exact = new Map(hreflangMembers(route).map((member) => [member.code, member]));
+    if (entry.legal) {
+      const source = entry.translationOf || entry.route;
+      return activeHomes.map((home) => {
+        const target = home.code === defaultLocale.code ? source : localizedRoute(source, home.code);
+        return target === source && home.code !== defaultLocale.code ? home : { ...home, route: target };
+      });
+    }
     if (entry.locale && entry.stale && entry.translationOf && registry.get(entry.translationOf)?.indexable) {
       exact.set(defaultLocale.code, { ...activeHomes[0], route: entry.translationOf });
     }
@@ -636,7 +654,12 @@ export function loadSite(root, options = {}) {
   for (const entry of registry.values()) {
     if (entry.locale && entry.translationOf) translationRoutes.set(`${entry.locale}|${entry.translationOf}`, entry.route);
   }
-  const localizedRoute = (route, localeCode) => translationRoutes.get(`${localeCode}|${route}`) || route;
+  const portalHubKinds = new Map(Object.entries(PORTAL_SECTIONS).map(([kind, segment]) => [`/${segment}/`, kind]));
+  const localizedRoute = (route, localeCode) => {
+    const kind = portalHubKinds.get(route);
+    const locale = localeByCode.get(localeCode);
+    return translationRoutes.get(`${localeCode}|${route}`) || (kind && locale?.enabled ? localeRoute(locale, kind) : route);
+  };
 
   // SEO-20 keyword map: one URL per query, compared without case or accents,
   // scoped by locale so translations in different languages never collide.

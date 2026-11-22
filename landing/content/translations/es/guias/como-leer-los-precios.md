@@ -142,7 +142,5 @@ ANP. La del paso 3 muestra la referencia de la ANP con recolección del
 10 de noviembre de 2026.
 
 El paso a paso completo está en los tutoriales
-[Entender los precios de una estación](/como-usar/precos-do-posto/)
-(en portugués) y
-[Encontrar una estación y navegar hasta ella](/como-usar/postos/)
-(en portugués).
+[Entender los precios de una estación](/es/como-usar/entender-los-precios-de-una-estacion/) y
+[Encontrar una estación y navegar hasta ella](/es/como-usar/encontrar-una-estacion-y-navegar/).

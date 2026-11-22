@@ -181,12 +181,10 @@ func TestGenerateFixturePages(t *testing.T) {
 	if searchRelease == "fixture" {
 		t.Fatal("search shards must not reuse the immutable snapshot URL")
 	}
-	// 34 page/asset/download files (including the gasolina-comum and etanol
-	// hubs, their three fuel by state pages and one fuel by city page) + 15
-	// search index files: 10 prefix shards (7 name terms, 3 CNPJ prefixes), 2
-	// cities, 2 fuels and indice.json.
-	if result.Pages != 50 || result.Files != 75 {
-		t.Fatalf("result = %+v, want 24 pages and 49 files", result)
+	// The full portal adds 18 translated search, station and unavailable
+	// enforcement pages. The 15 versioned search files remain shared.
+	if result.Pages != 68 || result.Files != 93 {
+		t.Fatalf("result = %+v, want 68 pages and 93 files", result)
 	}
 	for _, page := range []string{
 		"consultar/index.html", "precos/index.html", "precos/sp/index.html",
@@ -361,7 +359,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.InputContentSHA256 != "sha256:fixture" || manifest.Pages != result.Pages ||
-		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 74 {
+		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != result.Files-1 {
 		t.Errorf("portal manifest = %+v", manifest)
 	}
 }
@@ -754,10 +752,10 @@ func TestOfficialRecordsPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 63 page/asset/download files + 16 search index files (the 15 above
-	// plus fiscalizacao.json).
-	if result.Pages != 53 || result.Files != 79 {
-		t.Fatalf("result = %+v, want 53 pages and 79 files", result)
+	// The localized station, search and enforcement routes add 24 pages.
+	// There are 16 shared search index files, including fiscalizacao.json.
+	if result.Pages != 77 || result.Files != 103 {
+		t.Fatalf("result = %+v, want 77 pages and 103 files", result)
 	}
 	index := readPortal(t, out, "fiscalizacao/index.html")
 	indexLower := strings.ToLower(index)
