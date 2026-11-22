@@ -1129,6 +1129,7 @@ a.store-pill {
 .landing-home .topnav a, .landing-home .topbar-link { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0 0.875rem; border-radius: 999px; color: #ffffff; font-family: var(--display); font-size: 0.9375rem; font-weight: 600; text-decoration: none; }
 .landing-home .topnav a:hover, .landing-home .topbar-link:hover { background: #262626; }
 .landing-home .topbar-link svg { display: block; width: 18px; height: 18px; }
+.landing-home .topbar-github-mark { filter: invert(1); }
 .landing-home .topbar-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .landing-home .pill-light { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 1rem; border-radius: 999px; background: #ffffff; color: #000000; font-family: var(--display); font-size: 0.9375rem; font-weight: 700; text-decoration: none; }
 .landing-home .pill-light:hover { background: #e2e2e2; }
@@ -1143,6 +1144,10 @@ a.store-pill {
 @media (min-width: 64rem) {
   .landing-home .topnav { display: flex; }
   .landing-home .nav-toggle { display: none; }
+}
+@media (min-width: 64rem) and (max-width: 71.999rem) {
+  html:lang(en) .landing-home .topnav, html:lang(es) .landing-home .topnav { display: none; }
+  html:lang(en) .landing-home .nav-toggle, html:lang(es) .landing-home .nav-toggle { display: block; }
 }
 @media (max-width: 39.999rem) { .landing-home .hide-sm { display: none !important; } }
 
@@ -1583,6 +1588,8 @@ a.store-pill {
 
 /* Top bar between 64rem and 72rem: labels stay on one line. */
 .landing-home .topnav a, .landing-home .topbar-link, .landing-home .pill-light { white-space: nowrap; }
+html:is(:lang(en), :lang(es)) .landing-home .topbar-inner { gap: 0.75rem; }
+html:is(:lang(en), :lang(es)) .landing-home .topnav a { padding-inline: 0.5rem; white-space: normal; line-height: 1.2; }
 @media (min-width: 64rem) and (max-width: 71.999rem) {
   .landing-home .topbar-inner { gap: 1rem; }
   .landing-home .topnav a { padding-inline: 0.5rem; }

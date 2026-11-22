@@ -188,6 +188,44 @@ test('multilingual build: locales disabled leave the pt-BR output unchanged', ()
   }
 });
 
+test('localized guide navigation restores the Portuguese navigation groups and category trail', () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-i18n-navigation-'));
+  try {
+    buildFixture(outDir);
+    const englishHub = read(outDir, 'en/guides/index.html');
+    const spanishHub = read(outDir, 'es/guias/index.html');
+    assert.match(englishHub, /<nav class="category-nav"[^>]*>[\s\S]*?href="\/en\/guides\/choosing-fuel\//);
+    assert.match(spanishHub, /<nav class="category-nav"[^>]*>[\s\S]*?href="\/es\/guias\/elegir-combustible\//);
+    const englishCategory = read(outDir, 'en/guides/choosing-fuel/index.html');
+    assert.match(englishCategory, /href="\/en\/guides\/ethanol-or-gasoline\//);
+    assert.deepEqual(hreflangs(englishCategory).filter((link) => link.hreflang !== 'x-default'), [
+      { hreflang: 'pt-BR', route: '/guias/escolher-combustivel/' },
+      { hreflang: 'en', route: '/en/guides/choosing-fuel/' },
+      { hreflang: 'es', route: '/es/guias/elegir-combustible/' },
+    ]);
+    assert.ok(!fs.existsSync(path.join(outDir, 'es/guias/precios-e-impuestos/index.html')), 'a stale-only category is not published');
+    const guide = read(outDir, 'en/guides/ethanol-or-gasoline/index.html');
+    const breadcrumb = guide.match(/<nav class="breadcrumb-nav"[\s\S]*?<\/nav>/)?.[0];
+    assert.match(breadcrumb, /href="\/en\/"[\s\S]*?href="\/en\/guides\/"[\s\S]*?href="\/en\/guides\/choosing-fuel\//);
+    const header = guide.match(/<header class="topbar">[\s\S]*?<\/header>/)?.[0];
+    assert.match(header, /href="\/en\/#aplicativo"/);
+    assert.match(header, /href="\/como-usar\/" hreflang="pt-BR"/);
+    assert.match(header, /class="pill-light hide-sm" href="\/consultar\/" hreflang="pt-BR"/);
+    const footer = guide.match(/<footer class="footer">[\s\S]*?<\/footer>/)?.[0];
+    assert.equal((footer.match(/<nav aria-label=/g) || []).length, 5);
+    assert.match(footer, /href="\/en\/fuel-prices\/sp\//);
+    assert.match(footer, /href="\/contribuidores\/" hreflang="pt-BR"/);
+    assert.match(footer, /href="\/excluir-conta\/" hreflang="pt-BR"/);
+    assert.match(footer, /class="footer-legal"/);
+    const calculatorHub = read(outDir, 'en/tools/index.html');
+    const related = calculatorHub.match(/<h2 id="guias-relacionados">[\s\S]*?<\/ul>/)?.[0];
+    assert.match(related, /href="\/en\/guides\/ethanol-or-gasoline\/"/);
+    assert.match(related, /href="\/guias\/como-economizar-combustivel\/" hreflang="pt-BR"/);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 test('multilingual check: broken hreflang and lang fail the dist check', () => {
   const outDir = path.join(os.tmpdir(), 'abastevo-i18n-check-' + Math.random().toString(36).slice(2, 8));
   const cases = [
@@ -211,6 +249,13 @@ test('multilingual check: broken hreflang and lang fail the dist check', () => {
         fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/<html lang="en">/, '<html lang="pt-BR">'));
       },
       /html lang pt-BR does not match \/en/,
+    ],
+    [
+      (dir) => {
+        const file = path.join(dir, 'en/index.html');
+        fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('id="aplicativo"', 'id="app-unavailable"'));
+      },
+      /links to a missing home anchor \/en\/#aplicativo/,
     ],
     [
       (dir) => {
@@ -246,7 +291,13 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
     en: {
       prefix: '/en',
       portal: ['/en/fuel-prices/', '/en/methodology/', '/en/data/'],
-      guias: ['guides', ['anp-weekly-price-survey', 'diesel-s10-or-s500', 'ethanol-or-gasoline', 'how-gasoline-prices-are-formed', 'how-to-read-fuel-prices', 'icms-fuel-tax-explained']],
+      guias: ['guides', [
+        'anp-weekly-price-survey', 'diesel-s10-or-s500', 'ethanol-or-gasoline', 'fuel-station-consumer-rights',
+        'how-gasoline-prices-are-formed', 'how-to-read-fuel-prices', 'icms-fuel-tax-explained', 'is-cng-worth-it',
+        'measure-fuel-economy', 'recognize-and-report-adulterated-fuel', 'regular-or-additive-gasoline', 'save-fuel',
+        'why-fuel-prices-vary-by-city',
+      ]],
+      categories: ['prices-and-taxes', 'choosing-fuel', 'fuel-economy', 'rights-and-quality', 'data-and-transparency'],
       ferramentas: ['tools', ['cost-per-km-calculator', 'ethanol-or-gasoline-calculator', 'fill-up-cost-calculator', 'fuel-consumption-calculator', 'trip-fuel-cost-calculator']],
       paginas: ['', ['about', 'editorial-policy']],
       disclosure: 'This English version was translated and reviewed with AI against the Portuguese original, which prevails.',
@@ -254,7 +305,13 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
     es: {
       prefix: '/es',
       portal: ['/es/precios/', '/es/metodologia/', '/es/datos/'],
-      guias: ['guias', ['como-leer-los-precios', 'como-se-forma-el-precio-de-la-gasolina', 'diesel-s10-o-s500', 'encuesta-semanal-anp', 'etanol-o-gasolina', 'icms-sobre-combustibles']],
+      guias: ['guias', [
+        'ahorrar-combustible', 'calcular-consumo-medio', 'como-leer-los-precios', 'como-se-forma-el-precio-de-la-gasolina',
+        'conviene-el-gnv', 'derechos-del-consumidor-en-la-estacion', 'diesel-s10-o-s500', 'encuesta-semanal-anp',
+        'etanol-o-gasolina', 'gasolina-regular-o-con-aditivos', 'icms-sobre-combustibles',
+        'identificar-y-denunciar-combustible-adulterado', 'por-que-varian-los-precios-entre-ciudades',
+      ]],
+      categories: ['precios-e-impuestos', 'elegir-combustible', 'ahorro-de-combustible', 'derechos-y-calidad', 'datos-y-transparencia'],
       ferramentas: ['herramientas', ['calculadora-consumo-medio', 'calculadora-costo-de-viaje', 'calculadora-costo-por-km', 'calculadora-etanol-o-gasolina', 'calculadora-llenar-el-tanque']],
       paginas: ['', ['politica-editorial', 'sobre']],
       disclosure: 'Esta versión en español fue traducida y revisada con IA a partir del original en portugués, que prevalece.',
@@ -270,6 +327,9 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
       const dictionary = JSON.parse(read(root, `content/i18n/${code}.json`));
       assert.ok(reviewers.includes(dictionary._review.reviewedBy), `${code} dictionary records a registered reviewer`);
       routes.push([code, `${locale.prefix}/`]);
+      for (const slug of locale.categories) {
+        routes.push([code, `${locale.prefix}/${locale.guias[0]}/${slug}/`]);
+      }
       for (const dir of ['guias', 'ferramentas', 'paginas']) {
         const [segment, slugs] = locale[dir];
         const files = fs.readdirSync(path.join(root, 'content', 'translations', code, dir)).sort();
@@ -318,6 +378,13 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
       for (const hub of [locale.portal[0], locale.portal[1], `${locale.portal[0]}pr/`]) {
         assert.ok(main.includes(`href="${hub}"`), `${code} home links to ${hub}`);
       }
+      const guideHub = read(outDir, `${code}/${locale.guias[0]}/index.html`);
+      const categoryNav = guideHub.match(/<nav class="category-nav"[\s\S]*?<\/nav>/)?.[0];
+      assert.deepEqual(
+        [...categoryNav.matchAll(/href="([^"]+)"/g)].map((match) => match[1]),
+        locale.categories.map((slug) => `${locale.prefix}/${locale.guias[0]}/${slug}/`),
+        `${code} guides link every localized category`,
+      );
       for (const [pageCode, route] of routes.filter(([pageCode]) => pageCode === code)) {
         const html = read(outDir, `${route.slice(1)}index.html`);
         assert.doesNotMatch(html, /href="\/(?:precos|metodologia|dados)\//, `${pageCode} ${route} uses the same-locale portal`);
@@ -506,7 +573,8 @@ Fixture body.
     assert.ok(esGuide.includes('Por <a href="/sobre/" hreflang="pt-BR">Equipo abastevo</a>'), 'es byline falls back to the Portuguese about page');
     assert.ok(esGuide.includes('<a href="/politica-editorial/" hreflang="pt-BR">política editorial</a>'), 'es editorial line falls back to the Portuguese policy');
     const esFooter = esGuide.match(/<footer\b[\s\S]*?<\/footer>/)[0];
-    assert.ok(!esFooter.includes('/sobre/') && !esFooter.includes('politica-editorial'), 'es footer lists no about or policy link without a translation');
+    assert.match(esFooter, /<a href="\/sobre\/" hreflang="pt-BR">Sobre abastevo \(en portugués\)<\/a>/);
+    assert.match(esFooter, /<a href="\/politica-editorial\/" hreflang="pt-BR">Política editorial \(en portugués\)<\/a>/);
 
     // The Portuguese pages are unchanged.
     const ptGuide = read(outDir, 'guias/icms-sobre-combustiveis/index.html');

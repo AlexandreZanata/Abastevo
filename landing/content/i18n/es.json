@@ -5,13 +5,152 @@
     "reviewedAt": "2026-11-22"
   },
   "home": {
-    "title": "Precios de gasolina (nafta) y diésel en Brasil por estado",
+    "title": "Precios de combustibles en Brasil por estado y ciudad",
     "description": "Consulta precios de gasolina (nafta), etanol y diésel (gasoil) en Brasil por estado y ciudad, con fuente y fecha: encuesta semanal de la ANP y calculadoras.",
     "hero": {
       "kicker": "Código público · Datos de la ANP · Comunidad",
       "title": "Más información para quien vive en la ruta.",
       "lead": "Encuentra precios de combustibles en Brasil, consulta la referencia semanal de la ANP y usa las calculadoras gratuitas.",
-      "artLabel": "Ilustración: el símbolo de abastevo entre rutas, marcadores de mapa y tarjetas de precios"
+      "artLabel": "Ilustración: el símbolo de abastevo entre rutas, marcadores de mapa y tarjetas de precios",
+      "status": {
+        "prelaunch": "En desarrollo · Aún no disponible en Google Play. Puedes consultar sin cuenta ni acceso a tu ubicación.",
+        "published": "Disponible en Google Play. Puedes consultar sin cuenta ni acceso a tu ubicación."
+      }
+    },
+    "search": {
+      "label": "Consultar precios",
+      "state": "Estado",
+      "statePrompt": "Elige un estado",
+      "query": "Estación de servicio, CNPJ o marca",
+      "portugueseResults": "Los resultados de la búsqueda están en portugués.",
+      "app": "Conoce la aplicación"
+    },
+    "explore": {
+      "title": "Explora lo que puedes hacer",
+      "consult": {
+        "title": "Consultar (en portugués)",
+        "body": "Precios por ciudad, con fuente y fecha."
+      },
+      "source": {
+        "title": "Comprueba la fuente",
+        "body": "Los aportes de la comunidad y los datos de la ANP siempre se muestran por separado."
+      },
+      "contribute": {
+        "title": "Contribuir",
+        "body": "Foto del precio en el surtidor (función prevista)."
+      },
+      "enforcement": {
+        "title": "Fiscalización (en portugués)",
+        "body": "Multas oficiales publicadas por la ANP."
+      }
+    },
+    "persona": {
+      "title": "Para quienes cargan combustible cada semana",
+      "intro": "Para quienes necesitan datos claros y reales sobre el abastecimiento de combustible.",
+      "driver": {
+        "title": "Conductor particular",
+        "body": "Si cargas combustible con frecuencia, compara los datos con su fuente y fecha."
+      },
+      "rideshare": {
+        "title": "Conductor de aplicaciones de transporte",
+        "body": "Si recorres muchos kilómetros, calcula cuánto cuesta llenar el tanque."
+      },
+      "fleet": {
+        "title": "Responsable de una flota pequeña",
+        "body": "Organiza los gastos de combustible de unos pocos vehículos."
+      },
+      "tutorial": "Mira cómo usar la aplicación (en portugués)",
+      "guides": "Lee las guías"
+    },
+    "data": {
+      "title": "Datos abiertos en tu navegador",
+      "intro": "Consulta estaciones de servicio, precios y registros oficiales de la ANP en páginas públicas y gratuitas, sin crear una cuenta ni instalar nada. Cada cifra indica su período, fuente y muestra.",
+      "search": {
+        "title": "Busca estaciones de servicio y precios (en portugués)",
+        "body": "Busca por estado, municipio, nombre o CNPJ. Los resultados indican la fecha de recolección."
+      },
+      "enforcement": {
+        "title": "Fiscalización oficial (en portugués)",
+        "body": "Multas publicadas por la ANP, con su fuente y una explicación de los límites de los datos."
+      },
+      "methodology": {
+        "title": "Metodología",
+        "body": "De dónde salen los datos, cómo se actualizan y cuáles son sus límites."
+      },
+      "consult": "Consulta los datos (en portugués)",
+      "seeMethodology": "Consulta la metodología"
+    },
+    "app": {
+      "title": "Qué puedes hacer con la aplicación",
+      "featuresLabel": "Funciones de la aplicación",
+      "portugueseCaptures": "Mira las capturas reales en el sitio en portugués",
+      "tutorial": "Consulta la guía paso a paso de la aplicación (en portugués)",
+      "android": {
+        "prelaunch": "Sigue las versiones de prueba de Android en GitHub. La aplicación aún no está disponible en Google Play.",
+        "published": "La aplicación de Android está disponible en Google Play."
+      },
+      "play": {
+        "prelaunchTitle": "Próximamente en Google Play",
+        "prelaunchDetail": "En desarrollo",
+        "publishedTitle": "Ver en Google Play",
+        "publishedDetail": "Descargar la aplicación"
+      },
+      "code": {
+        "title": "Código disponible",
+        "body": "La licencia de Abastevo exige atribución visible al proyecto y a su creador. Este sitio no pide registro ni correo electrónico.",
+        "github": "Ver en GitHub",
+        "attribution": "Código con atribución visible",
+        "copyLabel": "Copiar el enlace del repositorio",
+        "copy": "Copiar enlace",
+        "copied": "¡Copiado!"
+      },
+      "features": {
+        "weekly": {
+          "title": "La encuesta semanal de la ANP por combustible.",
+          "body": "Cada tarjeta muestra el promedio semanal de la ciudad, cuántas estaciones se encuestaron y la etiqueta de la fuente."
+        },
+        "community": {
+          "title": "Los aportes de la comunidad y los datos de la ANP se mantienen separados.",
+          "body": "En el perfil de la estación, los aportes de los conductores y la referencia oficial aparecen en tarjetas distintas."
+        },
+        "navigation": {
+          "title": "Cómo llegar a la estación.",
+          "body": "La aplicación calcula una ruta con el tiempo y la distancia. Funciona sin conexión si descargas antes el mapa de la región."
+        },
+        "fill": {
+          "title": "Cuánto cuesta llenar el tanque.",
+          "body": "Si guardas un vehículo, la aplicación estima cuánto cuesta llenar su tanque con el precio de referencia de la semana."
+        },
+        "offline": {
+          "title": "Semanas de encuesta guardadas en tu dispositivo.",
+          "body": "Descarga semanas anteriores de la encuesta para consultarlas sin conexión y comparar períodos."
+        },
+        "forum": {
+          "title": "Foro de la comunidad.",
+          "body": "Publicaciones y conversaciones por categoría, separadas de los datos oficiales."
+        }
+      }
+    },
+    "faq": {
+      "title": "Preguntas frecuentes",
+      "intro": "Respuestas breves sobre precios, fuentes y la aplicación.",
+      "contact": "¿Todavía tienes dudas? Contacta al proyecto",
+      "prices": {
+        "question": "¿Cómo puedo consultar el precio del combustible de una estación?",
+        "answer": "Elige una ciudad y el combustible en la aplicación de abastevo. Cada precio disponible indica si lo informó la comunidad o si lo recolectó la ANP, con la fecha de registro y las condiciones observadas."
+      },
+      "survey": {
+        "question": "¿Qué es la encuesta de precios de la ANP?",
+        "answer": "La Agencia Nacional del Petróleo, Gas Natural y Biocombustibles de Brasil (ANP) publica semanalmente una encuesta de precios de combustibles. Es una referencia histórica de la muestra de esa semana. El precio actual en el surtidor puede ser diferente."
+      },
+      "separate": {
+        "question": "¿En qué se diferencian los precios de la comunidad y los de la ANP?",
+        "answer": "Los conductores y otras personas informan los precios que vieron recientemente en una estación concreta. La ANP realiza una encuesta estadística oficial periódica. Abastevo muestra ambas fuentes por separado e identifica siempre el origen."
+      },
+      "free": {
+        "question": "¿La aplicación será gratuita?",
+        "answer": "Sí. Consultar precios y participar en la comunidad es gratuito. Las funciones o los servicios de pago que puedan incorporarse en el futuro jamás darán más peso ni credibilidad a un precio informado."
+      }
     }
   },
   "languageName": "Español",
@@ -32,19 +171,34 @@
   ],
   "categories": {
     "precos": {
-      "name": "Precios e impuestos"
+      "name": "Precios e impuestos",
+      "slug": "precios-e-impuestos",
+      "description": "Cómo se forma el precio del combustible en Brasil: refinación, impuestos federales, ICMS por litro, mezcla obligatoria, transporte y márgenes.",
+      "intro": "Por qué el litro cuesta lo que cuesta, cuánto corresponde a impuestos y por qué el mismo combustible varía de precio entre ciudades."
     },
     "escolher-combustivel": {
-      "name": "Elegir el combustible"
+      "name": "Elegir el combustible",
+      "slug": "elegir-combustible",
+      "description": "Compara etanol y gasolina (nafta), gasolina regular y con aditivos, diésel S10 y S500, y GNV para elegir según tu vehículo y tu presupuesto.",
+      "intro": "Compara los combustibles según sus especificaciones oficiales y haz la cuenta con los datos de tu propio vehículo."
     },
     "economia": {
-      "name": "Ahorro de combustible"
+      "name": "Ahorro de combustible",
+      "slug": "ahorro-de-combustible",
+      "description": "Conoce formas prácticas de gastar menos combustible, medir el consumo de tu auto entre dos cargas con tanque lleno y calcular el costo por kilómetro.",
+      "intro": "Hábitos que reducen el consumo, cómo medirlo en tu auto y cómo calcular cuánto gastas por kilómetro."
     },
     "direitos-e-qualidade": {
-      "name": "Derechos y calidad"
+      "name": "Derechos y calidad",
+      "slug": "derechos-y-calidad",
+      "description": "Conoce tus derechos en las estaciones de servicio de Brasil, cómo detectar posibles adulteraciones o faltantes y dónde presentar una denuncia.",
+      "intro": "Qué garantiza la ley al cargar combustible, cómo verificar la calidad y la cantidad, y a quién acudir si hay un problema."
     },
     "dados": {
-      "name": "Datos y transparencia"
+      "name": "Datos y transparencia",
+      "slug": "datos-y-transparencia",
+      "description": "Entiende la encuesta semanal de la ANP y lee los precios con fuente, fecha y forma de pago. Distingue los datos oficiales de los de la comunidad.",
+      "intro": "De dónde vienen las cifras de abastevo y qué conclusiones puedes sacar de ellas."
     }
   },
   "chrome": {
@@ -100,7 +254,7 @@
     "browserRequirements": "El cálculo interactivo usa JavaScript; la fórmula y el ejemplo funcionan sin él.",
     "pageUpdated": "Actualizado el {date} · {team}",
     "footerPrices": "Precios por estado",
-    "footerConsult": "Buscar una estación de servicio (en portugués)",
+    "footerConsult": "Buscar una estación",
     "footerEnforcement": "Fiscalización",
     "footerMethodology": "Metodología",
     "footerData": "Datos abiertos",
@@ -112,7 +266,7 @@
     "footerAbout": "Sobre abastevo",
     "footerEditorial": "Política editorial",
     "footerContributors": "Colaboradores",
-    "footerForum": "Foro (en portugués)",
+    "footerForum": "Foro",
     "footerContact": "Contacto",
     "footerPrivacy": "Privacidad",
     "footerDelete": "Eliminar cuenta",
@@ -133,9 +287,15 @@
     "brandHome": "abastevo - inicio",
     "githubLabel": "Ver en GitHub — Código con atribución visible",
     "github": "GitHub",
-    "privacyPortuguese": "Política de privacidad (en portugués)",
+    "footerTrademarks": "Marcas",
     "footerTagline": "Proyecto abierto e independiente, sin afiliación a la ANP ni a ningún gobierno. Los precios de la comunidad y la referencia semanal de la ANP van separados, siempre con fuente y fecha.",
-    "staleNote": "El original en portugués se actualizó el {date}."
+    "staleNote": "El original en portugués se actualizó el {date}.",
+    "categoryTitle": "Guías sobre {category}",
+    "linkInPortuguese": "{label} (en portugués)",
+    "navConsultData": "Buscar estaciones",
+    "navExplore": "Explorar",
+    "navQuestions": "Preguntas",
+    "footerLegal": "Código bajo la licencia Abastevo de atribución visible. Abastevo no está afiliado a la ANP. Datos de precios de la ANP: gov.br/anp. Las marcas y los nombres citados pertenecen a sus titulares. Consultar precios no requiere cuenta ni acceso a tu ubicación. Este sitio no usa cookies ni rastreadores."
   },
   "tools": {
     "common": {

@@ -17,7 +17,7 @@ test('browser tab icons: bare mark for light, monochrome mark for dark, on every
     assert.doesNotMatch(svg, /<rect\b/, 'no background square');
     assert.doesNotMatch(svg, /<style\b|<script\b|href=/, 'no inline style (CSP) or external reference');
     // Cropped to the mark so it renders larger, with a margin so nothing is cut.
-    assert.match(svg, /viewBox="122 107 1020 1020"/);
+    assert.match(svg, /viewBox="148 131 970 970"/);
   }
   // Same geometry, different paint.
   const paths = (svg) => [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join('|');
@@ -33,8 +33,11 @@ test('browser tab icons: bare mark for light, monochrome mark for dark, on every
     build({ projectRoot: root, outDir });
     for (const rel of listHtmlPages(outDir)) {
       const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
-      // Dark first and light last: a browser that ignores `media` keeps the coloured mark.
-      assert.match(html, /<link rel="icon" type="image\/svg\+xml" href="\/assets\/brand\/favicon-dark\.svg" media="\(prefers-color-scheme: dark\)">\s*<link rel="icon" type="image\/svg\+xml" href="\/assets\/brand\/favicon\.svg" media="\(prefers-color-scheme: light\)">/, rel);
+      // Raster fallbacks precede both SVGs. A browser ignoring media keeps the final light variant.
+      assert.match(html, /href="\/favicon\.ico\?v=2">\s*<link rel="icon" type="image\/svg\+xml" sizes="any" href="\/assets\/brand\/favicon-dark\.svg\?v=2" media="\(prefers-color-scheme: dark\)">\s*<link rel="icon" type="image\/svg\+xml" sizes="any" href="\/assets\/brand\/favicon\.svg\?v=2" media="\(prefers-color-scheme: light\)">/, rel);
+    }
+    for (const rel of ['index.html', 'en/index.html', 'es/index.html']) {
+      assert.match(fs.readFileSync(path.join(outDir, rel), 'utf8'), /<title>[^<]*\bAbastevo\b[^<]*<\/title>/, rel);
     }
     assert.ok(fs.existsSync(path.join(outDir, 'assets', 'brand', 'favicon-dark.svg')));
   } finally {

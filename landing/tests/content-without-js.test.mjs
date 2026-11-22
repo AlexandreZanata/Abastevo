@@ -18,7 +18,7 @@ test('essential content and links are present in static HTML without JS', () => 
 
     // 1. Heading and primary identity
     assert.match(indexHtml, /<h1 class="lp-title">Mais informação para quem vive na estrada\.<\/h1>/);
-    assert.match(indexHtml, /<title>abastevo \| Preços de combustíveis com a comunidade<\/title>/);
+    assert.match(indexHtml, /<title>Abastevo \| Preços de combustíveis com a comunidade<\/title>/);
     assert.match(indexHtml, /Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas\./);
 
     // 2. Status line

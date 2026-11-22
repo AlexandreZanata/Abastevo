@@ -13,9 +13,10 @@ translationStatus: reviewed
 reviewedBy: AI review (Claude)
 reviewedAt: 2026-11-21
 related:
+  - /es/guias/calcular-consumo-medio/
+  - /es/guias/conviene-el-gnv/
   - /es/guias/como-se-forma-el-precio-de-la-gasolina/
-  - /es/guias/etanol-o-gasolina/
-  - /es/guias/como-leer-los-precios/
+  - /es/precios/
 ---
 
 ## Cómo funciona el cálculo

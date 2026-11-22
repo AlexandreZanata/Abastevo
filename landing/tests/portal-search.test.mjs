@@ -384,6 +384,72 @@ test('prices explorer ranks one fuel and links each price to its station', async
   assert.match(page.el['[data-prices-status]'].textContent, /maior preço primeiro/);
 });
 
+test('localized explorers use published survey data with translated price controls and result states', async () => {
+  const { setupPortalSearch } = await searchModule();
+  for (const fixture of [
+    { locale: 'en', label: 'Regular gasoline', status: /per liter in Brazil: 2 stations, highest price first/, price: 'R$ 6.99', date: 'Oct 21, 2026', state: 'State', remove: 'Remove filter', empty: /No prices/ },
+    { locale: 'es', label: 'Gasolina regular', status: /por litro en Brasil: 2 estaciones, mayor precio primero/, price: 'R$ 6,99', date: '21/10/2026', state: 'Estado', remove: 'Quitar filtro', empty: /No se encontraron precios/ },
+  ]) {
+    const page = fakePage('[data-portal-prices]', {
+      ...FINDER,
+      '[data-prices-fuel]': 'select',
+      '[data-prices-order]': 'select',
+      '[data-prices-status]': 'p',
+      '[data-prices-table]': 'table',
+      '[data-prices-body]': 'tbody',
+    });
+    const messages = JSON.parse(fs.readFileSync(path.join(root, '../backend/internal/modules/enterpriseexport/portalgen/assets/messages', fixture.locale + '.json'), 'utf8')).messages;
+    page.root.dataset.locale = fixture.locale;
+    page.root.dataset.portalCopy = JSON.stringify(Object.fromEntries(Object.entries(messages)
+      .filter(([key]) => key.startsWith('explorer.'))
+      .map(([key, value]) => [key.split('.')[1], value])));
+    page.el['[data-prices-fuel]'].value = 'GASOLINE_REGULAR';
+    page.el['[data-prices-fuel]'].selectedOptions = { item: () => ({ dataset: { fuelLabel: fixture.label, fuelUnit: messages['unit.L'] } }) };
+    page.el['[data-prices-order]'].value = 'desc';
+    const urls = [];
+    setupPortalSearch({
+      document: page.doc,
+      fetch: jsonFetch({
+        '/dados/busca/rel/indice.json': INDEX,
+        '/dados/busca/rel/precos/GASOLINE_REGULAR.json': {
+          schema: 'abastevo-search-prices-v1', release: 'rel', fuel: 'GASOLINE_REGULAR', label: 'Gasolina comum', unit: 'L', count: 2,
+          rows: [
+            { i: '00000000-0000-4000-8000-000000000001', n: 'Posto Alfa', u: 'SP', mn: 'São Paulo', v: 5490, d: '2026-10-20' },
+            { i: '00000000-0000-4000-8000-000000000002', n: 'Posto Beta', u: 'MT', mn: 'Sorriso', v: 6990, d: '2026-10-21' },
+          ],
+        },
+      }, urls),
+    });
+    const status = page.el['[data-prices-status]'];
+    assert.equal(status.textContent, messages['explorer.loading']);
+    await wait();
+    assert.match(status.textContent, fixture.status);
+    assert.ok(status.textContent.startsWith(fixture.label));
+    assert.doesNotMatch(status.textContent, /Gasolina comum/);
+    const firstRow = page.el['[data-prices-body]'].children[0];
+    assert.equal(firstRow.children[0].children[0].href, '/postos/00000000-0000-4000-8000-000000000002/');
+    assert.equal(firstRow.children[2].textContent, fixture.price);
+    assert.equal(firstRow.children[3].textContent, fixture.date);
+
+    const finder = page.el['[data-finder-input]'];
+    finder.value = 'MT';
+    finder.dispatch('input');
+    await wait(150);
+    const suggestions = page.el['[data-finder-suggestions]'];
+    assert.ok(suggestions.children[0].children[1].textContent.includes(fixture.state));
+    suggestions.children[0].dispatch('mousedown');
+    await wait();
+    assert.match(status.textContent, /Mato Grosso/);
+    assert.equal(page.el['[data-finder-scope]'].children[1].textContent, fixture.remove);
+    finder.value = 'Unmatched';
+    finder.dispatch('keydown', { key: 'Enter' });
+    await wait();
+    assert.match(status.textContent, fixture.empty);
+    assert.equal(page.el['[data-prices-table]'].hidden, true);
+    assert.ok(urls.every((url) => url.startsWith('/dados/busca/rel/')));
+  }
+});
+
 test('search asset is fingerprintable and contains no unsafe HTML injection', async () => {
   const result = build({ projectRoot: root, outDir: path.join(root, '.test-search-dist-' + Date.now()) });
   try {

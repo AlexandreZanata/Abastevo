@@ -111,7 +111,7 @@ in ADR-027 and ADR-028. The editor's name and bio (I18N-D07) remain open.
 | I18N-D01 | Supersede D-SEO-07 and make the public site multilingual | Accepted as ADR-026, and the AGENTS.md conventions line is updated. |
 | I18N-D02 | Wave A locales | `en` and `es`. The Wave B candidates are the app's other locales (`fr`, `de`, then `ja`, `ru`, `zh-CN`), each opened only by the rule in section 9. |
 | I18N-D03 | URL scheme | pt-BR at the root, unchanged. `/en/…` and `/es/…` with translated section names and slugs. City and station names are never translated. |
-| I18N-D04 | Which families are translated | Home, `/sobre/`, `/politica-editorial/`, tools, selected guides, national prices, fuel hubs, states, fuel × state, cities on the closed allowlist, methodology, data and insights. Stations, fuel × city, the ethanol-to-gasoline ratio, enforcement, the forum and search are pt-BR routes. Any informative legal translations require their own approval and stay noindex with Portuguese prevailing. |
+| I18N-D04 | Which families are translated | Home, `/sobre/`, `/politica-editorial/`, tools, editorial guides and guide categories, national prices, fuel hubs, states, fuel × state, cities on the closed allowlist, methodology, data and insights. Stations, fuel × city, the ethanol-to-gasoline ratio, enforcement, the forum and search are pt-BR routes. Any informative legal translations require their own approval and stay noindex with Portuguese prevailing. |
 | I18N-D05 | Translation workflow | An AI draft and a separate review against the source and glossary. The `en` and `es` landing front matter and portal catalog record the reviewer as `AI review (<model>)` and disclose the review to readers (ADR-027 and ADR-028). A fluent human can replace this review. Other locales require a fluent human review. |
 | I18N-D06 | Currency and units on en/es pages | Prices use BRL and the canonical survey unit, normally per litre. The owner deferred foreign-currency and per-gallon displays. An exchange-rate display requires separate scope approval and an admitted source. |
 | I18N-D07 | Author attribution (revisits D-SEO-09) | A named human editor with a bio page, which is stronger E-E-A-T. The fallback is the current "Equipe abastevo" with the editorial policy. |
@@ -171,6 +171,12 @@ Search Console domain or root HTTPS property. Use the `/en/` and `/es/`
 URL-prefix properties for per-locale coverage and performance.
 
 ### 6.4 Localization rules
+
+Public counterpart pages preserve the controls, sections and data the
+Portuguese page offers. Locale layouts use the same data gates for optional
+charts, history, observations and links. Every published Portuguese editorial
+guide has a fresh English and Spanish counterpart. Links to Portuguese-only
+routes label the destination language.
 
 - **Formatting.** Numbers, currency and dates follow the locale registry. Examples for 14 November 2026 are pt-BR `R$ 6,29` and `14/11/2026`, en `R$ 6.29` and `Nov 14, 2026`, and es `R$ 6,29` and `14/11/2026`. Prices stay in BRL per litre for liquid fuels. CNG and LPG retain their survey units (I18N-D06).
 - **Glossary.** A glossary per locale lives in `contracts/i18n/glossary/{locale}.json`, seeded from the app's `values-en` and `values-es` strings so the app and the site use the same terms. Examples:

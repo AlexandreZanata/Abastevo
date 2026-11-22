@@ -5,7 +5,7 @@
   "date": "2026-10-05",
   "derivation": {
     "favicon.ico": {
-      "source": "docs/assets/brand/abastevo-app-icon-1024.png",
+      "source": "landing/static/assets/brand/favicon.svg",
       "resolutions": [
         16,
         32,
@@ -15,7 +15,7 @@
       "purpose": "Legacy browser favicon compatibility and root /favicon.ico fallback"
     },
     "favicon.svg": {
-      "source": "docs/assets/brand/abastevo-app-icon.svg",
+      "source": "docs/assets/brand/abastevo-logo.svg",
       "format": "image/svg+xml",
       "purpose": "Modern browser vector favicon"
     },
@@ -60,18 +60,23 @@
     }
   },
   "browserTabIcons": {
-    "date": "2026-11-17",
+    "date": "2026-11-22",
     "source": "docs/assets/brand/abastevo-logo.svg (paths unchanged)",
     "favicon.svg": {
       "use": "light scheme",
-      "change": "no background square; viewBox cropped to the mark with 3% margin so it renders larger",
-      "sha256": "6a8a4e4bb023502272d5676a26781b7aae101a45f777cb2f214308b3b487362a"
+      "change": "Transparent original-color mark with a square 148 131 970 970 viewBox, using roughly 98.5% of its width without cropping.",
+      "sha256": "8fdc47fb5012d166031fb436f98535197c0e42e113f3d6a78ec44c15d9ff4d4b"
     },
     "favicon-dark.svg": {
       "use": "dark scheme (link media)",
-      "change": "same geometry; blue mapped to white/very light grey and green to light grey; no background",
-      "sha256": "726d74d75d48a9c72b96f34264e8c95b0d162bea7be9dabed019cd067beaaeac"
+      "change": "Same geometry and viewBox; original blue mapped to white and very light gray, and green mapped to gray. Transparent background.",
+      "sha256": "6c3cc01793a0831a85fcb90db4ccf6e8f5b1511ac27142b1ce1a451dabe9a3c4"
     },
-    "note": "favicon.ico, icon-192/512 and apple-touch-icon keep the white square for launchers that need an opaque icon."
+    "note": "The PNG icons keep the white square for launchers that need an opaque icon.",
+    "favicon.ico": {
+      "use": "legacy browser fallback",
+      "change": "Transparent 16, 32 and 48 px renders of favicon.svg with Inkscape, packaged with Pillow as an ICO and copied byte-for-byte to the landing root.",
+      "sha256": "5bbb25727dc52926e54fe67b9f85b21cf5ed1bef206dc8aecb0ff2e5a5ca3ae5"
+    }
   }
 }

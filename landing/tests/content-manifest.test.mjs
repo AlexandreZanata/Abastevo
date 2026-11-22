@@ -51,7 +51,7 @@ test('helpers: date validation and <title> composition', () => {
   assert.ok(isValidDate('2026-11-14'));
   assert.ok(!isValidDate('2026-02-30'));
   assert.ok(!isValidDate('14/11/2026'));
-  assert.equal(htmlTitle('Seus direitos no posto de combustível'), 'Seus direitos no posto de combustível | abastevo');
+  assert.equal(htmlTitle('Seus direitos no posto de combustível'), 'Seus direitos no posto de combustível | Abastevo');
   const long = 'ICMS sobre combustíveis: como funciona o valor por litro';
   assert.equal(htmlTitle(long), long, 'suffix dropped when it would exceed 65 characters');
 });
@@ -91,10 +91,10 @@ test('the shipped content manifest and Markdown sources validate', () => {
   const site = loadSite(root);
   const count = (entries) => entries.reduce((acc, e) => ({ ...acc, [e.kind]: (acc[e.kind] || 0) + 1 }), {});
   const kinds = count([...site.registry.values()].filter((e) => !e.locale));
-  // Each launched locale ships the five calculators, six guides and two pages.
+  // Each launched locale ships the five calculators, thirteen guides and two pages.
   for (const code of ['en', 'es']) {
     const localized = count([...site.registry.values()].filter((e) => e.locale === code && !e.hub));
-    assert.deepEqual(localized, { guide: 6, tool: 5, page: 2 }, `${code} translations`);
+    assert.deepEqual(localized, { guide: 13, tool: 5, page: 2 }, `${code} translations`);
   }
   assert.equal(kinds.tool, 5);
   assert.equal(kinds.page, 2);

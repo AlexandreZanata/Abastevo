@@ -170,29 +170,41 @@ func (g *generator) languageLink(locale portalLocale, route string) languageLink
 }
 
 type localizedTable struct {
+	ID      string
+	Detail  string
 	Title   string
 	Headers []string
 	Rows    [][]localizedCell
 }
 
 type localizedCell struct {
-	Text string
-	Href string
+	Text    string
+	Href    string
+	Details []string
 }
 
-type localizedNote struct{ Title, Body string }
+type localizedNote struct{ ID, Title, Body, Detail, SourceHref string }
 
 type localizedPage struct {
 	pageBase
 	Locale     portalLocale
 	Links      []languageLink
 	Nav        []moduleLink
+	TopNav     []moduleLink
+	Footer     []linkModule
 	Home       string
 	IsPrice    bool
 	ShowPeriod bool
 	NoPrices   bool
+	Insights   bool
 	Tables     []localizedTable
 	Notes      []localizedNote
+	Lead       string
+	Reading    string
+	Rankings   []localizedTable
+	NoRanking  string
+	FAQ        []faqItem
+	Explorer   *localizedExplorer
 }
 
 type localizedPortal struct {
@@ -203,9 +215,10 @@ type localizedPortal struct {
 	coverage             analytics.Coverage
 	observations         []observation
 	municipalityStations map[string]int
+	official             *officialDataset
 }
 
-func (g *generator) writeLocalizations(summaries []analytics.Summary, coverage analytics.Coverage, observations []observation, municipalityStations map[string]int) error {
+func (g *generator) writeLocalizations(summaries []analytics.Summary, coverage analytics.Coverage, observations []observation, municipalityStations map[string]int, official *officialDataset) error {
 	if len(g.localizations) == 0 {
 		return nil
 	}
@@ -213,7 +226,7 @@ func (g *generator) writeLocalizations(summaries []analytics.Summary, coverage a
 	for _, locale := range g.translationLocales() {
 		p := localizedPortal{
 			generator: g, portalLocale: locale, current: current, coverage: coverage,
-			observations: observations, municipalityStations: municipalityStations,
+			observations: observations, municipalityStations: municipalityStations, official: official,
 			routes: make(map[string]string, len(g.localizations)),
 		}
 		for _, source := range g.localizations {
@@ -248,6 +261,8 @@ func (p localizedPortal) write(source localizedSource) error {
 		Description: p.priceDescription("description."+key, fields...),
 		Indexable:   p.indexable && decision, Robots: robotsValue(p.indexable, decision),
 		Route: route, Family: original.Family, Language: p.Code, LastMod: original.LastMod, CSSURL: p.cssURL,
+		PublishedAt: p.publication(), InputHash: original.InputHash,
+		HasLanding: original.HasLanding, Landing: original.Landing,
 	}
 	data := localizedPage{
 		pageBase: base, Locale: p.portalLocale, Links: p.languageGroups[route],
@@ -283,37 +298,61 @@ func (p localizedPortal) write(source localizedSource) error {
 		}
 	}
 	data.appendModule(p.text("section.related"), moduleLink{Label: p.text("search"), Href: "/consultar/"})
+	p.addChrome(&data)
 	var node ldNode
 	switch page := source.data.(type) {
 	case precosPage:
+		data.Lead = p.text("price.sampleWarning")
+		if len(page.SearchFuels) > 0 {
+			data.Explorer = p.explorer(page)
+			data.ScriptURL = original.ScriptURL
+		}
+		data.addRankings(p, page.Rankings, "ranking.emptyNational")
 		data.addTable(p.prices(page.National, "", ""))
+		for _, hub := range page.FuelHubs {
+			link := p.localizedLink(p.fuel(hub.Code), hub.Href)
+			link.Note = p.text("sample.fuelRange", "min", p.money(hub.Min), "max", p.money(hub.Max), "unit", p.unit(hub.Unit))
+			data.appendModule(p.text("section.fuels"), link)
+		}
 		data.NoPrices = len(page.National) == 0
 		p.stateFuelDirectory(&data)
+		for _, state := range page.States {
+			link := p.localizedLink(placeLabel(state.Name, state.Code), state.Href)
+			link.Note = p.text("sample.stateCount", "stations", p.integer(state.Stations), "fuels", p.integer(state.Fuels))
+			data.appendModule(p.text("section.states"), link)
+		}
+		if page.ParityHref != "" {
+			data.appendModule(p.text("section.related"), p.localizedLink(p.text("ratio.link"), page.ParityHref))
+		}
 		p.addDirectory(&data, true)
 	case fuelHubPage:
+		if len(page.National) > 0 {
+			p.addFuelReading(&data, page.National[0], p.text("data.country"), len(page.States), page.Comparison)
+		}
 		data.addTable(p.prices(page.National, "", ""))
 		data.addTable(p.geo("section.states", page.States))
 		data.addTable(p.geo("section.cities", page.Cities))
 		data.addTable(p.priorSurvey(page.National, analytics.LevelNational, "BR"))
 		p.addDirectory(&data, false)
+		if module := p.parityModule(page.Code); len(module.Links) > 0 {
+			data.appendModule(p.text("section.related"), p.localizedLink(p.text("ratio.link"), module.Links[0].Href))
+		}
 	case statePage:
+		data.Lead = p.text("price.stateLead", "place", placeLabel(page.Name, page.UF))
+		data.addRankings(p, page.Rankings, "ranking.emptyState")
+		p.addRatio(&data, page.Parity)
 		data.addTable(p.prices(page.Summaries, page.UF, ""))
 		data.addTable(p.priorSurvey(page.Summaries, analytics.LevelState, page.UF))
-		cities := append(append([]municipalityLink(nil), page.Municipalities...), page.NoDataCities...)
-		for _, city := range cities {
-			data.appendModule(p.text("section.cities"), p.localizedLink(city.Name, city.Href))
-		}
+		p.addMunicipalities(&data, page.Municipalities, page.NoDataCities)
 		data.NoPrices = len(page.Summaries) == 0
 		p.addDirectory(&data, false)
 	case municipalityPage:
-		data.addTable(p.prices(page.Summaries, page.UF, ""))
-		data.addTable(p.priorSurvey(page.Summaries, analytics.LevelMunicipality, page.Code))
-		data.appendModule(p.text("section.states"), p.localizedLink(ufName(page.UF), stateRoute(page.UF)))
-		for _, link := range page.Stations {
-			data.appendModule(p.text("section.stations"), moduleLink{Label: link.Label, Href: link.Href})
-		}
-		data.NoPrices = len(page.Summaries) == 0
+		p.addCity(&data, page)
 	case fuelAreaPage:
+		if len(page.Summary) > 0 {
+			p.addFuelReading(&data, page.Summary[0], ufName(strings.ToUpper(source.area)), 0, page.Comparison)
+		}
+		data.addRankings(p, page.Rankings, "")
 		data.addTable(p.prices(page.Summary, "", ""))
 		data.addTable(p.geo("section.cities", page.Cities))
 		data.addTable(p.history(page.History))
@@ -326,11 +365,7 @@ func (p localizedPortal) write(source localizedSource) error {
 		p.insights(&data)
 		p.addDirectory(&data, true)
 	default: // methodology
-		for _, section := range []string{"source", "sample", "revisions", "privacy"} {
-			data.Notes = append(data.Notes, localizedNote{
-				Title: p.text("methodology." + section + ".title"), Body: p.text("methodology." + section + ".body"),
-			})
-		}
+		p.addMethodology(&data)
 		p.addDirectory(&data, true)
 	}
 	if node == nil && (data.IsPrice || source.kind == "insights") {
@@ -395,7 +430,13 @@ func (page *localizedPage) appendModule(title string, link moduleLink) {
 }
 
 func (p localizedPortal) localizedLink(label, source string) moduleLink {
-	return moduleLink{Label: label, Href: p.routes[source]}
+	if source == "" {
+		return moduleLink{}
+	}
+	if href := p.routes[source]; href != "" {
+		return moduleLink{Label: label, Href: href}
+	}
+	return moduleLink{Label: label, Href: source, Note: p.text("language.portuguese")}
 }
 
 func (p localizedPortal) addDirectory(data *localizedPage, cities bool) {
@@ -421,14 +462,15 @@ func (p localizedPortal) addFuelStateLinks(data *localizedPage, source localized
 		if fuelSlug(hub.Code) == source.fuel {
 			data.appendModule(p.text("section.fuels"), p.localizedLink(p.fuel(hub.Code), hub.Href))
 			for _, other := range sortedKeys(p.statePages) {
-				data.appendModule(p.text("section.states"), p.localizedLink(ufName(other), fuelStateRoute(hub.Code, other)))
+				data.appendModule(p.text("section.states"), p.localizedLink(ufName(other), p.fuelStateHref(hub.Code, other)))
 			}
 		}
-		data.appendModule(p.text("section.fuels"), p.localizedLink(p.fuel(hub.Code), fuelStateRoute(hub.Code, uf)))
+		data.appendModule(p.text("section.fuels"), p.localizedLink(p.fuel(hub.Code), p.fuelStateHref(hub.Code, uf)))
 	}
 }
 
 func (p localizedPortal) downloads(data *localizedPage, page dadosPage) ldNode {
+	data.Lead = p.text("data.lead")
 	labels := map[string]string{
 		"estacoes.csv": "data.stations", "precos.csv": "data.prices",
 		"resumos.csv": "data.summaries", "manifest.json": "data.manifest",
@@ -446,8 +488,11 @@ func (p localizedPortal) downloads(data *localizedPage, page dadosPage) ldNode {
 		})
 		distribution = append(distribution, ldNode{"@type": "DataDownload", "name": label, "encodingFormat": format, "contentUrl": p.absoluteURL(file.Href)})
 	}
+	table.ID = "download-release"
+	table.Detail = p.text("data.release", "release", page.Release, "period", data.Period)
 	data.addTable(table)
 	data.Notes = append(data.Notes, localizedNote{
+		ID:    "notas",
 		Title: p.text("section.notes"),
 		Body:  strings.Join([]string{p.text("price.note"), p.text("methodology.privacy.body"), p.text("data.csv"), p.text("data.license")}, " "),
 	})
@@ -469,9 +514,16 @@ func (p localizedPortal) downloads(data *localizedPage, page dadosPage) ldNode {
 }
 
 func (p localizedPortal) insights(data *localizedPage) {
+	data.Lead = p.text("insights.lead")
+	data.Insights = true
+	method := p.routes["/metodologia/"]
 	if p.latest == nil {
+		data.Notes = append(data.Notes, localizedNote{Title: p.text("insights.coverage.title"),
+			Body: p.text("period.unknown"), SourceHref: method})
+		p.addOfficialInsights(data)
 		return
 	}
+
 	start, end := "", ""
 	for _, observation := range p.observations {
 		date := observation.price.CollectedOn
@@ -480,9 +532,12 @@ func (p localizedPortal) insights(data *localizedPage) {
 		}
 		end = max(end, date)
 	}
-	data.Notes = append(data.Notes, localizedNote{Title: p.text("insights.coverage.title"), Body: p.text("insights.coverage.body",
-		"period", data.Period, "stations", p.integer(p.coverage.StationCount),
-		"included", p.integer(p.coverage.IncludedObservations), "total", p.integer(p.coverage.SourceObservations))})
+	data.Notes = append(data.Notes, localizedNote{
+		Title: p.text("insights.coverage.title"), SourceHref: method, Detail: p.text("insights.coverage.detail"),
+		Body: p.text("insights.coverage.body", "period", data.Period, "stations", p.integer(p.coverage.StationCount),
+			"included", p.integer(p.coverage.IncludedObservations), "total", p.integer(p.coverage.SourceObservations),
+			"unpriced", p.integer(p.coverage.UnpricedStations), "unlocated", p.integer(p.coverage.UnlocatedObservations)),
+	})
 	enough, excluded := 0, 0
 	for _, count := range p.municipalityStations {
 		if count >= minMunicipality {
@@ -493,20 +548,55 @@ func (p localizedPortal) insights(data *localizedPage) {
 		excluded += count
 	}
 	data.Notes = append(data.Notes,
-		localizedNote{Title: p.text("insights.geography.title"), Body: p.text("insights.geography.body",
-			"enough", p.integer(enough), "total", p.integer(len(p.municipalityStations)), "minimum", p.integer(minMunicipality))},
-		localizedNote{Title: p.text("insights.dates.title"), Body: p.text("insights.dates.body",
-			"period", data.Period, "collection", p.portalLocale.period(start, end))},
-		localizedNote{Title: p.text("insights.excluded.title"), Body: p.text("insights.excluded.body", "total", p.integer(excluded))},
+		localizedNote{Title: p.text("insights.geography.title"), SourceHref: method, Detail: p.text("insights.geography.detail"),
+			Body: p.text("insights.geography.body", "enough", p.integer(enough), "total", p.integer(len(p.municipalityStations)),
+				"minimum", p.integer(minMunicipality), "below", p.integer(len(p.municipalityStations)-enough))},
+		localizedNote{Title: p.text("insights.dates.title"), SourceHref: method, Detail: p.text("insights.dates.detail"),
+			Body: p.text("insights.dates.body", "period", data.Period, "collection", p.portalLocale.period(start, end), "published", data.PublishedAt)},
+		localizedNote{Title: p.text("insights.excluded.title"), SourceHref: method, Detail: p.text("insights.excluded.detail"),
+			Body: p.text("insights.excluded.body", "total", p.integer(excluded))},
+		p.gasolineInsight(method, data.Period),
 	)
+	reasons := p.table("insights.excluded.reasons", "reason", "observations")
+	for _, code := range sortedKeys(p.coverage.Excluded) {
+		label := p.catalog.Messages["insights.excluded."+code]
+		if label == "" {
+			label = code
+		}
+		reasons.rows(label, p.integer(p.coverage.Excluded[code]))
+	}
+	data.addTable(reasons)
+
 	table := p.table("insights.fuels.title", "fuel", "unit", "stations")
+	table.Detail = p.text("insights.fuels.detail")
 	for _, fuel := range p.coverage.FuelUnits {
 		table.rows(p.fuel(fuel.Fuel), p.unit(fuel.Unit), p.integer(fuel.Stations))
 	}
 	data.addTable(table)
-	var gasoline []summaryRow
-	if row, ok := p.current[summaryKey{analytics.LevelNational, "BR", "GASOLINE_REGULAR", "L"}]; ok {
-		gasoline = []summaryRow{{Code: row.Fuel, Unit: row.Unit}}
+	p.addOfficialInsights(data)
+	data.Notes = append(data.Notes, localizedNote{Title: p.text("insights.print.title"), Body: p.text("insights.print.body"), SourceHref: p.routes["/dados/"]})
+}
+
+func (p localizedPortal) gasolineInsight(method, period string) localizedNote {
+	note := localizedNote{Title: p.text("insights.gasoline.title"), SourceHref: method,
+		Detail: p.text("insights.gasoline.detail"), Body: p.text("insights.gasoline.empty")}
+	key := summaryKey{analytics.LevelNational, "BR", "GASOLINE_REGULAR", "L"}
+	current, ok := p.current[key]
+	if !ok {
+		return note
 	}
-	data.addTable(p.priorSurvey(gasoline, analytics.LevelNational, "BR"))
+	note.Body = p.text("insights.gasoline.current", "period", period, "stations", p.stationCount(current.StationCount),
+		"min", p.money(current.MinMilliBRL), "max", p.money(current.MaxMilliBRL), "spread", p.money(current.SpreadMilliBRL))
+	if previous, ok := p.previousSummaries[key]; ok {
+		change, err := analytics.CompareSummaries(previous, current)
+		previousPeriod := p.portalLocale.period(previous.SurveyStart, previous.SurveyEnd)
+		switch {
+		case err == nil && change.SampleChanged:
+			note.Body += " " + p.text("insights.gasoline.changed", "period", previousPeriod)
+		case err == nil && change.Comparable:
+			note.Body += " " + p.text("insights.gasoline.comparable", "period", previousPeriod, "min", p.movement(change.ChangeMinMilliBRL),
+				"max", p.movement(change.ChangeMaxMilliBRL), "spread", p.movement(change.ChangeSpreadMilliBRL))
+		}
+	}
+	return note
 }

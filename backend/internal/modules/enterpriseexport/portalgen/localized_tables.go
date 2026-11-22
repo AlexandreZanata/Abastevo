@@ -42,8 +42,8 @@ func (p localizedPortal) prices(rows []summaryRow, uf, title string) localizedTa
 	table := p.table(title, "fuel", "unit", "stations", "observations", "min", "max", "mean", "spread")
 	for _, row := range rows {
 		href := p.routes[row.FuelHref]
-		if area := p.routes[fuelStateRoute(row.Code, uf)]; uf != "" && area != "" {
-			href = area
+		if area := p.fuelStateHref(row.Code, uf); uf != "" && area != "" {
+			href = p.localizedLink("", area).Href
 		}
 		count := p.integer(row.Stations)
 		if row.Insufficient {
@@ -63,15 +63,18 @@ func (p localizedPortal) geo(title string, rows []fuelGeoRow) localizedTable {
 	for _, row := range rows {
 		href := p.routes[row.Href]
 		parts := strings.Split(strings.Trim(row.Href, "/"), "/")
-		if href == "" && len(parts) == 4 { // fuel by city is Portuguese-only
+		if href == "" && len(parts) == 4 {
 			href = p.routes["/precos/"+parts[2]+"/"+parts[3]+"/"]
+		}
+		if href == "" {
+			href = row.Href
 		}
 		count := p.integer(row.Stations)
 		if row.Insufficient {
 			count += " · " + p.text("sample.small")
 		}
 		table.rows(
-			row.Name, count, p.optionalPrice(row.Min, !row.Insufficient),
+			placeLabel(row.Name, row.UF), count, p.optionalPrice(row.Min, !row.Insufficient),
 			p.optionalPrice(row.Max, !row.Insufficient), p.optionalPrice(row.Mean, row.HasMean),
 			p.optionalPrice(row.Spread, !row.Insufficient),
 		)
@@ -152,7 +155,7 @@ func (p localizedPortal) stateFuelDirectory(page *localizedPage) {
 	table := p.table("section.stateFuels", "place", "fuel")
 	for _, uf := range sortedKeys(p.statePages) {
 		for _, hub := range p.orderedFuelHubs() {
-			if href := p.routes[fuelStateRoute(hub.Code, uf)]; href != "" {
+			if href := p.localizedLink("", p.fuelStateHref(hub.Code, uf)).Href; href != "" {
 				table.Rows = append(table.Rows, []localizedCell{
 					{Text: ufName(uf)}, {Text: p.fuel(hub.Code), Href: href},
 				})

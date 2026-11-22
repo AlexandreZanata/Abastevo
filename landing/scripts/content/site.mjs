@@ -25,10 +25,11 @@ export function isValidDate(value) {
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
 
-/** `<title>` text: "{title} | abastevo" when it fits the 65-character bound. */
+/** `<title>` text: "{title} | Abastevo" when it fits the 65-character bound. */
 export function htmlTitle(title) {
-  const full = `${title} | abastevo`;
-  return full.length <= TITLE_BOUNDS[1] ? full : title;
+  const branded = title.replace(/\babastevo\b/g, 'Abastevo');
+  const full = `${branded} | Abastevo`;
+  return full.length <= TITLE_BOUNDS[1] ? full : branded;
 }
 
 export function outputRelFor(route) {
@@ -506,6 +507,36 @@ export function loadSite(root, options = {}) {
 
   // Locale hubs exist only for enabled locales with an emitted entry.
   for (const locale of locales.filter((entry) => entry.enabled && entry.code !== defaultLocale.code)) {
+    const localeGuides = [...registry.values()].filter((entry) => entry.locale === locale.code && entry.kind === 'guide');
+    for (const category of categories) {
+      const members = localeGuides.filter((entry) => entry.category === category.slug && entry.indexable);
+      if (members.length === 0) continue;
+      const copy = locale.messages.categories?.[category.slug];
+      const where = `i18n ${locale.code} category ${category.slug}`;
+      if (typeof copy?.slug !== 'string' || !SLUG_RE.test(copy.slug) || typeof copy.name !== 'string' || !copy.name.trim()) {
+        errors.push(`${where}: missing localized category slug or name`);
+        continue;
+      }
+      const title = locale.messages.chrome.categoryTitle.replace('{category}', () => copy.name.toLocaleLowerCase(locale.code));
+      checkText(errors, where, 'title (as <title>)', htmlTitle(title), TITLE_BOUNDS);
+      checkText(errors, where, 'description', copy.description, DESCRIPTION_BOUNDS);
+      if (typeof copy.intro !== 'string' || !copy.intro.trim()) errors.push(`${where}: missing localized introduction`);
+      add({
+        route: localeRoute(locale, 'guide', copy.slug),
+        kind: 'category',
+        locale: locale.code,
+        translationOf: category.route,
+        hub: true,
+        title,
+        name: copy.name,
+        slug: category.slug,
+        description: copy.description,
+        summary: copy.intro,
+        intro: copy.intro,
+        lastmod: maxDate(members),
+        chrome: 'locale',
+      });
+    }
     for (const [kind, dirName] of [['guide', 'guias'], ['tool', 'ferramentas']]) {
       const entries = [...registry.values()].filter((entry) => entry.locale === locale.code && entry.kind === kind);
       if (entries.length === 0) continue;

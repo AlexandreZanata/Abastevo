@@ -13,9 +13,10 @@ translationStatus: reviewed
 reviewedBy: AI review (Codex)
 reviewedAt: 2026-11-22
 related:
-  - /en/guides/how-to-read-fuel-prices/
-  - /en/guides/anp-weekly-price-survey/
-  - /en/guides/how-gasoline-prices-are-formed/
+  - /en/guides/save-fuel/
+  - /en/guides/measure-fuel-economy/
+  - /en/guides/why-fuel-prices-vary-by-city/
+  - /en/fuel-prices/
 ---
 
 ## How the math works

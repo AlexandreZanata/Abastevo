@@ -53,7 +53,8 @@ test('tutorial hub covers all 30 chapters with journeys and no dead links', () =
           assert.equal(portalRouteLabel(href), 'Fórum abastevo');
           continue;
         }
-        const [pathname, anchor] = href.split('#');
+        const [url, anchor] = href.split('#');
+        const [pathname] = url.split('?');
         const rel = pathname === '/' ? 'index.html' : pathname.slice(1) + (pathname.endsWith('/') ? 'index.html' : '');
         assert.ok(fs.existsSync(path.join(outDir, rel)), `dead internal link ${href}`);
         if (anchor) assert.ok(fs.readFileSync(path.join(outDir, rel), 'utf8').includes(`id="${anchor}"`), `dead home anchor ${href}`);

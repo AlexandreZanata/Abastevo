@@ -67,7 +67,7 @@ function setupCopyHelper(): void {
       try {
         await navigator.clipboard.writeText(textToCopy);
         const originalText = btn.textContent;
-        btn.textContent = 'Copiado!';
+        btn.textContent = btn.dataset['copySuccess'] || 'Copiado!';
         btn.setAttribute('aria-live', 'polite');
         setTimeout(() => {
           btn.textContent = originalText;
@@ -213,6 +213,7 @@ function setupStatePicker(): void {
 
   const options = Array.from(select.options);
   const placeholder = options.find((option) => option.value === '')?.textContent ?? '';
+  const stateLabel = field.querySelector('.sr-only')?.textContent?.trim() || 'Estado';
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'uf-button';
@@ -226,7 +227,7 @@ function setupStatePicker(): void {
   list.tabIndex = -1;
   list.hidden = true;
   list.setAttribute('role', 'listbox');
-  list.setAttribute('aria-label', 'Estado');
+  list.setAttribute('aria-label', stateLabel);
   button.setAttribute('aria-controls', list.id);
 
   const items = options.filter((option) => option.value !== '').map((option, index) => {
@@ -249,7 +250,7 @@ function setupStatePicker(): void {
     const empty = !current || current.value === '';
     label.textContent = empty ? placeholder : current.textContent;
     button.toggleAttribute('data-empty', empty);
-    button.setAttribute('aria-label', empty ? 'Estado: escolha o estado' : `Estado: ${current.textContent}`);
+    button.setAttribute('aria-label', `${stateLabel}: ${empty ? placeholder : current.textContent}`);
     for (const item of items) item.setAttribute('aria-selected', String(item.dataset['uf'] === select.value));
   };
   const setActive = (index: number): void => {

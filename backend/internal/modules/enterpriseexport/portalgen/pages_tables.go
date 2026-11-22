@@ -47,11 +47,12 @@ func rankingViews(rankings []analytics.Ranking, level, code string, stations map
 			rows = append(rows, rankingRow{
 				Position: entry.Position, Name: stationDisplayTitle(station.DisplayName), LegalName: stationLegalName(station), StationID: entry.StationID,
 				CNPJ: cnpjBR(station.CNPJ), Place: stationPlace(station),
-				Status: statusLabel(entry.OperationStatus), Amount: entry.AmountMilliBRL,
-				Collected: dateBR(entry.CollectedOn), TieCount: entry.TieCount,
+				Status: statusLabel(entry.OperationStatus), SourceStatus: entry.OperationStatus, Amount: entry.AmountMilliBRL,
+				Collected: dateBR(entry.CollectedOn), CollectedISO: entry.CollectedOn, TieCount: entry.TieCount,
 			})
 		}
 		view := rankingView{
+			Code:  ranking.Fuel,
 			Title: fuelLabel(ranking.Fuel) + " · " + unitShort(ranking.Unit),
 			Fuel:  fuelLabel(ranking.Fuel), Unit: ranking.Unit,
 			Population: ranking.PopulationStations, Rows: rows,
@@ -106,8 +107,8 @@ func observationRows(items []observation, limit int, ranked bool) []rankingRow {
 		rows = append(rows, rankingRow{
 			Position: position, Name: stationDisplayTitle(item.station.DisplayName), LegalName: stationLegalName(item.station), StationID: item.station.StationID,
 			CNPJ: cnpjBR(item.station.CNPJ), Place: stationPlace(item.station),
-			Status: statusLabel(item.station.OperationStatus), Amount: item.price.AmountMilliBRL,
-			Collected: dateBR(item.price.CollectedOn), TieCount: counts[item.price.AmountMilliBRL],
+			Status: statusLabel(item.station.OperationStatus), SourceStatus: item.station.OperationStatus, Amount: item.price.AmountMilliBRL,
+			Collected: dateBR(item.price.CollectedOn), CollectedISO: item.price.CollectedOn, TieCount: counts[item.price.AmountMilliBRL],
 		})
 		if limit > 0 && len(rows) >= limit {
 			break
@@ -145,6 +146,7 @@ func observationRankings(items []observation) []rankingView {
 				}
 			}
 			views = append(views, rankingView{
+				Code:  group[0].price.FuelProduct,
 				Title: fuelLabel(group[0].price.FuelProduct) + " · " + unitShort(group[0].price.Unit),
 				Fuel:  fuelLabel(group[0].price.FuelProduct), Unit: group[0].price.Unit,
 				Population: len(group), Rows: rows, Truncated: true, TiesAtCutoff: ties,
@@ -152,6 +154,7 @@ func observationRankings(items []observation) []rankingView {
 			continue
 		}
 		views = append(views, rankingView{
+			Code:  group[0].price.FuelProduct,
 			Title: fuelLabel(group[0].price.FuelProduct) + " · " + unitShort(group[0].price.Unit),
 			Fuel:  fuelLabel(group[0].price.FuelProduct), Unit: group[0].price.Unit,
 			Population: len(group), Rows: rows,

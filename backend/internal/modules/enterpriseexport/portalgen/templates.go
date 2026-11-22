@@ -1,13 +1,20 @@
 package portalgen
 
 const templates = `
+{{define "tabIcons"}}{{if .HasLanding}}
+  <link rel="icon" href="{{.Landing}}/favicon.ico?v=2">
+  <link rel="icon" type="image/svg+xml" sizes="any" href="{{.Landing}}/assets/brand/favicon-dark.svg?v=2" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/svg+xml" sizes="any" href="{{.Landing}}/assets/brand/favicon.svg?v=2" media="(prefers-color-scheme: light)">
+{{end}}{{end}}
+
 {{define "head"}}<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="{{.Robots}}">
-  <title>{{.HeadTitle}}</title>
+  <title>{{tabTitle .HeadTitle}}</title>
+  {{template "tabIcons" .}}
   <meta name="description" content="{{.Description}}">
   {{if .FeedHref}}<link rel="alternate" type="application/atom+xml" title="Fórum abastevo" href="{{.FeedHref}}">
   {{end}}{{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
