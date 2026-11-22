@@ -1,4 +1,5 @@
 {
+  "gasolina": "Gasolina (nafta)",
   "gasolina comum": "Gasolina regular",
   "gasolina aditivada": "Gasolina con aditivos",
   "gasolina premium": "Gasolina prémium",
@@ -6,9 +7,9 @@
   "etanol anidro": "Etanol anhidro",
   "diesel S10": "Diésel S10",
   "diesel S500": "Diésel S500",
-  "GNV": "GNC (gas natural comprimido)",
+  "GNV": "GNV (GNC, gas natural comprimido)",
   "GLP (13 kg)": "GLP (13 kg)",
-  "posto": "Estación",
+  "posto": "Estación de servicio",
   "posto revendedor": "Estación minorista",
   "posto bandeira branca": "Estación de bandera blanca",
   "bomba": "Surtidor",
@@ -24,12 +25,15 @@
   "ICMS": "ICMS (impuesto estatal sobre combustibles)",
   "ANP": "ANP, regulador brasileño del petróleo y los combustibles",
   "bandeira": "Marca",
+  "carro": "Auto",
   "tanque": "Tanque",
-  "abastecer": "Repostar",
+  "abastecer": "Cargar combustible",
   "litro": "Litro",
   "quilômetro por litro (km/l)": "Kilómetros por litro (km/l)",
-  "diesel": "Diésel",
+  "diesel": "Diésel (gasoil)",
   "etanol": "Etanol",
   "preço médio": "Precio promedio",
-  "forma de pagamento": "Forma de pago"
+  "forma de pagamento": "Forma de pago",
+  "data da coleta": "Fecha de recolección",
+  "eletroposto": "Estación de carga"
 }

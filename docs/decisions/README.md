@@ -25,5 +25,6 @@ supersedes it, never by editing history.
 | [023](023-admin-suite-granted-tiers-contributors.md) | Administrative suite, granted tiers and project contributors |
 | [025](025-private-abastevo-empresas-organization-boundary.md) | Organization boundary for private Abastevo Empresas data |
 | [026](026-multilingual-public-site.md) | Multilingual public site, pt-BR first, reviewed `en`/`es` translations |
+| [027](027-ai-reviewed-landing-translations.md) | AI-reviewed translations for the `en` and `es` landing, disclosed to readers |
 
 Enterprise-suite decisions are recorded in [enterprise/decisions.md](../enterprise/decisions.md).

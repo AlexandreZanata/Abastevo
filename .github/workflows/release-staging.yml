@@ -5,6 +5,8 @@
 # Automatic runs require the quick, CI and backend workflow runs for the same
 # main head_sha to have concluded successfully. Path-filtered workflows that
 # did not run for a commit leave the release gate closed instead of failing.
+# So does a cancelled run: a later push to main cancels the runs of the commit
+# it replaces, which has nothing to release and did not fail.
 name: release-staging
 run-name: release-staging ${{ github.event.workflow_run.head_sha || inputs.sha }}
 
@@ -30,6 +32,9 @@ concurrency:
 jobs:
   gate:
     name: release gate
+    # A cancelled run still fires workflow_run. Skipping this job skips every
+    # job that needs it.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -120,7 +125,7 @@ jobs:
             .github/workflows/backend.yml; do
             conclusion="$(gh api "repos/${REPOSITORY}/actions/runs?head_sha=${SHA}&per_page=100" \
               | jq -r --arg path "$path" '[.workflow_runs[] | select(.path == $path and .event == "push" and .head_branch == "main")] | sort_by(.created_at) | last | .conclusion // "missing"')"
-            if [[ "$conclusion" == "missing" ]]; then
+            if [[ "$conclusion" == "missing" || "$conclusion" == "cancelled" ]]; then
               ready=false
             elif [[ "$conclusion" != "success" ]]; then
               printf 'required workflow did not succeed: %s\n' "$path" >&2

@@ -2,8 +2,10 @@
 
 Static public site of Abastevo (`https://abastevo.com.br`): home, guides,
 calculators, tutorials, legal pages and the browser search used by the static
-portal. Content is pt-BR today. Reviewed `en` and `es` versions are planned
-under [decision 026](../docs/decisions/026-multilingual-public-site.md), and the
+portal. Content is pt-BR first. The home, the about and editorial policy
+pages, the calculators and a set of guides also ship in `en` and `es`, under
+[decision 026](../docs/decisions/026-multilingual-public-site.md) and
+[decision 027](../docs/decisions/027-ai-reviewed-landing-translations.md). The
 [multilingual contract](../docs/product/landing/organic-growth-i18n-plan.md)
 owns the locale, hreflang and translation rules. It is plain HTML/CSS with optional
 TypeScript enhancement; it never calls a database and only the optional
@@ -41,10 +43,11 @@ and `--dist-dir`. `make quick-verify` runs all four npm steps when `landing/`
 changes.
 
 Test-only build options: `build({ enableLocales: ['en', 'es'],
-translationsDir })` overrides the `enabled` flags of
-`contracts/i18n/locales.json` and the translations directory (default
-`content/translations`). Production reads the registry flags, so `en` and `es`
-stay off until reviewed translations exist.
+translationsDir, messagesDir })` overrides the `enabled` flags of
+`contracts/i18n/locales.json`, the translations directory (default
+`content/translations`) and the dictionary directory (default `content/i18n`).
+Production reads the registry flags. A locale is emitted only when its flag is
+on, its dictionary is `reviewed` and the page is `reviewed`.
 
 ## Content pipeline
 

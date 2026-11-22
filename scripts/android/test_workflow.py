@@ -37,4 +37,15 @@ class WorkflowBoundary(unittest.TestCase):
   self.assertIn("'build-tools;35.0.0'",step)
   self.assertIn('::error::',step)
 
+ def test_cancelled_trigger_skips_the_gate_instead_of_failing(self):
+  # A later push to main cancels the runs of the commit it replaces, and each
+  # cancelled run still fires workflow_run. That commit has nothing to release
+  # and nothing failed: the gate job is skipped, and the release job with it.
+  raw=Path('.github/workflows/android-release.yml').read_text()
+  gate,release=raw.split('\n  gate:\n',1)[1].split('\n  release:\n',1)
+  self.assertIn("    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}\n",gate.split('\n    steps:\n',1)[0]+'\n')
+  head=release.split('\n    steps:\n',1)[0]+'\n'
+  self.assertIn('    needs: gate\n',head)
+  self.assertIn("    if: needs.gate.outputs.ready == 'true'\n",head)
+
 if __name__=='__main__':unittest.main()

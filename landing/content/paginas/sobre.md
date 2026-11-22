@@ -5,7 +5,7 @@ description: O abastevo é um projeto independente de transparência de preços 
 slug: sobre
 schemaType: AboutPage
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-21
 ---
 
 ## O que é o abastevo
@@ -32,7 +32,7 @@ Os dados oficiais podem ser conferidos diretamente no site da [ANP](https://www.
 
 ## Equipe abastevo
 
-Os guias, as ferramentas e as páginas deste site são escritos e revisados pela **Equipe abastevo**, que assina os textos coletivamente. As regras que seguimos para citar fontes, mostrar datas e corrigir erros estão na [política editorial](/politica-editorial/).
+Os guias, as ferramentas e as páginas deste site são escritos e revisados pela **Equipe abastevo**, que assina os textos coletivamente. As versões em inglês e em espanhol são traduções feitas e revisadas com inteligência artificial. As regras que seguimos para citar fontes, mostrar datas, traduzir e corrigir erros estão na [política editorial](/politica-editorial/).
 
 ## Código público
 

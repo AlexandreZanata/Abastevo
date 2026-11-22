@@ -202,7 +202,10 @@ export function checkDist(options = {}) {
       if (!descMatch) {
         errors.push(`${rel} is missing meta description`);
       } else {
-        const desc = descMatch[1].trim();
+        // Bounds apply to the text, not to its escaping: an apostrophe is one
+        // character although the page carries it as `&#39;`.
+        const desc = descMatch[1].trim()
+          .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
         if (desc.length < 110 || desc.length > 165) {
           errors.push(`${rel} meta description length (${desc.length}) outside target bounds [110, 165]`);
         }

@@ -100,6 +100,8 @@ test('shared article headers keep GitHub and the home consultation CTA', () => {
         /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/,
         `${rel} GitHub button opens a new tab`
       );
+      // Locale pages have the localized header, without the Portuguese CTAs.
+      if (/^(en|es)\//.test(rel)) continue;
       if (rel === '404.html' || /^(guias|como-usar|ferramentas|sobre|politica-editorial|privacidade|excluir-conta|termos)\//.test(rel)) {
         assert.match(html, /class="pill-light hide-sm" href="\/consultar\/">Consultar dados<\/a>/, `${rel} home consultation CTA`);
         assert.match(html, /href="\/#aplicativo"/, `${rel} app availability remains on the home`);

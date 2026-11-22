@@ -1,11 +1,11 @@
 ---
 title: Política editorial: fontes, datas e correções
 headline: Política editorial do abastevo
-description: Como o abastevo escolhe e cita fontes, mostra preços e datas, corrige erros, usa ferramentas de IA com revisão humana e garante que pagamento nunca compra confiança.
+description: Como o abastevo escolhe e cita fontes, mostra preços e datas, corrige erros, usa IA com revisão humana, traduz com revisão por IA e nunca vende confiança.
 slug: politica-editorial
 schemaType: WebPage
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-21
 ---
 
 ## Para que serve esta política
@@ -38,7 +38,13 @@ Se você encontrar um erro, abra uma [issue no GitHub do projeto](https://github
 
 ## Uso de inteligência artificial
 
-Ferramentas de inteligência artificial podem ajudar na pesquisa, na organização e na redação de rascunhos. Nenhum texto é publicado sem revisão humana: cada afirmação é conferida contra as fontes citadas antes da publicação. Não publicamos artigos gerados em massa nem páginas criadas só para ocupar resultados de busca.
+Ferramentas de inteligência artificial podem ajudar na pesquisa, na organização e na redação de rascunhos. Nenhum texto original em português é publicado sem revisão humana: cada afirmação é conferida contra as fontes citadas antes da publicação. Não publicamos artigos gerados em massa nem páginas criadas só para ocupar resultados de busca.
+
+## Traduções
+
+As páginas em inglês e em espanhol são traduções dos textos em português. Elas são feitas e revisadas com inteligência artificial, sem revisão humana prévia: a revisão confere cada número, fórmula e fonte com o original e usa um glossário de termos. Traduzimos apenas uma parte do site, e cada página traduzida aponta para o original.
+
+Em caso de diferença entre as versões, vale o texto em português. Quando o original muda, a tradução mostra um aviso com a data da mudança e sai dos resultados de busca até ser revisada de novo. Erros de tradução são corrigidos pelo mesmo canal das outras correções.
 
 ## Independência e conteúdo pago
 

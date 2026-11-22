@@ -89,7 +89,13 @@ test('front matter validation rejects missing, unknown and malformed fields', ()
 
 test('the shipped content manifest and Markdown sources validate', () => {
   const site = loadSite(root);
-  const kinds = [...site.registry.values()].reduce((acc, e) => ({ ...acc, [e.kind]: (acc[e.kind] || 0) + 1 }), {});
+  const count = (entries) => entries.reduce((acc, e) => ({ ...acc, [e.kind]: (acc[e.kind] || 0) + 1 }), {});
+  const kinds = count([...site.registry.values()].filter((e) => !e.locale));
+  // Each launched locale ships the five calculators, six guides and two pages.
+  for (const code of ['en', 'es']) {
+    const localized = count([...site.registry.values()].filter((e) => e.locale === code && !e.hub));
+    assert.deepEqual(localized, { guide: 6, tool: 5, page: 2 }, `${code} translations`);
+  }
   assert.equal(kinds.tool, 5);
   assert.equal(kinds.page, 2);
   assert.equal(kinds.category, 5);
@@ -103,8 +109,16 @@ test('the shipped content manifest and Markdown sources validate', () => {
   assert.equal(site.registry.get('/404.html').indexable, false);
 
   // SEO-20: every guide and tool answers one query, and no two share it.
-  const keywordPages = [...site.registry.values()].filter((entry) => entry.kind === 'guide' || entry.kind === 'html-guide' || entry.kind === 'tool');
+  // The map is scoped by locale, so a translation may answer the same query
+  // in its own language; here the pt-BR pages are counted.
+  const keywordPages = [...site.registry.values()].filter((entry) => !entry.locale && (entry.kind === 'guide' || entry.kind === 'html-guide' || entry.kind === 'tool'));
   assert.equal(keywordPages.length, 18, '13 guides and 5 tools carry the keyword map');
+  for (const code of ['en', 'es']) {
+    const localized = [...site.registry.values()].filter((entry) => entry.locale === code && !entry.hub && entry.kind !== 'page');
+    const queries = localized.map((entry) => normalizeQuery(entry.primaryQuery || ''));
+    assert.ok(queries.every(Boolean), `every ${code} guide and tool names its query`);
+    assert.equal(new Set(queries).size, queries.length, `${code} queries are unique`);
+  }
   for (const entry of keywordPages) {
     assert.equal(typeof entry.primaryQuery, 'string', `${entry.route} needs a primaryQuery`);
   }

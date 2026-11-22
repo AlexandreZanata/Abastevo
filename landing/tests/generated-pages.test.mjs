@@ -20,7 +20,7 @@ const nodes = (html) => jsonLd(html).flatMap((d) => d['@graph'] || [d]);
 const visibleText = (html) => decode(html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
 const decode = (s) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
-const mdGuides = [...site.registry.values()].filter((e) => e.kind === 'guide');
+const mdGuides = [...site.registry.values()].filter((e) => e.kind === 'guide' && !e.locale);
 
 test('every Markdown guide renders the shared article layout', () => {
   assert.ok(mdGuides.length >= 10, 'editorial wave 1 ships ten Markdown guides');
@@ -122,14 +122,17 @@ test('/sobre/ states independence, sources, team, license and contact', () => {
   assert.equal(team.publishingPrinciples, `${ORIGIN}/politica-editorial/`);
 });
 
-test('/politica-editorial/ covers sources, dates, corrections, AI review and paid placement', () => {
+test('/politica-editorial/ covers sources, dates, corrections, AI review, translations and paid placement', () => {
   const text = visibleText(read('/politica-editorial/'));
   assert.match(text, /Fonte primária primeiro/);
   assert.match(text, /Sem números inventados/);
   assert.match(text, /semana da coleta/);
   assert.match(text, /Não usamos "hoje" para dados semanais/);
   assert.match(text, /Correções/);
-  assert.match(text, /Nenhum texto é publicado sem revisão humana/);
+  assert.match(text, /Nenhum texto original em português é publicado sem revisão humana/);
+  // ADR-027: translations are AI-reviewed, and the policy says so.
+  assert.match(text, /feitas e revisadas com inteligência artificial, sem revisão humana prévia/);
+  assert.match(text, /vale o texto em português/);
   assert.match(text, /Pagamento nunca compra posição, destaque ou confiança/);
   assert.match(text, /não é afiliado à ANP/);
 });

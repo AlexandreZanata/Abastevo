@@ -1,14 +1,14 @@
 {
   "_review": {
-    "status": "draft",
-    "reviewedBy": "",
-    "reviewedAt": ""
+    "status": "reviewed",
+    "reviewedBy": "AI review (Claude)",
+    "reviewedAt": "2026-11-21"
   },
   "home": {
-    "title": "Precios de combustibles en Brasil con la ANP",
-    "description": "Consulta precios de gasolina, etanol y diésel en Brasil por estado y ciudad con fuente y fecha visibles: encuesta semanal de la ANP y calculadoras.",
+    "title": "Precios de gasolina (nafta) y diésel en Brasil por estado",
+    "description": "Consulta precios de gasolina (nafta), etanol y diésel (gasoil) en Brasil por estado y ciudad, con fuente y fecha: encuesta semanal de la ANP y calculadoras.",
     "hero": {
-      "kicker": "Código abierto · Datos de la ANP · Comunidad",
+      "kicker": "Código público · Datos de la ANP · Comunidad",
       "title": "Más información para quien vive en la ruta.",
       "lead": "Encuentra precios de combustibles en Brasil, consulta la referencia semanal de la ANP y usa las calculadoras gratuitas.",
       "artLabel": "Ilustración: el símbolo de abastevo entre rutas, marcadores de mapa y tarjetas de precios"
@@ -64,7 +64,7 @@
     "published": "Publicado el",
     "updated": "Actualizado el",
     "languages": "Idiomas",
-    "editorial": "Texto del {team}, revisado por personas a partir de las fuentes citadas. Consulta la {policy} y cómo pedir una corrección.",
+    "editorial": "Texto del {team}. Esta versión en español fue traducida y revisada con IA a partir del original en portugués, que prevalece. Consulta la {policy} y cómo pedir una corrección.",
     "policy": "política editorial",
     "guidesTitle": "Guías de abastevo",
     "allGuidesOf": "Todas las guías de {category}",
@@ -74,7 +74,7 @@
     "toolsLabel": "calculadoras de combustible",
     "calculatorsShort": "calculadoras",
     "howGuides": "Cómo se elaboran las guías",
-    "howGuidesBody": "Las guías las escribe el {team}, citan la fuente oficial de cada dato y muestran la fecha de la última revisión. Los precios citados son siempre ejemplos; para valores reales, consulta los {prices} con la fecha de recogida. Reglas completas en la {policy}.",
+    "howGuidesBody": "Las guías las escribe en portugués el {team}, citan la fuente oficial de cada dato y muestran la fecha de la última revisión. Las versiones en español se traducen y revisan con IA. Los precios citados son siempre ejemplos; para valores reales, consulta los {prices} con la fecha de recolección. Reglas completas en la {policy}.",
     "pricesLabel": "precios de referencia por estado",
     "articles": "Artículos",
     "otherCategories": "Otras categorías",
@@ -86,7 +86,7 @@
     "howCalculatorsBody": "Cada página muestra la fórmula y un ejemplo resuelto paso a paso, así puedes comprobar la cuenta a mano, incluso con JavaScript desactivado. La versión interactiva calcula en tu navegador: los valores que escribes no se envían, guardan ni asocian contigo.",
     "estimates": "Los resultados son estimaciones. El consumo real cambia con el tráfico, la carga, el relieve, la presión de los neumáticos y la forma de conducir, y el precio cambia de estación a estación y de semana a semana.",
     "wherePrices": "Dónde conseguir precios para la cuenta",
-    "wherePricesBody": "Usa el precio que viste en el surtidor o consulta los {prices}, siempre con la fecha de recogida. Entiende qué significan esos números en la {methodology}.",
+    "wherePricesBody": "Usa el precio que viste en el surtidor o consulta los {prices}, siempre con la fecha de recolección. Entiende qué significan esos números en la {methodology}.",
     "pricesAnpLabel": "precios de referencia de la ANP por estado y ciudad",
     "methodology": "metodología",
     "relatedGuides": "Guías relacionadas",
@@ -94,7 +94,7 @@
     "calculate": "Calcular",
     "toolPrivacy": "La cuenta se hace en tu navegador. Nada de lo que escribes se envía ni se guarda.",
     "toolPrices": "Precios de referencia para la cuenta",
-    "toolPricesBody": "Usa el precio que viste en el surtidor o consulta los {prices}, con la fecha de recogida. Un precio de referencia es una muestra de la semana encuestada, no una garantía del valor en la estación hoy.",
+    "toolPricesBody": "Usa el precio que viste en el surtidor o consulta los {prices}, con la fecha de recolección. Un precio de referencia es una muestra de la semana encuestada, no una garantía del valor en la estación hoy.",
     "otherTools": "Otras herramientas",
     "browserOs": "Cualquier navegador moderno",
     "browserRequirements": "El cálculo interactivo usa JavaScript; la fórmula y el ejemplo funcionan sin él.",
@@ -117,7 +117,7 @@
     "footerTerms": "Términos",
     "homeStatesTitle": "Precios por estado",
     "homeSeePrices": "Ver precios por estado",
-    "homeHowCollected": "Cómo se recogen los precios",
+    "homeHowCollected": "Cómo se recolectan los precios",
     "homeGuides": "Guías populares",
     "homeAllGuides": "Ver todas las guías",
     "homeTools": "Herramientas",
@@ -127,6 +127,7 @@
     "toolsHubTitle": "Calculadoras de combustible",
     "toolsHubIntro": "Cinco calculadoras simples, con la fórmula y un ejemplo resuelto en cada página. La cuenta se hace en tu navegador: nada se envía, guarda ni rastrea.",
     "mainNav": "Navegación principal",
+    "openMenu": "Abrir menú de navegación",
     "brandHome": "abastevo - inicio",
     "githubLabel": "Ver en GitHub — Código con atribución visible",
     "github": "GitHub",
@@ -167,25 +168,25 @@
         },
         "consumo_gasolina": {
           "label": "Consumo con gasolina (km/l, opcional)",
-          "hint": "Completa los dos consumos para usar la relación de tu coche en vez del 70 %.",
+          "hint": "Completa los dos consumos para usar la relación de tu auto en vez del 70 %.",
           "unit": "km/l",
           "example": "12,5"
         },
         "consumo_etanol": {
           "label": "Consumo con etanol (km/l, opcional)",
-          "hint": "Medido en tu coche, de tanque a tanque.",
+          "hint": "Medido en tu auto, de tanque a tanque.",
           "unit": "km/l",
           "example": "8,7"
         }
       },
       "messages": {
-        "missingConsumption": "Para usar el consumo de tu coche, completa los dos consumos (gasolina y etanol) o deja ambos en blanco.",
+        "missingConsumption": "Para usar el consumo de tu auto, completa los dos consumos (gasolina y etanol) o deja ambos en blanco.",
         "ethanolCheaper": "Resultado: el etanol tiende a salir más barato por kilómetro recorrido.",
         "gasolineCheaper": "Resultado: la gasolina tiende a salir más barata por kilómetro recorrido.",
         "tie": "Resultado: empate técnico; los dos cuestan prácticamente lo mismo por kilómetro.",
         "ratio": "El etanol cuesta {percent} del precio de la gasolina.",
-        "thresholdOwn": "Referencia usada: {percent}, calculada con el consumo indicado de tu coche.",
-        "thresholdRule": "Referencia usada: 70 %, la regla general para coches flex.",
+        "thresholdOwn": "Referencia usada: {percent}, calculada con el consumo que indicaste para tu auto.",
+        "thresholdRule": "Referencia usada: 70 %, la regla general para autos flex.",
         "maxPrice": "Con la gasolina a {gasoline}, el etanol conviene hasta {ethanol} el litro.",
         "costPerKm": "Costo por km: etanol {ethanol}, gasolina {gasoline}."
       }
@@ -244,7 +245,7 @@
           "example": "412"
         },
         "litros": {
-          "label": "Litros repostados para completar (l)",
+          "label": "Litros cargados para completar (l)",
           "hint": "Litros del surtidor al volver a llenar el tanque, por ejemplo 35,6.",
           "unit": "litros",
           "example": "35,6"
@@ -259,7 +260,7 @@
       "messages": {
         "average": "Consumo medio: {value} km/l.",
         "per100": "El mismo consumo en litros: {value} litros cada 100 km.",
-        "costPerKm": "Costo por km: {cost} (gasto en el repostaje: {spent})."
+        "costPerKm": "Costo por km: {cost} (gasto en la carga: {spent})."
       }
     },
     "custo-por-km": {
@@ -271,33 +272,33 @@
           "example": "6,29"
         },
         "consumo": {
-          "label": "Consumo del coche de combustión (km/l)",
+          "label": "Consumo del auto de combustión (km/l)",
           "hint": "Kilómetros por litro, por ejemplo 12,5. Mira cómo medirlo en la guía de consumo medio.",
           "unit": "km/l",
           "example": "12"
         },
         "tarifa_kwh": {
           "label": "Tarifa de energía (BRL/kWh)",
-          "hint": "Valor por kWh con impuestos, de la factura o de la electrolinera, por ejemplo 0,95.",
+          "hint": "Valor por kWh con impuestos, de la factura de luz o de la estación de carga, por ejemplo 0,95.",
           "unit": "reales por kWh",
           "example": "0,95"
         },
         "consumo_eletrico": {
-          "label": "Consumo del coche eléctrico (km/kWh)",
+          "label": "Consumo del auto eléctrico (km/kWh)",
           "hint": "Kilómetros por kWh, por ejemplo 6,5. Si tienes kWh/100 km, divide 100 por ese valor.",
           "unit": "km/kWh",
           "example": "6,5"
         },
         "km_mes": {
           "label": "Kilómetros por mes (opcional)",
-          "hint": "Para estimar el gasto mensual de energía de cada coche.",
+          "hint": "Para estimar el gasto mensual de energía de cada auto.",
           "unit": "km",
           "example": "1.200"
         }
       },
       "messages": {
         "electricCheaper": "Resultado: el eléctrico gasta {difference} menos por km en energía.",
-        "combustionCheaper": "Resultado: el coche de combustión gasta {difference} menos por km en energía.",
+        "combustionCheaper": "Resultado: el auto de combustión gasta {difference} menos por km en energía.",
         "tie": "Resultado: los dos gastan prácticamente lo mismo por km en energía.",
         "combustion": "Combustión: {cost} por km.",
         "electric": "Eléctrico: {cost} por km.",

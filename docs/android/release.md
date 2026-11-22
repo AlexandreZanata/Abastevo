@@ -5,6 +5,11 @@ prereleases** in this repository after the exact current main SHA passes the
 `quick`, `CI` and `backend` push workflows. This is independent from backend/site
 autodeploy. It does not certify production, Play Store or iOS.
 
+A merge that lands while the previous commit is still in CI cancels that
+commit's runs. A cancelled run skips the release gate instead of failing it:
+the superseded commit gets no release, and the newer one is released when its
+own three workflows pass. A run that failed still fails the gate.
+
 ## Versions and retries
 
 `release/android/channel.json` fixes the baseline at main `972df4f4`, version

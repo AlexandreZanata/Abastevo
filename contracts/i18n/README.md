@@ -13,6 +13,13 @@ translated route segments. `glossary/{locale}.json` maps pt-BR terms to the
 terms used by the app and the site. `../testdata/i18n/routes.json` holds the
 URL vectors both generators must reproduce.
 
-Do not add a locale or change a prefix in one generator only. `enabled` stays
-`false` until reviewed translations and the named reviewer exist
-([ADR-026](../../docs/decisions/026-multilingual-public-site.md)).
+Do not add a locale or change a prefix in one generator only. A locale has
+`enabled: true` only with a reviewed dictionary, reviewed translations and a
+recorded reviewer
+([ADR-026](../../docs/decisions/026-multilingual-public-site.md)). For `en` and
+`es` the reviewer is an AI review, recorded as such
+([ADR-027](../../docs/decisions/027-ai-reviewed-landing-translations.md)).
+
+The `es` glossary targets Latin American readers: the neutral word comes
+first and the regional one beside it on first mention, as in "gasolina
+(nafta)" and "diésel (gasoil)".
