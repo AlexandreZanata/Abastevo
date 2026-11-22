@@ -38,6 +38,7 @@ const (
 // indexFacts are the data facts the indexation policy reads.
 type indexFacts struct {
 	Family pageFamily
+	Locale *portalLocale
 	// HasCurrentData: state/city/fuel pages have observations in the current
 	// survey; the fiscalização hub has the admitted official slice.
 	HasCurrentData      bool
@@ -52,6 +53,9 @@ type indexFacts struct {
 // and sitemap inclusion both read it. The global switch is applied on top by
 // the generator.
 func pageIndexable(facts indexFacts) bool {
+	if facts.Locale != nil && (!facts.Locale.Enabled || !facts.Locale.reviewed()) {
+		return false
+	}
 	switch facts.Family {
 	case familyHub:
 		return true

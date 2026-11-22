@@ -6,6 +6,7 @@
 import { escapeHtml as esc } from './markdown.mjs';
 import { htmlTitle, relatedGuides } from './site.mjs';
 import { STATES, GITHUB_URL, TOOL_FORMS, TOOL_NAV_LABELS } from './data.mjs';
+import { localeRoute } from './i18n.mjs';
 
 const NATIVE_NAMES = { 'pt-BR': 'Português', en: 'English', es: 'Español' };
 
@@ -323,7 +324,7 @@ export function renderGuidesHub(site, origin, locale) {
   };
   const toolLink = `<a href="${toolsHub}">${esc(t(locale, 'chrome.toolsLabel'))}</a>`;
   const teamLink = localeLink(site, locale, '/sobre/', esc(t(locale, 'chrome.team')));
-  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
+  const pricesLink = `<a href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
   const policyLink = localeLink(site, locale, '/politica-editorial/', esc(t(locale, 'chrome.policy')));
   const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
@@ -375,7 +376,7 @@ export function renderCategory(site, category, origin, locale) {
   };
   const guidesLink = `<a href="/guias/">${esc(t(locale, 'chrome.guidesLabel'))}</a>`;
   const toolsLink = `<a href="/ferramentas/">${esc(t(locale, 'chrome.calculatorsShort'))}</a>`;
-  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
+  const pricesLink = `<a href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
   const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
         <h1>${esc(entry.title)}</h1>
@@ -425,8 +426,8 @@ export function renderToolsHub(site, origin, locale) {
     ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'guide').slice(0, 3).map((entry) => entry.route)
     : ['/guias/etanol-ou-gasolina/', '/guias/como-calcular-consumo-medio/', '/guias/como-economizar-combustivel/']
       .filter((entryRoute) => site.registry.has(entryRoute));
-  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesAnpLabel'))}</a>`;
-  const methodologyLink = `<a href="/metodologia/">${esc(t(locale, 'chrome.methodology'))}</a>`;
+  const pricesLink = `<a href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.pricesAnpLabel'))}</a>`;
+  const methodologyLink = `<a href="${localeRoute(locale, 'methodology')}">${esc(t(locale, 'chrome.methodology'))}</a>`;
   const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
         <h1>${esc(isLocale ? title : t(locale, 'chrome.calculatorsTitle'))}</h1>
@@ -554,7 +555,7 @@ export function renderTool(site, tool, origin, locale) {
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesAnpLabel'))}</a>`;
+  const pricesLink = `<a href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.pricesAnpLabel'))}</a>`;
   const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article tool-article">
         <h1>${esc(tool.headline)}</h1>
@@ -682,7 +683,7 @@ export function renderFooterColumns(site, locale) {
 }
 
 export function renderHomeStates(locale) {
-  const items = STATES.map((s) => `<li><a href="/precos/${s.uf}/"><span class="state-uf" aria-hidden="true">${s.uf.toUpperCase()}</span><span class="state-name">${esc(s.name)}</span></a></li>`);
+  const items = STATES.map((s) => `<li><a href="${localeRoute(locale, 'prices', '', s.uf)}"><span class="state-uf" aria-hidden="true">${s.uf.toUpperCase()}</span><span class="state-name">${esc(s.name)}</span></a></li>`);
   return `<section id="precos-por-estado" class="block home-states">
       <div class="shell">
         <div class="block-head">
@@ -691,7 +692,7 @@ export function renderHomeStates(locale) {
         <ul class="state-grid">
           ${items.join('\n          ')}
         </ul>
-        <div class="lp-actions"><a class="btn-dark" href="/precos/">${esc(t(locale, 'chrome.homeSeePrices'))}</a><a class="text-link" href="/metodologia/">${esc(t(locale, 'chrome.homeHowCollected'))}</a></div>
+        <div class="lp-actions"><a class="btn-dark" href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.homeSeePrices'))}</a><a class="text-link" href="${localeRoute(locale, 'methodology')}">${esc(t(locale, 'chrome.homeHowCollected'))}</a></div>
       </div>
     </section>`;
 }
@@ -779,8 +780,8 @@ ${head}
         <div class="lp-hero-copy">
           ${renderHomeHero(locale)}
           <div class="lp-actions">
-            <a class="btn-dark" href="/precos/">${esc(t(locale, 'chrome.homeSeePrices'))}</a>
-            <a class="text-link" href="/consultar/">${esc(t(locale, 'chrome.footerConsult'))}</a>
+            <a class="btn-dark" href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.homeSeePrices'))}</a>
+            <a class="text-link" href="/consultar/" hreflang="pt-BR">${esc(t(locale, 'chrome.footerConsult'))}</a>
           </div>
         </div>
         <figure class="lp-hero-art" aria-label="${esc(t(locale, 'home.hero.artLabel'))}">
@@ -801,11 +802,18 @@ ${head}
 // ---------------------------------------------------------------------------
 // Localized chrome and the language switcher.
 
+function localizedPortalLinks(locale) {
+  return [['prices', 'footerPrices'], ['methodology', 'footerMethodology'], ['data', 'footerData']]
+    .map(([kind, label]) => `<a href="${localeRoute(locale, kind)}">${esc(t(locale, `chrome.${label}`))}</a>`);
+}
+
 export function renderLocalizedHeader(site, locale, languagePicker) {
   const guides = localeHubRoute(locale, 'guias');
   const tools = localeHubRoute(locale, 'ferramentas');
   const homeHref = site.registry.has(`${locale.prefix}/`) ? `${locale.prefix}/` : '/';
+  const portalLinks = localizedPortalLinks(locale);
   const nav = [
+    portalLinks[0],
     site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
     site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
   ].filter(Boolean).join('\n        ');
@@ -817,7 +825,7 @@ export function renderLocalizedHeader(site, locale, languagePicker) {
     ...[['/sobre/', 'chrome.footerAbout'], ['/politica-editorial/', 'chrome.footerEditorial']]
       .filter(([route]) => site.localizedRoute(route, locale.code) !== route)
       .map(([route, key]) => `<a href="${site.localizedRoute(route, locale.code)}">${esc(t(locale, key))}</a>`),
-    `<a href="/precos/" hreflang="pt-BR">${esc(t(locale, 'chrome.footerPrices'))}</a>`,
+    ...portalLinks,
     `<a href="/privacidade/" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>`,
   ].filter(Boolean).join('\n            ');
   return `<header class="topbar">
@@ -854,6 +862,7 @@ export function renderLocalizedFooter(site, locale) {
     ...[['/sobre/', 'chrome.footerAbout'], ['/politica-editorial/', 'chrome.footerEditorial']]
       .filter(([route]) => site.localizedRoute(route, locale.code) !== route)
       .map(([route, key]) => `<a href="${site.localizedRoute(route, locale.code)}">${esc(t(locale, key))}</a>`),
+    ...localizedPortalLinks(locale),
     `<a href="/" lang="pt-BR" hreflang="pt-BR">${NATIVE_NAMES['pt-BR']}</a>`,
     `<a href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>`,
     `<a href="${GITHUB_URL}">${esc(t(locale, 'chrome.github'))}</a>`,

@@ -38,6 +38,22 @@ Search URLs (`/consultar/?q=...`, `?uf=...`) are not indexable variants and
 carry a canonical link to `/consultar/`. Empty search queries and filter
 combinations are not generated as indexable pages.
 
+### Localized routes
+
+English and Spanish variants use the price hub, fuel, state, fuel-by-state,
+methodology, download and insights paths in the
+[shared route contract](../product/landing/organic-growth-i18n-plan.md#61-locale-registry-and-routes).
+Prices start at `/en/fuel-prices/` and `/es/precios/`. Fuel slugs come from the
+locale registry, and UF and city slugs are shared. The city allowlist contains
+the 27 capitals and 33 selected border twin cities. Eligibility still depends
+on a Portuguese counterpart in the same snapshot. City pages can link to
+Portuguese station details. Stations, fuel-by-city pages, the ethanol-to-
+gasoline ratio, enforcement, the forum and search remain Portuguese.
+
+Localized price pages link to ANP as their source and show the survey period.
+Prices use BRL and the canonical survey unit. The English and Spanish
+catalogs provide the page copy and the AI review disclosure.
+
 ### Official records
 
 `/fiscalizacao/` consumes a frozen FQ `quality-official-export-v1` JSONL and
@@ -97,7 +113,9 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   sitemap read that same decision: indexable pages are `index,follow` and in a
   sitemap; gated pages are `noindex,follow` and in no sitemap. A build with the
   global indexable switch off is `noindex,nofollow` everywhere, has no sitemap
-  and a disallowing `robots.txt`.
+  and a disallowing `robots.txt`. Enabled locales with reviewed catalogs can
+  emit permitted translations. Hreflang uses the same decision, with the
+  Portuguese page as the default. See [ADR-028](../decisions/028-ai-reviewed-portal-translations.md).
 - **B-BR-SEO-02 Station gate.** A station page is indexable only when the
   station has a valid official ANP price (BRL, canonical unit, collected inside
   its survey week) in one of the 8 most recent distinct survey weeks of the
@@ -110,22 +128,27 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   source; slugs are unique per UF over the full IBGE table (tested). A code
   outside the IBGE table, or a slug that collides inside a build, gets the
   `-{ibge}` suffix. No page links to the retired `/precos/uf/` routes.
-- **B-BR-SEO-04 Sitemap index.** `sitemap.xml` is a `<sitemapindex>` of
-  `sitemaps/portal-{family}-{n}.xml` files (families `hubs`, `precos`,
-  `postos`, `forum`), each at most 45,000 URLs and 50 MB. Per-URL `lastmod` is the date
+- **B-BR-SEO-04 Sitemap index.** Portal output `sitemap.xml` is a
+  `<sitemapindex>` of `sitemaps/portal-{family}-{locale}-{n}.xml` files
+  (families `hubs`, `precos`, `postos`, `forum`), each at most 45,000 URLs and
+  50 MB. Each file contains the indexable pages of its family and locale. The
+  web tier exposes the portal index at `/sitemap-portal.xml` and the landing
+  sitemap at `/sitemap.xml`. Per-URL `lastmod` is the date
   the page data last changed: the current revision publication date for price
   pages and hubs derived from it, the latest valid observation date for a
   station, the official edition publication for `/fiscalizacao/`, and the build
-  date only for pages without a data date. No `priority` or `changefreq`.
+  date only for pages without a data date. Translations share the data date
+  of the Portuguese source page. No `priority` or `changefreq`.
   The same-origin web tier serves both the landing and portal sitemap URLs in
   its robots response, which mirrors the rendered landing robots file. Every
   crawler group that allows crawling also disallows the admin, company, and
   search shard paths.
 - **B-BR-SEO-05 Head contract.** Every page with a configured site URL carries
   an absolute self `<link rel="canonical">` (trailing slash), Open Graph and
-  Twitter tags (`og:site_name` `abastevo`, `og:locale` `pt_BR`, landing image
-  `/assets/brand/og-image-v1.png`). Titles use the survey end date
-  (`dd/mm/aaaa`), never “hoje”; descriptions are 120–160 characters, carry only
+  Twitter tags (`og:site_name` `abastevo`, `og:locale` from the locale
+  registry, landing image `/assets/brand/og-image-v1.png`). Titles use the
+  survey end date in the locale's format when it fits. Weekly price pages
+  use dated survey language. Descriptions are 120–160 characters, carry only
   figures shown on the page and are unique per indexable page. ALL-CAPS
   registry names are shown in Portuguese title case in the title/H1 while the
   registry and legal names stay visible. A price or station page title has at
@@ -135,12 +158,16 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   `botijão de 13 kg`), never the unit code; downloads and search shards keep
   the codes. A fuel hub names the fuel's everyday synonym once, in its
   description and lead (`álcool`, `gás de cozinha`, `gás natural veicular`).
+  Indexable members of a translation group carry the same reciprocal
+  hreflang set plus `x-default` to the Portuguese page. The canonical points
+  to the page itself.
 - **B-BR-SEO-06 Structured data.** Inline JSON-LD describes only visible facts:
   `BreadcrumbList` mirroring the visible breadcrumb (Início › Preços › UF ›
   Cidade › Posto), `CollectionPage` + `ItemList` on hubs, fuel, state and city
   pages, `GasStation` with `PostalAddress` (no ratings or offers) on stations
   and `Dataset` with `DataDownload` files, the license text shown on `/dados/`
-  and temporal/spatial coverage on `/dados/`.
+  and temporal/spatial coverage on `/dados/`. Each JSON-LD page declaration
+  uses that page's locale as `inLanguage`.
 - **B-BR-SEO-07 Linking.** City pages link nearby cities (k=8, centroid of the
   city's own station coordinates; omitted when no coordinates exist), other
   cities of the UF, the city's stations, fuel hubs and the related landing

@@ -9,8 +9,8 @@ dateModified: 2026-11-21
 translationOf: /sobre/
 sourceRevision: 2026-11-21
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 ---
 
 ## Qué es abastevo
@@ -20,7 +20,7 @@ en Brasil con **fuente, fecha y condición siempre a la vista**. Reúne tres
 frentes:
 
 - **Datos públicos en el navegador:** páginas de
-  [precios de referencia por estado y ciudad](/precos/) (en portugués),
+  [precios de referencia por estado y ciudad](/es/precios/),
   [consulta de estaciones de servicio](/consultar/) (en portugués) y
   [fiscalización](/fiscalizacao/) (en portugués), generadas a partir de datos
   oficiales publicados por la ANP, el regulador brasileño del petróleo y los
@@ -52,7 +52,7 @@ alterar la confianza atribuida a un precio.
   encuestada, no el precio de la estación en este momento. Entiende los
   detalles en la guía
   [cómo funciona la encuesta semanal de la ANP](/es/guias/encuesta-semanal-anp/)
-  y en la [metodología](/metodologia/) (en portugués).
+  y en la [metodología](/es/metodologia/).
 - **Fiscalización publicada por la ANP:** registros oficiales de actas de
   infracción y multas divulgados por la agencia, presentados con la fuente y
   los límites de lo que comprueban.

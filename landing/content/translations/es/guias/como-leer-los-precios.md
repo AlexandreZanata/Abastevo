@@ -8,12 +8,12 @@ category: dados
 tags: [fuente-y-fecha, derechos-del-consumidor, precio-en-el-surtidor, anp]
 primaryQuery: "cómo leer los precios en el surtidor"
 datePublished: 2026-11-21
-dateModified: 2026-11-21
+dateModified: 2026-11-22
 translationOf: /guias/como-ler-precos/
-sourceRevision: 2026-11-17
+sourceRevision: 2026-11-22
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/guias/encuesta-semanal-anp/
   - /es/guias/como-se-forma-el-precio-de-la-gasolina/
@@ -28,15 +28,20 @@ información evita cobros indebidos y permite tomar decisiones más inteligentes
 
 ## Precio del cartel y precio del surtidor
 
-La legislación federal brasileña (en especial el Código de Defensa del
-Consumidor y el Decreto 10.634/2021) determina que el cartel o tótem de precios
-en la entrada de la estación debe exhibir el precio real al contado que se
-aplica al consumidor común, en caracteres legibles y visibles a distancia para
-el conductor.
+El artículo 20 de la [Resolución ANP n.º 948/2023](https://www.in.gov.br/web/dou/-/resolucao-anp-n-948-de-5-de-outubro-de-2023-515293933)
+exige que la estación de servicio muestre los precios al contado de todos los
+combustibles automotores en el cartel de la entrada. El cartel debe verse a
+distancia, de día y de noche. Si hay opción de pago a plazo, esos precios
+también deben aparecer en el cartel.
 
-El valor que aparece en el visor del surtidor en el momento en que se retira el
-pico de la manguera debe coincidir exactamente con el valor anunciado en el
-cartel para esa modalidad de pago.
+El artículo 2 del [Decreto brasileño n.º 10.634/2021](https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/decreto/d10634.htm)
+regula cómo se informan los precios habituales y promocionales. Si el
+descuento depende de una app de fidelización, la estación debe destacar el
+precio sin descuento e indicar el precio promocional y el descuento.
+
+Si el precio o el plazo de pago varía para un mismo combustible, el artículo
+21 de la resolución exige que el surtidor o la boquilla identifique la
+condición aplicable y registre el total a pagar según esa condición.
 
 ## Condiciones de pago (Ley 13.455/2017)
 
@@ -75,17 +80,17 @@ el lugar. Indica la fecha y la hora exactas de la observación (p. ej.:
 
 Las estaciones minoristas en Brasil se dividen en dos categorías principales:
 
-- **Estaciones de marca:** establecimientos vinculados con exclusividad
-  contractual a una gran distribuidora de combustibles (p. ej.: Ipiranga,
-  Shell, Vibra/Petrobras). Exhiben la marca de la distribuidora en su
-  marquesina y en sus tótems.
-- **Estaciones de bandera blanca (independientes):** estaciones que compran
-  combustibles a distintas distribuidoras autorizadas por la ANP, en busca de
-  mejores costos mayoristas. Por determinación de la ANP
-  (Resolución n.º 858/2021), las estaciones de bandera blanca están obligadas a
-  exhibir en cada surtidor el nombre y el CNPJ (número de registro fiscal de la
-  empresa) de la distribuidora que proveyó el combustible presente en ese
-  tanque.
+- **Estaciones de marca:** exhiben la marca de una distribuidora. Si venden
+  combustible de otro proveedor, deben mostrar el nombre comercial de ese
+  proveedor junto a la identificación del producto (artículo 20, párrafo 2).
+- **Estaciones de bandera blanca (independientes):** optan por operar sin
+  exhibir la marca de una distribuidora.
+
+Para identificar el origen del combustible líquido en cualquiera de los dos
+tipos de estación, busca en el surtidor el CNPJ (número de registro fiscal de
+la empresa), la razón social o el nombre comercial de la distribuidora que lo
+suministró. La regla está en el artículo 27 de la
+[Resolución ANP n.º 948/2023](https://www.in.gov.br/web/dou/-/resolucao-anp-n-948-de-5-de-outubro-de-2023-515293933).
 
 ## Derechos del consumidor en el surtidor
 

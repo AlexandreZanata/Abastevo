@@ -75,8 +75,15 @@ func TestStructuredDataDescribesVisibleFacts(t *testing.T) {
 				t.Errorf("%s crumb %d target %q, visible %q", path, i, item["item"], tag[1])
 			}
 		}
-		if first := items[0].(map[string]any); first["name"] != "Início" || first["item"] != seoSite+"/" {
-			t.Errorf("%s breadcrumb does not start at Início: %v", path, first)
+		homeLabel, homePath := "Início", "/"
+		switch {
+		case strings.HasPrefix(path, "en/"):
+			homeLabel, homePath = "Home", "/en/"
+		case strings.HasPrefix(path, "es/"):
+			homeLabel, homePath = "Inicio", "/es/"
+		}
+		if first := items[0].(map[string]any); first["name"] != homeLabel || first["item"] != seoSite+homePath {
+			t.Errorf("%s breadcrumb does not start at %s: %v", path, homeLabel, first)
 		}
 		for _, forbidden := range []string{"aggregateRating", "offers", "review", "priceSpecification"} {
 			if strings.Contains(jsonLDBlock.FindStringSubmatch(body)[1], forbidden) {

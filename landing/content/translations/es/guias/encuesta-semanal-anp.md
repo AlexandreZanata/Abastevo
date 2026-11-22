@@ -7,12 +7,12 @@ category: dados
 tags: [anp, encuesta-de-precios, datos-abiertos, fuente-y-fecha]
 primaryQuery: "cómo funciona la encuesta de precios de la anp"
 datePublished: 2026-11-21
-dateModified: 2026-11-21
+dateModified: 2026-11-22
 translationOf: /guias/pesquisa-anp/
-sourceRevision: 2026-11-17
+sourceRevision: 2026-11-22
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/guias/como-leer-los-precios/
   - /es/guias/como-se-forma-el-precio-de-la-gasolina/
@@ -20,39 +20,30 @@ related:
 ---
 
 La ANP, el regulador brasileño del petróleo y los combustibles (Agencia
-Nacional del Petróleo, Gas Natural y Biocombustibles), realiza periódicamente
-la encuesta de precios y de márgenes de comercialización de combustibles en
-Brasil. Entiende cómo funciona esta encuesta, cuál es su alcance y por qué
-sirve como referencia regulatoria e histórica, pero no como información en
-tiempo real.
+Nacional del Petróleo, Gas Natural y Biocombustibles), hace un seguimiento
+semanal de los precios de los combustibles en Brasil. Esta guía explica qué
+abarca la encuesta, cómo usar sus datos históricos y por qué los precios
+pueden cambiar entre visitas.
 
 ## Qué es la encuesta de precios de la ANP
 
-La encuesta de la ANP es un relevamiento estadístico oficial cuyo objetivo es
-monitorear los precios que aplican el mercado minorista (las estaciones de
-servicio) y las distribuidoras en diversas regiones del país. Abarca los
-combustibles automotores comunes, como la gasolina (nafta) regular y con
-aditivos, el etanol hidratado (E100), el diésel (gasoil) y el gas natural
-vehicular, GNV (GNC).
-
-La encuesta la realizan empresas de investigación contratadas por la agencia
-mediante licitación pública, siguiendo criterios estadísticos predefinidos.
+La [Encuesta de Precios de Combustibles de la ANP](https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/precos-revenda-e-de-distribuicao-combustiveis/informacoes-levantamento-de-precos-de-combustiveis)
+registra los precios de venta al público. Abarca combustibles automotores
+como la gasolina (nafta) regular y con aditivos, el etanol hidratado (E100),
+el diésel (gasoil) y el gas natural vehicular, GNV (GNC). Una empresa
+contratada por la ANP recopila los precios mediante visitas a las estaciones.
 
 ## Metodología de muestreo y cobertura
 
-La encuesta de la ANP no visita todas las estaciones de Brasil. El país cuenta
-con más de 40 mil estaciones minoristas autorizadas, lo que hace inviable una
-verificación presencial exhaustiva de cada establecimiento cada pocos días.
+El [Informe de Gestión 2025 de la ANP](https://www.gov.br/anp/pt-br/acesso-a-informacao/transparencia/rg/relatorio-gestao-2025.pdf)
+registra más de 40 mil estaciones de servicio de combustibles automotores en
+Brasil. La encuesta semanal visita una muestra de esas estaciones.
 
-Por eso, la agencia adopta un **muestreo probabilístico estratificado**:
-
-- Solo una parte de los municipios brasileños se encuesta regularmente (en
-  general capitales, regiones metropolitanas y municipios de mayor relevancia
-  económica o poblacional).
-- Dentro de cada municipio seleccionado, se sortea una muestra de estaciones
-  para recibir a los encuestadores de campo.
-- Los municipios más pequeños o las estaciones en rutas alejadas muchas veces
-  no forman parte de la muestra periódica.
+- Para seleccionar las localidades, se tienen en cuenta factores como los
+  ingresos, la población, el parque vehicular y el número de estaciones.
+- Según la [metodología publicada por la ANP](https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/precos-revenda-e-de-distribuicao-combustiveis/arquivos-metodologia/metodologia-coleta.pdf),
+  el equipo de la encuesta sortea las estaciones que visitará cada semana en
+  cada municipio encuestado, teniendo en cuenta la cobertura geográfica.
 
 ## Periodicidad y desfase temporal
 

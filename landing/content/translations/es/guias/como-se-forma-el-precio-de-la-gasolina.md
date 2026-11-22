@@ -12,8 +12,8 @@ dateModified: 2026-11-21
 translationOf: /guias/como-e-formado-o-preco-da-gasolina/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/guias/icms-sobre-combustibles/
   - /es/guias/encuesta-semanal-anp/
@@ -158,13 +158,13 @@ vecinas reaccionan en momentos distintos. La guía
 
 La forma más segura de saber si el precio de tu región subió o bajó es comparar
 la misma fuente, en la misma semana, para el mismo combustible. En abastevo,
-los [precios de referencia por estado y ciudad](/precos/) (en portugués)
+los [precios de referencia por estado y ciudad](/es/precios/)
 provienen de la encuesta semanal de la ANP y siempre muestran la fecha de
 recolección.
 
 Recuerda que esa encuesta es una muestra: no visita todas las estaciones ni
 registra el precio de ahora. Lo que mide, y lo que no mide, se explica en la
-[metodología de los datos](/metodologia/) (en portugués) y en la guía
+[metodología de los datos](/es/metodologia/) y en la guía
 [cómo funciona la encuesta semanal de la ANP](/es/guias/encuesta-semanal-anp/).
 
 Si la duda es qué combustible poner en el tanque, la

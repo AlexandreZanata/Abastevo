@@ -12,8 +12,8 @@ dateModified: 2026-11-21
 translationOf: /guias/icms-sobre-combustiveis/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/guias/como-se-forma-el-precio-de-la-gasolina/
   - /es/guias/etanol-o-gasolina/
@@ -154,9 +154,9 @@ pesando, como muestra la guía
 (en portugués).
 
 Para seguir el efecto de esas diferencias con datos oficiales, consulta los
-[precios de referencia por estado](/precos/) (en portugués), siempre con la
+[precios de referencia por estado](/es/precios/), siempre con la
 fecha de recolección, y entiende los límites de esa muestra en la
-[metodología de los datos](/metodologia/) (en portugués).
+[metodología de los datos](/es/metodologia/).
 
 ## El contexto brasileño
 

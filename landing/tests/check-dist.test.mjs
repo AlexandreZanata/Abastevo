@@ -73,7 +73,9 @@ test('check rejects canonical drift, other origins and broken JSON-LD', () => {
 test('check rejects broken internal links but allowlists portal routes', () => {
   expectFailure((dir) => patch(dir, 'guias/index.html', 'href="/guias/dados/"', 'href="/guias/inexistente/"'), /nonexistent local resource: \/guias\/inexistente\//);
   expectFailure((dir) => patch(dir, 'sobre/index.html', 'href="/politica-editorial/"', 'href="/#nao-existe"'), /missing home anchor \/#nao-existe/);
-  const dir = mutated((d) => patch(d, 'sobre/index.html', 'href="/precos/"', 'href="/postos/qualquer/"'));
+  expectFailure((dir) => patch(dir, 'sobre/index.html', 'href="/precos/"', 'href="/en/fuel-prices-typo/"'), /nonexistent local resource: \/en\/fuel-prices-typo\//);
+  const dir = mutated((d) => patch(d, 'sobre/index.html', 'href="/precos/"',
+    'href="/postos/qualquer/"><span></span></a><a href="/en/fuel-prices/"><span></span></a><a href="/es/metodologia/"'));
   try {
     assert.ok(checkDist({ distDir: dir }).ok, 'portal paths are external to the landing');
   } finally {

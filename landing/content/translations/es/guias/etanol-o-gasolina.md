@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /guias/etanol-ou-gasolina/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/herramientas/calculadora-etanol-o-gasolina/
   - /es/guias/como-se-forma-el-precio-de-la-gasolina/
@@ -92,7 +92,7 @@ con los precios que encuentres. Para medir el consumo, sigue la guía
 portugués) o usa la
 [calculadora de consumo medio](/es/herramientas/calculadora-consumo-medio/).
 Para la referencia oficial de tu región, consulta los
-[precios por estado y ciudad](/precos/) (en portugués), siempre con la fecha
+[precios por estado y ciudad](/es/precios/), siempre con la fecha
 de recolección.
 
 ## En la app

@@ -47,7 +47,9 @@ data:
     \ release ships its own sitemap.xml; the landing's sitemap.xml\n\t# is served\
     \ by the final landing handler.\n\thandle /sitemap-portal.xml {\n\t\trewrite *\
     \ /sitemap.xml\n\t\troot * /srv/portal/current\n\t\tfile_server\n\t}\n\n\t@portalBare\
-    \ path /consultar /precos /forum /fiscalizacao /curiosidades /dados /metodologia\n\
+    \ path /consultar /precos /forum /fiscalizacao /curiosidades /dados /metodologia\
+    \ /en/fuel-prices /en/methodology /en/data /en/insights /es/precios\
+    \ /es/metodologia /es/datos /es/curiosidades\n\
     \tredir @portalBare {path}/ 308\n\n\t# Static map overlay releases are content-addressed\
     \ and never change.\n\thandle_path /dados/mapa/* {\n\t\troot * /srv/portal/map\n\
     \t\t# current/ is an atomic symlink that moves on every release: short\n\t\t#\
@@ -67,7 +69,9 @@ data:
     \ \"public, max-age=31536000, immutable\"\n\t\tfile_server\n\t}\n\n\t# Search\
     \ shards are addressed by release, so they never change in place.\n\t@portal path\
     \ /consultar/* /precos/* /postos/* /forum/* /fiscalizacao/* /curiosidades/* /dados/*\
-    \ /metodologia/* /sitemaps/* /portal-manifest.json\n\thandle @portal {\n\t\troot\
+    \ /metodologia/* /sitemaps/* /portal-manifest.json\
+    \ /en/fuel-prices/* /en/methodology/* /en/data/* /en/insights/* /es/precios/*\
+    \ /es/metodologia/* /es/datos/* /es/curiosidades/*\n\thandle @portal {\n\t\troot\
     \ * /srv/portal/current\n\t\t@shards path /dados/busca/*\n\t\t@pages not path\
     \ /dados/busca/*\n\t\theader @shards Cache-Control \"public, max-age=31536000,\
     \ immutable\"\n\t\theader @pages Cache-Control \"public, max-age=0, must-revalidate\"\

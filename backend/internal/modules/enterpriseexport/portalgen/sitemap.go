@@ -18,7 +18,8 @@ const (
 // sitemapFamilies fixes the child file families and their order.
 var sitemapFamilies = []string{"hubs", "precos", "postos", "forum"}
 
-var sitemapChildPath = regexp.MustCompile(`^sitemaps/portal-(hubs|precos|postos|forum)-[1-9][0-9]*\.xml$`)
+// The optional locale keeps previously published Portuguese artifacts verifiable.
+var sitemapChildPath = regexp.MustCompile(`^sitemaps/portal-(hubs|precos|postos|forum)(?:-(pt-BR|[a-z]{2}))?-[1-9][0-9]*\.xml$`)
 
 func sitemapFamily(family pageFamily) (string, error) {
 	switch family {
@@ -60,7 +61,7 @@ func marshalSitemap(value any) ([]byte, error) {
 	return append(body, '\n'), nil
 }
 
-// buildSitemaps splits indexable entries into per-family child sitemaps of
+// buildSitemaps splits indexable entries into per-family and per-locale sitemaps of
 // at most chunk URLs and MaxSitemapBytes each, and returns them with the
 // sitemap index body. Entry lastmod values are data dates; an index entry
 // carries the newest lastmod of its file.
@@ -68,7 +69,9 @@ func buildSitemaps(siteURL string, entries []sitemapEntry, chunk int) ([]sitemap
 	if chunk <= 0 || chunk > MaxSitemapURLs {
 		return nil, nil, fmt.Errorf("portalgen: invalid sitemap chunk")
 	}
-	byFamily := map[string][]sitemapEntry{}
+	type partition struct{ family, locale string }
+	byPartition := map[partition][]sitemapEntry{}
+	localeCodes := map[string]bool{}
 	seen := map[string]bool{}
 	for _, entry := range entries {
 		if !strings.HasPrefix(entry.Route, "/") || !strings.HasSuffix(entry.Route, "/") {
@@ -82,34 +85,44 @@ func buildSitemaps(siteURL string, entries []sitemapEntry, chunk int) ([]sitemap
 		if err != nil {
 			return nil, nil, err
 		}
-		byFamily[family] = append(byFamily[family], entry)
+		locale := entry.Locale
+		if locale == "" {
+			locale = defaultPortalLocale
+		}
+		localeCodes[locale] = true
+		key := partition{family, locale}
+		byPartition[key] = append(byPartition[key], entry)
 	}
 	if len(seen) == 0 {
 		return nil, nil, fmt.Errorf("portalgen: empty sitemap")
 	}
 	index := sitemapIndexDoc{XMLNS: sitemapXMLNS}
 	var files []sitemapFile
+	delete(localeCodes, defaultPortalLocale)
+	localeOrder := append([]string{defaultPortalLocale}, sortedKeys(localeCodes)...)
 	for _, family := range sitemapFamilies {
-		group := byFamily[family]
-		sort.Slice(group, func(i, j int) bool { return group[i].Route < group[j].Route })
-		for start, n := 0, 1; start < len(group); start, n = start+chunk, n+1 {
-			end := min(start+chunk, len(group))
-			set := sitemapSet{XMLNS: sitemapXMLNS, URLs: make([]sitemapURL, 0, end-start)}
-			newest := ""
-			for _, entry := range group[start:end] {
-				set.URLs = append(set.URLs, sitemapURL{Loc: siteURL + entry.Route, LastMod: entry.LastMod})
-				newest = max(newest, entry.LastMod)
+		for _, locale := range localeOrder {
+			group := byPartition[partition{family, locale}]
+			sort.Slice(group, func(i, j int) bool { return group[i].Route < group[j].Route })
+			for start, n := 0, 1; start < len(group); start, n = start+chunk, n+1 {
+				end := min(start+chunk, len(group))
+				set := sitemapSet{XMLNS: sitemapXMLNS, URLs: make([]sitemapURL, 0, end-start)}
+				newest := ""
+				for _, entry := range group[start:end] {
+					set.URLs = append(set.URLs, sitemapURL{Loc: siteURL + entry.Route, LastMod: entry.LastMod})
+					newest = max(newest, entry.LastMod)
+				}
+				body, err := marshalSitemap(set)
+				if err != nil {
+					return nil, nil, err
+				}
+				if int64(len(body)) > MaxSitemapBytes {
+					return nil, nil, &BudgetError{Msg: "portalgen: sitemap bytes budget exceeded"}
+				}
+				path := fmt.Sprintf("sitemaps/portal-%s-%s-%d.xml", family, locale, n)
+				files = append(files, sitemapFile{Path: path, Body: body})
+				index.Sitemaps = append(index.Sitemaps, sitemapRef{Loc: siteURL + "/" + path, LastMod: newest})
 			}
-			body, err := marshalSitemap(set)
-			if err != nil {
-				return nil, nil, err
-			}
-			if int64(len(body)) > MaxSitemapBytes {
-				return nil, nil, &BudgetError{Msg: "portalgen: sitemap bytes budget exceeded"}
-			}
-			path := fmt.Sprintf("sitemaps/portal-%s-%d.xml", family, n)
-			files = append(files, sitemapFile{Path: path, Body: body})
-			index.Sitemaps = append(index.Sitemaps, sitemapRef{Loc: siteURL + "/" + path, LastMod: newest})
 		}
 	}
 	body, err := marshalSitemap(index)
@@ -138,5 +151,32 @@ func (g *generator) writeSitemap() error {
 		return err
 	}
 	g.hasSitemap = true
+	return nil
+}
+
+func checkSitemapPartition(route, family, language string, locales map[string]portalLocale) error {
+	locale := localeForPortalRoute(route, locales)
+	if locale.Code != language {
+		return fmt.Errorf("portalcheck: %s is listed in a sitemap for %s", route, language)
+	}
+	identity := route
+	if locale.Code != defaultPortalLocale {
+		identity = portalRouteIdentity(route, locale, locales[defaultPortalLocale])
+	}
+	expected := ""
+	switch {
+	case identity == "/consultar/" || identity == "/precos/" || identity == "/metodologia/" ||
+		identity == "/curiosidades/" || identity == "/dados/" || identity == "/fiscalizacao/":
+		expected = "hubs"
+	case strings.HasPrefix(identity, "/precos/"):
+		expected = "precos"
+	case strings.HasPrefix(identity, "/postos/"):
+		expected = "postos"
+	case strings.HasPrefix(identity, "/forum/"):
+		expected = "forum"
+	}
+	if family != expected {
+		return fmt.Errorf("portalcheck: %s is listed in the %s sitemap family", route, family)
+	}
 	return nil
 }

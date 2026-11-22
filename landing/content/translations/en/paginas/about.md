@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /sobre/
 sourceRevision: 2026-11-21
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 ---
 
 ## What abastevo is
@@ -20,7 +20,7 @@ abastevo is a project that makes fuel prices in Brazil visible with **source,
 date and condition always in view**. It brings together three fronts:
 
 - **Public data in the browser:** pages with
-  [reference prices by state and city](/precos/) (in Portuguese),
+  [reference prices by state and city](/en/fuel-prices/),
   [station lookup](/consultar/) (in Portuguese) and
   [enforcement](/fiscalizacao/) (in Portuguese), generated from official data
   published by ANP, Brazil's oil and fuels regulator.
@@ -50,7 +50,7 @@ features in the future will never change the trust assigned to a price.
   municipalities. It is an official reference for the surveyed week, not the
   station's price right now. Learn the details in the guide
   [how the ANP weekly survey works](/en/guides/anp-weekly-price-survey/) and
-  in the [methodology](/metodologia/) (in Portuguese).
+  in the [methodology](/en/methodology/).
 - **Enforcement published by ANP:** official records of infraction notices and
   fines released by the agency, presented with the source and the limits of
   what they prove.

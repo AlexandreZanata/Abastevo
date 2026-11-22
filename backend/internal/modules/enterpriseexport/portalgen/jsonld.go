@@ -52,7 +52,7 @@ func (g *generator) collectionNode(base pageBase, items []listItem) ldNode {
 	}
 	return ldNode{
 		"@type": "CollectionPage", "@id": base.Canonical + "#webpage", "url": base.Canonical,
-		"name": base.HeadTitle, "description": base.Description, "inLanguage": "pt-BR",
+		"name": base.HeadTitle, "description": base.Description, "inLanguage": base.Language,
 		"isPartOf":   ldNode{"@type": "WebSite", "name": "abastevo", "url": g.siteURL + "/"},
 		"breadcrumb": ldNode{"@id": base.Canonical + "#breadcrumb"},
 		"mainEntity": ldNode{"@type": "ItemList", "numberOfItems": len(elements), "itemListElement": elements},
@@ -98,7 +98,7 @@ func (g *generator) datasetNode(base pageBase, files []downloadFile, manifest do
 	node := ldNode{
 		"@type": "Dataset", "@id": base.Canonical + "#dataset", "url": base.Canonical,
 		"name":        "Preços de combustíveis da pesquisa ANP (dados derivados do abastevo)",
-		"description": base.Description, "inLanguage": "pt-BR", "isAccessibleForFree": true,
+		"description": base.Description, "inLanguage": base.Language, "isAccessibleForFree": true,
 		"creator":         ldNode{"@type": "Organization", "name": "abastevo", "url": g.siteURL + "/"},
 		"license":         ldNode{"@type": "CreativeWork", "name": dataLicenseNote, "url": base.Canonical + "#notas"},
 		"spatialCoverage": ldNode{"@type": "Place", "name": "Brasil"},
@@ -120,7 +120,12 @@ func (g *generator) withStructuredData(base pageBase, nodes ...ldNode) (pageBase
 	if base.Canonical == "" {
 		return base, nil
 	}
-	graph := append([]ldNode{g.breadcrumbNode(base)}, nodes...)
+	graph := []ldNode{g.breadcrumbNode(base)}
+	if len(nodes) == 0 {
+		graph = append(graph, ldNode{"@type": "WebPage", "url": base.Canonical,
+			"name": base.HeadTitle, "description": base.Description, "inLanguage": base.Language})
+	}
+	graph = append(graph, nodes...)
 	raw, err := json.Marshal(ldNode{"@context": "https://schema.org", "@graph": graph})
 	if err != nil {
 		return base, err

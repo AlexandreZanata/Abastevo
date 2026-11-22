@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSite } from '../scripts/build.mjs';
 import { checkDist } from '../scripts/check.mjs';
+import { loadLocales } from '../scripts/content/i18n.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const translationsDir = path.join(root, 'tests', 'fixtures', 'i18n');
@@ -109,7 +110,7 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
       assert.deepEqual(hreflangs(html).filter((link) => link.hreflang === 'x-default'), [{ hreflang: 'x-default', route: '/guias/etanol-ou-gasolina/' }], `${rel} x-default`);
       assert.ok(html.indexOf('hreflang="x-default"') < html.indexOf('</head>'), `${rel} hreflang sits before </head>`);
     }
-    assert.ok(en.includes('<meta property="og:locale:alternate" content="pt_BR">') && en.includes('<meta property="og:locale:alternate" content="es_ES">'));
+    assert.ok(en.includes('<meta property="og:locale:alternate" content="pt_BR">') && en.includes('<meta property="og:locale:alternate" content="es_419">'));
     assert.match(headerLanguagePicker(en), /<summary aria-label="Languages · English">/);
     assert.ok(!en.includes('/guias/feed.xml'), 'translated guide does not advertise the Portuguese feed');
     assert.ok(headerLanguagePicker(en).includes('<a href="/guias/etanol-ou-gasolina/" lang="pt-BR" hreflang="pt-BR">Português</a>'));
@@ -122,7 +123,7 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
     assert.ok(en.includes('"inLanguage": "en"'));
     assert.ok(en.includes('November 17, 2026'));
     assert.ok(es.includes('<html lang="es">'));
-    assert.ok(es.includes('<meta property="og:locale" content="es_ES">'));
+    assert.ok(es.includes('<meta property="og:locale" content="es_419">'));
     assert.ok(es.includes('17 de noviembre de 2026'));
 
     // English chrome and content; no Portuguese chrome strings.
@@ -244,6 +245,7 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
   const production = {
     en: {
       prefix: '/en',
+      portal: ['/en/fuel-prices/', '/en/methodology/', '/en/data/'],
       guias: ['guides', ['anp-weekly-price-survey', 'diesel-s10-or-s500', 'ethanol-or-gasoline', 'how-gasoline-prices-are-formed', 'how-to-read-fuel-prices', 'icms-fuel-tax-explained']],
       ferramentas: ['tools', ['cost-per-km-calculator', 'ethanol-or-gasoline-calculator', 'fill-up-cost-calculator', 'fuel-consumption-calculator', 'trip-fuel-cost-calculator']],
       paginas: ['', ['about', 'editorial-policy']],
@@ -251,6 +253,7 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
     },
     es: {
       prefix: '/es',
+      portal: ['/es/precios/', '/es/metodologia/', '/es/datos/'],
       guias: ['guias', ['como-leer-los-precios', 'como-se-forma-el-precio-de-la-gasolina', 'diesel-s10-o-s500', 'encuesta-semanal-anp', 'etanol-o-gasolina', 'icms-sobre-combustibles']],
       ferramentas: ['herramientas', ['calculadora-consumo-medio', 'calculadora-costo-de-viaje', 'calculadora-costo-por-km', 'calculadora-etanol-o-gasolina', 'calculadora-llenar-el-tanque']],
       paginas: ['', ['politica-editorial', 'sobre']],
@@ -261,7 +264,11 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
     // ADR-027: a translation ships only as `reviewed`, and the record names
     // the AI review instead of a person.
     const routes = [];
+    const registry = loadLocales(root);
     for (const [code, locale] of Object.entries(production)) {
+      const { reviewers } = registry.locales.find((entry) => entry.code === code);
+      const dictionary = JSON.parse(read(root, `content/i18n/${code}.json`));
+      assert.ok(reviewers.includes(dictionary._review.reviewedBy), `${code} dictionary records a registered reviewer`);
       routes.push([code, `${locale.prefix}/`]);
       for (const dir of ['guias', 'ferramentas', 'paginas']) {
         const [segment, slugs] = locale[dir];
@@ -272,7 +279,9 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
           const rel = `content/translations/${code}/${dir}/${slug}.md`;
           const raw = fs.readFileSync(path.join(root, rel), 'utf8');
           assert.match(raw, /^translationStatus: reviewed$/m, `${rel} is reviewed`);
-          assert.match(raw, /^reviewedBy: AI review \(Claude\)$/m, `${rel} records the AI review`);
+          const reviewer = /^reviewedBy: (.+)$/m.exec(raw)?.[1];
+          assert.match(reviewer ?? '', /^AI review \([^)]+\)$/, `${rel} records the AI review`);
+          assert.ok(reviewers.includes(reviewer), `${rel} records a registered reviewer`);
           assert.match(raw, /^reviewedAt: \d{4}-\d{2}-\d{2}$/m, `${rel} dates its review`);
           assert.doesNotMatch(raw, /!\[/, `${rel} embeds no Portuguese screenshot`);
           routes.push([code, segment ? `${locale.prefix}/${segment}/${slug}/` : `${locale.prefix}/${slug}/`]);
@@ -294,6 +303,25 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
       assert.ok(links.some((link) => link.hreflang === 'pt-BR'), `${route} lists its Portuguese original`);
       assert.equal(links.filter((link) => link.hreflang === 'x-default').length, 1, `${route} has one x-default`);
       assert.doesNotMatch(html, /<img[^>]+src="\/assets\/app\//, `${route} shows no Portuguese app capture`);
+    }
+
+    for (const [code, locale] of Object.entries(production)) {
+      const home = read(outDir, `${code}/index.html`);
+      const header = home.match(/<header class="topbar">([\s\S]*?)<\/header>/)[1];
+      const main = home.match(/<main id="conteudo">([\s\S]*?)<\/main>/)[1];
+      const footer = home.match(/<footer class="footer">([\s\S]*?)<\/footer>/)[1];
+      for (const section of [header, footer]) {
+        for (const hub of locale.portal) {
+          assert.ok(section.includes(`href="${hub}"`), `${code} chrome links to ${hub}`);
+        }
+      }
+      for (const hub of [locale.portal[0], locale.portal[1], `${locale.portal[0]}pr/`]) {
+        assert.ok(main.includes(`href="${hub}"`), `${code} home links to ${hub}`);
+      }
+      for (const [pageCode, route] of routes.filter(([pageCode]) => pageCode === code)) {
+        const html = read(outDir, `${route.slice(1)}index.html`);
+        assert.doesNotMatch(html, /href="\/(?:precos|metodologia|dados)\//, `${pageCode} ${route} uses the same-locale portal`);
+      }
     }
 
     // Readers are told how each translated guide was made.

@@ -100,9 +100,11 @@ func TestVerifyNoindexArtifactAndSitemap(t *testing.T) {
 	}
 	// 5 hubs, 2 fuel hubs, 2 states, 2 cities, 3 fuel by state pages, 1 fuel
 	// by city page and the one station that passes the D-SEO-02 gate (recent
-	// official price and complete address).
-	if verified.SitemapURLs != 16 {
-		t.Fatalf("sitemap URLs = %d, want 16", verified.SitemapURLs)
+	// official price and complete address). Each translation adds the four
+	// translated hubs, two fuel hubs, two states, two capitals and three
+	// fuel-by-state pages.
+	if verified.SitemapURLs != 16+2*13 {
+		t.Fatalf("sitemap URLs = %d, want 42", verified.SitemapURLs)
 	}
 	sitemap := readSitemaps(t, indexable)
 	for _, want := range []string{
@@ -392,10 +394,10 @@ func TestVerifyOfficialSitemapCensus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// D-SEO-03: the fiscalização hub joins the 16 price URLs; record pages
-	// stay noindex,follow and out of the sitemap.
-	if verified.SitemapURLs != 17 {
-		t.Fatalf("official sitemap URLs = %d, want 17", verified.SitemapURLs)
+	// D-SEO-03: the Portuguese fiscalização hub joins the 42 existing
+	// indexable URLs. Record pages stay noindex,follow and out of the sitemap.
+	if verified.SitemapURLs != 42+1 {
+		t.Fatalf("official sitemap URLs = %d, want 43", verified.SitemapURLs)
 	}
 	sitemap := readSitemaps(t, out)
 	if !strings.Contains(sitemap, "<loc>https://portal.example/fiscalizacao/</loc>") {

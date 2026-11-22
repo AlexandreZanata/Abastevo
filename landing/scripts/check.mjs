@@ -311,7 +311,7 @@ export function checkDist(options = {}) {
       if (resourcePath === '/' && hash !== undefined && hash !== '') {
         if (!homeHtml.includes(`id="${hash}"`)) errors.push(`${rel} links to a missing home anchor /#${hash}`);
       }
-      if (isPortalRoute(resourcePath)) continue;
+      if (isPortalRoute(resourcePath, localeRegistry.locales)) continue;
       let diskTarget;
       if (resourcePath === '/') {
         diskTarget = path.join(distDir, 'index.html');

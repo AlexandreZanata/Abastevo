@@ -1,8 +1,8 @@
 {
   "_review": {
     "status": "reviewed",
-    "reviewedBy": "AI review (Claude)",
-    "reviewedAt": "2026-11-21"
+    "reviewedBy": "AI review (Codex)",
+    "reviewedAt": "2026-11-22"
   },
   "home": {
     "title": "Fuel prices in Brazil by state and city",
@@ -100,9 +100,11 @@
     "browserRequirements": "The interactive calculation uses JavaScript; the formula and the example work without it.",
     "pageUpdated": "Updated on {date} · {team}",
     "footerPrices": "Prices by state",
-    "footerConsult": "Browse data",
+    "footerConsult": "Find a station (in Portuguese)",
     "footerEnforcement": "Enforcement",
     "footerMethodology": "Methodology",
+    "footerData": "Open data",
+    "footerInsights": "Insights",
     "footerAllGuides": "All guides",
     "footerHowTo": "How to use the app",
     "footerApp": "App",

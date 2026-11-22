@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise the actual static web Caddyfile in an isolated loopback container."""
+import json
 import os
 from pathlib import Path
 import shutil
@@ -22,6 +23,14 @@ def run():
     config = Path(os.environ.get("ANPFUEL_TEST_CADDYFILE", ROOT / "infra/caddy/staging-web.Caddyfile"))
     mirror = yaml.safe_load((ROOT / "infra/k8s/staging/web-caddy-configmap.yaml").read_text())
     assert mirror["data"]["Caddyfile"] == config.read_text(), "Kubernetes Caddy mirror drift"
+    registry = json.loads((ROOT / "contracts/i18n/locales.json").read_text())
+    translated = [locale for locale in registry["locales"] if locale["prefix"] and locale["enabled"]]
+    portal_hubs = [locale["prefix"] + "/" + locale["segments"][section]
+                   for locale in translated for section in ("precos", "metodologia", "dados", "curiosidades")]
+    portal_pages = [hub + "/" for hub in portal_hubs] + [
+        "/en/fuel-prices/regular-gasoline/pr/", "/es/precios/pr/foz-do-iguacu/",
+    ]
+    landing_pages = [locale["prefix"] + "/" for locale in translated] + ["/en/guides/", "/es/guias/"]
     # The reviewed digest already pinned by the staging/production edge.
     image = os.environ.get("ANPFUEL_TEST_CADDY_IMAGE",
                            "caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d")
@@ -37,6 +46,12 @@ def run():
         (tree / "admin/login").mkdir(parents=True)
         (tree / "admin/login/index.html").write_text("Synthetic admin sentinel")
         (portal / "sitemap.xml").write_text("Synthetic portal sitemap sentinel")
+        for root, routes, marker in ((portal, portal_pages, "portal"), (tree, landing_pages, "landing")):
+            for route in routes:
+                page = root / route.lstrip("/") / "index.html"
+                page.parent.mkdir(parents=True, exist_ok=True)
+                page.write_text(f"Synthetic {marker} page for {route}")
+
         subprocess.run(["docker", "run", "--rm", "--network", "none",
                         "-v", str(config) + ":/etc/caddy/Caddyfile:ro", image,
                         "caddy", "validate", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"],
@@ -130,6 +145,18 @@ def run():
             assert "Disallow: /\n" not in robots.split("User-agent: GPTBot")[0], "Robots still refuses every crawler"
             assert request("/sitemap.xml")[:3:2] == (200, b"Synthetic landing sitemap sentinel"), "Landing sitemap not served"
             assert request("/sitemap-portal.xml")[:3:2] == (200, b"Synthetic portal sitemap sentinel"), "Portal sitemap not served"
+            for hub in portal_hubs:
+                code, headers, _ = request(hub)
+                assert code == 308 and headers["Location"] == hub + "/", f"{hub} did not redirect to the canonical route"
+            for route in portal_pages:
+                code, headers, raw = request(route)
+                assert code == 200 and raw.decode() == f"Synthetic portal page for {route}", route
+                assert headers["Cache-Control"] == "public, max-age=0, must-revalidate", route
+            for route in landing_pages:
+                assert request(route)[:3:2] == (200, f"Synthetic landing page for {route}".encode()), route
+            for route in ["/en/fuel-prices/missing/", "/es/precios/missing/", "/en/stations/", "/es/fiscalizacion/", "/es/forum/", "/en/consultar/"]:
+                assert request(route)[0] == 404, route
+            print("PASS: Caddy localized portal routing and canonical redirects")
             print("PASS: Caddy company entry, canonical deep links, private cache/conditional rules without validators, fingerprinted-only immutable assets, revalidated licences, real 404s, public/admin separation, official-origin indexing with private noindex")
         finally:
             subprocess.run(["docker", "rm", "-f", name], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -225,7 +225,7 @@ func TestRefreshPublishesAndWithdrawsEditorialPostPages(t *testing.T) {
 			t.Errorf("released post page lacks %s", want)
 		}
 	}
-	sitemap, err := os.ReadFile(filepath.Join(portalRoot, "current", "sitemaps", "portal-forum-1.xml"))
+	sitemap, err := os.ReadFile(filepath.Join(portalRoot, "current", "sitemaps", "portal-forum-pt-BR-1.xml"))
 	if err != nil || !strings.Contains(string(sitemap), "https://portal.example/forum/combustiveis/etanol-na-estrada-bbbbbbbb/") {
 		t.Fatalf("forum sitemap = %s, %v", sitemap, err)
 	}
@@ -245,7 +245,7 @@ func TestRefreshPublishesAndWithdrawsEditorialPostPages(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(portalRoot, "current", route)); !os.IsNotExist(err) {
 		t.Fatalf("hidden post still served: %v", err)
 	}
-	for _, gone := range []string{"forum", filepath.Join("sitemaps", "portal-forum-1.xml")} {
+	for _, gone := range []string{"forum", filepath.Join("sitemaps", "portal-forum-pt-BR-1.xml")} {
 		if _, err := os.Stat(filepath.Join(portalRoot, "current", gone)); !os.IsNotExist(err) {
 			t.Errorf("%s survived the last hidden post: %v", gone, err)
 		}

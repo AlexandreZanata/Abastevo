@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /politica-editorial/
 sourceRevision: 2026-11-21
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 ---
 
 ## What this policy is for
@@ -54,7 +54,7 @@ follows in every guide, tool and data page of this site.
 - When there is no recent data for a city or fuel, the page says so instead of
   filling the space with an estimate.
 
-The technical details are in the [methodology](/metodologia/) (in Portuguese)
+The technical details are in the [methodology](/en/methodology/)
 and in the guide
 [how the ANP weekly survey works](/en/guides/anp-weekly-price-survey/).
 

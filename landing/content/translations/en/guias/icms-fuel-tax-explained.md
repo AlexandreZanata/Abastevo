@@ -12,8 +12,8 @@ dateModified: 2026-11-21
 translationOf: /guias/icms-sobre-combustiveis/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/guides/how-gasoline-prices-are-formed/
   - /en/guides/ethanol-or-gasoline/
@@ -150,9 +150,9 @@ competition, local costs and stock keep weighing, as shown in the guide
 (in Portuguese).
 
 To follow the effect of these differences with official data, check the
-[reference prices by state](/precos/) (in Portuguese), always with the
+[reference prices by state](/en/fuel-prices/), always with the
 collection date, and understand the limits of that sample in the
-[data methodology](/metodologia/) (in Portuguese).
+[data methodology](/en/methodology/).
 
 ## The Brazilian context
 
