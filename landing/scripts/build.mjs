@@ -420,6 +420,13 @@ export function build(options = {}) {
       const { srcRel, destRel, locale } = page;
       let html = page.html;
 
+      html = html.replace('<!-- TAB_ICONS -->', [
+        '<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/icon-192.png">',
+        '<link rel="icon" href="/favicon.ico?v=2">',
+        '<link rel="icon" type="image/svg+xml" sizes="any" href="/assets/brand/favicon-dark.svg?v=2" media="(prefers-color-scheme: dark)">',
+        '<link rel="icon" type="image/svg+xml" sizes="any" href="/assets/brand/favicon.svg?v=2" media="(prefers-color-scheme: light)">',
+      ].join('\n  '));
+
       // Asset reference rewrites
       html = html.replaceAll('/assets/styles.css', `/assets/${fingerprintedCssName}`);
       html = html.replaceAll('/assets/main.js', `/assets/${fingerprintedJsName}`);

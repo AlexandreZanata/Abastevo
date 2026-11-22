@@ -87,9 +87,9 @@ test('seo & metadata: title, description, open graph, and icon links across all 
       assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image">'), `${page.rel} must have summary_large_image`);
 
       // Icons
-      assert.ok(html.includes('href="/assets/brand/favicon.svg"'), `${page.rel} must link favicon.svg`);
+      assert.ok(html.includes('href="/assets/brand/favicon.svg?v=2"'), `${page.rel} must link favicon.svg`);
       assert.ok(html.includes('href="/assets/brand/icon-192.png"'), `${page.rel} must link icon-192.png`);
-      assert.ok(html.includes('href="/favicon.ico"'), `${page.rel} must link root favicon.ico`);
+      assert.ok(html.includes('href="/favicon.ico?v=2"'), `${page.rel} must link root favicon.ico`);
       assert.ok(html.includes('href="/assets/brand/apple-touch-icon.png"'), `${page.rel} must link apple-touch-icon.png`);
       assert.ok(html.includes('href="/site.webmanifest"'), `${page.rel} must link site.webmanifest`);
       assert.ok(html.includes('<meta name="theme-color" content="#ffffff">'), `${page.rel} must define theme-color`);

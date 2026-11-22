@@ -214,3 +214,42 @@ func TestLocalizedPortalKeepsComparablePublicFields(t *testing.T) {
 		}
 	}
 }
+
+func TestPortalTabBrandingUsesConfiguredLandingOrigin(t *testing.T) {
+	snapshot := writeSEOFixture(t)
+	for _, tc := range []struct{ name, landing, prefix string }{
+		{name: "shared origin", landing: seoSite},
+		{name: "separate origin", landing: "https://landing.example", prefix: "https://landing.example"},
+		{name: "standalone"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := filepath.Join(t.TempDir(), "portal")
+			if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, Indexable: true, SiteURL: seoSite, LandingURL: tc.landing}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Verify(out, VerifyOptions{SiteURL: seoSite}); err != nil {
+				t.Fatal(err)
+			}
+			for _, route := range []string{"metodologia", "en/methodology", "es/metodologia"} {
+				body := readPortal(t, out, route+"/index.html")
+				head := parseHead(body)
+				if !strings.HasSuffix(head.Title, " Abastevo") {
+					t.Errorf("/%s/ has document title %q", route, head.Title)
+				}
+				if tc.landing == "" {
+					if strings.Contains(body, `rel="icon"`) {
+						t.Errorf("/%s/ has a landing icon in the standalone artifact", route)
+					}
+					continue
+				}
+				ico := `<link rel="icon" href="` + tc.prefix + `/favicon.ico?v=2">`
+				dark := `<link rel="icon" type="image/svg+xml" sizes="any" href="` + tc.prefix + `/assets/brand/favicon-dark.svg?v=2" media="(prefers-color-scheme: dark)">`
+				light := `<link rel="icon" type="image/svg+xml" sizes="any" href="` + tc.prefix + `/assets/brand/favicon.svg?v=2" media="(prefers-color-scheme: light)">`
+				first, second, third := strings.Index(body, ico), strings.Index(body, dark), strings.Index(body, light)
+				if first < 0 || second <= first || third <= second {
+					t.Errorf("/%s/ lacks the ICO fallback followed by dark and light SVG favicons", route)
+				}
+			}
+		})
+	}
+}

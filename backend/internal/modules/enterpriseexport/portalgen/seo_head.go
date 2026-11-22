@@ -15,6 +15,23 @@ const (
 	ogImagePath = "/assets/brand/og-image-v1.png"
 )
 
+// tabTitle capitalizes the portal's brand labels in the document title.
+func tabTitle(title string) string {
+	if rest, ok := strings.CutPrefix(title, forumBrand+":"); ok {
+		return "Fórum Abastevo:" + rest
+	}
+	for _, labels := range [][2]string{
+		{" | abastevo", " | Abastevo"},
+		{" – abastevo", " – Abastevo"},
+		{" | " + forumBrand, " | Fórum Abastevo"},
+	} {
+		if prefix, ok := strings.CutSuffix(title, labels[0]); ok {
+			return prefix + labels[1]
+		}
+	}
+	return title
+}
+
 // descriptionFillers are honest generic sentences appended, in order, only
 // while a description is shorter than descriptionMin.
 var descriptionFillers = []string{

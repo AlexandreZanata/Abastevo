@@ -76,10 +76,11 @@ var (
 	shaPrefixName         = regexp.MustCompile(`^portal\.([0-9a-f]{8})\.(css|js)$`)
 )
 
-// LandingRoutes are the same-origin landing pages a portal page may link
+// LandingRoutes are the same-origin landing pages and files a portal page may link
 // root-relatively when the landing shares the portal origin. Any other
 // root-relative link must resolve to an artifact file.
 var LandingRoutes = map[string]bool{
+	"/favicon.ico": true, "/assets/brand/favicon.svg": true, "/assets/brand/favicon-dark.svg": true,
 	"/": true, "/en/": true, "/es/": true, "/en/guides/": true, "/es/guias/": true, "/en/tools/": true, "/es/herramientas/": true,
 	"/en/about/": true, "/es/sobre/": true, "/en/editorial-policy/": true, "/es/politica-editorial/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
 	"/excluir-conta/": true, "/termos/": true, "/sobre/": true, "/politica-editorial/": true,
@@ -901,7 +902,11 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 		return VerifyResult{}, err
 	}
 	for _, ref := range assetRef.FindAllSubmatch(initialBody, -1) {
-		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(string(ref[1]), "/"))))
+		path, _, _ := strings.Cut(string(ref[1]), "?")
+		if LandingRoutes[path] {
+			continue // Landing files are served outside the portal artifact.
+		}
+		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(path, "/"))))
 		if err != nil {
 			return VerifyResult{}, fmt.Errorf("portalcheck: initial asset unavailable")
 		}

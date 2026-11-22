@@ -262,6 +262,7 @@ func (p localizedPortal) write(source localizedSource) error {
 		Indexable:   p.indexable && decision, Robots: robotsValue(p.indexable, decision),
 		Route: route, Family: original.Family, Language: p.Code, LastMod: original.LastMod, CSSURL: p.cssURL,
 		PublishedAt: p.publication(), InputHash: original.InputHash,
+		HasLanding: original.HasLanding, Landing: original.Landing,
 	}
 	data := localizedPage{
 		pageBase: base, Locale: p.portalLocale, Links: p.languageGroups[route],

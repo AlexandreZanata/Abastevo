@@ -7,7 +7,8 @@ const localizedTemplates = `
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="{{.Robots}}">
-  <title>{{.HeadTitle}}</title>
+  <title>{{tabTitle .HeadTitle}}</title>
+  {{template "tabIcons" .}}
   <meta name="description" content="{{.Description}}">
   {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
   <meta property="og:type" content="website">

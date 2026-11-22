@@ -51,7 +51,7 @@ test('helpers: date validation and <title> composition', () => {
   assert.ok(isValidDate('2026-11-14'));
   assert.ok(!isValidDate('2026-02-30'));
   assert.ok(!isValidDate('14/11/2026'));
-  assert.equal(htmlTitle('Seus direitos no posto de combustível'), 'Seus direitos no posto de combustível | abastevo');
+  assert.equal(htmlTitle('Seus direitos no posto de combustível'), 'Seus direitos no posto de combustível | Abastevo');
   const long = 'ICMS sobre combustíveis: como funciona o valor por litro';
   assert.equal(htmlTitle(long), long, 'suffix dropped when it would exceed 65 characters');
 });

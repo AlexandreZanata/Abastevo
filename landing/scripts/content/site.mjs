@@ -25,10 +25,11 @@ export function isValidDate(value) {
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
 
-/** `<title>` text: "{title} | abastevo" when it fits the 65-character bound. */
+/** `<title>` text: "{title} | Abastevo" when it fits the 65-character bound. */
 export function htmlTitle(title) {
-  const full = `${title} | abastevo`;
-  return full.length <= TITLE_BOUNDS[1] ? full : title;
+  const branded = title.replace(/\babastevo\b/g, 'Abastevo');
+  const full = `${branded} | Abastevo`;
+  return full.length <= TITLE_BOUNDS[1] ? full : branded;
 }
 
 export function outputRelFor(route) {
