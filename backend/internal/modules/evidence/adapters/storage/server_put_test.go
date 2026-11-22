@@ -5,9 +5,12 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -154,5 +157,117 @@ func TestPutIfAbsentReplaysOnceAfterTransportFailure(t *testing.T) {
 	var status *StatusError
 	if !errors.As(err, &status) || status.Status != http.StatusServiceUnavailable {
 		t.Fatalf("transport failure classification changed: %v", err)
+	}
+}
+
+// staleConn is a pooled connection the provider closed while it sat idle and
+// the client had not noticed yet: the next request is written, and only then
+// does the connection turn out to be dead.
+type staleConn struct {
+	net.Conn
+	stale atomic.Bool
+}
+
+func (c *staleConn) Write(p []byte) (int, error) {
+	if c.stale.Load() {
+		_ = c.Conn.Close()
+		return len(p), nil
+	}
+	return c.Conn.Write(p)
+}
+
+// A provider closes its idle keep-alive connections by age, so several pooled
+// connections go stale together. One replay is not enough when the replay
+// draws the next stale connection: eight concurrent conditional writes failed
+// that way on main (orgmedia, "unavailable"). The conditional create must
+// reach a fresh connection however many stale ones are pooled, and the marker
+// that lets the transport replay it must never be sent to the provider.
+func TestPutIfAbsentSurvivesEveryStalePooledConnection(t *testing.T) {
+	const pooled = 3
+	var mu sync.Mutex
+	stored := map[string]string{}
+	arrived := make(chan struct{}, pooled)
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			// Warm-up: hold every request so each one needs its own connection.
+			arrived <- struct{}{}
+			<-release
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if _, sent := r.Header["Idempotency-Key"]; sent {
+			t.Error("the replay marker reached the provider")
+		}
+		if r.Header.Get("If-None-Match") != "*" {
+			t.Error("conditional header missing")
+		}
+		raw, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		defer mu.Unlock()
+		if _, ok := stored[r.URL.Path]; ok {
+			w.WriteHeader(http.StatusPreconditionFailed)
+			return
+		}
+		stored[r.URL.Path] = string(raw)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	var conns []*staleConn
+	dialer := &net.Dialer{}
+	transport := &http.Transport{MaxIdleConnsPerHost: pooled, DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+		conn, err := dialer.DialContext(ctx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+		tracked := &staleConn{Conn: conn}
+		mu.Lock()
+		conns = append(conns, tracked)
+		mu.Unlock()
+		return tracked, nil
+	}}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Transport: transport}
+
+	var warm sync.WaitGroup
+	for range pooled {
+		warm.Add(1)
+		go func() {
+			defer warm.Done()
+			response, err := client.Get(server.URL + "/warm")
+			if err != nil {
+				t.Error("warm-up request failed")
+				return
+			}
+			_, _ = io.Copy(io.Discard, response.Body)
+			_ = response.Body.Close()
+		}()
+	}
+	for range pooled {
+		<-arrived
+	}
+	close(release)
+	warm.Wait()
+
+	// Every pooled connection is idle now, and every one of them is stale.
+	mu.Lock()
+	if len(conns) != pooled {
+		mu.Unlock()
+		t.Fatalf("warm-up pooled %d connections, want %d", len(conns), pooled)
+	}
+	for _, conn := range conns {
+		conn.stale.Store(true)
+	}
+	mu.Unlock()
+
+	created, err := PutIfAbsent(context.Background(), client, server.URL+"/object", "image/jpeg", []byte("synthetic"))
+	mu.Lock()
+	defer mu.Unlock()
+	if err != nil || !created || stored["/object"] != "synthetic" {
+		t.Fatalf("conditional create lost to stale pooled connections: created=%v err=%v stored=%q", created, err, stored["/object"])
+	}
+	if len(conns) != pooled+1 {
+		t.Fatalf("the create used %d connections, want the %d stale ones and one fresh", len(conns), pooled)
 	}
 }

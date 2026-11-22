@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -197,19 +198,38 @@ func TestPrivateS3OriginalAndMemberBoundAuditedAccess(t *testing.T) {
 type countTransport struct {
 	base              http.RoundTripper
 	created, existing atomic.Int64
+	mu                sync.Mutex
+	unexpected        []string
 }
 
+// The adapter reports every provider failure as "unavailable", so a failed
+// run names what the provider really answered. A transport error carries no
+// URL, and so no signature.
 func (c *countTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	response, err := c.base.RoundTrip(request)
-	if err == nil && request.Method == http.MethodPut {
-		if response.StatusCode == 200 {
-			c.created.Add(1)
-		}
-		if response.StatusCode == 412 {
-			c.existing.Add(1)
-		}
+	switch {
+	case err != nil:
+		c.note(fmt.Sprintf("%s transport error: %v", request.Method, err))
+	case request.Method == http.MethodPut && response.StatusCode == 200:
+		c.created.Add(1)
+	case request.Method == http.MethodPut && response.StatusCode == 412:
+		c.existing.Add(1)
+	case response.StatusCode/100 != 2:
+		c.note(fmt.Sprintf("%s status %d", request.Method, response.StatusCode))
 	}
 	return response, err
+}
+
+func (c *countTransport) note(line string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.unexpected = append(c.unexpected, line)
+}
+
+func (c *countTransport) seen() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return fmt.Sprintf("created=%d existing=%d unexpected=%q", c.created.Load(), c.existing.Load(), c.unexpected)
 }
 func TestConcurrentPrivatePUTNeverOverwritesAndDetectsSubstitution(t *testing.T) {
 	f := realMedia(t)
@@ -229,11 +249,11 @@ func TestConcurrentPrivatePUTNeverOverwritesAndDetectsSubstitution(t *testing.T)
 	close(start)
 	for range 8 {
 		if err := <-results; err != nil {
-			t.Fatal("concurrent conditional write failed", err)
+			t.Fatal("concurrent conditional write failed", err, transport.seen())
 		}
 	}
 	if transport.created.Load() != 1 || transport.existing.Load() != 7 {
-		t.Fatalf("conditional outcomes created=%d existing=%d", transport.created.Load(), transport.existing.Load())
+		t.Fatal("conditional outcomes", transport.seen())
 	}
 	key, _ := f.objectA.Key(f.scopeA)
 	input := storage.PresignInput{Endpoint: f.config.Endpoint, Bucket: f.config.Bucket, Region: f.config.Region, Key: key, Namespace: "org/" + f.objectA.OrgID + "/",
