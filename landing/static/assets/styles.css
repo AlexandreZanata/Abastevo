@@ -1129,7 +1129,7 @@ a.store-pill {
 .landing-home .topnav a, .landing-home .topbar-link { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0 0.875rem; border-radius: 999px; color: #ffffff; font-family: var(--display); font-size: 0.9375rem; font-weight: 600; text-decoration: none; }
 .landing-home .topnav a:hover, .landing-home .topbar-link:hover { background: #262626; }
 .landing-home .topbar-link svg { display: block; width: 18px; height: 18px; }
-.landing-home .topbar-github-mark { width: 18px; height: 18px; background: currentColor; mask: url("/assets/brand/github-mark.svg") center / contain no-repeat; }
+.landing-home .topbar-github-mark { filter: invert(1); }
 .landing-home .topbar-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .landing-home .pill-light { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 1rem; border-radius: 999px; background: #ffffff; color: #000000; font-family: var(--display); font-size: 0.9375rem; font-weight: 700; text-decoration: none; }
 .landing-home .pill-light:hover { background: #e2e2e2; }

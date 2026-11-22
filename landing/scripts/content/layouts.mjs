@@ -902,7 +902,7 @@ export function renderLocalizedHeader(site, locale, languagePicker) {
         ${nav}
       </nav>
       <div class="topbar-actions">
-        <a class="topbar-link" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}"><span class="topbar-github-mark" aria-hidden="true"></span><span class="hide-sm">${esc(t(locale, 'chrome.github'))}</span></a>
+        <a class="topbar-link" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}"><img class="topbar-github-mark" src="/assets/brand/github-mark.svg" width="18" height="18" alt=""><span class="hide-sm">${esc(t(locale, 'chrome.github'))}</span></a>
         ${link('/consultar/', 'navConsultData', { className: 'pill-light hide-sm' })}
         ${languagePicker}
         <details class="nav-toggle" name="landing-header">
