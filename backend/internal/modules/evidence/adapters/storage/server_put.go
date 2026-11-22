@@ -40,10 +40,17 @@ func PresignServerPUT(in PresignInput, cred Credentials) (PresignedPUT, error) {
 // PutIfAbsent never replaces a stored object. Existing state is not proof of
 // matching content: the caller must retrieve and verify that private snapshot.
 func PutIfAbsent(ctx context.Context, client *http.Client, rawURL, contentType string, body []byte) (bool, error) {
-	// Go never replays a PUT, so a pooled keep-alive connection the provider
-	// just closed fails the request. The conditional create is safe to send
-	// exactly once more: if the first attempt was stored, the replay answers
-	// 412 and the caller's authenticated read still verifies the identity.
+	// Go never replays a PUT on its own, so a pooled keep-alive connection the
+	// provider just closed fails the request. The conditional create is safe
+	// to replay: if an earlier attempt was stored, the replay answers 412 and
+	// the caller's authenticated read still verifies the identity.
+	//
+	// Two layers use that. The empty Idempotency-Key tells net/http that this
+	// request may be replayed, so the transport itself moves past every stale
+	// pooled connection until it reaches a live or a fresh one; a provider
+	// closes idle connections by age, so several go stale together. An empty
+	// value is never written on the wire. The loop below then sends the
+	// request once more after any other transport failure.
 	var response *http.Response
 	for attempt := 0; attempt < 2; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, rawURL, bytes.NewReader(body))
@@ -52,6 +59,7 @@ func PutIfAbsent(ctx context.Context, client *http.Client, rawURL, contentType s
 		}
 		req.Header.Set("Content-Type", contentType)
 		req.Header.Set("If-None-Match", "*")
+		req.Header["Idempotency-Key"] = []string{}
 		req.ContentLength = int64(len(body))
 		response, err = privateClient(client).Do(req)
 		if err == nil {
