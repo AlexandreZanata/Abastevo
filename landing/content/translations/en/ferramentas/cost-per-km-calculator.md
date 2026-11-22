@@ -90,5 +90,5 @@ were taken on November 17, 2026. Their example is an estimate for a 50 L tank
 in Sorriso, Mato Grosso, with the reference from ANP, Brazil's oil and fuels
 regulator, for November 8 to 14, 2026, and a route to a station summarized as
 8 min · 5.1 km. See the tutorials
-[Vehicles and tank estimate](/como-usar/veiculos/) (in Portuguese) and
-[Find and navigate to a station](/como-usar/postos/) (in Portuguese).
+[Vehicles and tank estimate](/en/how-to/vehicles-and-tank-estimate/) and
+[Find and navigate to a station](/en/how-to/find-and-navigate-to-a-station/).

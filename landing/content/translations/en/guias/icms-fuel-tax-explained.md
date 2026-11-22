@@ -181,8 +181,8 @@ active in Sorriso, MT, and the regular gasoline history in Sorriso, MT, with a
 bar chart of four weeks.
 
 The full walkthrough is in the tutorials
-[Switch or download a week](/como-usar/semanas-anp/) (in Portuguese) and
-[Read the history](/como-usar/historico/) (in Portuguese).
+[Switch or download a week](/en/how-to/switch-or-download-a-week/) and
+[Read the history](/en/how-to/read-price-history/).
 
 ## Sources
 

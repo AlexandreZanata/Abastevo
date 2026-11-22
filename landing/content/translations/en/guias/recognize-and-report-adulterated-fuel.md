@@ -54,7 +54,7 @@ The ANP rules require stations to have equipment for basic tests and carry them 
 
 ## Report to ANP
 
-Use the consumer channels listed on the [ANP website](https://www.gov.br/anp/), such as the contact form or consumer relations phone line. Include the station's name, business registration number (CNPJ) and address, the refueling date and time, the fuel and quantity, what happened and the evidence you have. ANP can investigate and penalize violations. The [ANP enforcement pages](/fiscalizacao/) in Portuguese show published fines and the source and limitations of those records.
+Use the consumer channels listed on the [ANP website](https://www.gov.br/anp/), such as the contact form or consumer relations phone line. Include the station's name, business registration number (CNPJ) and address, the refueling date and time, the fuel and quantity, what happened and the evidence you have. ANP can investigate and penalize violations. The [ANP enforcement pages](/en/enforcement/) show published fines and the source and limitations of those records.
 
 ## Compensation through consumer channels
 
@@ -76,7 +76,7 @@ The Abastevo Android app is in development. The [screenshots in the Portuguese g
 2. The fuel quality screen, **Qualidade do combustível**, displays ANP results by fuel and tells you when there are no official results. Past results do not guarantee the station's current quality.
 3. In **Profile**, **Help and community rules** explains how to contribute and report content inside the app.
 
-The captures show a station with no official result for the revision and the cards for good contributions, community rules, reporting and appeals. Use the [station profile walkthrough](/como-usar/perfil-do-posto/) (in Portuguese). Use the official channels above for fuel quality complaints.
+The captures show a station with no official result for the revision and the cards for good contributions, community rules, reporting and appeals. Use the [station profile walkthrough](/en/how-to/view-station-profile/). Use the official channels above for fuel quality complaints.
 
 ## Sources
 

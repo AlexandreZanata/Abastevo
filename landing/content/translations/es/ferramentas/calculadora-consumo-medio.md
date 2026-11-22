@@ -90,4 +90,4 @@ la página en portugués, muestran la interfaz en portugués y son del 17 de
 noviembre de 2026. La carga de ejemplo que muestran usa valores ficticios:
 40 L con tanque lleno, un total de R$ 250,00 y un odómetro de 12.500 km.
 Consulta el tutorial
-[Vehículos y estimación del tanque](/como-usar/veiculos/) (en portugués).
+[Vehículos y estimación del tanque](/es/como-usar/vehiculos-y-estimacion-del-tanque/).

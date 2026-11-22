@@ -83,6 +83,8 @@ var LandingRoutes = map[string]bool{
 	"/favicon.ico": true, "/assets/brand/favicon.svg": true, "/assets/brand/favicon-dark.svg": true,
 	"/": true, "/en/": true, "/es/": true, "/en/guides/": true, "/es/guias/": true, "/en/tools/": true, "/es/herramientas/": true,
 	"/en/about/": true, "/es/sobre/": true, "/en/editorial-policy/": true, "/es/politica-editorial/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
+	"/en/how-to/": true, "/es/como-usar/": true, "/en/privacy/": true, "/es/privacidad/": true,
+	"/en/delete-account/": true, "/es/eliminar-cuenta/": true, "/en/terms/": true, "/es/terminos/": true,
 	"/excluir-conta/": true, "/termos/": true, "/sobre/": true, "/politica-editorial/": true,
 	"/guias/etanol-ou-gasolina/": true, "/guias/como-ler-precos/": true, "/guias/pesquisa-anp/": true,
 	"/guias/combustivel-adulterado/": true, "/guias/como-calcular-consumo-medio/": true,
@@ -817,11 +819,6 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			default:
 				return VerifyResult{}, fmt.Errorf("portalcheck: unexpected robots value")
 			}
-			// D-SEO-03: official record pages and fiscalização pagination
-			// are never indexable.
-			if indexable[path] && (strings.HasPrefix(path, "fiscalizacao/registro/") || strings.HasPrefix(path, "fiscalizacao/pagina/")) {
-				return VerifyResult{}, fmt.Errorf("portalcheck: indexable official record or pagination %s", path)
-			}
 			if err := checkStructuredData(path, body); err != nil {
 				return VerifyResult{}, err
 			}
@@ -832,6 +829,11 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			languagePage, err := collectPortalLanguagePage(route, canonicals[path], indexable[path], body, locales)
 			if err != nil {
 				return VerifyResult{}, err
+			}
+			// D-SEO-03 applies to record pages and pagination in every language.
+			if indexable[path] && (strings.HasPrefix(languagePage.identity, "/fiscalizacao/registro/") ||
+				strings.HasPrefix(languagePage.identity, "/fiscalizacao/pagina/")) {
+				return VerifyResult{}, fmt.Errorf("portalcheck: indexable official record or pagination %s", path)
 			}
 			if languagePage.identity != "" || len(languagePage.alternates) > 0 {
 				languagePages[route] = languagePage
@@ -996,7 +998,7 @@ func checkHTMLReferences(dir string, files map[string]FileDigest, path string, b
 		if strings.HasSuffix(target, "/") {
 			target += "index.html"
 		}
-		if _, ok := files[target]; !ok && !LandingRoutes[ref] {
+		if _, ok := files[target]; !ok && !isLandingRoute(ref) {
 			return fmt.Errorf("portalcheck: broken link %s in %s", ref, path)
 		}
 	}

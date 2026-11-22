@@ -96,4 +96,4 @@ The captures are on the Portuguese page, show the Portuguese interface and
 were taken on November 17, 2026. The first one shows the ANP averages in São
 Paulo, SP, for the week of November 8 to 14, 2026: the ethanol average divided
 by the regular gasoline average is 4.09 ÷ 6.34 ≈ 0.65. See the tutorial
-[Check the ANP table](/como-usar/precos-anp/) (in Portuguese).
+[Check the ANP table](/en/how-to/check-anp-prices/).

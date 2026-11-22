@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from '../scripts/build.mjs';
-import { checkDist, routeForHtml } from '../scripts/check.mjs';
+import { checkDist, listHtmlPages, routeForHtml } from '../scripts/check.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pristine = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-check-'));
@@ -45,7 +45,9 @@ test('a fresh build passes the extended check and reports counts', () => {
   const result = checkDist({ distDir: pristine });
   assert.ok(result.ok);
   assert.ok(result.pages >= 30, `pages ${result.pages}`);
-  assert.equal(result.sitemapUrls, result.pages - 1, 'every page except 404 is in the sitemap');
+  const noindex = listHtmlPages(pristine).filter((rel) =>
+    /<meta\s+name="robots"\s+content="[^"]*noindex/.test(fs.readFileSync(path.join(pristine, rel), 'utf8')));
+  assert.equal(result.sitemapUrls, result.pages - noindex.length, 'every indexable page is in the sitemap');
   assert.match(result.toolsFile, /^tools\.[a-f0-9]{8}\.js$/);
   assert.ok(result.totalBytes > 0);
 });

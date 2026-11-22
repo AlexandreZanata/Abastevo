@@ -88,7 +88,7 @@ La app Android de Abastevo está en desarrollo. Las [capturas de la guía en por
 2. En el perfil de la estación, **Sugerir una corrección** envía el nuevo nombre o dirección para revisión antes de modificar el mapa.
 3. En **Perfil**, **Ayuda y reglas de la comunidad** resume cómo contribuir y denunciar contenido en la app.
 
-Las capturas muestran la elección de una estación en Sorriso, MT, las opciones para cambiar la estación y tomar la foto, y el formulario de corrección con nombre, calle y número y cierre definitivo. También muestran las tarjetas de contribución, reglas, denuncia y apelación. Consulta [Fotografiar un precio](/como-usar/fotografar-preco/) y [Consultar el perfil de la estación](/como-usar/perfil-do-posto/) (ambos en portugués).
+Las capturas muestran la elección de una estación en Sorriso, MT, las opciones para cambiar la estación y tomar la foto, y el formulario de corrección con nombre, calle y número y cierre definitivo. También muestran las tarjetas de contribución, reglas, denuncia y apelación. Consulta [Fotografiar un precio](/es/como-usar/fotografiar-un-precio/) y [Consultar el perfil de la estación](/es/como-usar/consultar-el-perfil-de-una-estacion/).
 
 ## Fuentes
 

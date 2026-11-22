@@ -99,7 +99,7 @@ The Abastevo Android app is in development. The real app screenshots dated Novem
 
 The captures show **Use current location**, **Search state** and the state list, then **Search municipality** with São Paulo in the results. The home screen shows **Prices in your city** for São Paulo, SP, for November 8–14, 2026. The last capture shows four weeks of regular gasoline averages in the **Price history** bar chart for Sorriso, MT.
 
-See the [screenshots in the original Portuguese guide](/guias/precos-diferentes-entre-cidades/#como-fazer-no-aplicativo) and the tutorials on [choosing a city](/como-usar/escolher-cidade/) and [reading price history](/como-usar/historico/) in Portuguese.
+See the [screenshots in the original Portuguese guide](/guias/precos-diferentes-entre-cidades/#como-fazer-no-aplicativo) and the tutorials on [choosing a city](/en/how-to/choose-city/) and [reading price history](/en/how-to/read-price-history/).
 
 ## Sources
 

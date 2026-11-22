@@ -209,8 +209,8 @@ test('localized guide navigation restores the Portuguese navigation groups and c
     assert.match(breadcrumb, /href="\/en\/"[\s\S]*?href="\/en\/guides\/"[\s\S]*?href="\/en\/guides\/choosing-fuel\//);
     const header = guide.match(/<header class="topbar">[\s\S]*?<\/header>/)?.[0];
     assert.match(header, /href="\/en\/#aplicativo"/);
-    assert.match(header, /href="\/como-usar\/" hreflang="pt-BR"/);
-    assert.match(header, /class="pill-light hide-sm" href="\/consultar\/" hreflang="pt-BR"/);
+    assert.match(header, /href="\/en\/how-to\/">/);
+    assert.match(header, /class="pill-light hide-sm" href="\/en\/search\/">/);
     const footer = guide.match(/<footer class="footer">[\s\S]*?<\/footer>/)?.[0];
     assert.equal((footer.match(/<nav aria-label=/g) || []).length, 5);
     assert.match(footer, /href="\/en\/fuel-prices\/sp\//);
@@ -291,6 +291,8 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
     en: {
       prefix: '/en',
       portal: ['/en/fuel-prices/', '/en/methodology/', '/en/data/'],
+      tutorials: '/en/how-to/',
+      legal: ['/en/privacy/', '/en/delete-account/', '/en/terms/'],
       guias: ['guides', [
         'anp-weekly-price-survey', 'diesel-s10-or-s500', 'ethanol-or-gasoline', 'fuel-station-consumer-rights',
         'how-gasoline-prices-are-formed', 'how-to-read-fuel-prices', 'icms-fuel-tax-explained', 'is-cng-worth-it',
@@ -305,6 +307,8 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
     es: {
       prefix: '/es',
       portal: ['/es/precios/', '/es/metodologia/', '/es/datos/'],
+      tutorials: '/es/como-usar/',
+      legal: ['/es/privacidad/', '/es/eliminar-cuenta/', '/es/terminos/'],
       guias: ['guias', [
         'ahorrar-combustible', 'calcular-consumo-medio', 'como-leer-los-precios', 'como-se-forma-el-precio-de-la-gasolina',
         'conviene-el-gnv', 'derechos-del-consumidor-en-la-estacion', 'diesel-s10-o-s500', 'encuesta-semanal-anp',
@@ -327,6 +331,11 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
       const dictionary = JSON.parse(read(root, `content/i18n/${code}.json`));
       assert.ok(reviewers.includes(dictionary._review.reviewedBy), `${code} dictionary records a registered reviewer`);
       routes.push([code, `${locale.prefix}/`]);
+      routes.push([code, locale.tutorials]);
+      const handbook = JSON.parse(read(root, `content/tutorials/${code}.json`));
+      for (const chapter of Object.values(handbook.chapters)) {
+        routes.push([code, `${locale.tutorials}${chapter.slug}/`]);
+      }
       for (const slug of locale.categories) {
         routes.push([code, `${locale.prefix}/${locale.guias[0]}/${slug}/`]);
       }
@@ -352,7 +361,7 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
     // The registry flags alone, with no test override, emit both locales.
     buildSite({ projectRoot: root, outDir, canonicalOrigin: origin, storeState: 'prelaunch' });
     const sitemap = read(outDir, 'sitemap.xml');
-    assert.equal((sitemap.match(/<url>/g) || []).length, 49 + routes.length, 'sitemap adds exactly the locale pages to the pt-BR set');
+    assert.equal((sitemap.match(/<url>/g) || []).length, 49 + routes.length, 'sitemap adds exactly the indexable locale pages to the pt-BR set');
     for (const [code, route] of routes) {
       const html = read(outDir, `${route.slice(1)}index.html`);
       assert.ok(sitemap.includes(`<loc>${origin}${route}</loc>`), `sitemap lists ${route}`);
@@ -371,9 +380,14 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
       const main = home.match(/<main id="conteudo">([\s\S]*?)<\/main>/)[1];
       const footer = home.match(/<footer class="footer">([\s\S]*?)<\/footer>/)[1];
       for (const section of [header, footer]) {
-        for (const hub of locale.portal) {
+        for (const hub of [...locale.portal, locale.tutorials]) {
           assert.ok(section.includes(`href="${hub}"`), `${code} chrome links to ${hub}`);
         }
+      }
+      for (const route of locale.legal) {
+        assert.ok(footer.includes(`href="${route}"`), `${code} footer links to ${route}`);
+        assert.ok(!sitemap.includes(`<loc>${origin}${route}</loc>`), `${route} is absent from the sitemap`);
+        assert.match(read(outDir, `${route.slice(1)}index.html`), /<meta name="robots" content="noindex,follow">/);
       }
       for (const hub of [locale.portal[0], locale.portal[1], `${locale.portal[0]}pr/`]) {
         assert.ok(main.includes(`href="${hub}"`), `${code} home links to ${hub}`);

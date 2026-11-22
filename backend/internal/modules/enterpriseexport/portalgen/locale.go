@@ -84,7 +84,9 @@ func loadPortalLocales(assets fs.FS) (map[string]portalLocale, error) {
 			prefixes[locale.Prefix] || locales[locale.Code].Code != "" {
 			return nil, fmt.Errorf("portalgen: invalid locale %q", locale.Code)
 		}
-		for _, segment := range []string{"guias", "ferramentas", "precos", "metodologia", "dados", "curiosidades"} {
+		for _, segment := range []string{"guias", "ferramentas", "precos", "metodologia", "dados", "curiosidades",
+			"consultar", "postos", "forum", "fiscalizacao", "fiscal-pagina", "fiscal-registro", "como-usar",
+			"privacidade", "excluir-conta", "termos"} {
 			if !routeSlug.MatchString(locale.Segments[segment]) {
 				return nil, fmt.Errorf("portalgen: invalid route segment %q for %s", segment, locale.Code)
 			}
@@ -167,6 +169,26 @@ func (l portalLocale) route(kind, slug, area, city string) string {
 		return base + l.Segments["dados"] + "/"
 	case "insights":
 		return base + l.Segments["curiosidades"] + "/"
+	case "search":
+		return base + l.Segments["consultar"] + "/"
+	case "stations", "forum":
+		segment := l.Segments["forum"]
+		if kind == "stations" {
+			segment = l.Segments["postos"]
+		}
+		if slug != "" {
+			return base + segment + "/" + slug + "/"
+		}
+		return base + segment + "/"
+	case "enforcement", "enforcementPage", "enforcementRecord":
+		base += l.Segments["fiscalizacao"] + "/"
+		switch kind {
+		case "enforcementPage":
+			return base + l.Segments["fiscal-pagina"] + "/" + slug + "/"
+		case "enforcementRecord":
+			return base + l.Segments["fiscal-registro"] + "/" + slug + "/"
+		}
+		return base
 	case "prices":
 		parts := []string{l.Segments["precos"]}
 		if slug != "" {

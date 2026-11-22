@@ -93,6 +93,5 @@ en portugués y son del 17 de noviembre de 2026. Su ejemplo es de Sorriso, Mato
 Grosso: la estimación para un tanque de 50 L con la referencia de la ANP del
 8 al 14 de noviembre de 2026, y una ruta hasta una estación resumida como
 8 min · 5,1 km. Consulta los tutoriales
-[Vehículos y estimación del tanque](/como-usar/veiculos/) (en portugués) y
-[Encontrar una estación y navegar hasta ella](/como-usar/postos/) (en
-portugués).
+[Vehículos y estimación del tanque](/es/como-usar/vehiculos-y-estimacion-del-tanque/) y
+[Encontrar una estación y navegar hasta ella](/es/como-usar/encontrar-una-estacion-y-navegar/).

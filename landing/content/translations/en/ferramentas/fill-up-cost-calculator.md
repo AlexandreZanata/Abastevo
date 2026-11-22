@@ -86,4 +86,4 @@ page, show the Portuguese interface and were taken on November 17, 2026. Their
 example is an estimate for a vehicle with a 50-liter tank in Sorriso, Mato
 Grosso, with the reference from ANP, Brazil's oil and fuels regulator, for
 November 8 to 14, 2026. See the tutorial
-[Vehicles and tank estimate](/como-usar/veiculos/) (in Portuguese).
+[Vehicles and tank estimate](/en/how-to/vehicles-and-tank-estimate/).

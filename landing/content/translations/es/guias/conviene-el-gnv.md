@@ -82,7 +82,7 @@ La app Android de Abastevo está en desarrollo. Las [capturas de la guía en por
 2. Anota la referencia de GNV y la de gasolina o etanol para la misma semana y calcula el costo por kilómetro.
 3. En **Vehículos**, completa **Nombre del vehículo**, **Propulsión** y **Capacidad del tanque (litros)** para seguir los costos.
 
-Las capturas muestran el sello de la ANP, los precios y el número de estaciones encuestadas para diésel (gasoil) S500 y S10, GNV y GLP (13 kg) en São Paulo, SP, del 8 al 14 de noviembre de 2026. El formulario **Agregar vehículo** muestra un auto llamado Mi auto, con **Combustión (ICE)** y un tanque de 50 litros. Consulta los tutoriales de la [tabla de la ANP](/como-usar/precos-anp/) y de [vehículos y estimación del tanque](/como-usar/veiculos/), ambos en portugués.
+Las capturas muestran el sello de la ANP, los precios y el número de estaciones encuestadas para diésel (gasoil) S500 y S10, GNV y GLP (13 kg) en São Paulo, SP, del 8 al 14 de noviembre de 2026. El formulario **Agregar vehículo** muestra un auto llamado Mi auto, con **Combustión (ICE)** y un tanque de 50 litros. Consulta los tutoriales de la [tabla de la ANP](/es/como-usar/consultar-precios-anp/) y de [vehículos y estimación del tanque](/es/como-usar/vehiculos-y-estimacion-del-tanque/).
 
 ## Fuentes
 

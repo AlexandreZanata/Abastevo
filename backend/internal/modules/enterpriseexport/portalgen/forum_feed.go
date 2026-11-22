@@ -2,6 +2,7 @@ package portalgen
 
 import (
 	"encoding/xml"
+	"strings"
 	"time"
 )
 
@@ -47,6 +48,56 @@ type atomFeed struct {
 	Updated string      `xml:"updated"`
 	Links   []atomLink  `xml:"link"`
 	Entries []atomEntry `xml:"entry"`
+}
+
+// The localized feeds contain only posts whose reviewed translation still
+// matches the exported editorial source. The Portuguese feed is independent.
+func (p localizedPortal) writeReviewedForumFeed() (string, error) {
+	if !p.hasForum() || !p.indexable || p.siteURL == "" {
+		return "", nil
+	}
+	hub := p.routes["/forum/"]
+	href := hub + "feed.xml"
+	feed := atomFeed{
+		XMLNS: atomXMLNS, Lang: p.HTMLLang, ID: p.siteURL + href, Title: p.text("title.forum"),
+		Links: []atomLink{
+			{Rel: "self", Type: "application/atom+xml", Href: p.siteURL + href},
+			{Rel: "alternate", Type: "text/html", Href: p.siteURL + hub},
+		},
+	}
+	var newest time.Time
+	for _, post := range p.forum.Posts {
+		copy, ok := reviewedForumCopy(post, p.Code)
+		if !ok || p.routes[post.Route] == "" {
+			continue
+		}
+		url := p.siteURL + p.routes[post.Route]
+		feed.Entries = append(feed.Entries, atomEntry{
+			ID: url, Title: copy.Title,
+			Link:      atomLink{Rel: "alternate", Type: "text/html", Href: url},
+			Published: post.Published.Format(time.RFC3339), Updated: post.Updated.Format(time.RFC3339),
+			Author: atomAuthor{Name: p.text("forum.team")}, Category: atomCategory{Term: p.forumCategory(post.Category)},
+			Summary: copy.Excerpt,
+		})
+		if post.Updated.After(newest) {
+			newest = post.Updated
+		}
+		if len(feed.Entries) == forumFeedEntries {
+			break
+		}
+	}
+	if len(feed.Entries) == 0 {
+		return "", nil
+	}
+	feed.Updated = newest.Format(time.RFC3339)
+	body, err := xml.MarshalIndent(feed, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	if err := p.writeAsset(strings.TrimPrefix(href, "/"), []byte(xml.Header+string(body)+"\n")); err != nil {
+		return "", err
+	}
+	return href, nil
 }
 
 // forumFeedHref is the root-relative feed link of the forum pages, or ""

@@ -22,13 +22,12 @@
       "state": "Estado",
       "statePrompt": "Elige un estado",
       "query": "Estación de servicio, CNPJ o marca",
-      "portugueseResults": "Los resultados de la búsqueda están en portugués.",
       "app": "Conoce la aplicación"
     },
     "explore": {
       "title": "Explora lo que puedes hacer",
       "consult": {
-        "title": "Consultar (en portugués)",
+        "title": "Consultar",
         "body": "Precios por ciudad, con fuente y fecha."
       },
       "source": {
@@ -40,7 +39,7 @@
         "body": "Foto del precio en el surtidor (función prevista)."
       },
       "enforcement": {
-        "title": "Fiscalización (en portugués)",
+        "title": "Fiscalización",
         "body": "Multas oficiales publicadas por la ANP."
       }
     },
@@ -59,32 +58,32 @@
         "title": "Responsable de una flota pequeña",
         "body": "Organiza los gastos de combustible de unos pocos vehículos."
       },
-      "tutorial": "Mira cómo usar la aplicación (en portugués)",
+      "tutorial": "Mira cómo usar la aplicación",
       "guides": "Lee las guías"
     },
     "data": {
       "title": "Datos abiertos en tu navegador",
       "intro": "Consulta estaciones de servicio, precios y registros oficiales de la ANP en páginas públicas y gratuitas, sin crear una cuenta ni instalar nada. Cada cifra indica su período, fuente y muestra.",
       "search": {
-        "title": "Busca estaciones de servicio y precios (en portugués)",
+        "title": "Busca estaciones de servicio y precios",
         "body": "Busca por estado, municipio, nombre o CNPJ. Los resultados indican la fecha de recolección."
       },
       "enforcement": {
-        "title": "Fiscalización oficial (en portugués)",
+        "title": "Fiscalización oficial",
         "body": "Multas publicadas por la ANP, con su fuente y una explicación de los límites de los datos."
       },
       "methodology": {
         "title": "Metodología",
         "body": "De dónde salen los datos, cómo se actualizan y cuáles son sus límites."
       },
-      "consult": "Consulta los datos (en portugués)",
+      "consult": "Consulta los datos",
       "seeMethodology": "Consulta la metodología"
     },
     "app": {
       "title": "Qué puedes hacer con la aplicación",
       "featuresLabel": "Funciones de la aplicación",
       "portugueseCaptures": "Mira las capturas reales en el sitio en portugués",
-      "tutorial": "Consulta la guía paso a paso de la aplicación (en portugués)",
+      "tutorial": "Consulta la guía paso a paso de la aplicación",
       "android": {
         "prelaunch": "Sigue las versiones de prueba de Android en GitHub. La aplicación aún no está disponible en Google Play.",
         "published": "La aplicación de Android está disponible en Google Play."
@@ -295,7 +294,8 @@
     "navConsultData": "Buscar estaciones",
     "navExplore": "Explorar",
     "navQuestions": "Preguntas",
-    "footerLegal": "Código bajo la licencia Abastevo de atribución visible. Abastevo no está afiliado a la ANP. Datos de precios de la ANP: gov.br/anp. Las marcas y los nombres citados pertenecen a sus titulares. Consultar precios no requiere cuenta ni acceso a tu ubicación. Este sitio no usa cookies ni rastreadores."
+    "footerLegal": "Código bajo la licencia Abastevo de atribución visible. Abastevo no está afiliado a la ANP. Datos de precios de la ANP: gov.br/anp. Las marcas y los nombres citados pertenecen a sus titulares. Consultar precios no requiere cuenta ni acceso a tu ubicación. Este sitio no usa cookies ni rastreadores.",
+    "legalTranslation": "Esta traducción es informativa. Prevalece la versión original en portugués."
   },
   "tools": {
     "common": {

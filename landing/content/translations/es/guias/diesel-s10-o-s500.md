@@ -180,8 +180,8 @@ de estaciones encuestadas. La del paso 2 muestra el historial del Diésel S10 en
 Sorriso, MT, con un gráfico de barras y el promedio de cada semana.
 
 El paso a paso completo está en los tutoriales
-[Consultar la tabla de la ANP](/como-usar/precos-anp/) (en portugués) y
-[Leer el historial](/como-usar/historico/) (en portugués).
+[Consultar la tabla de la ANP](/es/como-usar/consultar-precios-anp/) y
+[Leer el historial](/es/como-usar/leer-el-historial/).
 
 ## Fuentes
 

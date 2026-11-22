@@ -83,7 +83,7 @@ La app Android de Abastevo está en desarrollo. Las [capturas de la guía en por
 2. Abre **Estaciones** desde una tarjeta y alterna el grado en **Combustible**. **Gasolina prémium** aparece como opción separada.
 3. Verifica la fecha de recolección de cada estación antes de comparar.
 
-Las capturas muestran las tarjetas de etanol y de los dos grados de gasolina en São Paulo, SP, del 8 al 14 de noviembre de 2026. Cada tarjeta lleva el sello de la ANP y el número de estaciones encuestadas. El selector muestra el etanol seleccionado y también incluye los grados de gasolina, diésel (gasoil), GNV (GNC) y GLP. Consulta los tutoriales de la [tabla de la ANP](/como-usar/precos-anp/) y de [búsqueda y navegación a una estación](/como-usar/postos/), ambos en portugués.
+Las capturas muestran las tarjetas de etanol y de los dos grados de gasolina en São Paulo, SP, del 8 al 14 de noviembre de 2026. Cada tarjeta lleva el sello de la ANP y el número de estaciones encuestadas. El selector muestra el etanol seleccionado y también incluye los grados de gasolina, diésel (gasoil), GNV (GNC) y GLP. Consulta los tutoriales de la [tabla de la ANP](/es/como-usar/consultar-precios-anp/) y de [búsqueda y navegación a una estación](/es/como-usar/encontrar-una-estacion-y-navegar/).
 
 ## Fuentes
 

@@ -66,8 +66,8 @@ type graphPage struct {
 // missing route (landing routes are the LandingRoutes allowlist); no body
 // anchor is generic; every indexable page has at least MinInbound body links
 // from distinct pages in its own language, except stations, held to
-// min(MinInbound, n) where n
-// is the number of indexable stations linking the same city page.
+// min(MinInbound, n), where n is the number of available sources in the
+// language: the other indexable stations and the city when it is translated.
 func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error) {
 	minInbound := opts.MinInbound
 	if minInbound <= 0 {
@@ -163,17 +163,21 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 	inbound := map[string]int{}
 	cityStations := map[string]int{}
 	stationCity := map[string]string{}
+	cityInLocale := map[string]bool{}
 	for route, page := range pages {
 		for target := range page.contextual {
 			if resolved := pages[target]; resolved != nil && resolved.locale == page.locale {
 				inbound[target]++
 			}
 		}
-		if indexable[route] && strings.HasPrefix(route, "/postos/") {
+		if indexable[route] && strings.HasPrefix(languagePages[route].identity, "/postos/") {
 			for _, target := range sortedKeys(page.contextual) {
-				if cityRoutePath.MatchString(target) {
-					stationCity[route] = target
-					cityStations[target]++
+				identity := languagePages[target].identity
+				if cityRoutePath.MatchString(identity) {
+					key := page.locale + "\x00" + identity
+					stationCity[route] = key
+					cityStations[key]++
+					cityInLocale[key] = cityInLocale[key] || languagePages[target].locale.Code == page.locale
 					break
 				}
 			}
@@ -185,10 +189,14 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 		if localized, ok := languagePages[route]; ok && localized.locale.Code != defaultPortalLocale {
 			family = localized.locale.Code + ":" + routeFamily(localized.identity)
 		}
-		if family == "postos" {
-			n := cityStations[stationCity[route]]
-			if n == 0 {
-				n = 1
+		if strings.HasPrefix(languagePages[route].identity, "/postos/") {
+			key := stationCity[route]
+			n := 1
+			if key != "" {
+				n = cityStations[key] - 1
+				if cityInLocale[key] {
+					n++
+				}
 			}
 			if n < minInbound {
 				required = n
@@ -256,7 +264,7 @@ func internalTarget(href string) (string, bool) {
 }
 
 func targetExists(target string, exists map[string]bool) bool {
-	if LandingRoutes[target] {
+	if isLandingRoute(target) {
 		return true
 	}
 	rel := strings.TrimPrefix(target, "/")

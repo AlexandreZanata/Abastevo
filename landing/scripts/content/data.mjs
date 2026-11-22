@@ -72,6 +72,9 @@ export function portalRouteLabel(route, locales = []) {
     methodology: 'footerMethodology',
     data: 'footerData',
     insights: 'footerInsights',
+    search: 'footerConsult',
+    forum: 'footerForum',
+    enforcement: 'footerEnforcement',
   };
   for (const [kind, label] of Object.entries(labels)) {
     const hub = localeRoute(locale, kind);

@@ -494,6 +494,7 @@ type forumHubPage struct {
 
 type forumCategoryPage struct {
 	pageBase
+	Category      *forumCategory
 	Name, Summary string
 	Posts         []forumListItem
 	Total         int
@@ -502,6 +503,7 @@ type forumCategoryPage struct {
 
 type forumPostPage struct {
 	pageBase
+	Post                       *forumPost
 	PostTitle                  string
 	CategoryName, CategoryHref string
 	Author, AboutHref          string
@@ -583,7 +585,7 @@ func (g *generator) generateForumCategory(category *forumCategory) error {
 			Crumbs:  []crumb{{Label: "Fórum", Href: "/forum/"}, {Label: category.Name, Current: true}},
 			LastMod: category.LastMod,
 		}),
-		Name: category.Name, Summary: category.Description, Total: total,
+		Category: category, Name: category.Name, Summary: category.Description, Total: total,
 		Posts: forumListItems(category.Posts[:min(forumCategoryListCap, total)]), Truncated: total > forumCategoryListCap,
 	}
 	data.Modules = []linkModule{{Title: "Outras categorias do fórum", Links: g.forumCategoryLinks(category)}}
@@ -611,7 +613,7 @@ func (g *generator) generateForumPost(post *forumPost) error {
 		{Title: "Categorias do fórum", Links: g.forumCategoryLinks(nil)},
 	}
 	data := forumPostPage{
-		pageBase: base, PostTitle: post.Row.Title, CategoryName: post.Category.Name, CategoryHref: post.Category.Route,
+		pageBase: base, Post: post, PostTitle: post.Row.Title, CategoryName: post.Category.Name, CategoryHref: post.Category.Route,
 		Author: post.Author, PublishedISO: base.ArticlePublished, PublishedDay: post.PublishedDay,
 		UpdatedISO: base.ArticleModified, UpdatedDay: post.UpdatedDay, ShowUpdated: post.UpdatedDay != post.PublishedDay,
 		Related: g.forumRelated(post), Blocks: post.Blocks, AppHref: g.forumLandingHref("/#aplicativo"),

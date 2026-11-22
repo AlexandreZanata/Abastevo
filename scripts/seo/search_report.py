@@ -90,7 +90,7 @@ DEFAULT_LOCALE, LOCALE_SEGMENTS, LOCALE_PREFIXES, LOCALE_FUELS = load_locales()
 LOCALES = tuple(LOCALE_SEGMENTS)
 FUEL_SLUGS = LOCALE_FUELS[DEFAULT_LOCALE]
 PORTAL_SEGMENTS = {names[section] for names in LOCALE_SEGMENTS.values()
-                   for section in ("precos", *PORTAL_HUBS)}
+                   for section in ("precos", *PORTAL_HUBS, *DEFAULT_PORTAL_SECTIONS)}
 
 
 def price_family(rest, locale):
@@ -132,6 +132,9 @@ def classify(path):
     for hub in PORTAL_HUBS:
         if head == names[hub]:
             return locale, hub
+    for section in (*DEFAULT_PORTAL_SECTIONS, "como-usar", "privacidade", "excluir-conta", "termos"):
+        if head == names[section]:
+            return locale, SECTIONS[section]
     if translated and (head in DEFAULT_PORTAL_SECTIONS or head in PORTAL_SEGMENTS):
         return locale, "outros"
     family = SECTIONS.get(head, "outros")

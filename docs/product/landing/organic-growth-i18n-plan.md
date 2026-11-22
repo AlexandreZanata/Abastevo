@@ -111,7 +111,7 @@ in ADR-027 and ADR-028. The editor's name and bio (I18N-D07) remain open.
 | I18N-D01 | Supersede D-SEO-07 and make the public site multilingual | Accepted as ADR-026, and the AGENTS.md conventions line is updated. |
 | I18N-D02 | Wave A locales | `en` and `es`. The Wave B candidates are the app's other locales (`fr`, `de`, then `ja`, `ru`, `zh-CN`), each opened only by the rule in section 9. |
 | I18N-D03 | URL scheme | pt-BR at the root, unchanged. `/en/…` and `/es/…` with translated section names and slugs. City and station names are never translated. |
-| I18N-D04 | Which families are translated | Home, `/sobre/`, `/politica-editorial/`, tools, editorial guides and guide categories, national prices, fuel hubs, states, fuel × state, cities on the closed allowlist, methodology, data and insights. Stations, fuel × city, the ethanol-to-gasoline ratio, enforcement, the forum and search are pt-BR routes. Any informative legal translations require their own approval and stay noindex with Portuguese prevailing. |
+| I18N-D04 | Which families are translated | Home, institutional pages, tools, guides and guide categories, tutorials, national prices, fuel hubs, states, fuel × state, cities on the closed allowlist, methodology, data, insights, individual stations, search, enforcement and the editorial forum. Fuel × city and the ethanol-to-gasoline ratio remain pt-BR routes. The owner authorized informative legal translations in English and Spanish. These stay noindex and state that the Portuguese original prevails. |
 | I18N-D05 | Translation workflow | An AI draft and a separate review against the source and glossary. The `en` and `es` landing front matter and portal catalog record the reviewer as `AI review (<model>)` and disclose the review to readers (ADR-027 and ADR-028). A fluent human can replace this review. Other locales require a fluent human review. |
 | I18N-D06 | Currency and units on en/es pages | Prices use BRL and the canonical survey unit, normally per litre. The owner deferred foreign-currency and per-gallon displays. An exchange-rate display requires separate scope approval and an admitted source. |
 | I18N-D07 | Author attribution (revisits D-SEO-09) | A named human editor with a bio page, which is stronger E-E-A-T. The fallback is the current "Equipe abastevo" with the editorial policy. |
@@ -189,7 +189,7 @@ routes label the destination language.
 - **App captures.** A translated page embeds no Portuguese screenshot. It describes the steps with the app's own labels in that language and says the captures are on the Portuguese page.
 - **Links between locales.** The byline, the editorial line, the guides hub and the footer link the same-locale about and editorial policy pages when they exist; otherwise they link the Portuguese page with `hreflang="pt-BR"`. Links inside a translated text are written by hand: the same-locale route when a translation exists, otherwise the Portuguese route followed by "(in Portuguese)" or "(en portugués)".
 - **Language switcher.** Plain `<a hreflang lang>` links to the same page in each enabled locale. When a page has no translation, the link goes to that locale's home. There is no automatic redirect and no cookie. An optional dismissible JavaScript banner can suggest the visitor's language, and it stores nothing.
-- **Search.** `/consultar/` stays pt-BR in Wave A. Localized pages link to it with a note.
+- **Search and records.** Translated search and enforcement pages use the same public shards and source records. Station UUIDs, official record identifiers and forum slugs keep their identity across languages. Translate labels, controls and derived display values. Preserve official names and verbatim source text. A forum post with no current reviewed translation identifies its original language and stays noindex in the translated shell.
 - **Rendering.** Untrusted data is still rendered with `textContent` and escaping. Translated Markdown goes through the same in-house renderer.
 
 ### 6.5 Translation workflow
@@ -303,9 +303,9 @@ citation target for journalists.
 
 That is about 20 editorial or tool pages per locale. Portal totals per locale
 depend on the official data in the snapshot and the city allowlist. App
-tutorials (`/como-usar/`) follow in Wave A2,
-captured again in en and es under the capture contract. Mixing pt-BR
-screenshots into English pages is not allowed.
+tutorials (`/como-usar/`) have English and Spanish text for the published
+chapters. Steps describe or link the original Portuguese captures and state
+their language. Localized captures still follow the capture contract.
 
 ## 8. Growth loops beyond search
 
@@ -408,7 +408,7 @@ links in SEO-26. SEO-34–37 and SEO-38 can run independently.
 |---|---|
 | Thin or duplicate localized pages trigger scaled-content signals | Translate only families with foreign demand. Apply the reviewed-only build gate, the same data gates per locale and 90-day pruning. |
 | Mis-translated price or legal facts | Glossary, the two review passes for `en` and `es`, prices rendered from data, and any approved legal translations noindex with Portuguese prevailing. |
-| Crawl budget spread over a new domain | Stations are not localized. Per-locale sitemaps monitored. IndexNow for changed URLs only. |
+| Crawl budget spread over a new domain | Station locales keep the existing recent-observation and complete-address gate. Per-locale sitemaps are monitored. IndexNow submits changed URLs only. |
 | Source-rights gate on portal data (ROADMAP "Portal source rights") | Localized portal pages inherit the same `INDEXABLE` switch. The widget and data redistribution wait for the rights decision. |
 | Stale translations | `sourceRevision` stale check, a visible note and noindex until review. |
 | Editorial capacity | A fixed cadence of 2 + 2 a week, bulletins half-automated, and no news chasing. |

@@ -126,9 +126,8 @@ separate, with no recent community price; and the ANP reference collected on
 November 10, 2026.
 
 The full walkthrough is in the tutorials
-[Understand the prices of a station](/como-usar/precos-do-posto/)
-(in Portuguese) and
-[Find a station and navigate to it](/como-usar/postos/) (in Portuguese).
+[Understand the prices of a station](/en/how-to/understand-station-prices/) and
+[Find a station and navigate to it](/en/how-to/find-and-navigate-to-a-station/).
 
 ## The Brazilian context
 

@@ -19,7 +19,17 @@
         "precos": "precos",
         "metodologia": "metodologia",
         "dados": "dados",
-        "curiosidades": "curiosidades"
+        "curiosidades": "curiosidades",
+        "consultar": "consultar",
+        "postos": "postos",
+        "forum": "forum",
+        "fiscalizacao": "fiscalizacao",
+        "fiscal-pagina": "pagina",
+        "fiscal-registro": "registro",
+        "como-usar": "como-usar",
+        "privacidade": "privacidade",
+        "excluir-conta": "excluir-conta",
+        "termos": "termos"
       },
       "dateLayout": "02/01/2006",
       "fuelSlugs": {
@@ -51,7 +61,17 @@
         "precos": "fuel-prices",
         "metodologia": "methodology",
         "dados": "data",
-        "curiosidades": "insights"
+        "curiosidades": "insights",
+        "consultar": "search",
+        "postos": "stations",
+        "forum": "forum",
+        "fiscalizacao": "enforcement",
+        "fiscal-pagina": "page",
+        "fiscal-registro": "record",
+        "como-usar": "how-to",
+        "privacidade": "privacy",
+        "excluir-conta": "delete-account",
+        "termos": "terms"
       },
       "dateLayout": "Jan 2, 2006",
       "fuelSlugs": {
@@ -83,7 +103,17 @@
         "precos": "precios",
         "metodologia": "metodologia",
         "dados": "datos",
-        "curiosidades": "curiosidades"
+        "curiosidades": "curiosidades",
+        "consultar": "buscar",
+        "postos": "estaciones",
+        "forum": "foro",
+        "fiscalizacao": "fiscalizacion",
+        "fiscal-pagina": "pagina",
+        "fiscal-registro": "registro",
+        "como-usar": "como-usar",
+        "privacidade": "privacidad",
+        "excluir-conta": "eliminar-cuenta",
+        "termos": "terminos"
       },
       "dateLayout": "02/01/2006",
       "fuelSlugs": {

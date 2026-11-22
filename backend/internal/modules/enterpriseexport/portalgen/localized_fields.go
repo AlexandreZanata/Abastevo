@@ -9,9 +9,10 @@ import (
 )
 
 type localizedExplorer struct {
-	Release string
-	Copy    string
-	Fuels   []localizedExplorerFuel
+	Release       string
+	Copy          string
+	StationPrefix string
+	Fuels         []localizedExplorerFuel
 }
 
 type localizedExplorerFuel struct{ Code, Label, Unit, Count string }
@@ -25,7 +26,7 @@ func (p localizedPortal) explorer(page precosPage) *localizedExplorer {
 		copy[key] = p.catalog.Messages["explorer."+key]
 	}
 	encoded, _ := json.Marshal(copy) // a map of strings always encodes
-	explorer := &localizedExplorer{Release: page.SearchRelease, Copy: string(encoded)}
+	explorer := &localizedExplorer{Release: page.SearchRelease, Copy: string(encoded), StationPrefix: p.searchStationPrefix()}
 	for _, fuel := range page.SearchFuels {
 		explorer.Fuels = append(explorer.Fuels, localizedExplorerFuel{
 			Code: fuel.Code, Label: p.fuel(fuel.Code), Unit: p.unit(fuel.Unit), Count: p.stationCount(fuel.Count),
@@ -44,13 +45,13 @@ func (p localizedPortal) publication() string {
 
 func (p localizedPortal) addChrome(data *localizedPage) {
 	product := linkModule{Title: p.text("footer.product"), Links: []moduleLink{
-		{Label: p.text("search"), Href: "/consultar/"},
+		p.localizedLink(p.text("nav.search"), "/consultar/"),
 		p.localizedLink(p.text("nav.enforcement"), "/fiscalizacao/"),
 	}}
 	if p.hasForum() {
 		product.Links = append(product.Links, p.localizedLink(p.text("nav.forum"), "/forum/"))
 	}
-	data.TopNav = append(data.TopNav, moduleLink{Label: p.text("nav.search"), Href: "/consultar/", Note: p.text("language.portuguese")})
+	data.TopNav = append(data.TopNav, p.localizedLink(p.text("nav.search"), "/consultar/"))
 	product.Links = append(product.Links, p.localizedLink(p.text("nav.methodology"), "/metodologia/"))
 	data.Footer = append(data.Footer, product, linkModule{
 		Title: p.text("nav.data"),
@@ -67,10 +68,10 @@ func (p localizedPortal) addChrome(data *localizedPage) {
 			guides, tools, about, editorial = "/es/guias/", "/es/herramientas/", "/es/sobre/", "/es/politica-editorial/"
 		}
 		learn := linkModule{Title: p.text("footer.learn"), Links: []moduleLink{
-			p.localizedLink(p.text("nav.help"), p.landingPrefix+"/como-usar/"),
+			{Label: p.text("nav.help"), Href: p.landingPrefix + p.route("page", p.Segments["como-usar"], "", "")},
 			{Label: p.text("nav.guides"), Href: p.landingPrefix + guides},
 			{Label: p.text("nav.tools"), Href: p.landingPrefix + tools},
-			p.localizedLink(p.text("nav.app"), p.landingPrefix+"/#aplicativo"),
+			{Label: p.text("nav.app"), Href: p.landingPrefix + p.Prefix + "/#aplicativo"},
 		}}
 		data.TopNav = append(data.TopNav, learn.Links[3], learn.Links[0], learn.Links[1], learn.Links[2])
 		data.Footer = append(data.Footer, learn)
@@ -88,9 +89,9 @@ func (p localizedPortal) addChrome(data *localizedPage) {
 	data.Footer = append(data.Footer, project)
 	if p.opts.LandingURL != "" {
 		data.Footer = append(data.Footer, linkModule{Title: p.text("nav.privacy"), Links: []moduleLink{
-			p.localizedLink(p.text("nav.privacy"), p.landingPrefix+"/privacidade/"),
-			p.localizedLink(p.text("nav.delete"), p.landingPrefix+"/excluir-conta/"),
-			p.localizedLink(p.text("nav.terms"), p.landingPrefix+"/termos/"),
+			{Label: p.text("nav.privacy"), Href: p.landingPrefix + p.route("page", p.Segments["privacidade"], "", "")},
+			{Label: p.text("nav.delete"), Href: p.landingPrefix + p.route("page", p.Segments["excluir-conta"], "", "")},
+			{Label: p.text("nav.terms"), Href: p.landingPrefix + p.route("page", p.Segments["termos"], "", "")},
 		}})
 	}
 }
@@ -195,7 +196,8 @@ func (p localizedPortal) operationStatus(status string) string {
 }
 
 func (p localizedPortal) rankingStation(row rankingRow) localizedCell {
-	cell := localizedCell{Text: row.Name, Href: "/postos/" + row.StationID + "/"}
+	link := p.localizedLink(row.Name, "/postos/"+row.StationID+"/")
+	cell := localizedCell{Text: link.Label, Href: link.Href}
 	if row.LegalName != "" {
 		cell.Details = append(cell.Details, row.LegalName)
 	}

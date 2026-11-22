@@ -199,8 +199,7 @@ regular y gasolina con aditivos. La del paso 2 muestra la referencia de la ANP
 de una estación, con recolección del 10 de noviembre de 2026.
 
 El paso a paso completo está en el tutorial
-[Entender los precios de una estación](/como-usar/precos-do-posto/)
-(en portugués).
+[Entender los precios de una estación](/es/como-usar/entender-los-precios-de-una-estacion/).
 
 ## Fuentes
 

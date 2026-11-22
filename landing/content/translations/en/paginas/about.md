@@ -6,7 +6,7 @@ slug: about
 primaryQuery: "about abastevo"
 schemaType: AboutPage
 datePublished: 2026-11-21
-dateModified: 2026-11-21
+dateModified: 2026-11-22
 translationOf: /sobre/
 sourceRevision: 2026-11-21
 translationStatus: reviewed
@@ -21,16 +21,15 @@ date and condition always in view**. It brings together three fronts:
 
 - **Public data in the browser:** pages with
   [reference prices by state and city](/en/fuel-prices/),
-  [station lookup](/consultar/) (in Portuguese) and
-  [enforcement](/fiscalizacao/) (in Portuguese), generated from official data
+  [station lookup](/en/search/) and
+  [enforcement](/en/enforcement/), generated from official data
   published by ANP, Brazil's oil and fuels regulator.
 - **Guides and tools:** [fuel guides](/en/guides/) and
   [free calculators](/en/tools/) that explain how the price is formed, how to
   choose a fuel and how to read the prices at the station.
 - **Android app in development:** an app to check the ANP reference and, in a
   separate block, observations sent by the community. The app is not yet
-  published on Google Play; see [how to use the app](/como-usar/) (in
-  Portuguese).
+  published on Google Play; see [how to use the app](/en/how-to/).
 
 ## Independence
 
@@ -82,7 +81,7 @@ People who help on an ongoing basis appear on the page of
 
 Checking prices requires neither an account nor your location, and this site
 does not use cookies or third-party trackers. The details are in the
-[privacy policy](/privacidade/) (in Portuguese).
+[privacy policy](/en/privacy/).
 
 ## Contact
 

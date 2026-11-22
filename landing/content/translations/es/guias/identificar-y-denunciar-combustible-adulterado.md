@@ -54,7 +54,7 @@ Las normas de la ANP exigen que las estaciones tengan material para realizar pru
 
 ## Cómo denunciar a la ANP
 
-Usa los canales de atención de la [ANP](https://www.gov.br/anp/), como el formulario de contacto y el teléfono de atención a consumidores. Indica el nombre, número de registro de la empresa (CNPJ) y dirección de la estación, la fecha y hora, el tipo y la cantidad de combustible, el problema y las pruebas que tienes. La agencia puede investigar y sancionar. Las [páginas de fiscalización](/fiscalizacao/) en portugués muestran las multas publicadas, su fuente y los límites de cada registro.
+Usa los canales de atención de la [ANP](https://www.gov.br/anp/), como el formulario de contacto y el teléfono de atención a consumidores. Indica el nombre, número de registro de la empresa (CNPJ) y dirección de la estación, la fecha y hora, el tipo y la cantidad de combustible, el problema y las pruebas que tienes. La agencia puede investigar y sancionar. Las [páginas de fiscalización](/es/fiscalizacion/) muestran las multas publicadas, su fuente y los límites de cada registro.
 
 ## Resarcimiento por canales de consumo
 
@@ -76,7 +76,7 @@ La app Android de Abastevo está en desarrollo. Las [capturas de la guía en por
 2. **Calidad del combustible** muestra resultados de la ANP por combustible e indica si faltan datos. Los resultados de una encuesta no garantizan la calidad actual de la estación.
 3. En **Perfil**, **Ayuda y reglas de la comunidad** explica cómo contribuir y denunciar contenido en la app.
 
-Las capturas muestran una estación sin resultados oficiales en esa revisión y las tarjetas de contribución, reglas, denuncia y apelación. Consulta el [tutorial del perfil de la estación](/como-usar/perfil-do-posto/) (en portugués). Usa los canales oficiales para reportar problemas de calidad.
+Las capturas muestran una estación sin resultados oficiales en esa revisión y las tarjetas de contribución, reglas, denuncia y apelación. Consulta el [tutorial del perfil de la estación](/es/como-usar/consultar-el-perfil-de-una-estacion/). Usa los canales oficiales para reportar problemas de calidad.
 
 ## Fuentes
 

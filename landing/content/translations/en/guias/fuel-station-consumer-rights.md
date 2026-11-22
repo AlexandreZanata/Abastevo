@@ -88,7 +88,7 @@ The Abastevo Android app is in development. The [screenshots in the Portuguese g
 2. In the station profile, **Suggest a correction** sends a name or address correction for review before the map changes.
 3. In **Profile**, **Help and community rules** explains contributions and in-app reports.
 
-The captures show station selection in Sorriso, MT, the change-station and photograph controls, the blank correction form with name, street and permanent-closure options, and the contribution, community rules, reporting and appeals cards. See [Photograph a price](/como-usar/fotografar-preco/) and [Check a station profile](/como-usar/perfil-do-posto/) (both in Portuguese).
+The captures show station selection in Sorriso, MT, the change-station and photograph controls, the blank correction form with name, street and permanent-closure options, and the contribution, community rules, reporting and appeals cards. See [Photograph a price](/en/how-to/photograph-a-price/) and [Check a station profile](/en/how-to/view-station-profile/).
 
 ## Sources
 

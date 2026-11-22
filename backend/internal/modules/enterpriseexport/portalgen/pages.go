@@ -485,7 +485,7 @@ func duplicateIndexes(entries []stationEntry, key func(stationEntry) string) []i
 	return out
 }
 
-func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, stations map[string]enterpriseexport.Station, revisions map[string]enterpriseexport.Revision, official *officialDataset) error {
+func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, stations map[string]enterpriseexport.Station, revisions map[string]enterpriseexport.Revision, official *officialDataset, variants []localizedPortal) error {
 	pricesByStation, observations := g.pricesByStation, g.observed
 	source := sourceView{}
 	if latest := latestRevision(snapshot.Revisions); latest != nil {
@@ -503,9 +503,9 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 		historyKeys := map[string]struct{ fuel, unit string }{}
 		for _, item := range items {
 			obsView = append(obsView, observationView{
-				Fuel: fuelLabel(item.price.FuelProduct), Unit: item.price.Unit,
+				Fuel: fuelLabel(item.price.FuelProduct), FuelCode: item.price.FuelProduct, Unit: item.price.Unit,
 				Condition: "À vista", Amount: item.price.AmountMilliBRL,
-				Collected: dateBR(item.price.CollectedOn), Period: g.period,
+				Collected: dateBR(item.price.CollectedOn), CollectedISO: item.price.CollectedOn, Period: g.period,
 			})
 			historyKeys[item.price.FuelProduct+"\x00"+item.price.Unit] = struct{ fuel, unit string }{item.price.FuelProduct, item.price.Unit}
 		}
@@ -531,13 +531,14 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 				points = append(points, historyPointView{
 					Period:    periodLabel(point.SurveyStart, point.SurveyEnd),
 					Collected: dateBR(point.CollectedOn), Amount: point.AmountMilliBRL, Missing: point.Missing,
+					SurveyStart: point.SurveyStart, SurveyEnd: point.SurveyEnd, CollectedISO: point.CollectedOn,
 				})
 				if !point.Missing {
 					hasObservation = true
 				}
 			}
 			if hasObservation {
-				historyViews = append(historyViews, historyView{Fuel: fuelLabel(key.fuel), Unit: key.unit, Points: points})
+				historyViews = append(historyViews, historyView{Fuel: fuelLabel(key.fuel), FuelCode: key.fuel, Unit: key.unit, Points: points})
 			}
 		}
 		sort.Slice(historyViews, func(i, j int) bool {
@@ -601,9 +602,37 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 		if data.pageBase, err = g.withStructuredData(data.pageBase, g.gasStationNode(data.pageBase, *entry)); err != nil {
 			return err
 		}
-		if err := g.writeRoute("station", data); err != nil {
+		if err := g.writeStationVariants(data, variants); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// Write all variants while one station view is in memory. Queuing complete
+// station views would retain the history and provenance of the entire catalog.
+func (g *generator) writeStationVariants(data stationPage, variants []localizedPortal) error {
+	if len(variants) == 0 {
+		return g.writeRoute("station", data)
+	}
+	source := localizedSourcePage(data)
+	locales := make([]portalLocale, 0, len(variants))
+	for _, view := range variants {
+		locales = append(locales, view.portalLocale)
+	}
+	g.registerLocalizationLinks(source, locales)
+	links := g.languageNavigation[data.Route]
+	if err := g.writeRoute("station", data); err != nil {
+		return err
+	}
+	for _, view := range variants {
+		if err := view.write(source); err != nil {
+			return err
+		}
+	}
+	for _, link := range links {
+		delete(g.languageNavigation, link.Path)
+		delete(g.languageGroups, link.Path)
 	}
 	return nil
 }

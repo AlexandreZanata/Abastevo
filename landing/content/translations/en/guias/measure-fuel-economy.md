@@ -113,7 +113,7 @@ The Abastevo Android app is in development. The [screenshots in the Portuguese g
 3. **Save** stores the fill-up on the device under the vehicle's **Entries**.
 4. With two full tanks recorded, divide the distance between them by the liters in the second entry.
 
-The captures show the vehicle's **Refuel** and **Expense** buttons, **Estimated efficiency (km/L, optional)** and an empty log. The next capture shows an illustrative full-tank entry of 40 L for R$ 250.00 at 12,500 km. The entry shown in **Entries** records R$ 250.00 and 40 L with the label **Local**. See the [vehicle and tank estimate walkthrough](/como-usar/veiculos/) in Portuguese.
+The captures show the vehicle's **Refuel** and **Expense** buttons, **Estimated efficiency (km/L, optional)** and an empty log. The next capture shows an illustrative full-tank entry of 40 L for R$ 250.00 at 12,500 km. The entry shown in **Entries** records R$ 250.00 and 40 L with the label **Local**. See the [vehicle and tank estimate walkthrough](/en/how-to/vehicles-and-tank-estimate/).
 
 ## Sources
 

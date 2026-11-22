@@ -82,4 +82,4 @@ The entries stay on the device only. The captures are on the Portuguese page,
 show the Portuguese interface and were taken on November 17, 2026. Their
 example fill-up uses fictitious values: 40 L, a full tank, R$ 250.00 in total
 and an odometer reading of 12,500 km. See the tutorial
-[Vehicles and tank estimate](/como-usar/veiculos/) (in Portuguese).
+[Vehicles and tank estimate](/en/how-to/vehicles-and-tank-estimate/).

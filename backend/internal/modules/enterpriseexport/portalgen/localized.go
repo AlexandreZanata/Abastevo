@@ -43,6 +43,7 @@ type languageLink struct {
 type localizedSource struct {
 	data routedPage
 	kind string
+	slug string
 	fuel string
 	area string
 	city string
@@ -52,6 +53,12 @@ func localizedSourcePage(data routedPage) localizedSource {
 	base := data.page()
 	source := localizedSource{data: data}
 	switch base.Route {
+	case "/consultar/":
+		source.kind = "search"
+	case "/fiscalizacao/":
+		source.kind = "enforcement"
+	case "/forum/":
+		source.kind = "forum"
 	case "/precos/":
 		source.kind = "prices"
 	case "/metodologia/":
@@ -61,6 +68,16 @@ func localizedSourcePage(data routedPage) localizedSource {
 	case "/curiosidades/":
 		source.kind = "insights"
 	default:
+		switch base.Family {
+		case familyStation:
+			source.kind, source.slug = "stations", strings.TrimSuffix(strings.TrimPrefix(base.Route, "/postos/"), "/")
+		case familyForumCategory, familyForumPost:
+			source.kind, source.slug = "forum", strings.TrimSuffix(strings.TrimPrefix(base.Route, "/forum/"), "/")
+		case familyFiscalPage:
+			source.kind, source.slug = "enforcementPage", strings.TrimSuffix(strings.TrimPrefix(base.Route, "/fiscalizacao/pagina/"), "/")
+		case familyFiscalRecord:
+			source.kind, source.slug = "enforcementRecord", strings.TrimSuffix(strings.TrimPrefix(base.Route, "/fiscalizacao/registro/"), "/")
+		}
 		if !strings.HasPrefix(base.Route, "/precos/") {
 			break
 		}
@@ -82,7 +99,20 @@ func localizedSourcePage(data routedPage) localizedSource {
 }
 
 func (s localizedSource) route(locale portalLocale) string {
+	if s.kind != "prices" {
+		return locale.route(s.kind, s.slug, "", "")
+	}
 	return locale.route(s.kind, s.fuel, s.area, s.city)
+}
+
+func (s localizedSource) indexFacts(locale portalLocale) indexFacts {
+	facts := s.data.page().IndexFacts
+	facts.Locale = &locale
+	if post, ok := s.data.(forumPostPage); ok {
+		_, reviewed := reviewedForumCopy(post.Post, locale.Code)
+		facts.PublishedEditorial = facts.PublishedEditorial && reviewed
+	}
+	return facts
 }
 
 func (g *generator) translationLocales() []portalLocale {
@@ -108,7 +138,11 @@ func (g *generator) queueLocalizations(data routedPage) {
 		return
 	}
 	g.localizations = append(g.localizations, source)
-	base := data.page()
+	g.registerLocalizationLinks(source, locales)
+}
+
+func (g *generator) registerLocalizationLinks(source localizedSource, locales []portalLocale) {
+	base := source.data.page()
 	original := g.locales[defaultPortalLocale]
 	menu := []languageLink{g.languageLink(original, base.Route)}
 	for _, locale := range locales {
@@ -124,9 +158,7 @@ func (g *generator) queueLocalizations(data routedPage) {
 	}
 	links := []languageLink{menu[0]}
 	for _, locale := range locales {
-		facts := base.IndexFacts
-		facts.Locale = &locale
-		if route := source.route(locale); route != "" && pageIndexable(facts) {
+		if route := source.route(locale); route != "" && pageIndexable(source.indexFacts(locale)) {
 			links = append(links, g.languageLink(locale, route))
 		}
 	}
@@ -187,24 +219,29 @@ type localizedNote struct{ ID, Title, Body, Detail, SourceHref string }
 
 type localizedPage struct {
 	pageBase
-	Locale     portalLocale
-	Links      []languageLink
-	Nav        []moduleLink
-	TopNav     []moduleLink
-	Footer     []linkModule
-	Home       string
-	IsPrice    bool
-	ShowPeriod bool
-	NoPrices   bool
-	Insights   bool
-	Tables     []localizedTable
-	Notes      []localizedNote
-	Lead       string
-	Reading    string
-	Rankings   []localizedTable
-	NoRanking  string
-	FAQ        []faqItem
-	Explorer   *localizedExplorer
+	Locale            portalLocale
+	Links             []languageLink
+	Nav               []moduleLink
+	TopNav            []moduleLink
+	Footer            []linkModule
+	Home              string
+	IsPrice           bool
+	ShowPeriod        bool
+	NoPrices          bool
+	Insights          bool
+	Tables            []localizedTable
+	Notes             []localizedNote
+	Lead              string
+	Reading           string
+	Rankings          []localizedTable
+	NoRanking         string
+	FAQ               []faqItem
+	Explorer          *localizedExplorer
+	Station           *localizedStationPage
+	Forum             *localizedForumPage
+	Search            *localizedSearchPage
+	Enforcement       *localizedFiscalPage
+	EnforcementRecord *localizedFiscalRecordPage
 }
 
 type localizedPortal struct {
@@ -216,13 +253,12 @@ type localizedPortal struct {
 	observations         []observation
 	municipalityStations map[string]int
 	official             *officialDataset
+	forumFeed            string
 }
 
-func (g *generator) writeLocalizations(summaries []analytics.Summary, coverage analytics.Coverage, observations []observation, municipalityStations map[string]int, official *officialDataset) error {
-	if len(g.localizations) == 0 {
-		return nil
-	}
+func (g *generator) localizationViews(summaries []analytics.Summary, coverage analytics.Coverage, observations []observation, municipalityStations map[string]int, official *officialDataset) []localizedPortal {
 	current := indexSummaries(summaries)
+	var views []localizedPortal
 	for _, locale := range g.translationLocales() {
 		p := localizedPortal{
 			generator: g, portalLocale: locale, current: current, coverage: coverage,
@@ -232,9 +268,20 @@ func (g *generator) writeLocalizations(summaries []analytics.Summary, coverage a
 		for _, source := range g.localizations {
 			p.routes[source.data.page().Route] = source.route(locale)
 		}
+		views = append(views, p)
+	}
+	return views
+}
+
+func (g *generator) writeLocalizations(views []localizedPortal) error {
+	for _, p := range views {
+		var err error
+		if p.forumFeed, err = p.writeReviewedForumFeed(); err != nil {
+			return err
+		}
 		for _, source := range g.localizations {
 			if err := p.write(source); err != nil {
-				return fmt.Errorf("portalgen: %s: %w", source.route(locale), err)
+				return fmt.Errorf("portalgen: %s: %w", source.route(p.portalLocale), err)
 			}
 		}
 	}
@@ -247,14 +294,13 @@ var localizedSections = []struct{ kind, portuguese string }{
 
 func (p localizedPortal) write(source localizedSource) error {
 	original := source.data.page()
-	route := p.routes[original.Route]
+	route := source.route(p.portalLocale)
 	if route == "" {
 		return fmt.Errorf("no localized route")
 	}
 	key, fields := p.pageText(source)
 	title := p.text("title."+key, fields...)
-	facts := original.IndexFacts
-	facts.Locale = &p.portalLocale
+	facts := source.indexFacts(p.portalLocale)
 	decision := pageIndexable(facts)
 	base := pageBase{
 		Title: title, HeadTitle: fitTitle(p.text("title.brand", "title", title), title),
@@ -297,12 +343,33 @@ func (p localizedPortal) write(source localizedSource) error {
 			data.appendModule(p.text("section.related"), link)
 		}
 	}
-	data.appendModule(p.text("section.related"), moduleLink{Label: p.text("search"), Href: "/consultar/"})
+	data.appendModule(p.text("section.related"), moduleLink{Label: p.text("nav.search"), Href: p.routes["/consultar/"]})
+	switch original.Route {
+	case "/precos/", "/consultar/", "/dados/", "/metodologia/":
+		if p.hasForum() {
+			data.appendModule(p.text("section.related"), p.localizedLink(p.text("nav.forum"), "/forum/"))
+		}
+	}
 	p.addChrome(&data)
 	var node ldNode
 	switch page := source.data.(type) {
+	case consultarPage:
+		p.addSearch(&data, page)
+	case fiscalizacaoPage:
+		p.addEnforcement(&data, page)
+	case fiscalizacaoRecordPage:
+		p.addEnforcementRecord(&data, page)
+	case stationPage:
+		node = p.addStation(&data, page)
+	case forumHubPage:
+		node = p.addForumHub(&data)
+	case forumCategoryPage:
+		node = p.addForumCategory(&data, page.Category)
+	case forumPostPage:
+		node = p.addForumPost(&data, page)
 	case precosPage:
 		data.Lead = p.text("price.sampleWarning")
+		p.addRecentForumPosts(&data)
 		if len(page.SearchFuels) > 0 {
 			data.Explorer = p.explorer(page)
 			data.ScriptURL = original.ScriptURL
@@ -393,6 +460,19 @@ func (p localizedPortal) write(source localizedSource) error {
 }
 
 func (p localizedPortal) pageText(source localizedSource) (string, []string) {
+	if source.kind == "enforcementPage" {
+		return source.kind, []string{"page", source.slug}
+	}
+	switch page := source.data.(type) {
+	case stationPage:
+		return "station", []string{"station", page.Station.Name, "place", p.stationPlace(page)}
+	case forumHubPage:
+		return "forum", nil
+	case forumCategoryPage:
+		return "forumCategory", []string{"category", p.forumCategory(page.Category)}
+	case forumPostPage:
+		return "forumPost", []string{"post", p.forumCopy(page.Post).Title, "category", p.forumCategory(page.Post.Category)}
+	}
 	if source.kind != "prices" {
 		return source.kind, nil
 	}
@@ -435,6 +515,12 @@ func (p localizedPortal) localizedLink(label, source string) moduleLink {
 	}
 	if href := p.routes[source]; href != "" {
 		return moduleLink{Label: label, Href: href}
+	}
+	if tail, found := strings.CutPrefix(source, "/postos/"); found && strings.HasSuffix(tail, "/") {
+		id := strings.TrimSuffix(tail, "/")
+		if _, exists := p.stationIndex[id]; exists {
+			return moduleLink{Label: label, Href: p.route("stations", id, "", "")}
+		}
 	}
 	return moduleLink{Label: label, Href: source, Note: p.text("language.portuguese")}
 }

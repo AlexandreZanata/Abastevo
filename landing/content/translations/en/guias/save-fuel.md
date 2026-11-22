@@ -84,7 +84,7 @@ The Abastevo Android app is in development. The [screenshots in the Portuguese g
 3. Open a station and choose **Route and go** for time and distance. Compare potential savings with the fuel needed for the detour.
 4. Add your car under **Vehicles** to see **Tank fill cost** on the home screen.
 
-The captures show the lowest ANP prices for ethanol, regular gasoline and gasoline with additives in São Paulo, SP, for November 8–14, 2026. The ethanol station list is sorted by price and has a **Cheapest near me** button. The blue route in Sorriso, MT, shows 8 minutes and 5.1 km with an option to start navigation. The example tank has a capacity of 50 L. See the [ANP table](/como-usar/precos-anp/), [station navigation](/como-usar/postos/) and [vehicle and tank estimate](/como-usar/veiculos/) tutorials in Portuguese.
+The captures show the lowest ANP prices for ethanol, regular gasoline and gasoline with additives in São Paulo, SP, for November 8–14, 2026. The ethanol station list is sorted by price and has a **Cheapest near me** button. The blue route in Sorriso, MT, shows 8 minutes and 5.1 km with an option to start navigation. The example tank has a capacity of 50 L. See the [ANP table](/en/how-to/check-anp-prices/), [station navigation](/en/how-to/find-and-navigate-to-a-station/) and [vehicle and tank estimate](/en/how-to/vehicles-and-tank-estimate/) tutorials.
 
 ## Sources
 

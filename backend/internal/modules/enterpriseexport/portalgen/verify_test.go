@@ -100,11 +100,11 @@ func TestVerifyNoindexArtifactAndSitemap(t *testing.T) {
 	}
 	// 5 hubs, 2 fuel hubs, 2 states, 2 cities, 3 fuel by state pages, 1 fuel
 	// by city page and the one station that passes the D-SEO-02 gate (recent
-	// official price and complete address). Each translation adds the four
-	// translated hubs, two fuel hubs, two states, two capitals and three
-	// fuel-by-state pages.
-	if verified.SitemapURLs != 16+2*13 {
-		t.Fatalf("sitemap URLs = %d, want 42", verified.SitemapURLs)
+	// official price and complete address). Each translation adds five hubs,
+	// two fuel hubs, two states, two capitals, three fuel-by-state pages and
+	// the eligible station.
+	if verified.SitemapURLs != 16+2*15 {
+		t.Fatalf("sitemap URLs = %d, want 46", verified.SitemapURLs)
 	}
 	sitemap := readSitemaps(t, indexable)
 	for _, want := range []string{
@@ -394,14 +394,16 @@ func TestVerifyOfficialSitemapCensus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// D-SEO-03: the Portuguese fiscalização hub joins the 42 existing
-	// indexable URLs. Record pages stay noindex,follow and out of the sitemap.
-	if verified.SitemapURLs != 42+1 {
-		t.Fatalf("official sitemap URLs = %d, want 43", verified.SitemapURLs)
+	// D-SEO-03: the three official hubs join the 46 existing indexable URLs.
+	// Record pages stay noindex,follow and out of every language's sitemap.
+	if verified.SitemapURLs != 46+3 {
+		t.Fatalf("official sitemap URLs = %d, want 49", verified.SitemapURLs)
 	}
 	sitemap := readSitemaps(t, out)
-	if !strings.Contains(sitemap, "<loc>https://portal.example/fiscalizacao/</loc>") {
-		t.Error("official sitemap misses the fiscalização hub")
+	for _, route := range []string{"/fiscalizacao/", "/en/enforcement/", "/es/fiscalizacion/"} {
+		if !strings.Contains(sitemap, "<loc>https://portal.example"+route+"</loc>") {
+			t.Errorf("official sitemap misses %s", route)
+		}
 	}
 	for _, id := range []string{"f1", "f2", "f3"} {
 		if strings.Contains(sitemap, officialRecordID(id)) {

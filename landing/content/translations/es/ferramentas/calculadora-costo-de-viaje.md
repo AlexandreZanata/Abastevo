@@ -89,6 +89,5 @@ Grosso: la estimación para un tanque de 50 L con la referencia de la ANP, el
 regulador brasileño del petróleo y los combustibles, del 8 al 14 de noviembre
 de 2026, y una ruta hasta una estación resumida como 8 min · 5,1 km. Consulta
 los tutoriales
-[Vehículos y estimación del tanque](/como-usar/veiculos/) (en portugués) y
-[Sin conexión y recuperación](/como-usar/offline-e-recuperacao/) (en
-portugués).
+[Vehículos y estimación del tanque](/es/como-usar/vehiculos-y-estimacion-del-tanque/) y
+[Sin conexión y recuperación](/es/como-usar/sin-conexion-y-recuperacion/).
