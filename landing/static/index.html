@@ -131,13 +131,13 @@
       <div class="shell lp-hero">
         <div class="lp-hero-copy">
           <!-- HOME_HERO -->
-          <form class="lp-search" action="/consultar/" method="get" role="search" aria-label="Consultar preços">
+          <form class="lp-search" action="/consultar/" method="get" role="search" aria-label="{{HOME_TEXT:search.label}}">
             <div class="field-stack">
               <label class="field">
                 <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-3.6-3.8-6.5-7.300-6.500-11a6.500 6.500 0 0 1 13 0c0 3.700-2.900 7.200-6.500 11Z"/><circle cx="12" cy="10" r="2"/></svg></span>
-                <span class="sr-only">Estado</span>
+                <span class="sr-only">{{HOME_TEXT:search.state}}</span>
                 <select name="uf" required>
-                  <option value="">Escolha o estado</option>
+                  <option value="">{{HOME_TEXT:search.statePrompt}}</option>
                   <option value="AC">Acre</option>
                   <option value="AL">Alagoas</option>
                   <option value="AP">Amapá</option>
@@ -170,18 +170,19 @@
               <span class="field-rail" aria-hidden="true"></span>
               <label class="field">
                 <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="m19.500 19.500-4.200-4.200"/></svg></span>
-                <span class="sr-only">Posto, CNPJ ou marca</span>
-                <input type="search" name="q" maxlength="80" autocomplete="off" placeholder="Posto, CNPJ ou marca">
+                <span class="sr-only">{{HOME_TEXT:search.query}}</span>
+                <input type="search" name="q" maxlength="80" autocomplete="off" placeholder="{{HOME_TEXT:search.query}}">
               </label>
             </div>
             <div class="lp-actions">
-              <button type="submit" class="btn-dark">Consultar preços</button>
-              <a class="text-link" href="#aplicativo">Conheça o aplicativo</a>
+              <button type="submit" class="btn-dark">{{HOME_TEXT:search.label}}</button>
+              <a class="text-link" href="#aplicativo">{{HOME_TEXT:search.app}}</a>
             </div>
           </form>
-          <p class="fine">Em desenvolvimento · Google Play não publicado. Consultar não exige conta nem localização.</p>
+          <!-- HOME_SEARCH_LANGUAGE -->
+          <p class="fine">{{HOME_STORE_TEXT:hero.status}}</p>
         </div>
-        <figure class="lp-hero-art" aria-label="Ilustração: o símbolo do abastevo entre rotas, marcadores de mapa e cartões de preço">
+        <figure class="lp-hero-art" aria-label="{{HOME_TEXT:hero.artLabel}}">
           <img src="/assets/art/hero-mark.d4df28a9.svg" width="900" height="1000" alt="" fetchpriority="high">
         </figure>
       </div>
@@ -189,26 +190,26 @@
 
     <section id="explorar" class="explore">
       <div class="shell">
-        <h2 class="h2">Explore o que dá para fazer</h2>
+        <h2 class="h2">{{HOME_TEXT:explore.title}}</h2>
         <div class="explore-grid">
-          <a class="explore-card" href="/consultar/">
+          <a class="explore-card" {{HOME_LINK:/consultar/}}>
             <span class="card-art card-art-consult" aria-hidden="true"><img src="/assets/art/consult-scene-640w.84bfa461.webp" srcset="/assets/art/consult-scene-320w.b69b6813.webp 320w, /assets/art/consult-scene-640w.84bfa461.webp 640w" sizes="(min-width: 72rem) 300px, (min-width: 40rem) 45vw, 78vw" width="1456" height="1092" alt="" loading="lazy" decoding="async"></span>
-            <span class="explore-copy"><strong>Consultar</strong><span>Preços por cidade, com fonte e data.</span></span>
+            <span class="explore-copy"><strong>{{HOME_TEXT:explore.consult.title}}</strong><span>{{HOME_TEXT:explore.consult.body}}</span></span>
             <svg class="explore-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
-          <a class="explore-card" href="/metodologia/">
+          <a class="explore-card" {{HOME_LINK:/metodologia/}}>
             <span class="card-art card-art-check" aria-hidden="true"><img src="/assets/art/check-scene-640w.4b352fbf.webp" srcset="/assets/art/check-scene-320w.6e3aa11c.webp 320w, /assets/art/check-scene-640w.4b352fbf.webp 640w" sizes="(min-width: 72rem) 300px, (min-width: 40rem) 45vw, 78vw" width="1456" height="1092" alt="" loading="lazy" decoding="async"></span>
-            <span class="explore-copy"><strong>Conferir a fonte</strong><span>Comunidade e ANP, sempre separadas.</span></span>
+            <span class="explore-copy"><strong>{{HOME_TEXT:explore.source.title}}</strong><span>{{HOME_TEXT:explore.source.body}}</span></span>
             <svg class="explore-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
-          <a class="explore-card" href="/como-usar/">
+          <a class="explore-card" {{HOME_LINK:/como-usar/}}>
             <span class="card-art card-art-contribute" aria-hidden="true"><img src="/assets/art/contribute-scene-640w.186ea741.webp" srcset="/assets/art/contribute-scene-320w.0515e1a1.webp 320w, /assets/art/contribute-scene-640w.186ea741.webp 640w" sizes="(min-width: 72rem) 300px, (min-width: 40rem) 45vw, 78vw" width="1456" height="1092" alt="" loading="lazy" decoding="async"></span>
-            <span class="explore-copy"><strong>Contribuir</strong><span>Foto do preço na bomba (planejado).</span></span>
+            <span class="explore-copy"><strong>{{HOME_TEXT:explore.contribute.title}}</strong><span>{{HOME_TEXT:explore.contribute.body}}</span></span>
             <svg class="explore-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
-          <a class="explore-card" href="/fiscalizacao/">
+          <a class="explore-card" {{HOME_LINK:/fiscalizacao/}}>
             <span class="explore-art" aria-hidden="true"><img src="/assets/art/fleet-scene-640w.2075e078.webp" srcset="/assets/art/fleet-scene-320w.9966cf64.webp 320w, /assets/art/fleet-scene-640w.2075e078.webp 640w" sizes="(min-width: 72rem) 300px, (min-width: 40rem) 45vw, 78vw" width="1456" height="1092" alt="" loading="lazy" decoding="async"></span>
-            <span class="explore-copy"><strong>Fiscalização</strong><span>Multas oficiais publicadas pela ANP.</span></span>
+            <span class="explore-copy"><strong>{{HOME_TEXT:explore.enforcement.title}}</strong><span>{{HOME_TEXT:explore.enforcement.body}}</span></span>
             <svg class="explore-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
         </div>
@@ -223,25 +224,25 @@
           <img src="/assets/art/ride-driver-scene-640w.08091f7f.webp" srcset="/assets/art/ride-driver-scene-320w.bc8d7dd5.webp 320w, /assets/art/ride-driver-scene-640w.08091f7f.webp 640w" sizes="(min-width: 64rem) 560px, 92vw" width="1456" height="1092" alt="" loading="lazy" decoding="async">
         </div>
         <div class="feature-copy">
-          <h2 class="h2">Feito para quem abastece toda semana</h2>
-          <p>Focado em quem precisa de dados reais e claros sobre abastecimento.</p>
+          <h2 class="h2">{{HOME_TEXT:persona.title}}</h2>
+          <p>{{HOME_TEXT:persona.intro}}</p>
           <ul class="persona-list">
             <li class="persona">
               <span class="card-art card-art-driver" aria-hidden="true"><img src="/assets/art/driver-scene-640w.f2c0ed08.webp" srcset="/assets/art/driver-scene-320w.4e37f3bb.webp 320w, /assets/art/driver-scene-640w.f2c0ed08.webp 640w" sizes="72px" width="1456" height="1092" alt="" loading="lazy" decoding="async"></span>
-              <span><strong>Motorista particular</strong><span>Quem abastece com frequência e quer comparar informações com fonte e data.</span></span>
+              <span><strong>{{HOME_TEXT:persona.driver.title}}</strong><span>{{HOME_TEXT:persona.driver.body}}</span></span>
             </li>
             <li class="persona">
               <span class="card-art card-art-ride-driver" aria-hidden="true"><img src="/assets/art/ride-driver-scene-640w.08091f7f.webp" srcset="/assets/art/ride-driver-scene-320w.bc8d7dd5.webp 320w, /assets/art/ride-driver-scene-640w.08091f7f.webp 640w" sizes="72px" width="1456" height="1092" alt="" loading="lazy" decoding="async"></span>
-              <span><strong>Motorista de aplicativo</strong><span>Quem roda muito e precisa estimar o custo de encher o tanque.</span></span>
+              <span><strong>{{HOME_TEXT:persona.rideshare.title}}</strong><span>{{HOME_TEXT:persona.rideshare.body}}</span></span>
             </li>
             <li class="persona">
               <span class="card-art card-art-fleet" aria-hidden="true"><img src="/assets/art/fleet-scene-640w.2075e078.webp" srcset="/assets/art/fleet-scene-320w.9966cf64.webp 320w, /assets/art/fleet-scene-640w.2075e078.webp 640w" sizes="72px" width="1456" height="1092" alt="" loading="lazy" decoding="async"></span>
-              <span><strong>Pequeno frotista</strong><span>Quem cuida de poucos veículos e quer organizar o custo de abastecer.</span></span>
+              <span><strong>{{HOME_TEXT:persona.fleet.title}}</strong><span>{{HOME_TEXT:persona.fleet.body}}</span></span>
             </li>
           </ul>
           <div class="lp-actions">
-            <a class="btn-dark" href="/como-usar/">Ver como usar</a>
-            <a class="text-link" href="/guias/">Ler os guias</a>
+            <a class="btn-dark" {{HOME_LINK:/como-usar/}}>{{HOME_TEXT:persona.tutorial}}</a>
+            <a class="text-link" {{HOME_LINK:/guias/}}>{{HOME_TEXT:persona.guides}}</a>
           </div>
         </div>
       </div>
@@ -257,25 +258,25 @@
           <img src="/assets/art/open-data-scene-640w.107a308d.webp" srcset="/assets/art/open-data-scene-320w.88ac7060.webp 320w, /assets/art/open-data-scene-640w.107a308d.webp 640w" sizes="(min-width: 64rem) 560px, 92vw" width="1448" height="1086" alt="" loading="lazy" decoding="async">
         </div>
         <div class="feature-copy">
-          <h2 class="h2">Dados abertos, direto no navegador</h2>
-          <p>Postos, preços e registros oficiais da ANP em páginas públicas e gratuitas, sem conta e sem instalar nada. Cada número com período, fonte e amostra.</p>
+          <h2 class="h2">{{HOME_TEXT:data.title}}</h2>
+          <p>{{HOME_TEXT:data.intro}}</p>
           <ul class="persona-list">
             <li class="persona">
               <span class="card-art" aria-hidden="true"><img src="/assets/art/station-search-thumbnail.8868c3d5.webp" width="320" height="240" alt="" loading="lazy" decoding="async"></span>
-              <span><a href="/consultar/"><strong>Pesquisar postos e preços</strong></a><span>Busque por estado, município, nome ou CNPJ, com a data de coleta.</span></span>
+              <span><a {{HOME_LINK:/consultar/}}><strong>{{HOME_TEXT:data.search.title}}</strong></a><span>{{HOME_TEXT:data.search.body}}</span></span>
             </li>
             <li class="persona">
               <span class="card-art" aria-hidden="true"><img src="/assets/art/official-inspection-thumbnail.b80e5323.webp" width="320" height="240" alt="" loading="lazy" decoding="async"></span>
-              <span><a href="/fiscalizacao/"><strong>Fiscalização oficial</strong></a><span>Multas aplicadas publicadas pela ANP, com fonte e limites explicados.</span></span>
+              <span><a {{HOME_LINK:/fiscalizacao/}}><strong>{{HOME_TEXT:data.enforcement.title}}</strong></a><span>{{HOME_TEXT:data.enforcement.body}}</span></span>
             </li>
             <li class="persona">
               <span class="card-art" aria-hidden="true"><img src="/assets/art/methodology-thumbnail.9441c6a9.webp" width="320" height="240" alt="" loading="lazy" decoding="async"></span>
-              <span><a href="/metodologia/"><strong>Metodologia</strong></a><span>De onde vêm os dados, como são atualizados e o que não comprovam.</span></span>
+              <span><a {{HOME_LINK:/metodologia/}}><strong>{{HOME_TEXT:data.methodology.title}}</strong></a><span>{{HOME_TEXT:data.methodology.body}}</span></span>
             </li>
           </ul>
           <div class="lp-actions">
-            <a class="btn-dark" href="/consultar/">Consultar dados</a>
-            <a class="text-link" href="/metodologia/">Ver a metodologia</a>
+            <a class="btn-dark" {{HOME_LINK:/consultar/}}>{{HOME_TEXT:data.consult}}</a>
+            <a class="text-link" {{HOME_LINK:/metodologia/}}>{{HOME_TEXT:data.seeMethodology}}</a>
           </div>
         </div>
       </div>
@@ -284,48 +285,51 @@
     <section id="aplicativo" class="block">
       <div class="shell">
         <div class="block-head">
-          <h2 class="h2">O aplicativo em telas reais</h2>
+          <h2 class="h2">{{HOME_TEXT:app.title}}</h2>
         </div>
+        <!-- HOME_CAPTURES -->
         <div class="app-gallery" role="list" aria-label="Capturas reais do aplicativo" tabindex="0">
           <figure class="app-shot" role="listitem">
             <div class="phone-frame">
               <img src="/assets/app/fuel-prices-01-anp-average-cards-720w.webp" srcset="/assets/app/fuel-prices-01-anp-average-cards-360w.webp 360w, /assets/app/fuel-prices-01-anp-average-cards-720w.webp 720w, /assets/app/fuel-prices-01-anp-average-cards-1080w.webp 1080w" sizes="(min-width: 48rem) 240px, 54vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela inicial em São Paulo, SP, na semana de 8 a 14 de novembro de 2026: seção “Preços na sua cidade” com a linha de referência ANP e cartões de etanol a R$ 4,09, gasolina comum a R$ 6,34 e gasolina aditivada a R$ 6,72, cada um com o número de postos pesquisados.">
             </div>
-            <figcaption><strong>A semana da ANP, por combustível.</strong> Média semanal na cidade, número de postos pesquisados e o selo da fonte em cada cartão.</figcaption>
+            <figcaption><strong>{{HOME_TEXT:app.features.weekly.title}}</strong> {{HOME_TEXT:app.features.weekly.body}}</figcaption>
           </figure>
           <figure class="app-shot" role="listitem">
             <div class="phone-frame">
               <img src="/assets/app/stations-06-community-and-anp-prices-720w.webp" srcset="/assets/app/stations-06-community-and-anp-prices-360w.webp 360w, /assets/app/stations-06-community-and-anp-prices-720w.webp 720w, /assets/app/stations-06-community-and-anp-prices-1080w.webp 1080w" sizes="(min-width: 48rem) 240px, 54vw" width="360" height="640" loading="lazy" decoding="async" alt="Perfil de um posto em São Paulo, SP, com gasolina comum escolhida: cartão “Preços da comunidade (beta)” sem preço recente e, separado, cartão “Preço de referência ANP” com R$ 5,77.">
             </div>
-            <figcaption><strong>Comunidade e ANP nunca se misturam.</strong> No perfil do posto, o que motoristas enviaram e a referência oficial ficam em cartões separados.</figcaption>
+            <figcaption><strong>{{HOME_TEXT:app.features.community.title}}</strong> {{HOME_TEXT:app.features.community.body}}</figcaption>
           </figure>
           <figure class="app-shot" role="listitem">
             <div class="phone-frame">
               <img src="/assets/app/map-05-route-preview-720w.webp" srcset="/assets/app/map-05-route-preview-360w.webp 360w, /assets/app/map-05-route-preview-720w.webp 720w" sizes="(min-width: 48rem) 240px, 54vw" width="360" height="640" loading="lazy" decoding="async" alt="Mapa de Sorriso, MT, com a rota em azul da posição atual até um posto, o resumo 8 min · 5,1 km e os botões “Iniciar navegação”, “Editar rota” e “Manobras”.">
             </div>
-            <figcaption><strong>Rota até o posto.</strong> “Rota e ir” traça o caminho com tempo e distância; com o mapa da região baixado, funciona sem internet.</figcaption>
+            <figcaption><strong>{{HOME_TEXT:app.features.navigation.title}}</strong> {{HOME_TEXT:app.features.navigation.body}}</figcaption>
           </figure>
           <figure class="app-shot" role="listitem">
             <div class="phone-frame">
               <img src="/assets/app/vehicles-05-tank-fill-cost-720w.webp" srcset="/assets/app/vehicles-05-tank-fill-cost-360w.webp 360w, /assets/app/vehicles-05-tank-fill-cost-720w.webp 720w, /assets/app/vehicles-05-tank-fill-cost-1080w.webp 1080w" sizes="(min-width: 48rem) 240px, 54vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela inicial em Sorriso, MT, com o cartão “Custo para encher o tanque”: R$ 312,50 para um veículo com tanque de 50 L, o posto de referência e o botão “Ir até o posto”.">
             </div>
-            <figcaption><strong>Quanto custa encher o tanque.</strong> Com um veículo cadastrado, o app estima o custo do tanque pelo preço de referência da semana.</figcaption>
+            <figcaption><strong>{{HOME_TEXT:app.features.fill.title}}</strong> {{HOME_TEXT:app.features.fill.body}}</figcaption>
           </figure>
           <figure class="app-shot" role="listitem">
             <div class="phone-frame">
               <img src="/assets/app/survey-weeks-02-week-list-720w.webp" srcset="/assets/app/survey-weeks-02-week-list-360w.webp 360w, /assets/app/survey-weeks-02-week-list-720w.webp 720w, /assets/app/survey-weeks-02-week-list-1080w.webp 1080w" sizes="(min-width: 48rem) 240px, 54vw" width="360" height="640" loading="lazy" decoding="async" alt="Painel “Semana de pesquisa” com a semana 8–14 nov. 2026 marcada como atual e baixada e o botão “Baixar” nas semanas 1–7 nov. 2026 e 18–24 out. 2026.">
             </div>
-            <figcaption><strong>Semanas guardadas no aparelho.</strong> Baixe semanas anteriores da pesquisa para consultar sem internet e comparar períodos.</figcaption>
+            <figcaption><strong>{{HOME_TEXT:app.features.offline.title}}</strong> {{HOME_TEXT:app.features.offline.body}}</figcaption>
           </figure>
           <figure class="app-shot" role="listitem">
             <div class="phone-frame">
               <img src="/assets/app/forum-01-forum-feed-720w.webp" srcset="/assets/app/forum-01-forum-feed-360w.webp 360w, /assets/app/forum-01-forum-feed-720w.webp 720w, /assets/app/forum-01-forum-feed-1080w.webp 1080w" sizes="(min-width: 48rem) 240px, 54vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela “Fórum Abastevo” com abas de categoria e duas publicações editoriais: como funciona a pesquisa semanal da ANP e como fazer a conta entre etanol e gasolina.">
             </div>
-            <figcaption><strong>Fórum da comunidade.</strong> Publicações e discussões por categoria, sempre separadas dos dados oficiais.</figcaption>
+            <figcaption><strong>{{HOME_TEXT:app.features.forum.title}}</strong> {{HOME_TEXT:app.features.forum.body}}</figcaption>
           </figure>
         </div>
+        <!-- /HOME_CAPTURES -->
         <div class="lp-actions app-gallery-actions">
-          <a class="text-link" href="/como-usar/">Ver o passo a passo de cada tela</a>
+          <!-- HOME_CAPTURE_LINK -->
+          <a class="text-link" {{HOME_LINK:/como-usar/}}>{{HOME_TEXT:app.tutorial}}</a>
         </div>
         <div class="grid-2">
           <div class="channel-card">
@@ -333,20 +337,20 @@
               <span class="channel-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span>
               <h3 class="channel-title">Android</h3>
             </div>
-            <p class="channel-text">Acompanhe as versões de teste do Android no GitHub. A publicação na Google Play ainda não está disponível.</p>
+            <p class="channel-text">{{HOME_STORE_TEXT:app.android}}</p>
             <div class="channel-actions">
-              <!-- STORE_STATE_SLOT --><span class="store-btn store-pill" aria-disabled="true"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span><span class="store-btn-text"><strong>Em breve no Google Play</strong><small>Em desenvolvimento</small></span></span><!-- /STORE_STATE_SLOT -->
+              <!-- STORE_STATE_SLOT --><span class="store-btn store-pill" aria-disabled="true"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span><span class="store-btn-text"><strong>{{HOME_TEXT:app.play.prelaunchTitle}}</strong><small>{{HOME_TEXT:app.play.prelaunchDetail}}</small></span></span><!-- /STORE_STATE_SLOT -->
             </div>
           </div>
           <div class="channel-card">
             <div class="channel-head">
               <span class="channel-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span>
-              <h3 class="channel-title">Código disponível</h3>
+              <h3 class="channel-title">{{HOME_TEXT:app.code.title}}</h3>
             </div>
-            <p class="channel-text">Licença Abastevo com crédito visível ao projeto e ao criador. Este site não pede cadastro nem e-mail.</p>
+            <p class="channel-text">{{HOME_TEXT:app.code.body}}</p>
             <div class="channel-actions">
-              <a class="store-btn btn-github" id="btn-github" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span><span class="store-btn-text"><strong>Ver no GitHub</strong><small>Código com atribuição visível</small></span></a>
-              <button type="button" class="btn-copy" data-copy-target="#btn-github" aria-label="Copiar link do repositório">Copiar link</button>
+              <a class="store-btn btn-github" id="btn-github" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span><span class="store-btn-text"><strong>{{HOME_TEXT:app.code.github}}</strong><small>{{HOME_TEXT:app.code.attribution}}</small></span></a>
+              <button type="button" class="btn-copy" data-copy-target="#btn-github" data-copy-success="{{HOME_TEXT:app.code.copied}}" aria-label="{{HOME_TEXT:app.code.copyLabel}}">{{HOME_TEXT:app.code.copy}}</button>
             </div>
           </div>
         </div>
@@ -356,33 +360,33 @@
     <section id="perguntas" class="block">
       <div class="shell faq-split">
         <div class="faq-intro">
-          <h2 class="h2">Perguntas frequentes</h2>
-          <p>Respostas curtas sobre preços, fontes e o aplicativo.</p>
-          <a class="text-link" href="https://github.com/AlexandreZanata/abastevo/issues">Ainda com dúvidas? Fale com o projeto</a>
+          <h2 class="h2">{{HOME_TEXT:faq.title}}</h2>
+          <p>{{HOME_TEXT:faq.intro}}</p>
+          <a class="text-link" href="https://github.com/AlexandreZanata/abastevo/issues">{{HOME_TEXT:faq.contact}}</a>
         </div>
         <div class="faq-list">
               <details class="faq-item">
-                <summary class="faq-summary">Como saber o preço de combustível de um posto?</summary>
+                <summary class="faq-summary">{{HOME_TEXT:faq.prices.question}}</summary>
                 <div class="faq-content">
-                  <p>No aplicativo abastevo, você seleciona a cidade e o combustível desejado. O app apresenta os preços disponíveis indicando se foram informados pela comunidade ou levantados pela ANP, exibindo a data de registro e a condição observada.</p>
+                  <p>{{HOME_TEXT:faq.prices.answer}}</p>
                 </div>
               </details>
               <details class="faq-item">
-                <summary class="faq-summary">O que é a pesquisa de preços da ANP?</summary>
+                <summary class="faq-summary">{{HOME_TEXT:faq.survey.question}}</summary>
                 <div class="faq-content">
-                  <p>É o Levantamento de Preços de Combustíveis publicado semanalmente pela Agência Nacional do Petróleo (ANP). Trata-se de uma referência amostral histórica da semana pesquisada, e não necessariamente o preço praticado na bomba no momento exato.</p>
+                  <p>{{HOME_TEXT:faq.survey.answer}}</p>
                 </div>
               </details>
               <details class="faq-item">
-                <summary class="faq-summary">Qual a diferença entre preço da comunidade e da ANP?</summary>
+                <summary class="faq-summary">{{HOME_TEXT:faq.separate.question}}</summary>
                 <div class="faq-content">
-                  <p>O preço da comunidade é enviado por motoristas e pessoas que observaram o valor recentemente em um posto específico. A referência da ANP é um levantamento estatístico periódico oficial. No abastevo, ambos nunca se misturam: a fonte é sempre destacada.</p>
+                  <p>{{HOME_TEXT:faq.separate.answer}}</p>
                 </div>
               </details>
               <details class="faq-item">
-                <summary class="faq-summary">O aplicativo será gratuito?</summary>
+                <summary class="faq-summary">{{HOME_TEXT:faq.free.question}}</summary>
                 <div class="faq-content">
-                  <p>Sim. A consulta e a participação comunitária são inteiramente gratuitas. Recursos adicionais ou eventuais serviços futuros pagos jamais conferem maior relevância ou peso artificial à confiança de um preço.</p>
+                  <p>{{HOME_TEXT:faq.free.answer}}</p>
                 </div>
               </details>
             </div>

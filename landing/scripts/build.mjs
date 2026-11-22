@@ -5,6 +5,7 @@ import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readIndexNowKey } from './indexnow.mjs';
+import { escapeHtml } from './content/markdown.mjs';
 import { loadSite, renderSitemap, renderLlmsLinks, renderGuidesFeed } from './content/site.mjs';
 import {
   renderGuide,
@@ -14,10 +15,8 @@ import {
   renderTool,
   renderPage,
   renderFooterColumns,
-  renderHomeHero,
-  renderHomeStates,
-  renderHomeGuides,
-  renderHomeTools,
+  renderHomeMain,
+  t,
   renderLocaleHome,
   renderLocalizedHeader,
   renderLocalizedFooter,
@@ -131,6 +130,15 @@ export function build(options = {}) {
   const storeState = options.storeState || 'prelaunch';
   const storeUrl = options.storeUrl || null;
   validateStoreState(storeState, storeUrl);
+  const appSchema = storeState === 'published' ? {
+    '@type': 'MobileApplication',
+    '@id': `${origin}/#mobileapp`,
+    name: 'abastevo',
+    operatingSystem: 'Android',
+    applicationCategory: 'UtilitiesApplication',
+    installUrl: storeUrl,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+  } : null;
 
   const outDir = options.outDir || path.join(root, 'dist');
   const staticDir = path.join(root, 'static');
@@ -331,18 +339,14 @@ export function build(options = {}) {
 
     // The home owns the navigation and footer for every landing page. Its
     // footer columns and hub sections are generated from the manifest.
-    const homeMarkers = {
-      '<!-- HOME_HERO -->': renderHomeHero(defaultLocale),
-      '<!-- FOOTER_COLUMNS -->': renderFooterColumns(site, defaultLocale),
-      '<!-- HOME_STATES -->': renderHomeStates(defaultLocale),
-      '<!-- HOME_GUIDES -->': renderHomeGuides(site, defaultLocale),
-      '<!-- HOME_TOOLS -->': renderHomeTools(site, defaultLocale),
-    };
-    let homeHtml = readStatic('index.html');
-    for (const [marker, markup] of Object.entries(homeMarkers)) {
-      if (!homeHtml.includes(marker)) throw new Error(`index.html: missing ${marker}`);
-      homeHtml = homeHtml.replace(marker, markup);
-    }
+    const homeTemplate = readStatic('index.html');
+    const mainTemplate = homeTemplate.match(/<main\b[\s\S]*?<\/main>/)?.[0];
+    if (!mainTemplate) throw new Error('Canonical home main missing');
+    const footerMarker = '<!-- FOOTER_COLUMNS -->';
+    if (!homeTemplate.includes(footerMarker)) throw new Error('index.html: missing ' + footerMarker);
+    const homeHtml = homeTemplate
+      .replace(mainTemplate, () => renderHomeMain(mainTemplate, site, defaultLocale, storeState))
+      .replace(footerMarker, () => renderFooterColumns(site, defaultLocale));
     // Qualify home-section links for nested URLs.
     const sharedChrome = (tag) => {
       const block = homeHtml.match(new RegExp(`<${tag}\\b[\\s\\S]*?</${tag}>`))?.[0];
@@ -362,11 +366,11 @@ export function build(options = {}) {
       if (entry.kind === 'static' || entry.kind === 'html-guide') {
         html = entry.chrome === 'home' ? homeHtml : readStatic(entry.source);
       } else if (entry.kind === 'locale-home') {
-        html = renderLocaleHome(site, origin, locale);
+        html = renderLocaleHome(origin, locale, renderHomeMain(mainTemplate, site, locale, storeState), appSchema);
       } else if (entry.kind === 'guide') {
         html = renderGuide(site, entry, origin, locale);
       } else if (entry.kind === 'category') {
-        html = renderCategory(site, site.categories.find((c) => c.route === entry.route), origin, locale);
+        html = renderCategory(site, entry, origin, locale);
       } else if (entry.kind === 'guides-hub') {
         html = renderGuidesHub(site, origin, locale);
       } else if (entry.kind === 'tools-hub') {
@@ -409,11 +413,11 @@ export function build(options = {}) {
         }
         html = html.replace('</head>', `${lines.join('\n')}\n</head>`);
       }
-      pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, indexable: entry.indexable, html });
+      pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, indexable: entry.indexable, html, locale });
     }
 
     for (const page of pages) {
-      const { srcRel, destRel } = page;
+      const { srcRel, destRel, locale } = page;
       let html = page.html;
 
       // Asset reference rewrites
@@ -426,30 +430,21 @@ export function build(options = {}) {
       html = html.replaceAll('{{CANONICAL_ORIGIN}}', origin);
       html = html.replaceAll('{{ABASTEVO_API_ORIGIN}}', apiOrigin);
 
-      // Store state replacement
-      const playButton = `<a href="${storeUrl}" class="store-btn store-pill" target="_blank" rel="noopener"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span><span class="store-btn-text"><strong>Ver na Google Play</strong><small>Baixar o aplicativo</small></span></a>`;
+      // Prelaunch keeps the existing unavailable pills in each language.
+      if (storeState === 'published') {
+        const playButton = `<a href="${escapeHtml(storeUrl)}" class="store-btn store-pill" target="_blank" rel="noopener"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span><span class="store-btn-text"><strong>${escapeHtml(t(locale, 'home.app.play.publishedTitle'))}</strong><small>${escapeHtml(t(locale, 'home.app.play.publishedDetail'))}</small></span></a>`;
+        html = html
+          .replace(/<!-- STORE_STATE_SLOT -->[\s\S]*?<!-- \/STORE_STATE_SLOT -->/, () => playButton)
+          .replace(/<!-- HEADER_STORE_SLOT -->[\s\S]*?<!-- \/HEADER_STORE_SLOT -->/, () => playButton);
+      }
       if (srcRel === 'index.html') {
-        // Prelaunch keeps the static honest pill; published swaps in the verified link.
-        if (storeState === 'published') {
-          const slotRegex = /<!-- STORE_STATE_SLOT -->[\s\S]*?<!-- \/STORE_STATE_SLOT -->/;
-          html = html.replace(slotRegex, playButton);
-        }
-
-        if (storeState === 'published') {
+        if (appSchema) {
           html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', `,\n          "${storeUrl}"`);
-          const appNode = `,\n      {\n        "@type": "MobileApplication",\n        "@id": "${origin}/#mobileapp",\n        "name": "abastevo",\n        "operatingSystem": "Android",\n        "applicationCategory": "UtilitiesApplication",\n        "installUrl": "${storeUrl}",\n        "offers": {\n          "@type": "Offer",\n          "price": "0",\n          "priceCurrency": "BRL"\n        }\n      }`;
-          html = html.replaceAll('{{STORE_APP_SCHEMA_NODE}}', appNode);
+          const appNode = JSON.stringify(appSchema, null, 2).replace(/^/gm, '      ');
+          html = html.replaceAll('{{STORE_APP_SCHEMA_NODE}}', `,\n${appNode}`);
         } else {
           html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', '');
           html = html.replaceAll('{{STORE_APP_SCHEMA_NODE}}', '');
-        }
-      }
-
-      // Header store pill: prelaunch keeps the static honest pill on every page.
-      if (storeState === 'published') {
-        const headerSlotRegex = /<!-- HEADER_STORE_SLOT -->[\s\S]*?<!-- \/HEADER_STORE_SLOT -->/;
-        if (headerSlotRegex.test(html)) {
-          html = html.replace(headerSlotRegex, playButton);
         }
       }
 

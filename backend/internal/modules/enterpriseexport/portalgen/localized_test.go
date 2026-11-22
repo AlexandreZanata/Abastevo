@@ -183,3 +183,34 @@ func TestPortalCatalogParityRejectsMissingKeysAndChangedPlaceholders(t *testing.
 		}
 	}
 }
+
+func TestLocalizedPortalKeepsComparablePublicFields(t *testing.T) {
+	out := generateSEOPortal(t, true)
+	for _, paths := range []struct {
+		prices, fuel, state, area, city, methodology, data, insights string
+	}{
+		{"en/fuel-prices", "en/fuel-prices/regular-gasoline", "en/fuel-prices/mt", "en/fuel-prices/regular-gasoline/mt", "en/fuel-prices/sp/sao-paulo", "en/methodology", "en/data", "en/insights"},
+		{"es/precios", "es/precios/gasolina-comun", "es/precios/mt", "es/precios/gasolina-comun/mt", "es/precios/sp/sao-paulo", "es/metodologia", "es/datos", "es/curiosidades"},
+	} {
+		for _, check := range []struct {
+			path    string
+			markers []string
+		}{
+			{paths.prices, []string{`data-prices-fuel`, `data-prices-order`, `data-finder-input`, `id="portal-rankings"`, `class="footer-cols"`}},
+			{paths.fuel, []string{`id="survey-reading"`, `id="portal-faq"`, `href="/` + paths.methodology + `/#media-da-amostra"`}},
+			{paths.state, []string{`id="portal-rankings"`, `href="/precos/mt/varzea-grande/"`}},
+			{paths.area, []string{`id="survey-reading"`, `id="portal-faq"`, `id="portal-rankings"`}},
+			{paths.city, []string{`id="unranked-observations"`, `IBGE 3550308`}},
+			{paths.methodology, []string{`id="media-da-amostra"`, `abastevo-metrics-v1`}},
+			{paths.data, []string{`id="download-release"`, `id="notas"`}},
+			{paths.insights, []string{`class="qa-meta"`, `/fiscalizacao/`}},
+		} {
+			body := readPortal(t, out, check.path+"/index.html")
+			for _, marker := range check.markers {
+				if !strings.Contains(body, marker) {
+					t.Errorf("/%s/ is missing %q", check.path, marker)
+				}
+			}
+		}
+	}
+}

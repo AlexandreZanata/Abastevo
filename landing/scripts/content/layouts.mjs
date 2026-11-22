@@ -57,7 +57,7 @@ function breadcrumbNode(items, origin, pageUrl) {
 function breadcrumbNav(items, locale) {
   const parts = items.map((item, index) => (index === items.length - 1
     ? `<li><span aria-current="page">${esc(item.name)}</span></li>`
-    : `<li><a href="${esc(item.route)}">${esc(item.name)}</a></li>`));
+    : `<li><a href="${esc(item.route)}"${item.hreflang ? ` hreflang="${esc(item.hreflang)}"` : ''}>${esc(item.name)}</a></li>`));
   return `<nav class="breadcrumb-nav" aria-label="${esc(t(locale, 'chrome.breadcrumb'))}">\n        <ol class="breadcrumb-list">\n          ${parts.join('\n          ')}\n        </ol>\n      </nav>`;
 }
 
@@ -141,8 +141,11 @@ function cardList(entries, site, locale) {
   return `<ul class="topic-cards">\n        ${entries.map((entry) => card(entry, kickerFor(entry))).join('\n        ')}\n      </ul>`;
 }
 
-function linkList(site, routes) {
-  const items = routes.map((route) => `<li><a href="${esc(route)}">${esc(site.routeLabel(route))}</a></li>`);
+function linkList(site, routes, locale = site.defaultLocale) {
+  const items = routes.map((route) => {
+    const label = site.routeLabel(site.localizedRoute(route, locale.code));
+    return `<li>${localizedNavigationLink(site, locale, route, label)}</li>`;
+  });
   return `<ul class="link-list">\n        ${items.join('\n        ')}\n      </ul>`;
 }
 
@@ -155,6 +158,13 @@ function localeLink(site, locale, route, label) {
   const target = site.localizedRoute(route, locale.code);
   const portuguese = Boolean(locale.prefix) && target === route;
   return `<a href="${esc(target)}"${portuguese ? ' hreflang="pt-BR"' : ''}>${label}</a>`;
+}
+
+function localizedNavigationLink(site, locale, route, label, { className } = {}) {
+  const target = site.localizedRoute(route, locale.code);
+  const portuguese = Boolean(locale.prefix) && target === route;
+  const text = portuguese ? t(locale, 'chrome.linkInPortuguese', { label }) : label;
+  return `<a${className ? ` class="${esc(className)}"` : ''} href="${esc(target)}"${portuguese ? ' hreflang="pt-BR"' : ''}>${esc(text)}</a>`;
 }
 
 function datesLine(site, entry, locale, { published = true } = {}) {
@@ -189,22 +199,25 @@ function localeHubRoute(locale, kind) {
   return `${locale.prefix}/${locale.segments[kind]}/`;
 }
 
+function homeCrumb(locale) {
+  return { name: t(locale, 'chrome.home'), route: `${locale.prefix}/` };
+}
+
 export function renderGuide(site, guide, origin, locale) {
   const isLocale = Boolean(guide.locale);
   const categoryName = t(locale, `categories.${guide.category}.name`);
-  const category = isLocale ? null : site.categories.find((c) => c.slug === guide.category);
+  const category = site.categories.find((c) => c.slug === guide.category);
+  const categoryRoute = site.localizedRoute(category.route, locale.code);
+  const categoryInPortuguese = isLocale && categoryRoute === category.route;
   const url = `${origin}${guide.route}`;
-  const crumbs = isLocale
-    ? [
-      { name: t(locale, 'chrome.guides'), route: localeHubRoute(locale, 'guias') },
-      { name: guide.title, route: guide.route },
-    ]
-    : [
-      { name: t(locale, 'chrome.home'), route: '/' },
-      { name: t(locale, 'chrome.guides'), route: '/guias/' },
-      { name: category.name, route: category.route },
-      { name: guide.title, route: guide.route },
-    ];
+  const crumbs = [
+    homeCrumb(locale),
+    { name: t(locale, 'chrome.guides'), route: localeHubRoute(locale, 'guias') },
+    categoryInPortuguese
+      ? { name: t(locale, 'chrome.linkInPortuguese', { label: categoryName }), route: categoryRoute, hreflang: 'pt-BR' }
+      : { name: categoryName, route: categoryRoute },
+    { name: guide.title, route: guide.route },
+  ];
   const sections = guide.headings.filter((h) => h.level === 2);
   const toc = sections.length >= 3
     ? `<nav class="article-toc" aria-label="${esc(t(locale, 'chrome.toc'))}">\n        <p class="article-toc-title">${esc(t(locale, 'chrome.toc'))}</p>\n        <ol>${sections.map((h) => `<li><a href="#${h.id}">${h.html}</a></li>`).join('')}</ol>\n      </nav>`
@@ -243,7 +256,7 @@ export function renderGuide(site, guide, origin, locale) {
   const main = `${breadcrumbNav(crumbs, locale)}
 
       <article class="legal-article guide-article">
-        <p class="article-kicker">${isLocale ? esc(categoryName) : `<a href="${category.route}">${esc(categoryName)}</a>`}</p>
+        <p class="article-kicker">${localizedNavigationLink(site, locale, category.route, categoryName)}</p>
         <h1>${esc(guide.headline)}</h1>
         <p class="article-lead">${esc(guide.description)}</p>
         ${datesLine(site, guide, locale)}
@@ -290,19 +303,24 @@ ${guide.html}
 export function renderGuidesHub(site, origin, locale) {
   const isLocale = Boolean(locale.prefix);
   const hub = site.registry.get('/guias/');
-  const url = `${origin}${isLocale ? localeHubRoute(locale, 'guias') : '/guias/'}`;
+  const route = localeHubRoute(locale, 'guias');
+  const url = `${origin}${route}`;
   const title = isLocale ? t(locale, 'chrome.guidesHubTitle') : hub.title;
   const description = isLocale ? t(locale, 'chrome.guidesHubIntro') : hub.description;
   const entries = isLocale ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'guide') : site.guides;
-  const crumbs = isLocale
-    ? [{ name: t(locale, 'chrome.guides'), route: localeHubRoute(locale, 'guias') }]
-    : [{ name: t(locale, 'chrome.home'), route: '/' }, { name: t(locale, 'chrome.guides'), route: '/guias/' }];
-  const blocks = isLocale ? [] : site.categories.map((category) => {
-    const members = site.guides.filter((g) => g.category === category.slug);
-    return `<h2 id="${category.slug}">${esc(category.name)}</h2>
-        <p>${esc(category.intro)}</p>
+  const crumbs = [homeCrumb(locale), { name: t(locale, 'chrome.guides'), route }];
+  const groups = site.categories.map((category) => ({
+    category,
+    members: entries.filter((guide) => guide.category === category.slug),
+  })).filter(({ members }) => members.length > 0);
+  const blocks = groups.map(({ category, members }) => {
+    const name = t(locale, `categories.${category.slug}.name`);
+    const intro = isLocale ? t(locale, `categories.${category.slug}.intro`) : category.intro;
+    const all = t(locale, 'chrome.allGuidesOf', { category: name.toLocaleLowerCase(locale.code) });
+    return `<h2 id="${category.slug}">${esc(name)}</h2>
+        <p>${esc(intro)}</p>
         ${cardList(members)}
-        <p><a class="text-link" href="${category.route}">${t(locale, 'chrome.allGuidesOf', { category: esc(category.name.toLowerCase()) })}</a></p>`;
+        <p>${localizedNavigationLink(site, locale, category.route, all, { className: 'text-link' })}</p>`;
   });
   const toolsHub = localeHubRoute(locale, 'ferramentas');
   const tools = isLocale ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool') : site.tools;
@@ -330,10 +348,10 @@ export function renderGuidesHub(site, origin, locale) {
       <article class="legal-article">
         <h1>${esc(isLocale ? title : t(locale, 'chrome.guidesTitle'))}</h1>
         <p class="article-lead">${esc(isLocale ? description : hub.intro)}</p>
-        ${isLocale ? '' : `<nav class="category-nav" aria-label="${esc(t(locale, 'chrome.categoriesNav'))}">
-          <ul class="chip-list">${site.categories.map((c) => `<li><a href="${c.route}">${esc(t(locale, `categories.${c.slug}.name`))}</a></li>`).join('')}</ul>
-        </nav>`}
-        ${isLocale ? cardList(entries, site, locale) : blocks.join('\n        ')}
+        <nav class="category-nav" aria-label="${esc(t(locale, 'chrome.categoriesNav'))}">
+          <ul class="chip-list">${groups.map(({ category }) => `<li>${localizedNavigationLink(site, locale, category.route, t(locale, `categories.${category.slug}.name`))}</li>`).join('')}</ul>
+        </nav>
+        ${blocks.join('\n        ')}
         ${tools.length > 0 ? `<h2 id="ferramentas">${esc(t(locale, 'chrome.calculators'))}</h2>
         <p>${t(locale, 'chrome.guidesExplain', { tools: toolLink })}</p>
         ${linkList(site, tools.map((entry) => entry.route))}` : ''}
@@ -341,23 +359,24 @@ export function renderGuidesHub(site, origin, locale) {
         <p>${t(locale, 'chrome.howGuidesBody', { team: teamLink, prices: pricesLink, policy: policyLink })}</p>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: isLocale ? url.slice(origin.length) : '/guias/', title, description, imageAlt: title, jsonLd, feed: !isLocale, locale }),
+    head: headHtml({ origin, route, title, description, imageAlt: title, jsonLd, feed: !isLocale, locale }),
     bodyClass: 'landing-home learning-page learning-hub',
     main,
     locale,
   });
 }
 
-export function renderCategory(site, category, origin, locale) {
-  const entry = site.registry.get(category.route);
-  const url = `${origin}${category.route}`;
-  const members = site.guides.filter((g) => g.category === category.slug);
+export function renderCategory(site, entry, origin, locale) {
+  const guides = localeHubRoute(locale, 'guias');
+  const url = `${origin}${entry.route}`;
+  const guidePool = entry.locale ? site.translations.filter((guide) => guide.locale === entry.locale && guide.kind === 'guide') : site.guides;
+  const members = guidePool.filter((guide) => guide.category === entry.slug);
   const crumbs = [
-    { name: t(locale, 'chrome.home'), route: '/' },
-    { name: t(locale, 'chrome.guides'), route: '/guias/' },
-    { name: category.name, route: category.route },
+    homeCrumb(locale),
+    { name: t(locale, 'chrome.guides'), route: guides },
+    { name: entry.name, route: entry.route },
   ];
-  const others = site.categories.filter((c) => c.slug !== category.slug);
+  const others = site.categories.filter((category) => category.slug !== entry.slug);
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -374,21 +393,21 @@ export function renderCategory(site, category, origin, locale) {
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const guidesLink = `<a href="/guias/">${esc(t(locale, 'chrome.guidesLabel'))}</a>`;
-  const toolsLink = `<a href="/ferramentas/">${esc(t(locale, 'chrome.calculatorsShort'))}</a>`;
+  const guidesLink = localizedNavigationLink(site, locale, '/guias/', t(locale, 'chrome.guidesLabel'));
+  const toolsLink = localizedNavigationLink(site, locale, '/ferramentas/', t(locale, 'chrome.calculatorsShort'));
   const pricesLink = `<a href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
   const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
         <h1>${esc(entry.title)}</h1>
-        <p class="article-lead">${esc(category.intro)}</p>
+        <p class="article-lead">${esc(entry.intro)}</p>
         <h2 id="artigos">${esc(t(locale, 'chrome.articles'))}</h2>
         ${cardList(members)}
         <h2 id="outras-categorias">${esc(t(locale, 'chrome.otherCategories'))}</h2>
-        <ul class="chip-list">${others.map((c) => `<li><a href="${c.route}">${esc(t(locale, `categories.${c.slug}.name`))}</a></li>`).join('')}</ul>
+        <ul class="chip-list">${others.map((category) => `<li>${localizedNavigationLink(site, locale, category.route, t(locale, `categories.${category.slug}.name`))}</li>`).join('')}</ul>
         <p>${t(locale, 'chrome.categoryFooter', { guides: guidesLink, tools: toolsLink, prices: pricesLink })}</p>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: category.route, title: entry.title, description: entry.description, imageAlt: entry.title, jsonLd, locale }),
+    head: headHtml({ origin, route: entry.route, title: entry.title, description: entry.description, imageAlt: entry.title, jsonLd, locale }),
     bodyClass: 'landing-home learning-page learning-hub',
     main,
     locale,
@@ -403,9 +422,7 @@ export function renderToolsHub(site, origin, locale) {
   const title = isLocale ? t(locale, 'chrome.toolsHubTitle') : hub.title;
   const description = isLocale ? t(locale, 'chrome.toolsHubIntro') : hub.description;
   const entries = isLocale ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool') : site.tools;
-  const crumbs = isLocale
-    ? [{ name: t(locale, 'chrome.tools'), route }]
-    : [{ name: t(locale, 'chrome.home'), route: '/' }, { name: t(locale, 'chrome.tools'), route: '/ferramentas/' }];
+  const crumbs = [homeCrumb(locale), { name: t(locale, 'chrome.tools'), route }];
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -422,10 +439,8 @@ export function renderToolsHub(site, origin, locale) {
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const guideRoutes = isLocale
-    ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'guide').slice(0, 3).map((entry) => entry.route)
-    : ['/guias/etanol-ou-gasolina/', '/guias/como-calcular-consumo-medio/', '/guias/como-economizar-combustivel/']
-      .filter((entryRoute) => site.registry.has(entryRoute));
+  const guideRoutes = ['/guias/etanol-ou-gasolina/', '/guias/como-calcular-consumo-medio/', '/guias/como-economizar-combustivel/']
+    .filter((entryRoute) => site.registry.has(entryRoute));
   const pricesLink = `<a href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.pricesAnpLabel'))}</a>`;
   const methodologyLink = `<a href="${localeRoute(locale, 'methodology')}">${esc(t(locale, 'chrome.methodology'))}</a>`;
   const main = `${breadcrumbNav(crumbs, locale)}
@@ -440,7 +455,7 @@ export function renderToolsHub(site, origin, locale) {
         <h2 id="precos-de-referencia">${esc(t(locale, 'chrome.wherePrices'))}</h2>
         <p>${t(locale, 'chrome.wherePricesBody', { prices: pricesLink, methodology: methodologyLink })}</p>
         ${guideRoutes.length > 0 ? `<h2 id="guias-relacionados">${esc(t(locale, 'chrome.relatedGuides'))}</h2>
-        ${linkList(site, guideRoutes)}` : ''}
+        ${linkList(site, guideRoutes, locale)}` : ''}
       </article>`;
   return documentHtml({
     head: headHtml({ origin, route, title, description, imageAlt: title, jsonLd, locale }),
@@ -516,16 +531,11 @@ export function renderTool(site, tool, origin, locale) {
   const sourceSlug = tool.formSlug || tool.slug;
   const toolsHub = localeHubRoute(locale, 'ferramentas');
   const url = `${origin}${tool.route}`;
-  const crumbs = isLocale
-    ? [
-      { name: t(locale, 'chrome.tools'), route: toolsHub },
-      { name: tool.title, route: tool.route },
-    ]
-    : [
-      { name: t(locale, 'chrome.home'), route: '/' },
-      { name: t(locale, 'chrome.tools'), route: '/ferramentas/' },
-      { name: tool.title, route: tool.route },
-    ];
+  const crumbs = [
+    homeCrumb(locale),
+    { name: t(locale, 'chrome.tools'), route: toolsHub },
+    { name: tool.title, route: tool.route },
+  ];
   const fields = TOOL_FORMS[sourceSlug];
   const others = isLocale
     ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool' && entry.route !== tool.route)
@@ -610,10 +620,7 @@ ${tool.html}
 
 export function renderPage(site, page, origin, locale) {
   const url = `${origin}${page.route}`;
-  const isLocale = Boolean(locale.prefix);
-  const crumbs = isLocale
-    ? [{ name: page.title, route: page.route }]
-    : [{ name: t(locale, 'chrome.home'), route: '/' }, { name: page.title, route: page.route }];
+  const crumbs = [homeCrumb(locale), { name: page.title, route: page.route }];
   const graph = [
     {
       '@type': page.schemaType,
@@ -629,14 +636,14 @@ export function renderPage(site, page, origin, locale) {
     },
     breadcrumbNode(crumbs, origin, url),
   ];
-  if (page.route === '/sobre/') {
+  if ((page.translationOf || page.route) === '/sobre/') {
     graph.push({
       '@type': 'Organization',
-      '@id': `${origin}/sobre/#equipe`,
+      '@id': `${url}#equipe`,
       name: t(locale, 'chrome.team'),
-      url: `${origin}/sobre/`,
+      url,
       parentOrganization: { '@id': `${origin}/#organization` },
-      publishingPrinciples: `${origin}/politica-editorial/`,
+      publishingPrinciples: `${origin}${site.localizedRoute('/politica-editorial/', locale.code)}`,
       sameAs: [GITHUB_URL],
     });
   }
@@ -670,15 +677,59 @@ ${page.html}
 // Shared footer columns and home sections.
 
 export function renderFooterColumns(site, locale) {
-  const states = STATES.map((s) => `<li><a href="/precos/${s.uf}/">${esc(s.name)}</a></li>`).join('');
-  const categories = site.categories.map((c) => `<a href="${c.route}">${esc(t(locale, `categories.${c.slug}.name`))}</a>`).join('');
-  const tools = site.tools.map((tool) => `<a href="${tool.route}">${esc(TOOL_NAV_LABELS[tool.slug] || tool.title)}</a>`).join('');
+  const localized = Boolean(locale.prefix);
+  const chrome = (key) => t(locale, `chrome.${key}`);
+  const link = (source, key) => localizedNavigationLink(site, locale, source, chrome(key));
+  const portal = (kind, key) => `<a href="${localeRoute(locale, kind)}">${esc(chrome(key))}</a>`;
+  const states = STATES.map((state) => `<li><a href="${localeRoute(locale, 'prices', '', state.uf)}">${esc(state.name)}</a></li>`).join('');
+  const categories = site.categories.map((category) =>
+    localizedNavigationLink(site, locale, category.route, t(locale, `categories.${category.slug}.name`)),
+  ).join('');
+  const tools = site.tools.map((tool) => {
+    const target = site.localizedRoute(tool.route, locale.code);
+    const label = target === tool.route ? TOOL_NAV_LABELS[tool.slug] || tool.title : site.routeLabel(target);
+    return localizedNavigationLink(site, locale, tool.route, label);
+  }).join('');
+  const appHref = localized ? `${locale.prefix}/#aplicativo` : '#aplicativo';
   return `<div class="footer-cols footer-cols-hubs">
-        <nav aria-label="${esc(t(locale, 'chrome.prices'))}" class="footer-col-precos"><h2>${esc(t(locale, 'chrome.prices'))}</h2><a href="/precos/">${esc(t(locale, 'chrome.footerPrices'))}</a><a href="/consultar/">${esc(t(locale, 'chrome.footerConsult'))}</a><a href="/fiscalizacao/">${esc(t(locale, 'chrome.footerEnforcement'))}</a><a href="/metodologia/">${esc(t(locale, 'chrome.footerMethodology'))}</a><ul class="footer-states">${states}</ul></nav>
-        <nav aria-label="${esc(t(locale, 'chrome.guides'))}"><h2>${esc(t(locale, 'chrome.guides'))}</h2><a href="/guias/">${esc(t(locale, 'chrome.footerAllGuides'))}</a>${categories}<a href="/como-usar/">${esc(t(locale, 'chrome.footerHowTo'))}</a><a href="#aplicativo">${esc(t(locale, 'chrome.footerApp'))}</a></nav>
-        <nav aria-label="${esc(t(locale, 'chrome.tools'))}"><h2>${esc(t(locale, 'chrome.tools'))}</h2><a href="/ferramentas/">${esc(t(locale, 'chrome.footerAllTools'))}</a>${tools}</nav>
-        <nav aria-label="${esc(t(locale, 'chrome.project'))}"><h2>${esc(t(locale, 'chrome.project'))}</h2><a href="/sobre/">${esc(t(locale, 'chrome.footerAbout'))}</a><a href="/politica-editorial/">${esc(t(locale, 'chrome.footerEditorial'))}</a><a href="/contribuidores/">${esc(t(locale, 'chrome.footerContributors'))}</a><a href="/forum/">${esc(t(locale, 'chrome.footerForum'))}</a><a href="${GITHUB_URL}">${esc(t(locale, 'chrome.github'))}</a><a href="${GITHUB_URL}/issues">${esc(t(locale, 'chrome.footerContact'))}</a><a href="${GITHUB_URL}/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
-        <nav aria-label="${esc(t(locale, 'chrome.privacy'))}"><h2>${esc(t(locale, 'chrome.privacy'))}</h2><a href="/privacidade/">${esc(t(locale, 'chrome.footerPrivacy'))}</a><a href="/excluir-conta/">${esc(t(locale, 'chrome.footerDelete'))}</a><a href="/termos/">${esc(t(locale, 'chrome.footerTerms'))}</a></nav>
+        <nav aria-label="${esc(chrome('prices'))}" class="footer-col-precos">
+          <h2>${esc(chrome('prices'))}</h2>
+          ${portal('prices', 'footerPrices')}
+          ${link('/consultar/', 'footerConsult')}
+          ${link('/fiscalizacao/', 'footerEnforcement')}
+          ${portal('methodology', 'footerMethodology')}
+          ${localized ? portal('data', 'footerData') : ''}
+          <ul class="footer-states">${states}</ul>
+        </nav>
+        <nav aria-label="${esc(chrome('guides'))}">
+          <h2>${esc(chrome('guides'))}</h2>
+          ${link('/guias/', 'footerAllGuides')}
+          ${categories}
+          ${link('/como-usar/', 'footerHowTo')}
+          <a href="${appHref}">${esc(chrome('footerApp'))}</a>
+        </nav>
+        <nav aria-label="${esc(chrome('tools'))}">
+          <h2>${esc(chrome('tools'))}</h2>
+          ${link('/ferramentas/', 'footerAllTools')}
+          ${tools}
+        </nav>
+        <nav aria-label="${esc(chrome('project'))}">
+          <h2>${esc(chrome('project'))}</h2>
+          ${link('/sobre/', 'footerAbout')}
+          ${link('/politica-editorial/', 'footerEditorial')}
+          ${link('/contribuidores/', 'footerContributors')}
+          ${link('/forum/', 'footerForum')}
+          <a href="${GITHUB_URL}">${esc(chrome('github'))}</a>
+          <a href="${GITHUB_URL}/issues">${esc(chrome('footerContact'))}</a>
+          <a href="${GITHUB_URL}/blob/main/TRADEMARKS.md">${esc(chrome('footerTrademarks'))}</a>
+          ${localized ? `<a href="/" lang="pt-BR" hreflang="pt-BR">${NATIVE_NAMES['pt-BR']}</a>` : ''}
+        </nav>
+        <nav aria-label="${esc(chrome('privacy'))}">
+          <h2>${esc(chrome('privacy'))}</h2>
+          ${link('/privacidade/', 'footerPrivacy')}
+          ${link('/excluir-conta/', 'footerDelete')}
+          ${link('/termos/', 'footerTerms')}
+        </nav>
       </div>`;
 }
 
@@ -705,9 +756,9 @@ export function renderHomeHero(locale) {
 
 export function renderHomeGuides(site, locale) {
   const isLocale = Boolean(locale.prefix);
-  const entries = isLocale
-    ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'guide')
-    : site.popularGuides;
+  const entries = site.popularGuides
+    .map((guide) => site.registry.get(site.localizedRoute(guide.route, locale.code)))
+    .filter((guide) => !isLocale || guide.locale === locale.code);
   if (isLocale && entries.length === 0) return '';
   const allRoute = isLocale ? localeHubRoute(locale, 'guias') : '/guias/';
   return `<section id="guias-populares" class="block home-topics">
@@ -723,9 +774,9 @@ export function renderHomeGuides(site, locale) {
 
 export function renderHomeTools(site, locale) {
   const isLocale = Boolean(locale.prefix);
-  const entries = isLocale
-    ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool')
-    : site.tools;
+  const entries = site.tools
+    .map((tool) => site.registry.get(site.localizedRoute(tool.route, locale.code)))
+    .filter((tool) => !isLocale || tool.locale === locale.code);
   if (isLocale && entries.length === 0) return '';
   const allRoute = isLocale ? localeHubRoute(locale, 'ferramentas') : '/ferramentas/';
   return `<section id="ferramentas" class="block home-topics">
@@ -739,7 +790,40 @@ export function renderHomeTools(site, locale) {
     </section>`;
 }
 
-export function renderLocaleHome(site, origin, locale) {
+/** Render the same home modules for every language from the canonical home template. */
+export function renderHomeMain(template, site, locale, storeState) {
+  const copy = (key) => esc(t(locale, 'home.' + key));
+  const route = (source) => {
+    const kind = { '/precos/': 'prices', '/metodologia/': 'methodology' }[source];
+    const href = kind ? localeRoute(locale, kind) : site.localizedRoute(source, locale.code);
+    return `href="${esc(href)}"${locale.prefix && href === source ? ' hreflang="pt-BR"' : ''}`;
+  };
+  let main = template
+    .replace('<!-- HOME_HERO -->', () => renderHomeHero(locale))
+    .replace('<!-- HOME_STATES -->', () => renderHomeStates(locale))
+    .replace('<!-- HOME_GUIDES -->', () => renderHomeGuides(site, locale))
+    .replace('<!-- HOME_TOOLS -->', () => renderHomeTools(site, locale))
+    .replaceAll(/\{\{HOME_TEXT:([a-zA-Z.]+)\}\}/g, (_, key) => copy(key))
+    .replaceAll(/\{\{HOME_STORE_TEXT:([a-zA-Z.]+)\}\}/g, (_, key) => copy(key + '.' + storeState))
+    .replaceAll(/\{\{HOME_LINK:(\/[a-z/-]+\/?)\}\}/g, (_, source) => route(source));
+  if (locale.prefix) {
+    const features = ['weekly', 'community', 'navigation', 'fill', 'offline', 'forum'];
+    const descriptions = features.map((key) =>
+      `<figure class="app-shot" role="listitem"><figcaption><strong>${copy(`app.features.${key}.title`)}</strong> ${copy(`app.features.${key}.body`)}</figcaption></figure>`
+    );
+    const gallery = `<div class="app-gallery" role="list" aria-label="${copy('app.featuresLabel')}" tabindex="0">
+          ${descriptions.join('\n          ')}
+        </div>`;
+    main = main
+      .replace(/<!-- HOME_CAPTURES -->[\s\S]*?<!-- \/HOME_CAPTURES -->/, () => gallery)
+      .replace('<!-- HOME_CAPTURE_LINK -->', () => `<a class="text-link" href="/#aplicativo" hreflang="pt-BR">${copy('app.portugueseCaptures')}</a>`)
+      .replace('<!-- HOME_SEARCH_LANGUAGE -->', () => `<p class="muted">${copy('search.portugueseResults')}</p>`);
+  }
+  if (/\{\{HOME_/.test(main)) throw new Error('Unrendered home template marker for ' + locale.code);
+  return main;
+}
+
+export function renderLocaleHome(origin, locale, main, appSchema) {
   const route = `${locale.prefix}/`;
   const url = `${origin}${route}`;
   const title = t(locale, 'home.title');
@@ -758,14 +842,10 @@ export function renderLocaleHome(site, origin, locale) {
         about: { '@id': `${origin}/#organization` },
         publisher: publisherNode(origin, locale),
       },
+      ...(appSchema ? [appSchema] : []),
     ],
   };
   const head = headHtml({ origin, route, title, description, imageAlt: title, jsonLd, locale });
-  const sections = [
-    renderHomeStates(locale),
-    renderHomeGuides(site, locale),
-    renderHomeTools(site, locale),
-  ].filter(Boolean).join('\n\n    ');
   return `<!DOCTYPE html>
 <html lang="${esc(locale.htmlLang)}">
 ${head}
@@ -774,24 +854,7 @@ ${head}
 
   <!-- LEARNING_HEADER -->
 
-  <main id="conteudo">
-    <section class="hero">
-      <div class="shell lp-hero">
-        <div class="lp-hero-copy">
-          ${renderHomeHero(locale)}
-          <div class="lp-actions">
-            <a class="btn-dark" href="${localeRoute(locale, 'prices')}">${esc(t(locale, 'chrome.homeSeePrices'))}</a>
-            <a class="text-link" href="/consultar/" hreflang="pt-BR">${esc(t(locale, 'chrome.footerConsult'))}</a>
-          </div>
-        </div>
-        <figure class="lp-hero-art" aria-label="${esc(t(locale, 'home.hero.artLabel'))}">
-          <img src="/assets/art/hero-mark.d4df28a9.svg" width="900" height="1000" alt="" fetchpriority="high">
-        </figure>
-      </div>
-    </section>
-
-    ${sections}
-  </main>
+  ${main}
 
   <!-- LEARNING_FOOTER -->
 </body>
@@ -808,26 +871,30 @@ function localizedPortalLinks(locale) {
 }
 
 export function renderLocalizedHeader(site, locale, languagePicker) {
-  const guides = localeHubRoute(locale, 'guias');
-  const tools = localeHubRoute(locale, 'ferramentas');
-  const homeHref = site.registry.has(`${locale.prefix}/`) ? `${locale.prefix}/` : '/';
-  const portalLinks = localizedPortalLinks(locale);
+  const homeHref = `${locale.prefix}/`;
+  const chrome = (key) => t(locale, `chrome.${key}`);
+  const link = (source, key, options) => localizedNavigationLink(site, locale, source, chrome(key), options);
+  const sectionLink = (section, label) => `<a href="${homeHref}#${section}">${esc(label)}</a>`;
+  const appLink = sectionLink('aplicativo', chrome('footerApp'));
+  const hubs = [link('/como-usar/', 'footerHowTo'), link('/guias/', 'guides'), link('/ferramentas/', 'tools')];
+  const portal = localizedPortalLinks(locale);
   const nav = [
-    portalLinks[0],
-    site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
-    site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
-  ].filter(Boolean).join('\n        ');
-  // Below the desktop breakpoint the top navigation is hidden, so the same
-  // native disclosure as the pt-BR header carries the locale's links.
+    portal[0],
+    appLink,
+    ...hubs,
+  ].join('\n        ');
   const menu = [
-    site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
-    site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
-    ...[['/sobre/', 'chrome.footerAbout'], ['/politica-editorial/', 'chrome.footerEditorial']]
-      .filter(([route]) => site.localizedRoute(route, locale.code) !== route)
-      .map(([route, key]) => `<a href="${site.localizedRoute(route, locale.code)}">${esc(t(locale, key))}</a>`),
-    ...portalLinks,
-    `<a href="/privacidade/" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>`,
-  ].filter(Boolean).join('\n            ');
+    sectionLink('explorar', chrome('navExplore')),
+    sectionLink('dados-abertos', t(locale, 'home.data.title')),
+    appLink,
+    sectionLink('perguntas', chrome('navQuestions')),
+    link('/consultar/', 'navConsultData'),
+    ...hubs,
+    ...portal,
+    link('/sobre/', 'footerAbout'),
+    link('/politica-editorial/', 'footerEditorial'),
+    link('/privacidade/', 'footerPrivacy'),
+  ].join('\n            ');
   return `<header class="topbar">
     <div class="shell topbar-inner">
       <a href="${homeHref}" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
@@ -838,8 +905,8 @@ export function renderLocalizedHeader(site, locale, languagePicker) {
         ${nav}
       </nav>
       <div class="topbar-actions">
-        <a class="topbar-link hide-sm" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}">${esc(t(locale, 'chrome.github'))}</a>
-        <a class="topbar-link topbar-privacy" href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>
+        <a class="topbar-link" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}"><span class="topbar-github-mark" aria-hidden="true"></span><span class="hide-sm">${esc(t(locale, 'chrome.github'))}</span></a>
+        ${link('/consultar/', 'navConsultData', { className: 'pill-light hide-sm' })}
         ${languagePicker}
         <details class="nav-toggle" name="landing-header">
           <summary class="nav-button" aria-label="${esc(t(locale, 'chrome.openMenu'))}"><span aria-hidden="true"></span></summary>
@@ -853,32 +920,19 @@ export function renderLocalizedHeader(site, locale, languagePicker) {
 }
 
 export function renderLocalizedFooter(site, locale) {
-  const guides = localeHubRoute(locale, 'guias');
-  const tools = localeHubRoute(locale, 'ferramentas');
-  const homeHref = site.registry.has(`${locale.prefix}/`) ? `${locale.prefix}/` : '/';
-  const nav = [
-    site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
-    site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
-    ...[['/sobre/', 'chrome.footerAbout'], ['/politica-editorial/', 'chrome.footerEditorial']]
-      .filter(([route]) => site.localizedRoute(route, locale.code) !== route)
-      .map(([route, key]) => `<a href="${site.localizedRoute(route, locale.code)}">${esc(t(locale, key))}</a>`),
-    ...localizedPortalLinks(locale),
-    `<a href="/" lang="pt-BR" hreflang="pt-BR">${NATIVE_NAMES['pt-BR']}</a>`,
-    `<a href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>`,
-    `<a href="${GITHUB_URL}">${esc(t(locale, 'chrome.github'))}</a>`,
-  ].filter(Boolean).join('\n        ');
   return `<footer class="footer">
     <div class="shell">
       <div class="footer-top">
-        <a href="${homeHref}" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
+        <a href="${locale.prefix}/" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
           <img src="/assets/brand/abastevo-logo.svg" alt="" width="28" height="28">
           <img src="/assets/brand/abastevo-wordmark.svg" alt="abastevo" class="brand-word" width="96" height="12">
         </a>
         <p class="footer-tagline">${esc(t(locale, 'chrome.footerTagline'))}</p>
       </div>
-      <nav class="footer-nav" aria-label="${esc(t(locale, 'chrome.mainNav'))}">
-        ${nav}
-      </nav>
+      ${renderFooterColumns(site, locale)}
+      <div class="footer-legal">
+        <p>${esc(t(locale, 'chrome.footerLegal'))}</p>
+      </div>
     </div>
   </footer>`;
 }

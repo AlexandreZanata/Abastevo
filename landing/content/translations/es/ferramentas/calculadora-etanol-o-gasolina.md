@@ -14,8 +14,9 @@ reviewedBy: AI review (Codex)
 reviewedAt: 2026-11-22
 related:
   - /es/guias/etanol-o-gasolina/
-  - /es/guias/como-leer-los-precios/
-  - /es/herramientas/calculadora-consumo-medio/
+  - /es/guias/calcular-consumo-medio/
+  - /es/guias/gasolina-regular-o-con-aditivos/
+  - /es/precios/
 ---
 
 ## Cómo funciona el cálculo

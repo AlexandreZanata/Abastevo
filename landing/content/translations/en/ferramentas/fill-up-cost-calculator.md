@@ -14,8 +14,9 @@ reviewedBy: AI review (Codex)
 reviewedAt: 2026-11-22
 related:
   - /en/guides/how-to-read-fuel-prices/
-  - /en/guides/anp-weekly-price-survey/
-  - /en/guides/ethanol-or-gasoline/
+  - /en/guides/fuel-station-consumer-rights/
+  - /en/guides/save-fuel/
+  - /en/fuel-prices/
 ---
 
 ## How the math works

@@ -176,19 +176,22 @@ type summaryRow struct {
 }
 
 type rankingRow struct {
-	Position  int
-	Name      string
-	LegalName string
-	StationID string
-	CNPJ      string
-	Place     string
-	Status    string
-	Amount    int64
-	Collected string
-	TieCount  int
+	Position     int
+	Name         string
+	LegalName    string
+	StationID    string
+	CNPJ         string
+	Place        string
+	Status       string
+	SourceStatus string
+	Amount       int64
+	Collected    string
+	CollectedISO string
+	TieCount     int
 }
 
 type rankingView struct {
+	Code         string
 	Title        string
 	Fuel         string
 	Unit         string
@@ -675,7 +678,7 @@ func Generate(opts Options) (Result, error) {
 	if err := g.generateStatic(); err != nil {
 		return Result{}, err
 	}
-	if err := g.writeLocalizations(latestSummaries, latestCoverage, observations, municipalityStations); err != nil {
+	if err := g.writeLocalizations(latestSummaries, latestCoverage, observations, municipalityStations, official); err != nil {
 		return Result{}, err
 	}
 	if err := g.writeSitemap(); err != nil {

@@ -11,7 +11,146 @@
       "kicker": "Public code · ANP data · Community",
       "title": "More information for life on the road.",
       "lead": "Find fuel prices across Brazil, read weekly ANP reference data and use free calculators in your browser.",
-      "artLabel": "Illustration: the abastevo mark among routes, map markers and price cards"
+      "artLabel": "Illustration: the abastevo mark among routes, map markers and price cards",
+      "status": {
+        "prelaunch": "In development · Not yet on Google Play. Search works without an account or location access.",
+        "published": "Available on Google Play. Search works without an account or location access."
+      }
+    },
+    "search": {
+      "label": "Search fuel prices",
+      "state": "State",
+      "statePrompt": "Choose a state",
+      "query": "Station, CNPJ or brand",
+      "portugueseResults": "Search results are in Portuguese.",
+      "app": "Explore the app"
+    },
+    "explore": {
+      "title": "Explore what you can do",
+      "consult": {
+        "title": "Search (in Portuguese)",
+        "body": "Prices by city, with source and date."
+      },
+      "source": {
+        "title": "Check the source",
+        "body": "Community reports and ANP data are always separate."
+      },
+      "contribute": {
+        "title": "Contribute",
+        "body": "Photo of the price at the pump (planned)."
+      },
+      "enforcement": {
+        "title": "Enforcement (in Portuguese)",
+        "body": "Official fines published by ANP."
+      }
+    },
+    "persona": {
+      "title": "For people who refuel every week",
+      "intro": "For anyone who needs clear, real-world fuel data.",
+      "driver": {
+        "title": "Everyday driver",
+        "body": "Compare fuel information with source and date when you refuel regularly."
+      },
+      "rideshare": {
+        "title": "Rideshare driver",
+        "body": "Estimate how much a fill-up costs when you drive a lot."
+      },
+      "fleet": {
+        "title": "Small fleet operator",
+        "body": "Keep track of fuel costs for a small fleet."
+      },
+      "tutorial": "See how to use the app (in Portuguese)",
+      "guides": "Read the guides"
+    },
+    "data": {
+      "title": "Open data in your browser",
+      "intro": "Find stations, prices and official ANP records on free public pages, without an account or an installation. Each figure shows its period, source and sample.",
+      "search": {
+        "title": "Find stations and prices (in Portuguese)",
+        "body": "Search by state, municipality, name or CNPJ. Results show the collection date."
+      },
+      "enforcement": {
+        "title": "Official enforcement (in Portuguese)",
+        "body": "Fines published by ANP, with the source and an explanation of the data limits."
+      },
+      "methodology": {
+        "title": "Methodology",
+        "body": "Where the data comes from, how it is updated and the limits of what it can tell you."
+      },
+      "consult": "Search data (in Portuguese)",
+      "seeMethodology": "See the methodology"
+    },
+    "app": {
+      "title": "What you can do in the app",
+      "featuresLabel": "App features",
+      "portugueseCaptures": "See the actual screenshots on the Portuguese site",
+      "tutorial": "See the step-by-step app guide (in Portuguese)",
+      "android": {
+        "prelaunch": "Follow the Android test releases on GitHub. The app is not yet available on Google Play.",
+        "published": "The Android app is available on Google Play."
+      },
+      "play": {
+        "prelaunchTitle": "Coming soon to Google Play",
+        "prelaunchDetail": "In development",
+        "publishedTitle": "View on Google Play",
+        "publishedDetail": "Download the app"
+      },
+      "code": {
+        "title": "Public source code",
+        "body": "The Abastevo license requires visible credit to the project and its creator. This site does not ask for an account or email address.",
+        "github": "View on GitHub",
+        "attribution": "Code with visible attribution",
+        "copyLabel": "Copy the repository link",
+        "copy": "Copy link",
+        "copied": "Copied!"
+      },
+      "features": {
+        "weekly": {
+          "title": "The ANP survey week by fuel.",
+          "body": "Each card shows the city’s weekly average, the number of stations surveyed and the source label."
+        },
+        "community": {
+          "title": "Community reports and ANP data stay separate.",
+          "body": "In the station profile, driver reports and the official reference appear on separate cards."
+        },
+        "navigation": {
+          "title": "Directions to the station.",
+          "body": "The app plots a route with its travel time and distance. It works offline if you download the regional map first."
+        },
+        "fill": {
+          "title": "How much it costs to fill up.",
+          "body": "After you add a vehicle, the app estimates the cost to fill its tank using the weekly reference price."
+        },
+        "offline": {
+          "title": "Survey weeks stored on your device.",
+          "body": "Download earlier survey weeks to look them up offline and compare periods."
+        },
+        "forum": {
+          "title": "Community forum.",
+          "body": "Posts and discussions by category, separate from official data."
+        }
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "intro": "Short answers about prices, sources and the app.",
+      "contact": "Still have a question? Contact the project",
+      "prices": {
+        "question": "How can I find fuel prices at a station?",
+        "answer": "Choose a city and fuel in the abastevo app. For each available price, the app shows whether it came from a community report or the ANP survey, when it was recorded and the reported price conditions."
+      },
+      "survey": {
+        "question": "What is the ANP price survey?",
+        "answer": "Brazil’s National Agency of Petroleum, Natural Gas and Biofuels (ANP) publishes a weekly fuel price survey. It provides a historical reference for a sample in the survey week. The price currently shown at the pump may differ."
+      },
+      "separate": {
+        "question": "How do community reports differ from ANP prices?",
+        "answer": "Drivers and others report prices they recently saw at a specific station. ANP provides an official recurring statistical survey. Abastevo displays the two sources separately and always identifies the source."
+      },
+      "free": {
+        "question": "Will the app be free?",
+        "answer": "Yes. Looking up prices and participating in the community are free. Any future paid features or services will never give a reported price extra weight or credibility."
+      }
     }
   },
   "languageName": "English",
@@ -32,19 +171,34 @@
   ],
   "categories": {
     "precos": {
-      "name": "Prices and taxes"
+      "name": "Prices and taxes",
+      "slug": "prices-and-taxes",
+      "description": "How fuel prices take shape in Brazil: refinery costs, federal taxes, ICMS per liter, required blends, freight and margins, with official sources.",
+      "intro": "Why a liter costs what it does, how much of the price is tax and why the same fuel can cost different amounts in different cities."
     },
     "escolher-combustivel": {
-      "name": "Choosing fuel"
+      "name": "Choosing fuel",
+      "slug": "choosing-fuel",
+      "description": "Compare ethanol and gasoline, regular gasoline and additive grades, S10 and S500 diesel, and CNG to choose fuel for your vehicle and budget.",
+      "intro": "Compare fuels using official specifications, then do the math for your own vehicle."
     },
     "economia": {
-      "name": "Fuel economy"
+      "name": "Fuel economy",
+      "slug": "fuel-economy",
+      "description": "Practical ways to use less fuel, measure your car’s fuel economy from one full tank to the next and turn consumption into a cost per kilometer.",
+      "intro": "Build habits that reduce fuel use, measure your car’s consumption and work out what you spend per kilometer."
     },
     "direitos-e-qualidade": {
-      "name": "Rights and quality"
+      "name": "Rights and quality",
+      "slug": "rights-and-quality",
+      "description": "Know your rights at Brazilian fuel stations, spot signs of adulterated fuel or a pump that delivers too little, and learn where to report problems.",
+      "intro": "Find out what the law guarantees when you refuel, how to check fuel quality and quantity, and whom to contact if something goes wrong."
     },
     "dados": {
-      "name": "Data and transparency"
+      "name": "Data and transparency",
+      "slug": "data-and-transparency",
+      "description": "Understand the Brazilian ANP weekly survey and read fuel prices with their source, date and payment terms. See how official and community data differ.",
+      "intro": "See where the numbers on abastevo come from and what those numbers can tell you."
     }
   },
   "chrome": {
@@ -100,7 +254,7 @@
     "browserRequirements": "The interactive calculation uses JavaScript; the formula and the example work without it.",
     "pageUpdated": "Updated on {date} · {team}",
     "footerPrices": "Prices by state",
-    "footerConsult": "Find a station (in Portuguese)",
+    "footerConsult": "Find a station",
     "footerEnforcement": "Enforcement",
     "footerMethodology": "Methodology",
     "footerData": "Open data",
@@ -112,7 +266,7 @@
     "footerAbout": "About abastevo",
     "footerEditorial": "Editorial policy",
     "footerContributors": "Contributors",
-    "footerForum": "Forum (in Portuguese)",
+    "footerForum": "Forum",
     "footerContact": "Contact",
     "footerPrivacy": "Privacy",
     "footerDelete": "Delete account",
@@ -133,9 +287,15 @@
     "brandHome": "abastevo - home",
     "githubLabel": "View on GitHub — Code with visible attribution",
     "github": "GitHub",
-    "privacyPortuguese": "Privacy policy (in Portuguese)",
+    "footerTrademarks": "Trademarks",
     "footerTagline": "An open, independent project, not affiliated with ANP or any government. Community prices and the weekly ANP reference stay separate, always with source and date.",
-    "staleNote": "The Portuguese original was updated on {date}."
+    "staleNote": "The Portuguese original was updated on {date}.",
+    "categoryTitle": "Guides on {category}",
+    "linkInPortuguese": "{label} (in Portuguese)",
+    "navConsultData": "Find stations",
+    "navExplore": "Explore",
+    "navQuestions": "FAQ",
+    "footerLegal": "Code under the Abastevo visible-attribution license. Abastevo is independent of ANP. ANP price data: gov.br/anp. The trademarks and names mentioned belong to their owners. Checking prices requires no account or location access. This site uses no cookies or trackers."
   },
   "tools": {
     "common": {

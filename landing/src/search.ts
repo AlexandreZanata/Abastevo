@@ -204,10 +204,17 @@ export function filterStations(stations: SearchStation[], query: string, scope: 
   return matches.slice(0, Math.min(Math.max(limit, 1), MAX_RESULTS * 4));
 }
 
+interface PricesLocale {
+  code: 'en' | 'es';
+  copy: Record<string, string>;
+  stations(count: number): string;
+  price(amount: number): string;
+}
+
 export interface PlaceSuggestion { scope: SearchScope; label: string; detail: string }
 
 /** States and cities whose names start with (first) or contain the query. */
-export function placeSuggestions(query: string, municipalities: SearchMunicipality[], within: SearchScope | null, limit = MAX_SUGGESTIONS): PlaceSuggestion[] {
+export function placeSuggestions(query: string, municipalities: SearchMunicipality[], within: SearchScope | null, limit = MAX_SUGGESTIONS, locale?: PricesLocale): PlaceSuggestion[] {
   const q = normalizeSearchText(query);
   if (q.length < 2) return [];
   const out: PlaceSuggestion[] = [];
@@ -215,7 +222,7 @@ export function placeSuggestions(query: string, municipalities: SearchMunicipali
     for (const [uf, name] of Object.entries(UF_NAMES)) {
       const normalized = normalizeSearchText(name);
       if (normalized.startsWith(q) || q === uf.toLowerCase()) {
-        out.push({ scope: { kind: 'uf', uf, label: `${name} (${uf})` }, label: `${name} (${uf})`, detail: 'Estado' });
+        out.push({ scope: { kind: 'uf', uf, label: `${name} (${uf})` }, label: `${name} (${uf})`, detail: locale?.copy.state ?? 'Estado' });
       }
     }
   }
@@ -228,7 +235,7 @@ export function placeSuggestions(query: string, municipalities: SearchMunicipali
     out.push({
       scope: { kind: 'city', code: city.m, uf: city.u, label },
       label,
-      detail: `${city.k} ${city.k === 1 ? 'posto' : 'postos'}`,
+      detail: locale?.stations(city.k) ?? `${city.k} ${city.k === 1 ? 'posto' : 'postos'}`,
     });
   }
   return out.slice(0, limit);
@@ -398,6 +405,7 @@ function place(row: { mn?: string; u?: string }): string {
 
 interface FinderOptions {
   stations: boolean;
+  locale?: PricesLocale;
   onChange: () => void;
   onPickStation?: (station: SearchStation) => void;
 }
@@ -438,11 +446,12 @@ function setupFinder(root: Element, doc: Document, store: SearchStore, options: 
     chip.hidden = scope === null;
     if (!scope) return;
     const text = doc.createElement('span');
-    text.textContent = `${scope.kind === 'uf' ? 'Estado' : 'Cidade'}: ${scope.label}`;
+    const label = scope.kind === 'uf' ? options.locale?.copy.state ?? 'Estado' : options.locale?.copy.city ?? 'Cidade';
+    text.textContent = `${label}: ${scope.label}`;
     const clear = doc.createElement('button');
     clear.type = 'button';
     clear.className = 'chip-clear';
-    clear.textContent = 'Remover filtro';
+    clear.textContent = options.locale?.copy.remove ?? 'Remover filtro';
     clear.addEventListener('click', () => {
       api.setScope(null);
       options.onChange();
@@ -481,7 +490,7 @@ function setupFinder(root: Element, doc: Document, store: SearchStore, options: 
     } catch {
       return;
     }
-    const next: typeof items = placeSuggestions(value, index.municipalities, scope && scope.kind === 'city' ? null : scope)
+    const next: typeof items = placeSuggestions(value, index.municipalities, scope && scope.kind === 'city' ? null : scope, MAX_SUGGESTIONS, options.locale)
       .filter(() => !(scope && scope.kind === 'city'))
       .map((suggestion) => ({
         label: suggestion.label,
@@ -717,6 +726,53 @@ function cell(doc: Document, text: string, className = ''): HTMLElement {
   return td;
 }
 
+function interpolate(template: string, fields: Record<string, string>): string {
+  return template.replace(/\{([a-z]+)\}/g, (match, key: string) => fields[key] ?? match);
+}
+
+function pricesLocale(section: HTMLElement): PricesLocale | undefined {
+  const code = section.dataset.locale;
+  if (code !== 'en' && code !== 'es') return;
+  const messages = section.dataset.portalCopy;
+  if (!messages) return;
+  const copy = JSON.parse(messages) as Record<string, string>;
+  const numbers = new Intl.NumberFormat(code);
+  const amount = new Intl.NumberFormat(code, { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+  return {
+    code, copy,
+    stations: (count) => `${numbers.format(count)} ${count === 1 ? copy.station : copy.stations}`,
+    price: (milli) => 'R$ ' + amount.format(milli / 1000),
+  };
+}
+
+const englishCollectionDate = new Intl.DateTimeFormat('en', {
+  year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC',
+});
+
+function localizedCollectionDate(value: string | undefined, locale: PricesLocale | undefined): string {
+  const date = formatDateBR(value);
+  if (locale?.code !== 'en' || !date) return date;
+  return englishCollectionDate.format(new Date(value + 'T00:00:00Z'));
+}
+
+function priceStatus(
+  locale: PricesLocale,
+  fuel: string,
+  unit: string,
+  count: number,
+  descending: boolean,
+  scope: SearchScope | null,
+): string {
+  const copy = locale.copy;
+  const area = scope ? interpolate(copy.area, { place: scope.label }) : copy.country;
+  if (count === 0) return interpolate(copy.empty, { fuel, area });
+  const limit = count > MAX_TABLE_ROWS ? interpolate(copy.limit, { count: String(MAX_TABLE_ROWS) }) : '';
+  return interpolate(copy.results, {
+    fuel, unit, area, limit, count: locale.stations(count),
+    order: descending ? copy.descending : copy.ascending,
+  });
+}
+
 function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): void {
   const fuel = section.querySelector<HTMLSelectElement>('[data-prices-fuel]');
   const order = section.querySelector<HTMLSelectElement>('[data-prices-order]');
@@ -725,17 +781,19 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
   const body = section.querySelector<HTMLElement>('[data-prices-body]');
   if (!fuel || !order || !status || !table || !body) return;
   let ticket = 0;
-  const finder = setupFinder(section, doc, store, { stations: false, onChange: () => void render() });
+  const locale = pricesLocale(section);
+  const finder = setupFinder(section, doc, store, { stations: false, locale, onChange: () => void render() });
   if (!finder) return;
 
   const render = async (): Promise<void> => {
     const id = ++ticket;
     if (!fuel.value) return;
-    status.textContent = 'Carregando preços...';
+    status.textContent = locale?.copy.loading ?? 'Carregando preços...';
     try {
       const shard = await store.prices(fuel.value);
       if (id !== ticket) return;
-      const rows = filterPrices(shard.rows, finder.query(), finder.scope(), order.value === 'desc' ? 'desc' : 'asc');
+      const descending = order.value === 'desc';
+      const rows = filterPrices(shard.rows, finder.query(), finder.scope(), descending ? 'desc' : 'asc');
       body.replaceChildren(...rows.slice(0, MAX_TABLE_ROWS).map((row) => {
         const tr = doc.createElement('tr');
         const name = doc.createElement('td');
@@ -744,10 +802,17 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
         link.textContent = row.n;
         name.append(link);
         appendLegalName(doc, name, row.n, row.ln);
-        tr.append(name, cell(doc, place(row) || '—'), cell(doc, formatMilliBRL(row.v), 'num'), cell(doc, formatDateBR(row.d) || '—'));
+        tr.append(name, cell(doc, place(row) || '—'), cell(doc, locale?.price(row.v) ?? formatMilliBRL(row.v), 'num'), cell(doc, localizedCollectionDate(row.d, locale) || '—'));
         return tr;
       }));
       table.hidden = rows.length === 0;
+      if (locale) {
+        const option = fuel.selectedOptions.item(0);
+        const label = option?.dataset.fuelLabel ?? shard.label;
+        const unit = option?.dataset.fuelUnit ?? unitLabel(shard.unit);
+        status.textContent = priceStatus(locale, label, unit, rows.length, descending, finder.scope());
+        return;
+      }
       const where = finder.scope() ? ` em ${finder.scope()?.label}` : ' no Brasil';
       status.textContent = rows.length === 0
         ? `Nenhum preço de ${shard.label} encontrado${where}.`
@@ -755,7 +820,7 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
     } catch {
       if (id !== ticket) return;
       table.hidden = true;
-      status.textContent = 'Preços indisponíveis nesta publicação.';
+      status.textContent = locale?.copy.unavailable ?? 'Preços indisponíveis nesta publicação.';
     }
   };
   fuel.addEventListener('change', () => void render());

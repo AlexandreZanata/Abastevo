@@ -1,5 +1,7 @@
 # Current delivery
 
+- Web localization (SEO-28/SEO-56) restores the home controls and section content, guide and calculator navigation, and the portal's price explorer and comparable data sections in English and Spanish. The public guide set has 13 editorial translations and five category pages per locale. Follow the protected `dev` to `main` release and verify the landing bundle and subsequent portal snapshot on the official origin.
+
 - Phase F8, Abastevo Empresas. The maintained `dev` branch targets integrated main `e4a67580fc368a59bc1c0f1e0466fc011313f330` through [PR #240](https://github.com/AlexandreZanata/Abastevo/pull/240), open for review. Earlier draft workflows skipped their checks. Verification of required checks for the final head, protected integration and production deployment are pending.
 - Local checkpoints include plans, subscription gates and receipts, trial grants, retained offline work, vehicle admission, Data registry and API, company panels, reviewed connector bindings, telematics quality intake, and scoped fuel card statement preview and reconciliation.
 - Local evidence includes PostGIS with ordinary runtime roles, concurrent last-slot and last-call tests, synthetic provider reconciliation, the company Chromium flow, official artifact and privacy denial tests, and production route/contract checks. Sales, provider sandbox acceptance, fiscal authorization and commercial redistribution require their recorded approvals.

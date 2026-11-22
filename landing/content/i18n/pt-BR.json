@@ -11,7 +11,146 @@
       "kicker": "Código disponível · Dados da ANP · Comunidade",
       "title": "Mais informação para quem vive na estrada.",
       "lead": "Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas.",
-      "artLabel": "Ilustração: o símbolo do abastevo entre rotas, marcadores de mapa e cartões de preço"
+      "artLabel": "Ilustração: o símbolo do abastevo entre rotas, marcadores de mapa e cartões de preço",
+      "status": {
+        "prelaunch": "Em desenvolvimento · Google Play não publicado. Consultar não exige conta nem localização.",
+        "published": "Disponível no Google Play. Consultar não exige conta nem localização."
+      }
+    },
+    "search": {
+      "label": "Consultar preços",
+      "state": "Estado",
+      "statePrompt": "Escolha o estado",
+      "query": "Posto, CNPJ ou marca",
+      "portugueseResults": "Resultados em português.",
+      "app": "Conheça o aplicativo"
+    },
+    "explore": {
+      "title": "Explore o que dá para fazer",
+      "consult": {
+        "title": "Consultar",
+        "body": "Preços por cidade, com fonte e data."
+      },
+      "source": {
+        "title": "Conferir a fonte",
+        "body": "Comunidade e ANP, sempre separadas."
+      },
+      "contribute": {
+        "title": "Contribuir",
+        "body": "Foto do preço na bomba (planejado)."
+      },
+      "enforcement": {
+        "title": "Fiscalização",
+        "body": "Multas oficiais publicadas pela ANP."
+      }
+    },
+    "persona": {
+      "title": "Feito para quem abastece toda semana",
+      "intro": "Focado em quem precisa de dados reais e claros sobre abastecimento.",
+      "driver": {
+        "title": "Motorista particular",
+        "body": "Quem abastece com frequência e quer comparar informações com fonte e data."
+      },
+      "rideshare": {
+        "title": "Motorista de aplicativo",
+        "body": "Quem roda muito e precisa estimar o custo de encher o tanque."
+      },
+      "fleet": {
+        "title": "Pequeno frotista",
+        "body": "Quem cuida de poucos veículos e quer organizar o custo de abastecer."
+      },
+      "tutorial": "Ver como usar",
+      "guides": "Ler os guias"
+    },
+    "data": {
+      "title": "Dados abertos, direto no navegador",
+      "intro": "Postos, preços e registros oficiais da ANP em páginas públicas e gratuitas, sem conta e sem instalar nada. Cada número com período, fonte e amostra.",
+      "search": {
+        "title": "Pesquisar postos e preços",
+        "body": "Busque por estado, município, nome ou CNPJ, com a data de coleta."
+      },
+      "enforcement": {
+        "title": "Fiscalização oficial",
+        "body": "Multas aplicadas publicadas pela ANP, com fonte e limites explicados."
+      },
+      "methodology": {
+        "title": "Metodologia",
+        "body": "De onde vêm os dados, como são atualizados e o que não comprovam."
+      },
+      "consult": "Consultar dados",
+      "seeMethodology": "Ver a metodologia"
+    },
+    "app": {
+      "title": "O aplicativo em telas reais",
+      "featuresLabel": "Recursos do aplicativo",
+      "portugueseCaptures": "Ver capturas reais no site em português",
+      "tutorial": "Ver o passo a passo de cada tela",
+      "android": {
+        "prelaunch": "Acompanhe as versões de teste do Android no GitHub. A publicação na Google Play ainda não está disponível.",
+        "published": "O aplicativo Android está disponível na Google Play."
+      },
+      "play": {
+        "prelaunchTitle": "Em breve no Google Play",
+        "prelaunchDetail": "Em desenvolvimento",
+        "publishedTitle": "Ver na Google Play",
+        "publishedDetail": "Baixar o aplicativo"
+      },
+      "code": {
+        "title": "Código disponível",
+        "body": "Licença Abastevo com crédito visível ao projeto e ao criador. Este site não pede cadastro nem e-mail.",
+        "github": "Ver no GitHub",
+        "attribution": "Código com atribuição visível",
+        "copyLabel": "Copiar link do repositório",
+        "copy": "Copiar link",
+        "copied": "Copiado!"
+      },
+      "features": {
+        "weekly": {
+          "title": "A semana da ANP, por combustível.",
+          "body": "Média semanal na cidade, número de postos pesquisados e o selo da fonte em cada cartão."
+        },
+        "community": {
+          "title": "Comunidade e ANP nunca se misturam.",
+          "body": "No perfil do posto, o que motoristas enviaram e a referência oficial ficam em cartões separados."
+        },
+        "navigation": {
+          "title": "Rota até o posto.",
+          "body": "“Rota e ir” traça o caminho com tempo e distância; com o mapa da região baixado, funciona sem internet."
+        },
+        "fill": {
+          "title": "Quanto custa encher o tanque.",
+          "body": "Com um veículo cadastrado, o app estima o custo do tanque pelo preço de referência da semana."
+        },
+        "offline": {
+          "title": "Semanas guardadas no aparelho.",
+          "body": "Baixe semanas anteriores da pesquisa para consultar sem internet e comparar períodos."
+        },
+        "forum": {
+          "title": "Fórum da comunidade.",
+          "body": "Publicações e discussões por categoria, sempre separadas dos dados oficiais."
+        }
+      }
+    },
+    "faq": {
+      "title": "Perguntas frequentes",
+      "intro": "Respostas curtas sobre preços, fontes e o aplicativo.",
+      "contact": "Ainda com dúvidas? Fale com o projeto",
+      "prices": {
+        "question": "Como saber o preço de combustível de um posto?",
+        "answer": "No aplicativo abastevo, você seleciona a cidade e o combustível desejado. O app apresenta os preços disponíveis indicando se foram informados pela comunidade ou levantados pela ANP, exibindo a data de registro e a condição observada."
+      },
+      "survey": {
+        "question": "O que é a pesquisa de preços da ANP?",
+        "answer": "É o Levantamento de Preços de Combustíveis publicado semanalmente pela Agência Nacional do Petróleo (ANP). Trata-se de uma referência amostral histórica da semana pesquisada, e não necessariamente o preço praticado na bomba no momento exato."
+      },
+      "separate": {
+        "question": "Qual a diferença entre preço da comunidade e da ANP?",
+        "answer": "O preço da comunidade é enviado por motoristas e pessoas que observaram o valor recentemente em um posto específico. A referência da ANP é um levantamento estatístico periódico oficial. No abastevo, ambos nunca se misturam: a fonte é sempre destacada."
+      },
+      "free": {
+        "question": "O aplicativo será gratuito?",
+        "answer": "Sim. A consulta e a participação comunitária são inteiramente gratuitas. Recursos adicionais ou eventuais serviços futuros pagos jamais conferem maior relevância ou peso artificial à confiança de um preço."
+      }
     }
   },
   "languageName": "Português",
@@ -32,19 +171,34 @@
   ],
   "categories": {
     "precos": {
-      "name": "Preços e impostos"
+      "name": "Preços e impostos",
+      "slug": "precos",
+      "description": "Como o preço dos combustíveis se forma: refinaria, impostos federais, ICMS por litro, mistura obrigatória, frete e margens, explicados com fontes oficiais.",
+      "intro": "Por que o litro custa o que custa, quanto disso é imposto e por que o mesmo combustível tem preços diferentes de uma cidade para outra."
     },
     "escolher-combustivel": {
-      "name": "Escolher o combustível"
+      "name": "Escolher o combustível",
+      "slug": "escolher-combustivel",
+      "description": "Etanol ou gasolina, gasolina comum ou aditivada, diesel S10 ou S500 e GNV: como escolher o combustível certo para o seu veículo e para o seu bolso.",
+      "intro": "Comparações honestas entre combustíveis, com o que diz a especificação oficial e como fazer a conta para o seu próprio veículo."
     },
     "economia": {
-      "name": "Economia de combustível"
+      "name": "Economia de combustível",
+      "slug": "economia",
+      "description": "Formas comprovadas de gastar menos combustível e como medir o consumo médio do carro com o método tanque a tanque, sem mitos e sem promessas mágicas.",
+      "intro": "Hábitos que reduzem o consumo de verdade, como medir o seu carro e como transformar o consumo em custo por quilômetro."
     },
     "direitos-e-qualidade": {
-      "name": "Direitos e qualidade"
+      "name": "Direitos e qualidade",
+      "slug": "direitos-e-qualidade",
+      "description": "Seus direitos no posto, como identificar combustível adulterado ou bomba que entrega menos e onde denunciar: ANP, Inmetro, Procon e consumidor.gov.br.",
+      "intro": "O que a lei garante na hora de abastecer, como conferir qualidade e quantidade e a quem recorrer quando algo não está certo."
     },
     "dados": {
-      "name": "Dados e transparência"
+      "name": "Dados e transparência",
+      "slug": "dados",
+      "description": "Como funciona a pesquisa semanal de preços da ANP e como ler preços com fonte, data e condição de pagamento, separando dado oficial e comunidade.",
+      "intro": "De onde vêm os números que você vê no abastevo, o que eles comprovam e o que não comprovam."
     }
   },
   "chrome": {
@@ -133,9 +287,15 @@
     "brandHome": "abastevo - início",
     "githubLabel": "Ver no GitHub — Código com atribuição visível",
     "github": "GitHub",
-    "privacyPortuguese": "Política de privacidade (em português)",
+    "footerTrademarks": "TRADEMARKS",
     "footerTagline": "Projeto aberto e independente, sem afiliação à ANP ou a qualquer governo. Preços da comunidade e a referência semanal da ANP andam separados, sempre com fonte e data.",
-    "staleNote": "O original em português foi atualizado em {date}."
+    "staleNote": "O original em português foi atualizado em {date}.",
+    "categoryTitle": "Guias de {category}",
+    "linkInPortuguese": "{label} (em português)",
+    "navConsultData": "Consultar dados",
+    "navExplore": "Explorar",
+    "navQuestions": "Perguntas",
+    "footerLegal": "Código sob licença de atribuição visível Abastevo. Não afiliado à ANP. Dados de preços da ANP: gov.br/anp. Marcas e nomes citados pertencem a seus titulares. Consultar preços não exige conta nem localização; este site não usa cookies nem rastreadores."
   },
   "tools": {
     "common": {

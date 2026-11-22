@@ -13,9 +13,10 @@ translationStatus: reviewed
 reviewedBy: AI review (Claude)
 reviewedAt: 2026-11-21
 related:
+  - /en/guides/measure-fuel-economy/
+  - /en/guides/save-fuel/
   - /en/guides/ethanol-or-gasoline/
-  - /en/guides/how-to-read-fuel-prices/
-  - /en/guides/anp-weekly-price-survey/
+  - /en/fuel-prices/
 ---
 
 ## How the math works

@@ -14,8 +14,9 @@ reviewedBy: AI review (Codex)
 reviewedAt: 2026-11-22
 related:
   - /en/guides/ethanol-or-gasoline/
-  - /en/guides/how-to-read-fuel-prices/
-  - /en/tools/fuel-consumption-calculator/
+  - /en/guides/measure-fuel-economy/
+  - /en/guides/regular-or-additive-gasoline/
+  - /en/fuel-prices/
 ---
 
 ## How the math works

@@ -14,8 +14,9 @@ reviewedBy: AI review (Codex)
 reviewedAt: 2026-11-22
 related:
   - /es/guias/como-leer-los-precios/
-  - /es/guias/encuesta-semanal-anp/
-  - /es/guias/etanol-o-gasolina/
+  - /es/guias/derechos-del-consumidor-en-la-estacion/
+  - /es/guias/ahorrar-combustible/
+  - /es/precios/
 ---
 
 ## Cómo funciona el cálculo

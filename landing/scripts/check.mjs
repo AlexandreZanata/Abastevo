@@ -151,7 +151,11 @@ export function checkDist(options = {}) {
   const indexableRoutes = new Set();
   const emittedRoutes = new Set();
   const hreflangsByRoute = new Map();
-  const homeHtml = fs.existsSync(path.join(distDir, 'index.html')) ? fs.readFileSync(path.join(distDir, 'index.html'), 'utf8') : '';
+  const homePages = new Map();
+  for (const { prefix } of localeRegistry.locales) {
+    const homeFile = path.join(distDir, prefix, 'index.html');
+    if (fs.existsSync(homeFile)) homePages.set(`${prefix}/`, fs.readFileSync(homeFile, 'utf8'));
+  }
   let toolsFile = null;
 
   for (const rel of htmlPages) {
@@ -308,8 +312,8 @@ export function checkDist(options = {}) {
     for (const match of srcMatches) {
       const [pathAndQuery, hash] = match[1].split('#');
       const resourcePath = pathAndQuery.split('?')[0];
-      if (resourcePath === '/' && hash !== undefined && hash !== '') {
-        if (!homeHtml.includes(`id="${hash}"`)) errors.push(`${rel} links to a missing home anchor /#${hash}`);
+      if (hash && homePages.has(resourcePath) && !homePages.get(resourcePath).includes(`id="${hash}"`)) {
+        errors.push(`${rel} links to a missing home anchor ${resourcePath}#${hash}`);
       }
       if (isPortalRoute(resourcePath, localeRegistry.locales)) continue;
       let diskTarget;

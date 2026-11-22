@@ -13,9 +13,10 @@ translationStatus: reviewed
 reviewedBy: AI review (Codex)
 reviewedAt: 2026-11-22
 related:
-  - /es/guias/como-leer-los-precios/
-  - /es/guias/como-se-forma-el-precio-de-la-gasolina/
-  - /es/guias/etanol-o-gasolina/
+  - /es/guias/ahorrar-combustible/
+  - /es/guias/calcular-consumo-medio/
+  - /es/guias/por-que-varian-los-precios-entre-ciudades/
+  - /es/precios/
 ---
 
 ## Cómo funciona el cálculo

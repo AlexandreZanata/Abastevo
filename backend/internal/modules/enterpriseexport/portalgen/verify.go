@@ -80,7 +80,8 @@ var (
 // root-relatively when the landing shares the portal origin. Any other
 // root-relative link must resolve to an artifact file.
 var LandingRoutes = map[string]bool{
-	"/": true, "/en/": true, "/es/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
+	"/": true, "/en/": true, "/es/": true, "/en/guides/": true, "/es/guias/": true, "/en/tools/": true, "/es/herramientas/": true,
+	"/en/about/": true, "/es/sobre/": true, "/en/editorial-policy/": true, "/es/politica-editorial/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
 	"/excluir-conta/": true, "/termos/": true, "/sobre/": true, "/politica-editorial/": true,
 	"/guias/etanol-ou-gasolina/": true, "/guias/como-ler-precos/": true, "/guias/pesquisa-anp/": true,
 	"/guias/combustivel-adulterado/": true, "/guias/como-calcular-consumo-medio/": true,

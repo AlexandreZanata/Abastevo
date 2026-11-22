@@ -45,7 +45,7 @@ from the live site on 2026-11-21.
 | SEO-24 navigation hubs | The home states grid is live. No landing page links to `/forum/`. | `renderHomeStates` in `layouts.mjs`. |
 | SEO-25 locale registry | Done. `en` and `es` are enabled; the recorded reviewer is the AI review of [ADR-027](../../decisions/027-ai-reviewed-landing-translations.md). | `contracts/i18n/locales.json`. |
 | SEO-26 multilingual landing build | The build emits 16 pages per locale with hreflang groups, switcher, draft and stale gates, locale homes and hubs. | `site.mjs`, `tests/i18n-build.test.mjs`. |
-| SEO-56 `en` and `es` on the landing | Build scope: the home, about, editorial policy, 5 calculators and 6 guides per locale, plus the two section hubs. | `landing/content/translations/`. |
+| SEO-56 `en` and `es` on the landing | Build scope: the home, about, editorial policy, 5 calculators, 13 editorial guides and 5 guide categories per locale, plus the guide and calculator hubs. | `landing/content/translations/`. |
 | SEO-57 Spanish regional vocabulary | Done: neutral Latin American wording, with the regional word beside it on first mention. | `contracts/i18n/glossary/es.json`, the contract's section 6.4. |
 | SEO-27 localized calculators | Done. | `parseDecimal` in `landing/src/tools.ts`. |
 | SEO-40 one robots.txt source | Built, not served yet. `landing/static/robots.txt` is the source and the web-tier block repeats it byte for byte. | `landing/tests/indexing-and-sitemap.test.mjs`, `business-web/tests/caddy.py`. |
@@ -263,7 +263,7 @@ and portal.
 | 2 | `fr`, `de`, `ja`, `ru`, `zh-CN` (the app's other locales) | A light set of about 50 pages: the home, the app page, 5 calculators, the national price page, 7 fuel hubs, 27 state hubs, and 3 pillar guides. No city pages. |
 
 - **SEO-56 Grow en and es on the landing (M).**
-  - Translate the other 7 guides, and the app page when it exists (SEO-64).
+  - Translate the app page when it exists (SEO-64). The current editorial guide set and guide categories ship in both locales.
   - Add one Search Console URL-prefix property per locale folder, so each locale has its own report.
   - Replace the AI review of a page with a human review when a fluent reviewer exists.
 - **SEO-28 Portal locale publication (S, owner).** Reapply the web-tier ConfigMap after the locale release and verify the public routes and sitemaps. The scope and eligibility rules are in ADR-028 and the contract.
