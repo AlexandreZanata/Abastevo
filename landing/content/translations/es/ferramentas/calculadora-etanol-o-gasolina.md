@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /ferramentas/etanol-ou-gasolina/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/guias/etanol-o-gasolina/
   - /es/guias/como-leer-los-precios/
@@ -74,7 +74,7 @@ habitual pagar con Pix o tarjeta.
 - Las diferencias muy pequeñas (menos de un punto porcentual) quedan dentro del
   margen de error de cualquier medición casera.
 - El precio cambia entre estaciones y semanas. Para comparar tu ciudad,
-  consulta los [precios de referencia por estado](/precos/) (en portugués) con
+  consulta los [precios de referencia por estado](/es/precios/) con
   la fecha de recolección.
 
 Para entender de dónde vienen los 70 % y cuándo cambian, lee la guía

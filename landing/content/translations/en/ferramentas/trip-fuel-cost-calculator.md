@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /ferramentas/custo-de-viagem/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/guides/how-to-read-fuel-prices/
   - /en/guides/anp-weekly-price-survey/
@@ -62,7 +62,7 @@ system, and cards are common payment methods.
 - Load, air conditioning, speed, terrain and traffic change the result. It is
   worth adding a margin when you plan the budget.
 - The fuel price changes along the way. Check the
-  [reference prices by state](/precos/) (in Portuguese) to get an idea of the
+  [reference prices by state](/en/fuel-prices/) to get an idea of the
   regions you will pass through, always looking at the collection date.
 
 To spend less on the road, see the

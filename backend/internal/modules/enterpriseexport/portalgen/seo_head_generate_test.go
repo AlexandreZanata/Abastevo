@@ -31,9 +31,16 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		if strings.HasPrefix(path, "forum/") && strings.Count(path, "/") == 3 {
 			ogType = "article"
 		}
+		ogLocale := "pt_BR"
+		switch {
+		case strings.HasPrefix(path, "en/"):
+			ogLocale = "en_US"
+		case strings.HasPrefix(path, "es/"):
+			ogLocale = "es_419"
+		}
 		for _, want := range []string{
 			`<meta property="og:type" content="` + ogType + `">`, `<meta property="og:site_name" content="abastevo">`,
-			`<meta property="og:locale" content="pt_BR">`, `<meta property="og:url" content="` + head.Canonical + `">`,
+			`<meta property="og:locale" content="` + ogLocale + `">`, `<meta property="og:url" content="` + head.Canonical + `">`,
 			`<meta property="og:image" content="` + seoSite + `/assets/brand/og-image-v1.png">`,
 			`<meta name="twitter:card" content="summary_large_image">`,
 		} {

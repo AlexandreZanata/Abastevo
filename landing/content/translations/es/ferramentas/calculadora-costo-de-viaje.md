@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /ferramentas/custo-de-viagem/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /es/guias/como-leer-los-precios/
   - /es/guias/como-se-forma-el-precio-de-la-gasolina/
@@ -62,7 +62,7 @@ habitual pagar con Pix o tarjeta.
 - La carga, el aire acondicionado, la velocidad, el relieve y el tráfico
   cambian el resultado. Conviene sumar un margen al planificar el presupuesto.
 - El precio del combustible cambia a lo largo del camino. Consulta los
-  [precios de referencia por estado](/precos/) (en portugués) para tener una
+  [precios de referencia por estado](/es/precios/) para tener una
   idea de las regiones por las que vas a pasar, mirando siempre la fecha de
   recolección.
 

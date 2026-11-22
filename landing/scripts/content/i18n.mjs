@@ -7,9 +7,16 @@ import path from 'node:path';
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PREFIX_RE = /^\/[a-z]{2}$/;
-const LOCALE_FIELDS = ['code', 'prefix', 'htmlLang', 'hreflang', 'ogLocale', 'decimal', 'enabled', 'reviewers', 'segments'];
-const SEGMENT_KEYS = ['guias', 'ferramentas'];
-const KINDS = ['guide', 'tool', 'page'];
+const LOCALE_FIELDS = ['code', 'prefix', 'htmlLang', 'hreflang', 'ogLocale', 'decimal', 'enabled', 'reviewers', 'segments', 'fuelSlugs'];
+export const PORTAL_SECTIONS = {
+  prices: 'precos',
+  methodology: 'metodologia',
+  data: 'dados',
+  insights: 'curiosidades',
+};
+const SEGMENT_KEYS = ['guias', 'ferramentas', ...Object.values(PORTAL_SECTIONS)];
+const LANDING_KINDS = ['guide', 'tool', 'page'];
+const AREA_RE = /^[a-z]{2}$/;
 
 export class LocaleConfigError extends Error {}
 
@@ -82,6 +89,23 @@ export function loadLocales(landingRoot) {
       if (Object.hasOwn(locale, 'segments')) errors.push(`${where} (${locale.code || '?'}) segments must be an object`);
       continue;
     }
+    if (!locale.fuelSlugs || typeof locale.fuelSlugs !== 'object' || Array.isArray(locale.fuelSlugs)) {
+      errors.push(`${where} (${label}) fuelSlugs must be an object`);
+    } else {
+      const slugs = new Set();
+      for (const [source, slug] of Object.entries(locale.fuelSlugs)) {
+        if (!SLUG_RE.test(source) || typeof slug !== 'string' || !SLUG_RE.test(slug) || AREA_RE.test(slug)) {
+          errors.push(`${where} (${label}) has an invalid fuel slug for ${source}`);
+        } else if (slugs.has(slug)) {
+          errors.push(`${where} (${label}) has a duplicate fuel slug "${slug}"`);
+        } else {
+          slugs.add(slug);
+        }
+        if (locale.code === data.default && slug !== source) {
+          errors.push(`${where} (${label}) default fuel slug for ${source} must match its key`);
+        }
+      }
+    }
     for (const key of SEGMENT_KEYS) {
       if (!Object.hasOwn(locale.segments, key)) {
         errors.push(`${where} (${locale.code || '?'}) segments is missing "${key}"`);
@@ -95,16 +119,44 @@ export function loadLocales(landingRoot) {
     errors.push(`default locale "${data.default}" is missing from locales`);
   }
 
+  const defaultEntry = Array.isArray(data.locales) && data.locales.find((locale) => locale?.code === data.default);
+  if (defaultEntry?.fuelSlugs && typeof defaultEntry.fuelSlugs === 'object') {
+    const keys = Object.keys(defaultEntry.fuelSlugs);
+    if (keys.length === 0) errors.push('the default locale needs fuel slugs');
+    for (const locale of data.locales) {
+      if (locale?.fuelSlugs && typeof locale.fuelSlugs === 'object'
+          && (Object.keys(locale.fuelSlugs).length !== keys.length || keys.some((key) => !Object.hasOwn(locale.fuelSlugs, key)))) {
+        errors.push(`${locale.code} fuelSlugs must have the same keys as the default locale`);
+      }
+    }
+  }
+
   if (errors.length > 0) throw new LocaleConfigError(`locales.json is invalid:\n  - ${errors.join('\n  - ')}`);
   return { version: data.version, default: data.default, locales: data.locales };
 }
 
 /** URL for one page kind of a locale entry from `loadLocales`. */
-export function localeRoute(locale, kind, slug) {
+export function localeRoute(locale, kind, slug = '', area = '', city = '') {
   if (!locale || typeof locale !== 'object' || !locale.segments) {
     throw new LocaleConfigError('localeRoute needs a locale entry from loadLocales');
   }
-  if (!KINDS.includes(kind)) throw new LocaleConfigError(`localeRoute: unknown kind "${kind}"`);
+  if (Object.hasOwn(PORTAL_SECTIONS, kind)) {
+    const base = `${locale.prefix}/${locale.segments[PORTAL_SECTIONS[kind]]}/`;
+    if (kind !== 'prices') {
+      if (slug || area || city) throw new LocaleConfigError(`localeRoute: ${kind} takes no slug or area`);
+      return base;
+    }
+    if (slug && !Object.hasOwn(locale.fuelSlugs, slug)) {
+      throw new LocaleConfigError(`localeRoute: unknown fuel slug ${JSON.stringify(slug)}`);
+    }
+    if ((area && !AREA_RE.test(area)) || (city && (!area || !SLUG_RE.test(city)))) {
+      throw new LocaleConfigError('localeRoute: invalid state or city');
+    }
+    if (slug && city && locale.prefix) throw new LocaleConfigError('localeRoute: fuel by city is available only in pt-BR');
+    const parts = [slug && locale.fuelSlugs[slug], area, city].filter(Boolean);
+    return parts.length ? `${base}${parts.join('/')}/` : base;
+  }
+  if (!LANDING_KINDS.includes(kind)) throw new LocaleConfigError(`localeRoute: unknown kind "${kind}"`);
   if (typeof slug !== 'string' || !SLUG_RE.test(slug)) throw new LocaleConfigError(`localeRoute: invalid slug ${JSON.stringify(slug)}`);
   const base = locale.prefix;
   if (kind === 'guide') return `${base}/${locale.segments.guias}/${slug}/`;

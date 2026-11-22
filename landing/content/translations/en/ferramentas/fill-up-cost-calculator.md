@@ -10,8 +10,8 @@ dateModified: 2026-11-21
 translationOf: /ferramentas/encher-o-tanque/
 sourceRevision: 2026-11-17
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 related:
   - /en/guides/how-to-read-fuel-prices/
   - /en/guides/anp-weekly-price-survey/
@@ -64,7 +64,7 @@ system, and cards are common payment methods.
   (in Portuguese).
 
 To know whether the price per liter is high or low in your region, compare it
-with the [reference prices by state](/precos/) (in Portuguese), always looking
+with the [reference prices by state](/en/fuel-prices/), always looking
 at the collection date.
 
 ## In the app

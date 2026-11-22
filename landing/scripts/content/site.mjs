@@ -256,10 +256,10 @@ function validateManifest(manifest, errors) {
   }
 }
 
-function resolveRouteLabel(registry, route) {
+function resolveRouteLabel(registry, route, locales) {
   const entry = registry.get(route);
   if (entry) return entry.indexable === false && !entry.stale ? null : entry.title || entry.label || '';
-  return portalRouteLabel(route);
+  return portalRouteLabel(route, locales);
 }
 
 /** Loads and validates every content source. Throws ContentError listing all problems. */
@@ -630,7 +630,7 @@ export function loadSite(root, options = {}) {
   const imageInfo = loadAppCaptures(root);
   const checkRoute = (where, route, what) => {
     const [pathname] = route.split(/[?#]/);
-    if (resolveRouteLabel(registry, pathname) === null) {
+    if (resolveRouteLabel(registry, pathname, locales) === null) {
       errors.push(`${where}: ${what} ${route} is not a landing page or a known portal route`);
     }
   };
@@ -652,7 +652,7 @@ export function loadSite(root, options = {}) {
     }
     for (const route of entry.related || []) {
       checkRoute(entry.where, route, 'related route');
-      if (resolveRouteLabel(registry, route) === '') errors.push(`${entry.where}: related route ${route} has no label in the manifest`);
+      if (resolveRouteLabel(registry, route, locales) === '') errors.push(`${entry.where}: related route ${route} has no label in the manifest`);
       if (route === entry.route) errors.push(`${entry.where}: related route points to itself`);
       const target = registry.get(route.split(/[?#]/)[0]);
       if (entry.locale && target?.locale && target.locale !== entry.locale) {
@@ -667,7 +667,7 @@ export function loadSite(root, options = {}) {
     manifest,
     categories,
     registry,
-    routeLabel: (route) => resolveRouteLabel(registry, route),
+    routeLabel: (route) => resolveRouteLabel(registry, route, locales),
     guides: allGuides.sort((a, b) => a.route.localeCompare(b.route)),
     tools: toolEntries.sort((a, b) => Object.keys(TOOL_FORMS).indexOf(a.slug) - Object.keys(TOOL_FORMS).indexOf(b.slug)),
     popularGuides: (manifest.popularGuides || []).map((route) => registry.get(route)),

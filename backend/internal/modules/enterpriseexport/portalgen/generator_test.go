@@ -185,7 +185,7 @@ func TestGenerateFixturePages(t *testing.T) {
 	// hubs, their three fuel by state pages and one fuel by city page) + 15
 	// search index files: 10 prefix shards (7 name terms, 3 CNPJ prefixes), 2
 	// cities, 2 fuels and indice.json.
-	if result.Pages != 24 || result.Files != 49 {
+	if result.Pages != 50 || result.Files != 75 {
 		t.Fatalf("result = %+v, want 24 pages and 49 files", result)
 	}
 	for _, page := range []string{
@@ -361,7 +361,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.InputContentSHA256 != "sha256:fixture" || manifest.Pages != result.Pages ||
-		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 48 {
+		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 74 {
 		t.Errorf("portal manifest = %+v", manifest)
 	}
 }
@@ -754,10 +754,10 @@ func TestOfficialRecordsPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 37 page/asset/download files + 16 search index files (the 15 above
+	// 63 page/asset/download files + 16 search index files (the 15 above
 	// plus fiscalizacao.json).
-	if result.Pages != 27 || result.Files != 53 {
-		t.Fatalf("result = %+v, want 27 pages and 53 files", result)
+	if result.Pages != 53 || result.Files != 79 {
+		t.Fatalf("result = %+v, want 53 pages and 79 files", result)
 	}
 	index := readPortal(t, out, "fiscalizacao/index.html")
 	indexLower := strings.ToLower(index)

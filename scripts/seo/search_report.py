@@ -49,13 +49,6 @@ FAMILIES = (
     "combustivel-cidade", "paridade", "posto", "forum", "fiscalizacao", "dados",
     "consultar", "metodologia", "curiosidades", "outros",
 )
-# The Slug values of fuelVocabulary in
-# backend/internal/modules/enterpriseexport/portalgen/seo_head.go. The test
-# reads that file and fails when the two lists differ.
-FUEL_SLUGS = (
-    "gasolina-comum", "gasolina-aditivada", "gasolina-premium", "etanol",
-    "diesel-s10", "diesel-s500", "gnv", "glp",
-)
 PARITY_SLUG = "etanol-ou-gasolina"
 # First path segment to family, for routes whose family does not depend on the
 # rest of the path. Guides, tools and /precos/ are decided in classify().
@@ -71,11 +64,10 @@ SECTIONS = {
     "postos": "posto",
     "forum": "forum",
     "fiscalizacao": "fiscalizacao",
-    "dados": "dados",
     "consultar": "consultar",
-    "metodologia": "metodologia",
-    "curiosidades": "curiosidades",
 }
+PORTAL_HUBS = ("dados", "metodologia", "curiosidades")
+DEFAULT_PORTAL_SECTIONS = ("postos", "forum", "fiscalizacao", "consultar")
 UF = re.compile(r"[a-z]{2}")
 SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
@@ -85,30 +77,37 @@ class ReportError(Exception):
 
 
 def load_locales(path=LOCALES_FILE):
-    """The default locale, each locale's segment names and the URL prefixes."""
+    """The default locale and each locale's segments, prefixes and fuel slugs."""
     registry = json.loads(path.read_text(encoding="utf-8"))
     segments = {locale["code"]: locale["segments"] for locale in registry["locales"]}
     prefixes = {locale["prefix"].strip("/"): locale["code"]
                 for locale in registry["locales"] if locale["prefix"]}
-    return registry["default"], segments, prefixes
+    fuels = {locale["code"]: tuple(locale["fuelSlugs"].values()) for locale in registry["locales"]}
+    return registry["default"], segments, prefixes, fuels
 
 
-DEFAULT_LOCALE, LOCALE_SEGMENTS, LOCALE_PREFIXES = load_locales()
+DEFAULT_LOCALE, LOCALE_SEGMENTS, LOCALE_PREFIXES, LOCALE_FUELS = load_locales()
 LOCALES = tuple(LOCALE_SEGMENTS)
+FUEL_SLUGS = LOCALE_FUELS[DEFAULT_LOCALE]
+PORTAL_SEGMENTS = {names[section] for names in LOCALE_SEGMENTS.values()
+                   for section in ("precos", *PORTAL_HUBS)}
 
 
-def price_family(rest):
-    """Family of a /precos/ route, from the segments after `precos`."""
+def price_family(rest, locale):
+    """Family of a price route, from its localized fuel slug and area."""
+    translated = locale != DEFAULT_LOCALE
     if not rest:
         return "precos-hub"
-    if rest == [PARITY_SLUG]:
+    if not translated and rest == [PARITY_SLUG]:
         return "paridade"
-    fuel = rest[0] in FUEL_SLUGS
+    fuel = rest[0] in LOCALE_FUELS[locale]
     place = rest[1:] if fuel else rest
     if (len(place) > 2 or (place and not UF.fullmatch(place[0]))
             or (len(place) == 2 and not SLUG.fullmatch(place[1]))):
         return "outros"
     if fuel:
+        if translated and len(place) == 2:
+            return "outros"
         return ("combustivel", "combustivel-estado", "combustivel-cidade")[len(place)]
     return ("estado", "cidade")[len(place) - 1]
 
@@ -125,13 +124,17 @@ def classify(path):
     head = segments[0]
     names = LOCALE_SEGMENTS[locale]
     if head == names["guias"]:
-        family = "guias"
-    elif head == names["ferramentas"]:
-        family = "ferramentas"
-    elif head == "precos":
-        family = price_family(segments[1:])
-    else:
-        family = SECTIONS.get(head, "outros")
+        return locale, "guias"
+    if head == names["ferramentas"]:
+        return locale, "ferramentas"
+    if head == names["precos"]:
+        return locale, price_family(segments[1:], locale)
+    for hub in PORTAL_HUBS:
+        if head == names[hub]:
+            return locale, hub
+    if translated and (head in DEFAULT_PORTAL_SECTIONS or head in PORTAL_SEGMENTS):
+        return locale, "outros"
+    family = SECTIONS.get(head, "outros")
     # The registry has no translated page slugs: under a locale prefix, a
     # single slug is its `page` kind ({prefix}/{slug}/, such as /en/about/).
     if translated and family == "outros" and len(segments) == 1 and SLUG.fullmatch(head):

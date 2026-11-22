@@ -35,7 +35,7 @@ func (g *generator) newBase(spec pageSpec) pageBase {
 	}
 	base := pageBase{
 		Title: spec.Title, HeadTitle: head, Description: spec.Description, ActiveNav: spec.Active,
-		Indexable: g.indexable && decision, Robots: robotsValue(g.indexable, decision),
+		Indexable: g.indexable && decision, IndexFacts: spec.Facts, Language: defaultPortalLocale, Robots: robotsValue(g.indexable, decision),
 		OfficialOnly: g.opts.OfficialOnly, HasLanding: g.opts.LandingURL != "", Landing: g.landingPrefix,
 		Period: g.period, PublishedAt: g.published, InputHash: g.inputHash,
 		CSSURL: g.cssURL, ScriptURL: g.scriptURL,

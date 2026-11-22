@@ -32,21 +32,28 @@ test('locale registry: pt-BR is the default and en/es are enabled with a recorde
   for (const code of ['en', 'es']) {
     const entry = registry.locales.find((locale) => locale.code === code);
     assert.equal(entry.enabled, true, `${code} is enabled`);
-    assert.deepEqual(entry.reviewers, ['AI review (Claude)'], `${code} records the AI review, not a person`);
+    assert.ok(entry.reviewers.length);
+    for (const reviewer of entry.reviewers) assert.match(reviewer, /^AI review \([^)]+\)$/, `${code} records the AI review`);
   }
 });
 
 test('locale routes: the shared vectors match localeRoute', () => {
   const registry = loadLocales(root);
   const vectors = JSON.parse(fs.readFileSync(path.join(root, '..', 'contracts', 'testdata', 'i18n', 'routes.json'), 'utf8'));
-  assert.ok(vectors.length >= 4, 'vectors cover every locale and kind');
+  assert.deepEqual(new Set(vectors.map((vector) => vector.kind)),
+    new Set(['guide', 'tool', 'page', 'prices', 'methodology', 'data', 'insights']));
   for (const vector of vectors) {
     const locale = registry.locales.find((entry) => entry.code === vector.locale);
     assert.ok(locale, `vector locale ${vector.locale} exists in the registry`);
-    assert.equal(localeRoute(locale, vector.kind, vector.slug), vector.route, `${vector.locale} ${vector.kind} ${vector.slug}`);
+    assert.equal(localeRoute(locale, vector.kind, vector.slug, vector.area, vector.city), vector.route, `${vector.locale} ${vector.kind} ${vector.slug}`);
   }
   assert.equal(localeRoute(registry.locales[0], 'guide', 'gnv-compensa'), '/guias/gnv-compensa/');
   assert.throws(() => localeRoute(registry.locales[0], 'hub', 'guias'), /unknown kind/);
+  const en = registry.locales.find((entry) => entry.code === 'en');
+  assert.throws(() => localeRoute(en, 'prices', 'unknown'), /unknown fuel slug/);
+  assert.throws(() => localeRoute(en, 'prices', '', 'PR'), /invalid state or city/);
+  assert.throws(() => localeRoute(en, 'prices', '', '', 'foz-do-iguacu'), /invalid state or city/);
+  assert.throws(() => localeRoute(en, 'prices', 'gasolina-comum', 'pr', 'foz-do-iguacu'), /fuel by city is available only in pt-BR/);
 });
 
 test('locale registry: invalid inputs fail with a clear message', () => {
@@ -56,6 +63,10 @@ test('locale registry: invalid inputs fail with a clear message', () => {
     [(data) => { data.locales[1].prefix = ''; }, /duplicate prefix ""/],
     [(data) => { data.locales[1].prefix = '/english'; }, /prefix "\/english" is not "" or \/xx/],
     [(data) => { data.locales[1].segments.guias = 'Guides'; }, /segments\.guias .* is not a slug/],
+    [(data) => { delete data.locales[1].segments.precos; }, /segments is missing "precos"/],
+    [(data) => { delete data.locales[1].fuelSlugs.gnv; }, /fuelSlugs must have the same keys/],
+    [(data) => { data.locales[1].fuelSlugs.gnv = 'pr'; }, /invalid fuel slug for gnv/],
+    [(data) => { data.locales[1].fuelSlugs.gnv = data.locales[1].fuelSlugs.glp; }, /duplicate fuel slug/],
     [(data) => { data.default = 'fr'; }, /default locale "fr" is missing/],
     [(data) => { data.locales[1].enabled = 'yes'; }, /enabled must be a boolean/],
     [(data) => { data.locales[1].decimal = ';'; }, /decimal must be "," or "\."/],

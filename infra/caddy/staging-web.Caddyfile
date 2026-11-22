@@ -100,7 +100,7 @@ Sitemap: https://abastevo.com.br/sitemap-portal.xml
 		file_server
 	}
 
-	@portalBare path /consultar /precos /forum /fiscalizacao /curiosidades /dados /metodologia
+	@portalBare path /consultar /precos /forum /fiscalizacao /curiosidades /dados /metodologia /en/fuel-prices /en/methodology /en/data /en/insights /es/precios /es/metodologia /es/datos /es/curiosidades
 	redir @portalBare {path}/ 308
 
 	# Static map overlay releases are content-addressed and never change.
@@ -133,7 +133,7 @@ Sitemap: https://abastevo.com.br/sitemap-portal.xml
 	}
 
 	# Search shards are addressed by release, so they never change in place.
-	@portal path /consultar/* /precos/* /postos/* /forum/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/* /sitemaps/* /portal-manifest.json
+	@portal path /consultar/* /precos/* /postos/* /forum/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/* /sitemaps/* /portal-manifest.json /en/fuel-prices/* /en/methodology/* /en/data/* /en/insights/* /es/precios/* /es/metodologia/* /es/datos/* /es/curiosidades/*
 	handle @portal {
 		root * /srv/portal/current
 		@shards path /dados/busca/*

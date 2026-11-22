@@ -264,7 +264,7 @@ func TestForumPagesOnTheGeneratedPortal(t *testing.T) {
 		t.Error("forum hub is not the current navigation entry")
 	}
 
-	sitemap := readPortal(t, out, "sitemaps/portal-forum-1.xml")
+	sitemap := readPortal(t, out, "sitemaps/portal-forum-pt-BR-1.xml")
 	for _, check := range []struct{ route, lastmod string }{
 		{"/forum/", "2026-10-22"}, {"/forum/combustiveis/", "2026-10-22"}, {"/forum/eletromobilidade/", "2026-10-18"},
 		{"/" + strings.TrimSuffix(forumPost1, "index.html"), "2026-10-22"}, {"/" + strings.TrimSuffix(forumPost4, "index.html"), "2026-10-10"},
@@ -273,7 +273,7 @@ func TestForumPagesOnTheGeneratedPortal(t *testing.T) {
 			t.Errorf("forum sitemap lacks %s with lastmod %s", check.route, check.lastmod)
 		}
 	}
-	if strings.Count(sitemap, "<loc>") != len(forumPages) || !strings.Contains(readPortal(t, out, "sitemap.xml"), "/sitemaps/portal-forum-1.xml") {
+	if strings.Count(sitemap, "<loc>") != len(forumPages) || !strings.Contains(readPortal(t, out, "sitemap.xml"), "/sitemaps/portal-forum-pt-BR-1.xml") {
 		t.Errorf("forum sitemap family = %s", sitemap)
 	}
 	result, err := VerifyLinkGraph(out, LinkGraphOptions{SiteURL: seoSite})
@@ -356,7 +356,7 @@ func TestPortalWithoutForumHasNoForumRoutes(t *testing.T) {
 			t.Errorf("%s links the forum without posts", path)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(out, "sitemaps", "portal-forum-1.xml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(out, "sitemaps", "portal-forum-pt-BR-1.xml")); !os.IsNotExist(err) {
 		t.Error("forum sitemap without posts")
 	}
 	if _, err := VerifyLinkGraph(out, LinkGraphOptions{SiteURL: seoSite}); err != nil {

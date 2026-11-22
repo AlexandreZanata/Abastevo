@@ -164,7 +164,7 @@ func TestFuelByStatePagesAreLinkedListedAndDeterministic(t *testing.T) {
 	if !strings.Contains(pages["precos/mt/cuiaba/index.html"], `href="/precos/gasolina-comum/mt/">Preço da gasolina comum em Mato Grosso</a>`) {
 		t.Error("the city page does not link the fuel by state page")
 	}
-	sitemap := readPortal(t, out, "sitemaps/portal-precos-1.xml")
+	sitemap := readPortal(t, out, "sitemaps/portal-precos-pt-BR-1.xml")
 	for _, route := range []string{"/precos/gasolina-comum/mt/", "/precos/glp/mt/", "/precos/etanol/sp/"} {
 		if !strings.Contains(sitemap, "<loc>"+seoSite+route+"</loc>") {
 			t.Errorf("the precos sitemap lacks %s", route)
@@ -436,7 +436,7 @@ func TestFuelByCityPagesChangeTheLinksAndTitleOfTheCityPage(t *testing.T) {
 	if !strings.Contains(state, `<a href="/precos/gasolina-comum/mt/cuiaba/">Cuiabá (MT)</a>`) || !strings.Contains(state, `<a href="/precos/mt/varzea-grande/">Várzea Grande (MT)</a>`) {
 		t.Error("the fuel by state city table does not link the fuel by city page, or lost the city page fallback")
 	}
-	sitemap := readPortal(t, out, "sitemaps/portal-precos-1.xml")
+	sitemap := readPortal(t, out, "sitemaps/portal-precos-pt-BR-1.xml")
 	if !strings.Contains(sitemap, "<loc>"+seoSite+"/precos/gasolina-comum/mt/cuiaba/</loc>") {
 		t.Error("the precos sitemap lacks the fuel by city page")
 	}

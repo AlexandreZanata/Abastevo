@@ -9,8 +9,8 @@ dateModified: 2026-11-21
 translationOf: /politica-editorial/
 sourceRevision: 2026-11-21
 translationStatus: reviewed
-reviewedBy: AI review (Claude)
-reviewedAt: 2026-11-21
+reviewedBy: AI review (Codex)
+reviewedAt: 2026-11-22
 ---
 
 ## Para qué sirve esta política
@@ -54,7 +54,7 @@ de datos de este sitio.
 - Cuando no hay un dato reciente para una ciudad o un combustible, la página lo
   dice en lugar de llenar el espacio con una estimación.
 
-Los detalles técnicos están en la [metodología](/metodologia/) (en portugués) y
+Los detalles técnicos están en la [metodología](/es/metodologia/) y
 en la guía
 [cómo funciona la encuesta semanal de la ANP](/es/guias/encuesta-semanal-anp/).
 

@@ -99,7 +99,17 @@ LOCALE_ROUTES = {
     "/en/tools/": ("en", "ferramentas"),
     "/en/tools/ethanol-or-gasoline-calculator/": ("en", "ferramentas"),
     "/en/about/": ("en", "institucional"),
-    "/en/precos/sp/": ("en", "estado"),
+    "/en/fuel-prices/": ("en", "precos-hub"),
+    "/en/fuel-prices/regular-gasoline/": ("en", "combustivel"),
+    "/en/fuel-prices/sp/": ("en", "estado"),
+    "/en/fuel-prices/sp/sao-paulo/": ("en", "cidade"),
+    "/en/fuel-prices/regular-gasoline/sp/": ("en", "combustivel-estado"),
+    "/en/fuel-prices/regular-gasoline/sp/sao-paulo/": ("en", "outros"),
+    "/en/fuel-prices/gasolina-comum/": ("en", "outros"),
+    "/en/precos/sp/": ("en", "outros"),
+    "/en/methodology/": ("en", "metodologia"),
+    "/en/data/": ("en", "dados"),
+    "/en/insights/": ("en", "curiosidades"),
     "/en/guias/gnv-compensa/": ("en", "outros"),
     "/en/ferramentas/custo-de-viagem/": ("en", "outros"),
     "/en/robots.txt": ("en", "outros"),
@@ -109,7 +119,19 @@ LOCALE_ROUTES = {
     "/es/herramientas/": ("es", "ferramentas"),
     "/es/herramientas/etanol-o-gasolina/": ("es", "ferramentas"),
     "/es/sobre/": ("es", "institucional"),
-    "/es/forum/": ("es", "forum"),
+    "/es/precios/": ("es", "precos-hub"),
+    "/es/precios/gasolina-comun/": ("es", "combustivel"),
+    "/es/precios/pr/": ("es", "estado"),
+    "/es/precios/pr/foz-do-iguacu/": ("es", "cidade"),
+    "/es/precios/gasolina-comun/pr/": ("es", "combustivel-estado"),
+    "/es/precios/gasolina-comun/pr/foz-do-iguacu/": ("es", "outros"),
+    "/es/metodologia/": ("es", "metodologia"),
+    "/es/datos/": ("es", "dados"),
+    "/es/curiosidades/": ("es", "curiosidades"),
+    "/es/forum/": ("es", "outros"),
+    "/es/consultar/": ("es", "outros"),
+    "/es/fiscalizacao/": ("es", "outros"),
+    "/es/postos/": ("es", "outros"),
     "/es/ferramentas/custo-de-viagem/": ("es", "outros"),
     "/es/tools/ethanol-or-gasoline-calculator/": ("es", "outros"),
 }
@@ -228,19 +250,34 @@ class Classifier(unittest.TestCase):
                 self.assertEqual(report.classify(path), expected)
 
     def test_shared_route_vectors(self):
-        families = {"guide": "guias", "tool": "ferramentas", "page": "institucional"}
+        families = {"guide": "guias", "tool": "ferramentas", "page": "institucional",
+                    "methodology": "metodologia", "data": "dados", "insights": "curiosidades"}
         vectors = json.loads((ROOT / "contracts/testdata/i18n/routes.json").read_text(encoding="utf-8"))
         self.assertEqual({vector["locale"] for vector in vectors}, {"pt-BR", "en", "es"})
         for vector in vectors:
             with self.subTest(route=vector["route"]):
-                self.assertEqual(report.classify(vector["route"]),
-                                 (vector["locale"], families[vector["kind"]]))
+                if vector["kind"] == "prices":
+                    family = {
+                        (False, False, False): "precos-hub",
+                        (True, False, False): "combustivel",
+                        (False, True, False): "estado",
+                        (True, True, False): "combustivel-estado",
+                        (False, True, True): "cidade",
+                        (True, True, True): "combustivel-cidade",
+                    }[tuple(bool(vector.get(part)) for part in ("slug", "area", "city"))]
+                else:
+                    family = families[vector["kind"]]
+                self.assertEqual(report.classify(vector["route"]), (vector["locale"], family))
 
     def test_locales_come_from_the_shared_registry(self):
         registry = json.loads((ROOT / "contracts/i18n/locales.json").read_text(encoding="utf-8"))
         self.assertEqual(report.DEFAULT_LOCALE, registry["default"])
         self.assertEqual(report.LOCALES, tuple(locale["code"] for locale in registry["locales"]))
         self.assertEqual(report.LOCALE_PREFIXES, {"en": "en", "es": "es"})
+        for locale in registry["locales"]:
+            self.assertEqual(report.LOCALE_FUELS[locale["code"]], tuple(locale["fuelSlugs"].values()))
+            for slug in locale["fuelSlugs"].values():
+                self.assertFalse(report.UF.fullmatch(slug))
 
     def test_fuel_slugs_match_the_portal_vocabulary(self):
         source = (ROOT / "backend/internal/modules/enterpriseexport/portalgen/seo_head.go").read_text(
@@ -337,6 +374,20 @@ class Requests(ReportCase):
         self.assertNotIn(ORIGIN + "/deeper.xml", [call[1] for call in self.http.calls])
         self.http.files["/sitemaps/portal-precos-1.xml"] = b"<urlset"
         self.assertIn("not valid sitemap XML", self.run_report(expected=1))
+
+    def test_localized_portal_sitemaps_are_counted_by_locale_and_family(self):
+        self.http.publish(["/", "/en/", "/es/"], **{
+            "precos-en": ["/en/fuel-prices/pr/", "/en/fuel-prices/regular-gasoline/pr/"],
+            "precos-es": ["/es/precios/pr/foz-do-iguacu/"],
+            "hubs-es": ["/es/metodologia/"],
+        })
+        self.assertIn("sitemap_urls=7 ", self.run_report("--inspect", "0"))
+        text = self.markdown()
+        english, spanish = text.split("### en\n", 1)[1].split("### es\n", 1)
+        self.assertIn("| estado | 1 |", english)
+        self.assertIn("| combustivel-estado | 1 |", english)
+        self.assertIn("| cidade | 1 |", spanish)
+        self.assertIn("| metodologia | 1 |", spanish)
 
     def test_pagination_stops_at_a_short_page(self):
         self.http.rows["page"] = [page(f"/precos/sp/cidade-{index:05}/", 0, 1) for index in range(25_003)]

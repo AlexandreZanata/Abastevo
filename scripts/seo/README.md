@@ -114,7 +114,8 @@ requests.
 `classify(path)` returns `(locale, family)`. The locale is the URL prefix of
 [`contracts/i18n/locales.json`](../../contracts/i18n/locales.json) (`/en`,
 `/es`); every other path is `pt-BR`. Under a locale prefix, guides and tools
-are recognized by that locale's segment names from the same file.
+and the translated portal hubs are recognized by that locale's segment names
+from the same file. The table shows the pt-BR paths as the family reference.
 
 | Family | Routes |
 | --- | --- |
@@ -143,9 +144,11 @@ are recognized by that locale's segment names from the same file.
 - A `{uf}` is two lowercase letters and a `{city-slug}` is a lowercase slug.
   Other shapes under `/precos/`, such as the retired `/precos/uf/MT/…` routes,
   are `outros`.
-- The fuel slugs are a copy of the `Slug` values of `fuelVocabulary` in
-  `backend/internal/modules/enterpriseexport/portalgen/seo_head.go`. The test
-  reads that file and fails when the two lists differ.
+- Fuel slugs come from the locale registry. The pt-BR slugs match the portal's
+  canonical fuel vocabulary.
+- The report groups en and es national, state, fuel, fuel-by-state and supported
+  city price paths with the matching pt-BR families. Station, forum, enforcement,
+  search, fuel-by-city and ethanol-to-gasoline ratio pages are available in pt-BR.
 - The locale registry holds no translated page slugs. Under a locale prefix, a
   single slug that no other rule matches (such as `/en/about/`) is the
   registry's `page` kind and counts as `institucional`.

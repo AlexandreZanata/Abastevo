@@ -158,7 +158,7 @@ func TestRatioLineAndLinksAppearOnlyWhereTheAreaHasARatio(t *testing.T) {
 	if strings.Contains(pages["precos/diesel-s10/index.html"], "etanol-ou-gasolina/\">Etanol ou gasolina por estado") {
 		t.Error("the diesel hub links the ratio page")
 	}
-	if !strings.Contains(readPortal(t, out, "sitemaps/portal-precos-1.xml"), "<loc>"+seoSite+parityRoute+"</loc>") {
+	if !strings.Contains(readPortal(t, out, "sitemaps/portal-precos-pt-BR-1.xml"), "<loc>"+seoSite+parityRoute+"</loc>") {
 		t.Error("the precos sitemap lacks the ratio page")
 	}
 	graph, err := VerifyLinkGraph(out, LinkGraphOptions{SiteURL: seoSite})

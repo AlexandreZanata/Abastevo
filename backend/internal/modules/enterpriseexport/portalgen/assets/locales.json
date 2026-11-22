@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "default": "pt-BR",
+  "locales": [
+    {
+      "code": "pt-BR",
+      "prefix": "",
+      "htmlLang": "pt-BR",
+      "hreflang": "pt-BR",
+      "ogLocale": "pt_BR",
+      "decimal": ",",
+      "enabled": true,
+      "reviewers": [
+        "Equipe Editorial Abastevo"
+      ],
+      "segments": {
+        "guias": "guias",
+        "ferramentas": "ferramentas",
+        "precos": "precos",
+        "metodologia": "metodologia",
+        "dados": "dados",
+        "curiosidades": "curiosidades"
+      },
+      "dateLayout": "02/01/2006",
+      "fuelSlugs": {
+        "gasolina-comum": "gasolina-comum",
+        "gasolina-aditivada": "gasolina-aditivada",
+        "gasolina-premium": "gasolina-premium",
+        "etanol": "etanol",
+        "diesel-s10": "diesel-s10",
+        "diesel-s500": "diesel-s500",
+        "gnv": "gnv",
+        "glp": "glp"
+      }
+    },
+    {
+      "code": "en",
+      "prefix": "/en",
+      "htmlLang": "en",
+      "hreflang": "en",
+      "ogLocale": "en_US",
+      "decimal": ".",
+      "enabled": true,
+      "reviewers": [
+        "AI review (Claude)",
+        "AI review (Codex)"
+      ],
+      "segments": {
+        "guias": "guides",
+        "ferramentas": "tools",
+        "precos": "fuel-prices",
+        "metodologia": "methodology",
+        "dados": "data",
+        "curiosidades": "insights"
+      },
+      "dateLayout": "Jan 2, 2006",
+      "fuelSlugs": {
+        "gasolina-comum": "regular-gasoline",
+        "gasolina-aditivada": "additized-gasoline",
+        "gasolina-premium": "premium-gasoline",
+        "etanol": "ethanol",
+        "diesel-s10": "diesel-s10",
+        "diesel-s500": "diesel-s500",
+        "gnv": "cng",
+        "glp": "lpg"
+      }
+    },
+    {
+      "code": "es",
+      "prefix": "/es",
+      "htmlLang": "es",
+      "hreflang": "es",
+      "ogLocale": "es_419",
+      "decimal": ",",
+      "enabled": true,
+      "reviewers": [
+        "AI review (Claude)",
+        "AI review (Codex)"
+      ],
+      "segments": {
+        "guias": "guias",
+        "ferramentas": "herramientas",
+        "precos": "precios",
+        "metodologia": "metodologia",
+        "dados": "datos",
+        "curiosidades": "curiosidades"
+      },
+      "dateLayout": "02/01/2006",
+      "fuelSlugs": {
+        "gasolina-comum": "gasolina-comun",
+        "gasolina-aditivada": "gasolina-con-aditivos",
+        "gasolina-premium": "gasolina-premium",
+        "etanol": "etanol",
+        "diesel-s10": "diesel-s10",
+        "diesel-s500": "diesel-s500",
+        "gnv": "gnv",
+        "glp": "glp"
+      }
+    }
+  ]
+}
