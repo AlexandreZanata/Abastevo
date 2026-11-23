@@ -329,12 +329,7 @@ class ForumHttpClient(
             put("category", category.wireCode)
             put("title", title)
             put("body_text", bodyText)
-            if (region != null && (!region.uf.isNullOrBlank() || region.municipalityIbge != null)) {
-                put("region", JSONObject().apply {
-                    if (!region.uf.isNullOrBlank()) put("uf", region.uf)
-                    if (region.municipalityIbge != null) put("municipality_ibge", region.municipalityIbge)
-                })
-            }
+            putRegion(region)
             if (!fuelProduct.isNullOrBlank()) {
                 put("fuel_product", fuelProduct)
             }
@@ -376,21 +371,15 @@ class ForumHttpClient(
             put("category", category.wireCode)
             put("title", title)
             put("body_text", bodyText)
-            if (region != null && (!region.uf.isNullOrBlank() || region.municipalityIbge != null)) {
-                put("region", JSONObject().apply {
-                    if (!region.uf.isNullOrBlank()) put("uf", region.uf)
-                    if (region.municipalityIbge != null) put("municipality_ibge", region.municipalityIbge)
-                })
-            }
+            putRegion(region)
             if (!fuelProduct.isNullOrBlank()) {
                 put("fuel_product", fuelProduct)
             }
             if (!stationId.isNullOrBlank()) {
                 put("station_id", stationId)
             }
-            if (!publicAlias.isNullOrBlank()) {
-                put("public_alias", publicAlias)
-            }
+            // The alias is fixed at creation: EditTopicRequest has no public_alias
+            // and the backend decoder rejects unknown fields.
         }
         val raw = sessionPost("v1/forum/topics/$topicId/edit", payload)
         return try {
@@ -404,6 +393,7 @@ class ForumHttpClient(
 
     override suspend fun removeTopic(
         topicId: String,
+        expectedRevision: Long,
         operationId: String,
     ): ForumTopicReceipt {
         val session = liveSession()
@@ -411,6 +401,7 @@ class ForumHttpClient(
             put("family_id", session.familyId)
             put("access_token", session.accessToken)
             put("operation_id", operationId)
+            put("expected_revision", expectedRevision)
         }
         val raw = sessionPost("v1/forum/topics/$topicId/remove", payload)
         return try {
@@ -516,6 +507,17 @@ class ForumHttpClient(
         } catch (e: Exception) {
             throw ForumException.Invalid("forum.bad-response")
         }
+    }
+
+    /**
+     * Topic writes carry the region as flat `region_uf` / `region_municipality_ibge`
+     * fields (backend `CreateTopicRequest` / `EditTopicRequest`); the strict decoder
+     * rejects a nested `region` object.
+     */
+    private fun JSONObject.putRegion(region: ForumRegion?) {
+        if (region == null) return
+        if (!region.uf.isNullOrBlank()) put("region_uf", region.uf)
+        if (region.municipalityIbge != null) put("region_municipality_ibge", region.municipalityIbge)
     }
 
     /**

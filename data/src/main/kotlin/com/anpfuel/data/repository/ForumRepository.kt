@@ -203,9 +203,10 @@ class ForumRepository(
 
     override suspend fun removeTopic(
         topicId: String,
+        expectedRevision: Long,
         operationId: String,
     ): ForumTopicReceipt {
-        return client.removeTopic(topicId, operationId)
+        return client.removeTopic(topicId, expectedRevision, operationId)
     }
 
     override suspend fun getOwnerTopic(topicId: String): ForumTopicReceipt {

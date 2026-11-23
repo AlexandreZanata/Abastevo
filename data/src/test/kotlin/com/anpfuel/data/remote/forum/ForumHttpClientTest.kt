@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.io.File
 import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 
@@ -91,6 +92,13 @@ class ForumHttpClientTest {
 
     private fun client(server: MockWebServer, sessions: AuthSessionStore? = null) =
         ForumHttpClient(OkHttpClient(), server.url("/").toString(), sessions = sessions)
+
+    /** Fields of a shared request vector; the backend decoder rejects any other field. */
+    private fun vectorFields(name: String): Set<String> =
+        JSONObject(File("../contracts/testdata/api/$name.json").readText()).getJSONObject("value").keySet()
+
+    /** Optional `EditTopicRequest` fields that the minimal edit vector leaves out. */
+    private val optionalEditFields = setOf("region_uf", "region_municipality_ibge", "fuel_product", "station_id")
 
     @Test
     fun `getCategories sends GET request and parses categories`() = runTest {
@@ -542,7 +550,10 @@ class ForumHttpClientTest {
             assertEquals(testSession.accessToken, recordedJson.getString("access_token"))
             assertEquals("FUELS", recordedJson.getString("category"))
             assertEquals("Gasolina em SP", recordedJson.getString("title"))
-            assertEquals("SP", recordedJson.getJSONObject("region").getString("uf"))
+            assertEquals("SP", recordedJson.getString("region_uf"))
+            assertEquals(3550308, recordedJson.getInt("region_municipality_ibge"))
+            assertEquals("Alex", recordedJson.getString("public_alias"))
+            assertTrue(vectorFields("forum-create-topic-valid").containsAll(recordedJson.keySet()), recordedJson.keySet().toString())
             assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", receipt.id)
             assertEquals("PENDING_REVIEW", receipt.publicationState)
         }
@@ -643,6 +654,8 @@ class ForumHttpClientTest {
                 bodyText = "Postos na zona sul e centro",
                 category = ForumCategory.ELECTRIC,
                 operationId = "44444444-4444-4444-8444-444444444444",
+                region = ForumRegion("SP", null),
+                publicAlias = "Alex",
             )
             val recorded = server.takeRequest(1, TimeUnit.SECONDS)
             assertEquals("/v1/forum/topics/3fa85f64-5717-4562-b3fc-2c963f66afa6/edit", recorded?.path)
@@ -650,6 +663,11 @@ class ForumHttpClientTest {
             val recordedJson = JSONObject(recorded?.body?.readUtf8().orEmpty())
             assertEquals(1L, recordedJson.getLong("expected_revision"))
             assertEquals("ELECTRIC", recordedJson.getString("category"))
+            assertEquals("SP", recordedJson.getString("region_uf"))
+            // The alias is fixed when the topic is created; EditTopicRequest has no such field.
+            assertTrue(!recordedJson.has("public_alias") && !recordedJson.has("region_municipality_ibge"))
+            val allowed = vectorFields("forum-edit-topic-valid") + optionalEditFields
+            assertTrue(allowed.containsAll(recordedJson.keySet()), recordedJson.keySet().toString())
             assertEquals(2L, receipt.revision)
         }
     }
@@ -676,11 +694,15 @@ class ForumHttpClientTest {
             val sessions = TestSessionStore(testSession)
             val receipt = client(server, sessions).removeTopic(
                 topicId = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                expectedRevision = 2L,
                 operationId = "55555555-5555-4555-8555-555555555555",
             )
             val recorded = server.takeRequest(1, TimeUnit.SECONDS)
             assertEquals("/v1/forum/topics/3fa85f64-5717-4562-b3fc-2c963f66afa6/remove", recorded?.path)
             assertEquals("POST", recorded?.method)
+            val recordedJson = JSONObject(recorded?.body?.readUtf8().orEmpty())
+            assertEquals(2L, recordedJson.getLong("expected_revision"))
+            assertEquals(vectorFields("forum-remove-topic-valid"), recordedJson.keySet())
             assertEquals("REMOVED", receipt.publicationState)
             assertEquals("HIDDEN", receipt.visibility)
         }

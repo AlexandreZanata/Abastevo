@@ -132,7 +132,10 @@ and counter; reply target is named without recursive nesting. No attachment,
 private location, automatic publisher link card or forced GPS/account payment.
 
 Data: signed POST commands with server-derived identity, operation UUID and
-expected revision; private owner read on edit. Disabled submit until valid;
+expected revision (edit and remove); private owner read on edit. The backend
+decoder rejects unknown fields: topics carry the region as flat `region_uf` and
+`region_municipality_ibge`, and only creation carries `public_alias` (an edit
+keeps the alias set at creation). Disabled submit until valid;
 while sending, retain the same intent and expose progress. Server limits remain
 authoritative. 409 offers reload/copy current draft, never overwrites silently;
 429 shows retry time; 401 routes to sign-in; foreign 404 closes editor safely;

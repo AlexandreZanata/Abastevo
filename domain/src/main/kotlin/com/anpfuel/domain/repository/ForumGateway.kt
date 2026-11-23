@@ -101,8 +101,10 @@ interface ForumGateway {
         publicAlias: String? = null,
     ): ForumTopicReceipt = throw UnsupportedOperationException()
 
+    /** Tombstones an authored topic at the revision the author last saw (CAS, >= 1). */
     suspend fun removeTopic(
         topicId: String,
+        expectedRevision: Long,
         operationId: String,
     ): ForumTopicReceipt = throw UnsupportedOperationException()
 
