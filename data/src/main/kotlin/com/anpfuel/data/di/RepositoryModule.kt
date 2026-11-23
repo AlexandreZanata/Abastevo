@@ -220,6 +220,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindLedgerConsentGateway(
+        impl: com.anpfuel.data.remote.ledger.LedgerSyncHttpClient,
+    ): com.anpfuel.domain.repository.LedgerConsentGateway
+
+    @Binds
+    @Singleton
     abstract fun bindLedgerErasureLog(
         impl: com.anpfuel.data.repository.LedgerErasureLogImpl,
     ): com.anpfuel.domain.repository.LedgerErasureLog

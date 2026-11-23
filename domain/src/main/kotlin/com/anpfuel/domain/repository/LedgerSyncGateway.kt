@@ -15,7 +15,8 @@ class LedgerSyncDenied(message: String) : Exception(message)
 
 /**
  * MEX-14 private sync transport port. Implementations POST one command
- * with live owner proof; they never invent revisions or replay locally.
+ * with live owner proof, signed over the exact body by the device key bound
+ * to the scope's account; they never invent revisions or replay locally.
  */
 interface LedgerSyncGateway {
 

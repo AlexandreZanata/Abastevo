@@ -14,6 +14,7 @@ import com.anpfuel.application.usecase.ledger.ResolveOutcome
 import com.anpfuel.application.usecase.ledger.RestoreDiff
 import com.anpfuel.application.usecase.ledger.RestoreItemOutcome
 import com.anpfuel.application.usecase.ledger.RestoreOutcome
+import com.anpfuel.application.usecase.ledger.SetLedgerConsentUseCase
 import com.anpfuel.data.local.preferences.LedgerSyncFlagStore
 import com.anpfuel.data.worker.LedgerSyncScheduler
 import com.anpfuel.domain.premium.LedgerDataset
@@ -37,7 +38,14 @@ data class LedgerSyncUiState(
     val notice: SyncNotice? = null,
 )
 
-/** No automatic uploads. Staged restore authority is deliberately never persisted. */
+/**
+ * No automatic uploads. Staged restore authority is deliberately never persisted.
+ *
+ * Participation is the account's server consent: turning it on (or turning a
+ * dataset on while participating) records signed consent first and keeps the
+ * change only once the server confirms it; turning it off stops this device at
+ * once and then withdraws the consent. Device and dataset revocations stay local.
+ */
 @HiltViewModel
 class LedgerSyncViewModel @Inject constructor(
     private val status: GetLedgerSyncStatusUseCase,
@@ -48,6 +56,7 @@ class LedgerSyncViewModel @Inject constructor(
     private val scope: LedgerSyncScope,
     private val sessions: AuthSessionStore,
     private val scheduler: LedgerSyncScheduler,
+    private val consent: SetLedgerConsentUseCase,
 ) : ViewModel() {
     private val state = MutableStateFlow(LedgerSyncUiState())
     val uiState = state.asStateFlow()
@@ -72,10 +81,21 @@ class LedgerSyncViewModel @Inject constructor(
     }
 
     fun setMasterEnabled(enabled: Boolean) {
-        if (enabled && sessions.load() == null) return
-        flags.setEnabled(enabled)
-        if (!enabled) scheduler.cancel()
-        refresh()
+        if (!enabled) {
+            flags.setEnabled(false)
+            scheduler.cancel()
+            if (sessions.load() == null) refresh()
+            else changeConsent(LedgerDataset.entries, enabled = false) {}
+            return
+        }
+        if (sessions.load() == null) return
+        val datasets = LedgerDataset.entries.filter { scope.isDatasetEnabled(it.wire) }
+        if (datasets.isEmpty()) {
+            flags.setEnabled(true)
+            refresh()
+            return
+        }
+        changeConsent(datasets, enabled = true) { flags.setEnabled(true) }
     }
 
     fun setDeviceEnabled(enabled: Boolean) {
@@ -85,9 +105,28 @@ class LedgerSyncViewModel @Inject constructor(
     }
 
     fun setDatasetEnabled(dataset: LedgerDataset, enabled: Boolean) {
+        if (enabled && flags.isEnabled() && sessions.load() != null) {
+            changeConsent(listOf(dataset), enabled = true) { scope.setDatasetEnabled(dataset.wire, true) }
+            return
+        }
         scope.setDatasetEnabled(dataset.wire, enabled)
         if (!enabled) scheduler.cancel()
         refresh()
+    }
+
+    /**
+     * Sends signed consent for [datasets] and runs [onConfirmed] only when the
+     * server confirmed it for the account that asked; a failure or an account
+     * switch leaves the local choice unchanged and shows a notice.
+     */
+    private fun changeConsent(datasets: List<LedgerDataset>, enabled: Boolean, onConfirmed: () -> Unit) {
+        val owner = sessions.load()?.accountId
+        runAction {
+            consent(datasets, enabled)
+            if (sessions.load()?.accountId != owner) throw IllegalStateException("ledger.owner-changed")
+            onConfirmed()
+            SyncActionResult(null)
+        }
     }
 
     private fun ready(): Boolean {

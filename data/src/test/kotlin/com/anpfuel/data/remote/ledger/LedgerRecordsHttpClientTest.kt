@@ -22,10 +22,13 @@ class LedgerRecordsHttpClientTest {
     private fun row() = JSONObject("""{"dataset":"refuel","id":"$id","vehicle_id":"$vehicle","occurred_at":"2026-03-15T10:30:00Z","revision":2,"voided":false,"payload":{"id":"$id","vehicle_id":"$vehicle","occurred_at":"2026-03-15T10:30:00Z","timezone":"UTC","fuel":"ETHANOL","quantity_milli":20000,"total_centavos":12400,"fill":"full"}}""")
     private fun page(row: JSONObject = row()) = """{"items":[$row],"next_cursor":"opaque+/cursor="}"""
 
+    /** Record pages are plain session reads: they never use the signed write transport. */
+    private val noSigning = LedgerSignedPost { _, _, _, _ -> error("record pages must not be signed") }
+
     @Test fun `typed page preserves opaque cursors and posts private no-store proof`() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody(page()))
-            val api = LedgerSyncHttpClient(OkHttpClient(), server.url("/").toString())
+            val api = LedgerSyncHttpClient(OkHttpClient(), server.url("/").toString(), noSigning)
             val result = api.list("family", "proof", "refuel", null, 100, "previous+/=")
             assertEquals(id, result.items.single().id)
             assertEquals(2L, result.items.single().revision)
@@ -43,7 +46,7 @@ class LedgerRecordsHttpClientTest {
 
     @Test fun `foreign malformed missing and negative revisions or payloads fail closed`() {
         MockWebServer().use { server ->
-            val api = LedgerSyncHttpClient(OkHttpClient(), server.url("/").toString())
+            val api = LedgerSyncHttpClient(OkHttpClient(), server.url("/").toString(), noSigning)
             val cases = listOf(
                 row().put("dataset", "expense"), row().put("id", "bad"),
                 row().apply { remove("revision") }, row().put("revision", -1),
@@ -61,7 +64,7 @@ class LedgerRecordsHttpClientTest {
 
     @Test fun `over-budget HTTP denials and outages never become an empty page`() {
         MockWebServer().use { server ->
-            val api = LedgerSyncHttpClient(OkHttpClient(), server.url("/").toString())
+            val api = LedgerSyncHttpClient(OkHttpClient(), server.url("/").toString(), noSigning)
             for (code in listOf(400, 401, 403, 404, 409, 429)) {
                 server.enqueue(MockResponse().setResponseCode(code))
                 assertThrows(LedgerSyncDenied::class.java) { runBlocking { api.list("f", "t", "refuel", null, 100, null) } }
@@ -83,7 +86,7 @@ class LedgerRecordsHttpClientTest {
             val http = OkHttpClient.Builder().eventListener(object : okhttp3.EventListener() {
                 override fun responseBodyStart(call: okhttp3.Call) { started.countDown() }
             }).build()
-            val api = LedgerSyncHttpClient(http, server.url("/").toString())
+            val api = LedgerSyncHttpClient(http, server.url("/").toString(), noSigning)
             val read = async(Dispatchers.IO) { api.list("f", "t", "refuel", null, 100, null) }
             withContext(Dispatchers.IO) { assertTrue(started.await(5, TimeUnit.SECONDS)) }
             withTimeout(2000) { read.cancelAndJoin() }

@@ -6,6 +6,8 @@ import com.anpfuel.data.local.preferences.LedgerSyncFlagStore
 import com.anpfuel.data.worker.LedgerSyncScheduler
 import com.anpfuel.domain.portable.PortableAuth
 import com.anpfuel.domain.premium.LedgerDataset
+import com.anpfuel.domain.repository.LedgerConsentStatus
+import com.anpfuel.domain.repository.LedgerSyncDenied
 import com.anpfuel.domain.repository.LedgerSyncScope
 import io.mockk.*
 import kotlinx.coroutines.CompletableDeferred
@@ -28,12 +30,13 @@ class LedgerSyncViewModelTest {
     private val scope = mockk<LedgerSyncScope>(relaxed = true)
     private val sessions = mockk<AuthSessionStore>()
     private val scheduler = mockk<LedgerSyncScheduler>(relaxed = true)
+    private val consent = mockk<SetLedgerConsentUseCase>()
     private val session = PortableAuth.Session("f", "a", "t", "r", Long.MAX_VALUE, Long.MAX_VALUE)
     private val conflict = LedgerConflictRecord(LedgerDataset.REFUEL, "record")
     private val diff = RestoreDiff(emptyList(), emptyMap(), 0, 0, 0, false, "a", "o", 1)
     private fun summary(master: Boolean = true, dataset: Boolean = true, account: String? = "a") =
         LedgerSyncStatus(account, master, true, listOf(DatasetSyncStatus(LedgerDataset.REFUEL, 2, 1, null, null, dataset)), listOf(conflict))
-    private fun model() = LedgerSyncViewModel(status, resolve, preview, confirm, flags, scope, sessions, scheduler)
+    private fun model() = LedgerSyncViewModel(status, resolve, preview, confirm, flags, scope, sessions, scheduler, consent)
 
     @BeforeEach fun setup() {
         Dispatchers.setMain(dispatcher)
@@ -44,6 +47,7 @@ class LedgerSyncViewModelTest {
         coEvery { status.invoke() } returns summary()
         coEvery { preview.invoke() } returns diff
         coEvery { confirm.invoke(any()) } returns RestoreOutcome.NothingToApply
+        coEvery { consent.invoke(any(), any()) } returns LedgerConsentStatus(1, LedgerDataset.entries)
     }
     @AfterEach fun teardown() { Dispatchers.resetMain() }
 
@@ -144,6 +148,90 @@ class LedgerSyncViewModelTest {
         coEvery { confirm.invoke(any()) } returns RestoreOutcome.Applied(listOf(RestoreItemResult(LedgerDataset.REFUEL, "r", RestoreItemOutcome.UNDECODABLE)))
         vm.confirmRestore(); advanceUntilIdle()
         assertEquals(SyncNotice.PARTIAL, vm.uiState.value.notice)
+    }
+
+    @Test fun `opting in records server consent for this device's datasets before participating`() = runTest(dispatcher) {
+        every { flags.isEnabled() } returns false
+        every { scope.isDatasetEnabled("expense") } returns false
+        val vm = model(); vm.refresh(); advanceUntilIdle()
+        vm.setMasterEnabled(true); advanceUntilIdle()
+        coVerifyOrder {
+            consent.invoke(listOf(LedgerDataset.REFUEL, LedgerDataset.CHARGE), true)
+            flags.setEnabled(true)
+        }
+        assertNull(vm.uiState.value.notice)
+    }
+
+    @Test fun `a refused or offline opt-in keeps participation off`() = runTest(dispatcher) {
+        every { flags.isEnabled() } returns false
+        val vm = model(); vm.refresh(); advanceUntilIdle()
+        coEvery { consent.invoke(any(), any()) } throws java.io.IOException("offline")
+        vm.setMasterEnabled(true); advanceUntilIdle()
+        assertEquals(SyncNotice.OFFLINE, vm.uiState.value.notice)
+        coEvery { consent.invoke(any(), any()) } throws LedgerSyncDenied("ledger.denied")
+        vm.setMasterEnabled(true); advanceUntilIdle()
+        assertEquals(SyncNotice.ERROR, vm.uiState.value.notice)
+        verify(exactly = 0) { flags.setEnabled(true) }
+        assertFalse(vm.uiState.value.busy)
+    }
+
+    @Test fun `opting in without a session or without datasets sends nothing`() = runTest(dispatcher) {
+        every { flags.isEnabled() } returns false
+        every { scope.isDatasetEnabled(any()) } returns false
+        val vm = model(); vm.refresh(); advanceUntilIdle()
+        vm.setMasterEnabled(true); advanceUntilIdle()
+        verify { flags.setEnabled(true) }
+        every { sessions.load() } returns null
+        vm.setMasterEnabled(true); advanceUntilIdle()
+        verify(exactly = 1) { flags.setEnabled(true) }
+        coVerify(exactly = 0) { consent.invoke(any(), any()) }
+    }
+
+    @Test fun `opting out stops this device first and then revokes server consent`() = runTest(dispatcher) {
+        coEvery { consent.invoke(any(), false) } throws java.io.IOException("offline")
+        val vm = model(); vm.refresh(); advanceUntilIdle()
+        vm.setMasterEnabled(false); advanceUntilIdle()
+        coVerifyOrder {
+            flags.setEnabled(false)
+            scheduler.cancel()
+            consent.invoke(LedgerDataset.entries, false)
+        }
+        verify(exactly = 0) { flags.setEnabled(true) }
+        assertEquals(SyncNotice.OFFLINE, vm.uiState.value.notice)
+    }
+
+    @Test fun `a dataset turned on while participating is consented before it uploads`() = runTest(dispatcher) {
+        val vm = model(); vm.refresh(); advanceUntilIdle()
+        vm.setDatasetEnabled(LedgerDataset.CHARGE, true); advanceUntilIdle()
+        coVerifyOrder {
+            consent.invoke(listOf(LedgerDataset.CHARGE), true)
+            scope.setDatasetEnabled("charge", true)
+        }
+        coEvery { consent.invoke(any(), any()) } throws LedgerSyncDenied("ledger.denied")
+        vm.setDatasetEnabled(LedgerDataset.EXPENSE, true); advanceUntilIdle()
+        verify(exactly = 0) { scope.setDatasetEnabled("expense", true) }
+        assertEquals(SyncNotice.ERROR, vm.uiState.value.notice)
+    }
+
+    @Test fun `dataset changes outside participation and dataset revocation stay local`() = runTest(dispatcher) {
+        val vm = model(); vm.refresh(); advanceUntilIdle()
+        vm.setDatasetEnabled(LedgerDataset.CHARGE, false); advanceUntilIdle()
+        every { flags.isEnabled() } returns false
+        vm.setDatasetEnabled(LedgerDataset.EXPENSE, true); advanceUntilIdle()
+        verify { scope.setDatasetEnabled("charge", false); scope.setDatasetEnabled("expense", true) }
+        coVerify(exactly = 0) { consent.invoke(any(), any()) }
+    }
+
+    @Test fun `an owner switch during opt-in leaves participation off`() = runTest(dispatcher) {
+        every { flags.isEnabled() } returns false
+        val pending = CompletableDeferred<LedgerConsentStatus>()
+        coEvery { consent.invoke(any(), any()) } coAnswers { pending.await() }
+        val vm = model(); vm.refresh(); advanceUntilIdle()
+        vm.setMasterEnabled(true); runCurrent()
+        every { sessions.load() } returns session.copy(accountId = "b")
+        pending.complete(LedgerConsentStatus(1, LedgerDataset.entries)); advanceUntilIdle()
+        verify(exactly = 0) { flags.setEnabled(true) }
+        assertEquals(SyncNotice.STALE, vm.uiState.value.notice)
     }
 
     @Test fun `device revocation drops preview and stops existing work`() = runTest(dispatcher) {

@@ -393,8 +393,8 @@ class ForumTopicFormViewModelTest {
 
     @Test
     fun `edit mode remove topic prompts confirmation and executes deletion`() = runTest {
-        coEvery { getOwnerTopic(sampleTopicId) } returns sampleReceipt
-        coEvery { removeForumTopic(topicId = sampleTopicId, operationId = any()) } returns sampleReceipt
+        coEvery { getOwnerTopic(sampleTopicId) } returns sampleReceipt.copy(revision = 3L)
+        coEvery { removeForumTopic(topicId = sampleTopicId, expectedRevision = 3L, operationId = any()) } returns sampleReceipt
 
         val vm = createViewModel(topicId = sampleTopicId)
         advanceUntilIdle()
@@ -414,6 +414,7 @@ class ForumTopicFormViewModelTest {
         assertFalse(vm.state.value.showDeleteDialog)
         assertTrue(vm.state.value.isRemoved)
 
-        coVerify { removeForumTopic(topicId = sampleTopicId, operationId = any()) }
+        // The backend refuses a removal without the revision the author last saw.
+        coVerify { removeForumTopic(topicId = sampleTopicId, expectedRevision = 3L, operationId = any()) }
     }
 }

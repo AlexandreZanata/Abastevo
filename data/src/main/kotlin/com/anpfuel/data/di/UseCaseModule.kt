@@ -552,6 +552,14 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideSetLedgerConsentUseCase(
+        gateway: com.anpfuel.domain.repository.LedgerConsentGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.ledger.SetLedgerConsentUseCase =
+        com.anpfuel.application.usecase.ledger.SetLedgerConsentUseCase(gateway, sessions)
+
+    @Provides
+    @Singleton
     fun provideResolveLedgerConflictUseCase(
         drafts: com.anpfuel.domain.repository.LedgerDraftStore,
         commands: com.anpfuel.domain.repository.PremiumCommandStore,

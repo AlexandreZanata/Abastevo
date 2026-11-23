@@ -47,7 +47,7 @@ class ForumTopicUseCasesTest {
     private fun mockGateway(
         onReceiveCreate: ((String, String, ForumCategory, String, ForumRegion?, String?, String?, String?) -> ForumTopicReceipt)? = null,
         onReceiveEdit: ((String, Long, String, String, ForumCategory, String, ForumRegion?, String?, String?, String?) -> ForumTopicReceipt)? = null,
-        onReceiveRemove: ((String, String) -> ForumTopicReceipt)? = null,
+        onReceiveRemove: ((String, Long, String) -> ForumTopicReceipt)? = null,
         onReceiveOwnerRead: ((String) -> ForumTopicReceipt)? = null,
     ): ForumGateway = object : ForumGateway {
         override suspend fun createTopic(
@@ -82,9 +82,10 @@ class ForumTopicUseCasesTest {
 
         override suspend fun removeTopic(
             topicId: String,
+            expectedRevision: Long,
             operationId: String,
         ): ForumTopicReceipt {
-            return onReceiveRemove?.invoke(topicId, operationId)
+            return onReceiveRemove?.invoke(topicId, expectedRevision, operationId)
                 ?: sampleReceipt(id = topicId, state = "REMOVED")
         }
 
@@ -240,23 +241,30 @@ class ForumTopicUseCasesTest {
     }
 
     @Test
-    fun `remove topic - validates topicId and operationId`() = runTest {
+    fun `remove topic - validates topicId, revision and operationId`() = runTest {
         var removedId: String? = null
+        var removedRevision: Long? = null
         val gateway = mockGateway(
-            onReceiveRemove = { id, opId ->
+            onReceiveRemove = { id, revision, _ ->
                 removedId = id
+                removedRevision = revision
                 sampleReceipt(id = id, state = "REMOVED")
             }
         )
         val useCase = RemoveForumTopicUseCase(gateway)
 
-        val receipt = useCase(validTopicId)
+        val receipt = useCase(validTopicId, expectedRevision = 3L)
         assertEquals(validTopicId, removedId)
+        assertEquals(3L, removedRevision)
         assertEquals("REMOVED", receipt.publicationState)
 
         // Invalid UUID
         assertThrows(ForumException.Invalid::class.java) {
-            runBlocking { useCase("bad-uuid") }
+            runBlocking { useCase("bad-uuid", expectedRevision = 1L) }
+        }
+        // The backend requires expected_revision >= 1 (CAS on the author's last seen revision).
+        assertThrows(ForumException.Invalid::class.java) {
+            runBlocking { useCase(validTopicId, expectedRevision = 0L) }
         }
     }
 

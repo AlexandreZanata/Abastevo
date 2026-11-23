@@ -359,6 +359,7 @@ class ForumTopicFormViewModel @Inject constructor(
 
     fun executeRemove() {
         val topicId = _state.value.topicId ?: return
+        val expectedRevision = _state.value.expectedRevision
         checkSessionConsistency()
         if (!_state.value.isAuthenticated) {
             _state.update { it.copy(requireAuthPrompt = true, showDeleteDialog = false) }
@@ -369,7 +370,7 @@ class ForumTopicFormViewModel @Inject constructor(
         _state.update { it.copy(isRemoving = true, actionError = null) }
         removeJob = viewModelScope.launch {
             try {
-                removeForumTopic(topicId = topicId)
+                removeForumTopic(topicId = topicId, expectedRevision = expectedRevision)
                 _state.update {
                     it.copy(
                         isRemoving = false,
