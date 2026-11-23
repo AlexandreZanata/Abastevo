@@ -112,7 +112,6 @@ import (
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/http"
-	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
 	subscriptiondomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
@@ -860,10 +859,15 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	}.RegisterStationRoutes(privateProfiles)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
-	// Premium source is prepared; real payment/catalog/credential ports remain
-	// nil by owner direction. Free status/export use existing owner sessions.
+	// Store billing (B-BR-STORE-01..10): Google Play and App Store channels
+	// start only with complete configuration; otherwise every port stays nil
+	// and free status/export keep using existing owner sessions.
 	premiumStore := subscriptionadapters.NewStore(pool.Underlying())
-	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	storefront := subscriptionadapters.NewStorefront(premiumStore, storeChannels(cfg.StoreBilling), time.Now)
+	for _, issue := range append(append([]string{}, cfg.StoreBilling.Issues...), storefront.Issues...) {
+		logger.Warn(context.Background(), "subscription.store-channel-off", "issue", issue)
+	}
+	premiumService := storefront.Storefront
 	premiumHTTP := subscriptionhttp.Handler{
 		Service: premiumService, CursorSecret: cfg.CursorSecret,
 		Sessions: func(ctx context.Context, family, access string) (string, error) {
@@ -1283,7 +1287,16 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
 		Enabled: func() bool { return cfg.DriverEnabled },
 	}.RegisterRoutes(router)
-	subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: "production", PackageName: "com.anpfuel"}.RegisterRoutes(router)
+	playPush := subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: cfg.StoreBilling.Environment, PackageName: cfg.StoreBilling.Play.PackageName, Subscription: cfg.StoreBilling.Play.PushSubscription}
+	if verifier := playPushVerifier(cfg.StoreBilling); verifier != nil {
+		playPush.Verify = verifier.Verify
+	}
+	playPush.RegisterRoutes(router)
+	appStoreNotices := subscriptionhttp.AppStoreHandler{Store: premiumStore, Environment: cfg.StoreBilling.Environment, BundleID: cfg.StoreBilling.AppStore.BundleID}
+	if storefront.AppStore != nil {
+		appStoreNotices.Client = storefront.AppStore
+	}
+	appStoreNotices.RegisterRoutes(router)
 
 	// checkAccountGate refuses social writes from contributors bound
 	// to a suspended or deleted FREE account (P13-T04D). Unbound

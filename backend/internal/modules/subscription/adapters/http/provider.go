@@ -106,6 +106,13 @@ func (h ProviderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Test *struct {
 			Version string `json:"version"`
 		} `json:"testNotification,omitempty"`
+		// Voided purchases carry refunds and chargebacks (productType 1 is a
+		// subscription); one-time products are not sold, so they are ignored.
+		Voided *struct {
+			Token       string `json:"purchaseToken"`
+			ProductType int    `json:"productType"`
+		} `json:"voidedPurchaseNotification,omitempty"`
+		OneTime *struct{} `json:"oneTimeProductNotification,omitempty"`
 	}
 	if json.Unmarshal(data, &event) != nil || event.Version != "1.0" || event.Package != h.PackageName {
 		fail(400, "invalid")
@@ -116,16 +123,36 @@ func (h ProviderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(400, "invalid")
 		return
 	}
-	if event.Test != nil && event.Subscription == nil {
+	kinds := 0
+	for _, present := range []bool{event.Subscription != nil, event.Test != nil, event.Voided != nil, event.OneTime != nil} {
+		if present {
+			kinds++
+		}
+	}
+	if kinds != 1 {
+		fail(400, "invalid")
+		return
+	}
+	if event.Test != nil || event.OneTime != nil || (event.Voided != nil && event.Voided.ProductType != 1) {
 		w.WriteHeader(204)
 		return
 	}
-	if event.Subscription == nil || event.Test != nil || event.Subscription.Version != "1.0" || event.Subscription.Type <= 0 || !domain.ValidToken(event.Subscription.Token) {
+	token := ""
+	if event.Voided != nil {
+		token = event.Voided.Token
+	} else {
+		if event.Subscription.Version != "1.0" || event.Subscription.Type <= 0 {
+			fail(400, "invalid")
+			return
+		}
+		token = event.Subscription.Token
+	}
+	if !domain.ValidToken(token) {
 		fail(400, "invalid")
 		return
 	}
 	sum := sha256.Sum256(data)
-	_, err = h.Store.ReceiveNotification(r.Context(), app.Notification{Environment: h.Environment, PackageName: h.PackageName, MessageID: envelope.Message.ID, Digest: domain.TokenDigest(h.Environment, h.PackageName, event.Subscription.Token), PayloadHash: hex.EncodeToString(sum[:])})
+	_, err = h.Store.ReceiveNotification(r.Context(), app.Notification{Provider: domain.ProviderPlay, Environment: h.Environment, PackageName: h.PackageName, MessageID: envelope.Message.ID, Digest: domain.TokenDigest(h.Environment, h.PackageName, token), PayloadHash: hex.EncodeToString(sum[:])})
 	if err != nil {
 		switch err {
 		case domain.ErrConflict:

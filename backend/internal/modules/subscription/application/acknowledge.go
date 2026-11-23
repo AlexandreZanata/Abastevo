@@ -21,6 +21,9 @@ func (s *Service) Acknowledge(ctx context.Context, digest string) error {
 	if err != nil {
 		return err
 	}
+	if row.Provider != s.store() || row.Environment != s.Environment || row.PackageName != s.PackageName {
+		return domain.ErrDenied
+	}
 	aad := row.Environment + "\x00" + row.PackageName + "\x00" + row.AccountID + "\x00" + digest
 	token, err := s.Tokens.Open(row.CipherToken, aad)
 	if err != nil {
@@ -31,7 +34,7 @@ func (s *Service) Acknowledge(ctx context.Context, digest string) error {
 	defer cancel()
 	canonical, err := s.Provider.Verify(ctx, req)
 	if errors.Is(err, domain.ErrNotFound) {
-		_, e := store.ReceiveNotification(ctx, Notification{Environment: row.Environment, PackageName: row.PackageName, MessageID: "ack-missing:" + digest, Digest: digest, PayloadHash: digest})
+		_, e := store.ReceiveNotification(ctx, Notification{Provider: row.Provider, Environment: row.Environment, PackageName: row.PackageName, MessageID: "ack-missing:" + digest, Digest: digest, PayloadHash: digest})
 		return e
 	}
 	if err != nil {

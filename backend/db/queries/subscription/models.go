@@ -155,6 +155,7 @@ type SubscriptionPurchase struct {
 	TokenCipher     []byte             `json:"token_cipher"`
 	LinkedDigest    pgtype.Text        `json:"linked_digest"`
 	NextCheckAt     pgtype.Timestamptz `json:"next_check_at"`
+	Provider        string             `json:"provider"`
 }
 
 type SubscriptionRetiredToken struct {

@@ -67,7 +67,6 @@ import (
 	safetyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/safety/adapters"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
-	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
 	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -543,7 +542,7 @@ func run() error {
 	// clients exist only for maintenance-ready channels; pending events
 	// are preserved, never dropped, while unconfigured.
 	premiumStore := subscriptionadapters.NewStore(raw)
-	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	premiumService := subscriptionadapters.NewStorefront(premiumStore, storeChannels(cfg.StoreBilling), time.Now).Storefront
 	bulletinGenerator := forumapp.BulletinGenerator{
 		Official: forumapp.BulletinReaderFunc(func(ctx context.Context, q officialapp.BulletinQuery) (officialapp.BulletinSet, error) {
 			return officialapp.ReadWeeklyBulletins(ctx, officialReader, q)

@@ -69,13 +69,14 @@ UPDATE subscription_purchases SET retired=true,revision=revision+1,token_cipher=
 WHERE token_digest=sqlc.arg(token_digest) AND account_id=sqlc.arg(account_id);
 
 -- name: SavePurchase :one
-INSERT INTO subscription_purchases(token_digest,account_id,environment,package_name,product_id,base_plan_id,state,valid_until,verified_at,token_cipher,acknowledged,linked_digest)
-VALUES(sqlc.arg(token_digest),sqlc.arg(account_id),sqlc.arg(environment),sqlc.arg(package_name),sqlc.arg(product_id),sqlc.arg(base_plan_id),sqlc.arg(state),sqlc.narg(valid_until),sqlc.arg(verified_at),sqlc.arg(token_cipher),sqlc.arg(acknowledged),sqlc.narg(linked_digest))
+INSERT INTO subscription_purchases(token_digest,account_id,provider,environment,package_name,product_id,base_plan_id,state,valid_until,verified_at,token_cipher,acknowledged,linked_digest)
+VALUES(sqlc.arg(token_digest),sqlc.arg(account_id),sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(package_name),sqlc.arg(product_id),sqlc.arg(base_plan_id),sqlc.arg(state),sqlc.narg(valid_until),sqlc.arg(verified_at),sqlc.arg(token_cipher),sqlc.arg(acknowledged),sqlc.narg(linked_digest))
 ON CONFLICT (token_digest) DO UPDATE SET state=EXCLUDED.state,valid_until=EXCLUDED.valid_until,
 verified_at=EXCLUDED.verified_at,revision=subscription_purchases.revision+1,refresh_required=false,
 token_cipher=EXCLUDED.token_cipher,acknowledged=(subscription_purchases.acknowledged OR EXCLUDED.acknowledged),linked_digest=EXCLUDED.linked_digest,
 product_id=EXCLUDED.product_id,base_plan_id=EXCLUDED.base_plan_id
-WHERE subscription_purchases.account_id=EXCLUDED.account_id AND NOT subscription_purchases.retired AND subscription_purchases.state<>'REVOKED'
+WHERE subscription_purchases.account_id=EXCLUDED.account_id AND subscription_purchases.provider=EXCLUDED.provider
+AND NOT subscription_purchases.retired AND subscription_purchases.state<>'REVOKED'
 RETURNING token_digest;
 
 -- name: ReadStatus :one
@@ -108,16 +109,17 @@ UPDATE subscription_purchases SET acknowledged=true WHERE token_digest=sqlc.arg(
 AND revision=sqlc.arg(revision) AND NOT retired AND state<>'REVOKED' AND NOT refresh_required;
 
 -- name: ExportPurchases :many
-SELECT token_digest,product_id,base_plan_id,state,valid_until,verified_at,retired,acknowledged
+SELECT token_digest,provider,product_id,base_plan_id,state,valid_until,verified_at,retired,acknowledged
 FROM subscription_purchases WHERE account_id=sqlc.arg(account_id)::uuid
 AND (NOT sqlc.arg(has_cursor)::boolean OR (verified_at,token_digest)<(sqlc.arg(after_time)::timestamptz,sqlc.arg(after_digest)::text))
 ORDER BY verified_at DESC,token_digest DESC LIMIT sqlc.arg(limit_count)::int;
 
 -- name: DuePurchases :many
 SELECT p.token_digest,p.account_id FROM subscription_purchases p JOIN accounts a ON a.id=p.account_id
-WHERE p.environment=$1 AND p.package_name=$2 AND NOT p.retired AND p.token_cipher IS NOT NULL
+WHERE p.provider=sqlc.arg(provider) AND p.environment=sqlc.arg(environment) AND p.package_name=sqlc.arg(package_name)
+AND NOT p.retired AND p.token_cipher IS NOT NULL
 AND p.next_check_at<=clock_timestamp() AND a.status='active'
-ORDER BY p.next_check_at,p.token_digest LIMIT $3;
+ORDER BY p.next_check_at,p.token_digest LIMIT sqlc.arg(limit_count)::int;
 
 -- name: DeferReconciliation :execrows
 UPDATE subscription_purchases SET next_check_at=clock_timestamp()+interval '5 minutes'

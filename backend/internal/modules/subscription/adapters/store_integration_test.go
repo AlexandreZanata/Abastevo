@@ -811,7 +811,7 @@ func TestReconciliationMissedNoticeAndParallelCheckpoint(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			n, e := store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25)
+			n, e := store.ScheduleReconciliation(ctx, domain.ProviderPlay, "test", "com.anpfuel", 25)
 			counts <- n
 			errs <- e
 		}()
@@ -835,13 +835,13 @@ func TestReconciliationMissedNoticeAndParallelCheckpoint(t *testing.T) {
 	if err = pool.QueryRow(ctx, "SELECT count(*) FROM job_queue WHERE kind='subscription-refresh'").Scan(&jobsCount); err != nil || jobsCount != 1 {
 		t.Fatal("missed event not recovered", err, jobsCount)
 	}
-	if _, err = store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 101); !errors.Is(err, domain.ErrInvalid) {
+	if _, err = store.ScheduleReconciliation(ctx, domain.ProviderPlay, "test", "com.anpfuel", 101); !errors.Is(err, domain.ErrInvalid) {
 		t.Fatal("unbounded reconciliation", err)
 	}
 	if _, err = pool.Exec(ctx, "UPDATE accounts SET status='deleted' WHERE id=$1", p.AccountID); err != nil {
 		t.Fatal(err)
 	}
-	if n, e := store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25); e != nil || n != 0 {
+	if n, e := store.ScheduleReconciliation(ctx, domain.ProviderPlay, "test", "com.anpfuel", 25); e != nil || n != 0 {
 		t.Fatal("deleted owner scheduled", e)
 	}
 }
@@ -861,7 +861,7 @@ func TestReconciliationEnqueueRollbackAndReceiptRetention(t *testing.T) {
 	if _, err = pool.Exec(ctx, `CREATE FUNCTION refuse_premium_refresh() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.kind='subscription-refresh' THEN RAISE EXCEPTION 'synthetic'; END IF; RETURN NEW; END $$; CREATE TRIGGER refuse_premium_refresh BEFORE INSERT ON job_queue FOR EACH ROW EXECUTE FUNCTION refuse_premium_refresh()`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25); !errors.Is(err, domain.ErrUnavailable) {
+	if _, err = store.ScheduleReconciliation(ctx, domain.ProviderPlay, "test", "com.anpfuel", 25); !errors.Is(err, domain.ErrUnavailable) {
 		t.Fatal("queue failure hidden", err)
 	}
 	var due bool
@@ -871,7 +871,7 @@ func TestReconciliationEnqueueRollbackAndReceiptRetention(t *testing.T) {
 	if _, err = pool.Exec(ctx, "DROP TRIGGER refuse_premium_refresh ON job_queue"); err != nil {
 		t.Fatal(err)
 	}
-	if n, e := store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25); e != nil || n != 1 {
+	if n, e := store.ScheduleReconciliation(ctx, domain.ProviderPlay, "test", "com.anpfuel", 25); e != nil || n != 1 {
 		t.Fatal("restart lost candidate", e)
 	}
 	pending, err := store.Begin(ctx, attempt(t, p, "synthetic-old-pending"))

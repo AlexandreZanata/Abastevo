@@ -9728,6 +9728,35 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/premium/app-store-notifications:
+    post:
+      tags:
+      - premium
+      summary: App Store Server Notifications V2
+      description: Signed by the App Store; the x5c chain to Apple Root CA - G3 is
+        the authentication. A verified notification only schedules a refresh of a
+        bound purchase (B-BR-STORE-07). Private/no-store.
+      operationId: premiumAppStoreNotifications
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumAppStoreNotification'
+      responses:
+        '200':
+          description: Verified notification durably received, duplicate or test.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/premium/export:
     post:
       tags:
@@ -43853,6 +43882,8 @@ components:
       - retired
       - acknowledged
       properties:
+        provider:
+          $ref: '#/components/schemas/PremiumStoreProvider'
         product_id:
           type: string
         base_plan_id:
@@ -43927,6 +43958,62 @@ components:
           type: string
           minLength: 1
           maxLength: 4096
+          description: Play purchase token, or the App Store originalTransactionId
+            as a decimal string when provider is app_store.
+        provider:
+          $ref: '#/components/schemas/PremiumStoreProvider'
+    PremiumStoreProvider:
+      type: string
+      description: Store that issued an in-app purchase; absent means play.
+      enum:
+      - play
+      - app_store
+    PremiumStoreOffer:
+      type: object
+      additionalProperties: false
+      required:
+      - provider
+      - products
+      - account_binding
+      - management_url
+      properties:
+        provider:
+          $ref: '#/components/schemas/PremiumStoreProvider'
+        products:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - product_id
+            - plan_ids
+            properties:
+              product_id:
+                type: string
+                maxLength: 150
+              plan_ids:
+                type: array
+                items:
+                  type: string
+                  maxLength: 150
+        account_binding:
+          type: string
+          description: Play obfuscatedAccountId (64 hex characters) or StoreKit
+            appAccountToken (UUID), derived by the server from the account.
+          maxLength: 64
+        management_url:
+          type: string
+          format: uri
+    PremiumAppStoreNotification:
+      type: object
+      additionalProperties: false
+      required:
+      - signedPayload
+      properties:
+        signedPayload:
+          type: string
+          minLength: 1
+          maxLength: 32768
     PremiumCapability:
       type: string
       enum:
@@ -43993,6 +44080,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TierStatus'
+        store_offers:
+          type: array
+          description: Configured store offers for this owner (B-BR-STORE-04/10).
+          items:
+            $ref: '#/components/schemas/PremiumStoreOffer'
     AdminLoginRequest:
       type: object
       additionalProperties: false
@@ -44042,7 +44134,7 @@ components:
           enum: [PRO, CONTRIBUTOR, ENTERPRISE]
         source:
           type: string
-          enum: [play, web, admin]
+          enum: [play, app_store, web, admin]
         valid_until:
           type: [string, 'null']
           format: date-time

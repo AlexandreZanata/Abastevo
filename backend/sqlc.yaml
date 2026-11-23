@@ -444,6 +444,7 @@ sql:
       - db/migrations/000076_subscription_notifications.sql
       - db/migrations/000077_subscription_reconcile.sql
       - db/migrations/000141_entitlement_grants.sql
+      - db/migrations/000300_subscription_store_provider.sql
     gen:
       go:
         package: subscription
