@@ -289,6 +289,17 @@ class IosAppIntegrityTests(unittest.TestCase):
         for entry in icon_catalog["images"]:
             self.assertTrue((IOS_ROOT / "Assets.xcassets/AppIcon.appiconset" / entry["filename"]).is_file(), entry["filename"])
 
+    def test_xcode_project_registers_every_swift_source(self):
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/ios_sync_xcodeproj.py"), "--check"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_training_terms_sha256_and_backend_origins_match_main(self):
         backend_terms = (ROOT / "backend/internal/platform/legalterms/text/training-consent-pt-BR.txt").read_bytes()
         expected_sha = hashlib.sha256(backend_terms).hexdigest()
