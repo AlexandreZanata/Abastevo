@@ -662,6 +662,7 @@ export function renderTutorial(site, entry, origin, locale) {
 
 export function renderPage(site, page, origin, locale) {
   const url = `${origin}${page.route}`;
+  const contributors = page.translationOf === '/contribuidores/';
   const crumbs = [homeCrumb(locale), { name: page.title, route: page.route }];
   const graph = [
     {
@@ -700,6 +701,10 @@ export function renderPage(site, page, origin, locale) {
         <p class="article-meta">${t(locale, 'chrome.pageUpdated', { date: updated, team: esc(t(locale, 'chrome.team')) })}</p>${page.stale ? `\n        ${staleBanner(page, locale)}` : ''}
 ${legalNotice}
 ${page.html}
+${contributors ? `        <div id="contributors-list" data-language="${esc(locale.code)}" aria-live="polite">
+          <p>Loading the contributors list…</p>
+        </div>
+        <noscript><p>The live list requires JavaScript. The text above explains who qualifies as a contributor.</p></noscript>` : ''}
       </article>`;
   return documentHtml({
     head: headHtml({
@@ -710,6 +715,8 @@ ${page.html}
       imageAlt: page.headline,
       jsonLd: { '@context': 'https://schema.org', '@graph': graph },
       locale,
+      extraMeta: contributors ? ['<meta name="abastevo-api" content="{{ABASTEVO_API_ORIGIN}}">'] : [],
+      scripts: contributors ? ['/assets/contributors.js'] : [],
       robots: page.legal || page.stale ? 'noindex,follow' : undefined,
       canonical: !page.legal && !page.stale,
     }),
@@ -1001,12 +1008,4 @@ export function renderHeaderLanguagePicker(members, locale) {
             ${options.join('\n            ')}
           </ul>
         </details>`;
-}
-
-/** Plain links to the other active locales (or exact translations when available); the build inserts it before the footer. */
-export function renderLanguageSwitch(members, currentRoute, locale) {
-  const others = members.filter((member) => member.code !== locale.code && member.route !== currentRoute);
-  if (others.length === 0) return '';
-  const links = others.map(renderLanguageLink);
-  return `<nav class="lang-switch" aria-label="${esc(t(locale, 'chrome.languages'))}">\n        <div class="shell">\n          ${links.join('\n          ')}\n        </div>\n      </nav>\n      `;
 }

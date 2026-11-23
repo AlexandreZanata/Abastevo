@@ -24,11 +24,9 @@ func TestLinkGraphOfTheGeneratedPortal(t *testing.T) {
 			t.Errorf("%s minimum inbound = %d, want >= %d", family, result.MinInbound[family], DefaultMinInboundLinks)
 		}
 	}
-	// Four Portuguese station pages qualify for the smaller city bound.
-	// English and Spanish each have seven: Sorriso, Rondonópolis and
-	// Várzea Grande have no translated city price page, and Belo Horizonte
-	// has only one eligible station.
-	if result.StationsBelowTarget != 4+2*7 || result.MinInbound["postos"] < 1 {
+	// Portuguese and English can point to every municipality summary.
+	// Spanish still has three fixture cities without a localized summary.
+	if result.StationsBelowTarget != 2*4+7 || result.MinInbound["postos"] < 1 {
 		t.Errorf("station bound = %d below target, min inbound %d", result.StationsBelowTarget, result.MinInbound["postos"])
 	}
 	again, err := VerifyLinkGraph(generateSEOPortal(t, true), LinkGraphOptions{SiteURL: seoSite})

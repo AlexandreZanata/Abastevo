@@ -2,6 +2,8 @@ package portalgen
 
 const templates = `
 {{define "tabIcons"}}{{if .HasLanding}}
+  {{if not .Landing}}<link rel="stylesheet" href="/assets/language-picker.0b779891.css">
+  <script type="module" src="/assets/language-picker.0a6803bb.js"></script>{{end}}
   <link rel="icon" href="{{.Landing}}/favicon.ico?v=2">
   <link rel="icon" type="image/svg+xml" sizes="any" href="{{.Landing}}/assets/brand/favicon-dark.svg?v=2" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/svg+xml" sizes="any" href="{{.Landing}}/assets/brand/favicon.svg?v=2" media="(prefers-color-scheme: light)">
@@ -49,7 +51,8 @@ const templates = `
       <div class="topbar-actions">
         <a class="topbar-link" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener" aria-label="Ver no GitHub — Código com atribuição visível"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg><span class="hide-sm">GitHub</span></a>
         {{if .OfficialOnly}}<a class="pill-light hide-sm" href="/fiscalizacao/">Fiscalização</a>{{else}}<a class="pill-light hide-sm" href="/consultar/">Consultar dados</a>{{end}}
-        <details class="nav-toggle">
+        {{template "languagePicker" (languagePicker .Route)}}
+        <details class="nav-toggle" name="landing-header">
           <summary class="nav-button" aria-label="Abrir menu de navegação"><span aria-hidden="true"></span></summary>
           <nav class="site-nav" aria-label="Menu">
             {{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a>
@@ -66,7 +69,6 @@ const templates = `
       </div>
     </div>
   </header>
-  {{with languageMenu .Route}}<nav class="wrap portal-nav-inner" aria-label="Idiomas">{{template "languageMenuLinks" $.Route}}</nav>{{end}}
   <nav class="portal-nav" aria-label="Navegação do portal">
     <div class="wrap portal-nav-inner">
       {{if .OfficialOnly}}
@@ -88,7 +90,16 @@ const templates = `
   {{if .OG}}<meta property="og:locale:alternate" content="{{.OG}}">{{end}}
   {{end}}{{end}}
 
-{{define "languageMenuLinks"}}{{$route := .}}{{range languageMenu .}}<a lang="{{.Code}}" href="{{.Path}}"{{if eq .Path $route}} aria-current="page"{{end}}>{{.Label}}</a> {{end}}{{end}}
+{{define "languagePicker"}}{{if .Options}}
+<details class="language-picker" name="landing-header">
+  <summary aria-label="{{.Label}}">
+    <span class="language-picker-globe" aria-hidden="true"></span>
+    <span class="language-picker-code" aria-hidden="true">{{.Code}}</span>
+  </summary>
+  <ul class="language-picker-options">
+  {{range .Options}}<li>{{if eq .Path $.Route}}<span lang="{{.Code}}" aria-current="true">{{.Label}}</span>{{else}}<a href="{{.Path}}" lang="{{.Code}}" hreflang="{{.Code}}">{{.Label}}</a>{{end}}</li>{{end}}
+  </ul>
+</details>{{end}}{{end}}
 
 {{define "foot"}}
   <footer class="footer">

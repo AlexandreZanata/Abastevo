@@ -16,5 +16,8 @@
 /contribuidores/*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'{{API_CONNECT_EXTRA}}; font-src 'self'; base-uri 'self'; form-action 'self'
 
+/en/contributors/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'{{API_CONNECT_EXTRA}}; font-src 'self'; base-uri 'self'; form-action 'self'
+
 /404.html
   Cache-Control: no-cache

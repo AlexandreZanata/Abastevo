@@ -96,7 +96,7 @@ test('the shipped content manifest and Markdown sources validate', () => {
   // Each locale ships editorial, legal and tutorial pages alongside its calculators.
   for (const code of ['en', 'es']) {
     const localized = count([...site.registry.values()].filter((e) => e.locale === code && !e.hub));
-    assert.deepEqual(localized, { 'tutorial-hub': 1, tutorial: 16, guide: 13, tool: 5, page: 5 }, `${code} translations`);
+    assert.deepEqual(localized, { 'tutorial-hub': 1, tutorial: 16, guide: 13, tool: 5, page: code === 'en' ? 6 : 5 }, `${code} translations`);
   }
   assert.equal(kinds.tool, 5);
   assert.equal(kinds.page, 2);
