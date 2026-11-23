@@ -12,9 +12,12 @@ public struct MapRootView: View {
     @State private var showEvSites = true
     @State private var showCombustionStations = true
     @State private var sourceFilter = "all"
+    @State private var visibleRegion: MKCoordinateRegion?
+    @State private var selectedEvPoint: ChargingMapPoint?
 
     public var body: some View {
         let pinStations = viewModel.sortedStations.filter { $0.pinTier.allowsMapPin }
+        let evPins = showEvSites ? evPinsForMap(pinStations) : []
         let listOnlyStations = viewModel.sortedStations.filter { !$0.pinTier.allowsMapPin }
         NavigationStack(path: $viewModel.mapPath) {
             VStack(spacing: 0) {
@@ -37,12 +40,14 @@ public struct MapRootView: View {
                                 }
                             }
                         }
-                        if showEvSites {
-                            ForEach(viewModel.evSites) { ev in
-                                Annotation(
-                                    ev.name,
-                                    coordinate: CLLocationCoordinate2D(latitude: ev.latitude, longitude: ev.longitude)
-                                ) {
+                        ForEach(evPins) { point in
+                            Annotation(
+                                point.place.displayName,
+                                coordinate: CLLocationCoordinate2D(latitude: point.coordinate.latitude, longitude: point.coordinate.longitude)
+                            ) {
+                                Button {
+                                    selectedEvPoint = point
+                                } label: {
                                     VStack(spacing: 2) {
                                         Image(systemName: "bolt.car.fill")
                                             .font(.caption.bold())
@@ -50,7 +55,7 @@ public struct MapRootView: View {
                                             .padding(6)
                                             .background(AbastevoTheme.accentLight)
                                             .clipShape(Circle())
-                                        Text("\(ev.maxPowerKw) kW")
+                                        Text(point.place.maxPowerW.map(EvText.power) ?? "EV")
                                             .font(.system(size: 10, weight: .bold))
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 2)
@@ -58,10 +63,14 @@ public struct MapRootView: View {
                                             .clipShape(Capsule())
                                     }
                                 }
+                                .accessibilityLabel(point.place.displayName)
                             }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onMapCameraChange(frequency: .onEnd) { context in
+                        visibleRegion = context.region
+                    }
                     .onChange(of: viewModel.selectedMunicipality?.ibgeCode) { _, _ in
                         cameraPosition = .automatic
                     }
@@ -105,7 +114,35 @@ public struct MapRootView: View {
                     .background(Color.secondary.opacity(0.12))
                 }
             }
+            .sheet(item: $selectedEvPoint) { point in
+                EvPlaceDetailSheet(place: point.place, snapshot: viewModel.evCatalog.snapshot)
+            }
         }
+    }
+
+    /// Admitted charger coordinates inside the visible map region (Android `ChargingMarkersSource`).
+    private func evPinsForMap(_ pinStations: [StationRecord]) -> [ChargingMapPoint] {
+        let center: EvCoordinate
+        let latitudeDelta: Double
+        let longitudeDelta: Double
+        if let region = visibleRegion {
+            center = EvCoordinate(latitude: region.center.latitude, longitude: region.center.longitude)
+            latitudeDelta = region.span.latitudeDelta
+            longitudeDelta = region.span.longitudeDelta
+        } else if let device = viewModel.lastDeviceCoordinate {
+            center = EvCoordinate(latitude: device.latitude, longitude: device.longitude)
+            latitudeDelta = 0.3
+            longitudeDelta = 0.3
+        } else if let station = pinStations.first {
+            center = EvCoordinate(latitude: station.latitude, longitude: station.longitude)
+            latitudeDelta = 0.3
+            longitudeDelta = 0.3
+        } else {
+            return []
+        }
+        return ChargingRules.pins(
+            viewModel.evMapPoints, center: center, latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta, limit: 150
+        )
     }
 
     private var mapToolbar: some View {
@@ -273,87 +310,6 @@ public struct NativeRouteSheetView: View {
         } catch {
             guard !Task.isCancelled else { return }
             routeMessage = "Não foi possível calcular a rota. Sem internet, toque em Abrir no Apple Maps para navegar com a região baixada nos Mapas Offline."
-        }
-    }
-}
-
-public struct EvTripPlannerSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AppStateViewModel
-
-    @State private var originName = "São Paulo, SP"
-    @State private var destinationName = "Curitiba, PR"
-    @State private var distanceKm = 408.0
-    @State private var batteryKwh = 52.0
-    @State private var startSoc = 85.0
-    @State private var reserveSoc = 15.0
-    @State private var whPerKm = 165.0
-
-    public var body: some View {
-        let req = EvTripPlanRequest(
-            originName: originName,
-            destinationName: destinationName,
-            distanceKm: distanceKm,
-            batteryKwh: batteryKwh,
-            startSocPercent: startSoc,
-            reserveMinSocPercent: reserveSoc,
-            whPerKm: whPerKm
-        )
-        let outcome = EvTripPlanner.plan(request: req, sites: viewModel.evSites)
-        NavigationStack {
-            List {
-                Section("Parâmetros da Viagem EV") {
-                    TextField("Origem", text: $originName)
-                    TextField("Destino", text: $destinationName)
-                    HStack {
-                        Text("Distância: \(Int(distanceKm)) km")
-                        Slider(value: $distanceKm, in: 50...1200, step: 10)
-                    }
-                    HStack {
-                        Text("Bateria: \(Int(batteryKwh)) kWh")
-                        Slider(value: $batteryKwh, in: 20...120, step: 2)
-                    }
-                    HStack {
-                        Text("SoC inicial: \(Int(startSoc))%")
-                        Slider(value: $startSoc, in: 20...100, step: 5)
-                    }
-                    HStack {
-                        Text("Reserva mín.: \(Int(reserveSoc))%")
-                        Slider(value: $reserveSoc, in: 5...30, step: 5)
-                    }
-                }
-                Section("Estimativa de consumo para a distância informada") {
-                    Text("Energia total estimada: \(String(format: "%.1f kWh", outcome.totalEnergyKwh))")
-                    if !viewModel.evSites.isEmpty {
-                        Text("Paradas de recarga: \(outcome.stops.count) · Tempo: \(outcome.totalChargingMinutes) min")
-                        Text("Custo estimado de recargas: \(AbastevoTheme.formatCentavos(outcome.totalCostCentavos))")
-                            .font(.headline)
-                            .foregroundStyle(AbastevoTheme.accentLight)
-                        Text("SoC estimado na chegada: \(Int(outcome.arrivalSocPercent))%")
-                    } else {
-                        Text("Catálogo de recarga indisponível. Paradas, custo e autonomia de chegada ainda não podem ser verificados.")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if !outcome.stops.isEmpty {
-                    Section("Paradas Sugeridas") {
-                        ForEach(outcome.stops) { stop in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("\(stop.site.name) (\(stop.site.maxPowerKw) kW)").font(.headline)
-                                Text("Km \(Int(stop.arrivalKm)) · +\(String(format: "%.1f kWh", stop.chargeKwh)) · ~\(stop.estimatedMinutes) min · \(AbastevoTheme.formatCentavos(stop.estimatedCostCentavos))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Planejador de Viagem EV")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
         }
     }
 }

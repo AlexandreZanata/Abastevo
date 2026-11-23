@@ -46,12 +46,22 @@ public final class AppStateViewModel: ObservableObject {
     // Community & Outbox
     @Published public var communityFeed: [CommunityPriceObservation] = []
     @Published public var stations: [StationRecord] = []
-    @Published public var evSites: [EvChargingSite] = []
+    @Published public var evMapPoints: [ChargingMapPoint] = []
     @Published private(set) var stationReadState: PublicReadState = .loading
     @Published private(set) var communityReadState: PublicReadState = .loading
     @Published private(set) var nextStationCursor: String?
     @Published private(set) var isLoadingMoreStations = false
     @Published private(set) var stationPageUnavailable = false
+
+    // Official ANP weeks, EV catalog and offline public reads
+    public let anpSurvey: AnpSurveyModel
+    public let evCatalog: EvCatalogModel
+    let publicReadCache: PublicReadCache
+    @Published public private(set) var directoryCachedAt: Date?
+    @Published public private(set) var communityCachedAt: Date?
+    @Published public private(set) var communityExpiredCount = 0
+    @Published private var surveyWeekTitle = String(localized: "Pesquisa ANP")
+    private var communityExpiries: [String: Int64] = [:]
 
     // Navigation paths per tab (reset on tab re-tap per B-BR-NAV-01/02)
     @Published public var explorePath = NavigationPath()
@@ -119,6 +129,9 @@ public final class AppStateViewModel: ObservableObject {
             photoCache: cache,
             environment: loaded.apiEnvironment
         )
+        self.anpSurvey = AnpSurveyModel()
+        self.evCatalog = EvCatalogModel()
+        self.publicReadCache = PublicReadCache()
         _ = self.photoFlow.sweepExpired()
         rehydrateAuth()
         reloadCityData()
@@ -129,6 +142,9 @@ public final class AppStateViewModel: ObservableObject {
             self?.isOfflineSimulation ?? false
         }
         identity.start()
+        anpSurvey.attach(self)
+        evCatalog.attach(self)
+        anpSurvey.$weekLabel.assign(to: &$surveyWeekTitle)
     }
 
     public var currentLocale: SupportedAppLocale {
@@ -139,7 +155,7 @@ public final class AppStateViewModel: ObservableObject {
 
     public var municipalityLabel: String { selectedMunicipality?.displayTitle ?? String(localized: "Escolher cidade") }
 
-    public var surveyWeekLabel: String { String(localized: "Pesquisa ANP") }
+    public var surveyWeekLabel: String { surveyWeekTitle }
 
     public var sortedStations: [StationRecord] {
         let fuel = snapshot.selectedFuel
@@ -171,7 +187,10 @@ public final class AppStateViewModel: ObservableObject {
     public var visibleCommunityFeed: [CommunityPriceObservation] {
         let fuel = snapshot.selectedFuel
         guard let city = selectedMunicipality else { return [] }
-        let values = communityFeed.filter { $0.product == fuel && $0.municipalityCode == city.ibgeCode }
+        let now = Int64(Date().timeIntervalSince1970)
+        let values = communityFeed.filter {
+            $0.product == fuel && $0.municipalityCode == city.ibgeCode && (communityExpiries[$0.id].map { $0 > now } ?? true)
+        }
         switch feedSortOrder {
         case .recent:
             return values.sorted { $0.observedEpochSeconds > $1.observedEpochSeconds }
@@ -181,7 +200,10 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     public func communityObservation(stationId: String, product: FuelProduct) -> CommunityPriceObservation? {
-        communityFeed.first { $0.stationId == stationId && $0.product == product }
+        let now = Int64(Date().timeIntervalSince1970)
+        return communityFeed.first {
+            $0.stationId == stationId && $0.product == product && (communityExpiries[$0.id].map { $0 > now } ?? true)
+        }
     }
 
     public var preferredColorScheme: ColorScheme? {
@@ -256,6 +278,7 @@ public final class AppStateViewModel: ObservableObject {
         httpClient.environment = env
         identity.updateEnvironment(env)
         persist()
+        evCatalog.originChanged()
         reloadCityData()
     }
 
@@ -277,35 +300,87 @@ public final class AppStateViewModel: ObservableObject {
         let fuel = snapshot.selectedFuel
         let order = feedSortOrder
         let client = httpClient
+        let cache = publicReadCache
+        let origin = snapshot.apiEnvironment.origin
 
         stations = []
         communityFeed = []
+        communityExpiries = [:]
         nextStationCursor = nil
         isLoadingMoreStations = false
         stationPageUnavailable = false
-        guard !isOfflineSimulation, let municipality else {
+        directoryCachedAt = nil
+        communityCachedAt = nil
+        communityExpiredCount = 0
+        anpSurvey.cityContextChanged()
+        guard let municipality else {
             stationReadState = .unavailable
             communityReadState = .unavailable
+            return
+        }
+        guard !isOfflineSimulation else {
+            applyCachedDirectory(origin: origin, municipality: municipality)
+            applyCachedCommunity(origin: origin, municipality: municipality, fuel: fuel)
             return
         }
         stationReadState = .loading
         communityReadState = .loading
 
         directoryRead = Task { [weak self] in
-            let page = try? await client.fetchStations(in: municipality)
+            let loaded = try? await client.fetchStations(in: municipality)
             guard !Task.isCancelled, let self, self.cityReadGeneration == generation else { return }
-            self.stations = page?.stations ?? []
-            self.nextStationCursor = page?.nextCursor
-            self.stationReadState = page == nil ? .unavailable : .loaded
+            guard let page = loaded else {
+                self.applyCachedDirectory(origin: origin, municipality: municipality)
+                return
+            }
+            self.stations = page.stations
+            self.nextStationCursor = page.nextCursor
+            self.stationReadState = .loaded
+            cache.saveDirectory(origin: origin, municipalityCode: municipality.ibgeCode, stations: page.stations)
         }
         communityRead = Task { [weak self] in
-            let feed = await client.fetchCommunityFeed(
+            let fetched = try? await client.fetchCommunityFeedItems(
                 state: municipality.state, municipalityCode: municipality.ibgeCode, fuel: fuel, sort: order
             )
             guard !Task.isCancelled, let self, self.cityReadGeneration == generation else { return }
-            self.communityFeed = feed ?? []
-            self.communityReadState = feed == nil ? .unavailable : .loaded
+            guard let items = fetched else {
+                self.applyCachedCommunity(origin: origin, municipality: municipality, fuel: fuel)
+                return
+            }
+            let now = Int64(Date().timeIntervalSince1970)
+            let live = items.filter { $0.isLive(nowEpochSeconds: now) }
+            self.communityFeed = live.map(\.observation)
+            self.communityExpiries = Dictionary(live.map { ($0.observation.id, $0.expiresAtEpochSeconds) }, uniquingKeysWith: { first, _ in first })
+            self.communityReadState = .loaded
+            cache.saveCommunityFeed(origin: origin, municipalityCode: municipality.ibgeCode, fuel: fuel, items: items)
         }
+    }
+
+    /// Last directory page saved for this origin and city, labelled with its save time.
+    private func applyCachedDirectory(origin: String, municipality: Municipality) {
+        guard let cached = publicReadCache.directory(origin: origin, municipalityCode: municipality.ibgeCode) else {
+            stationReadState = .unavailable
+            return
+        }
+        stations = cached.stations
+        nextStationCursor = nil
+        directoryCachedAt = Date(timeIntervalSince1970: TimeInterval(cached.savedAtEpochSeconds))
+        stationReadState = .loaded
+    }
+
+    /// Saved community prices still before their server expiry; expired ones are only counted.
+    private func applyCachedCommunity(origin: String, municipality: Municipality, fuel: FuelProduct) {
+        guard let cached = publicReadCache.communityFeed(origin: origin, municipalityCode: municipality.ibgeCode, fuel: fuel) else {
+            communityReadState = .unavailable
+            return
+        }
+        let now = Int64(Date().timeIntervalSince1970)
+        let live = cached.items.filter { $0.isLive(nowEpochSeconds: now) }
+        communityFeed = live.map(\.observation)
+        communityExpiries = Dictionary(live.map { ($0.observation.id, $0.expiresAtEpochSeconds) }, uniquingKeysWith: { first, _ in first })
+        communityExpiredCount = cached.expiredCount(nowEpochSeconds: now)
+        communityCachedAt = Date(timeIntervalSince1970: TimeInterval(cached.savedAtEpochSeconds))
+        communityReadState = .loaded
     }
 
     public func refreshCityData() async {
@@ -878,12 +953,14 @@ public final class AppStateViewModel: ObservableObject {
 
     public func clearOfflineCache() {
         photoCache.purgeAll()
+        publicReadCache.clear()
         store.clearCacheKeepingAccount(&snapshot)
         reloadCityData()
     }
 
     public func estimatedStorageKb() -> Int64 {
-        return max(1, store.estimatedStorageBytes() / 1024)
+        let bytes = store.estimatedStorageBytes() + anpSurvey.storedBytes + evCatalog.storedBytes + publicReadCache.storedBytes()
+        return max(1, bytes / 1024)
     }
 
     public func persist() {

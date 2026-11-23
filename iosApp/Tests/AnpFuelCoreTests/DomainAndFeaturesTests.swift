@@ -235,21 +235,6 @@ final class DomainAndFeaturesTests: XCTestCase {
         }
     }
 
-    func testEvTripPlannerProducesStopsForLongDistance() {
-        let req = EvTripPlanRequest(
-            originName: "São Paulo",
-            destinationName: "Curitiba",
-            distanceKm: 408,
-            batteryKwh: 45,
-            startSocPercent: 80,
-            reserveMinSocPercent: 15,
-            whPerKm: 170
-        )
-        let outcome = EvTripPlanner.plan(request: req, sites: SeedCatalog.evChargingSites)
-        XCTAssertFalse(outcome.stops.isEmpty)
-        XCTAssertGreaterThan(outcome.totalCostCentavos, 0)
-    }
-
     func testForumSafeLinksRefusesInsecureAndUserinfoUrls() {
         XCTAssertTrue(ForumSafeLinks.isAllowedHttpsLink("https://abastevo.com.br/guias/etanol-ou-gasolina/"))
         XCTAssertFalse(ForumSafeLinks.isAllowedHttpsLink("http://abastevo.com.br/"))

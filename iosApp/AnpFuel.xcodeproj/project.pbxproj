@@ -88,6 +88,15 @@
 		D04DF1A366B1E2D21F93FBB6 /* AnpXlsxImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0BA879FE1CAA3D38EEECDA /* AnpXlsxImportTests.swift */; };
 		E8279CC4A8F814C275B67E39 /* PublicReadCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4749E3CC2E3FCC7490D8DFC /* PublicReadCache.swift */; };
 		5AC17D72D63ACBEA50B85321 /* PublicReadCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3525AEABA63D491F905380 /* PublicReadCacheTests.swift */; };
+		63714BA6423C905DD005DEE1 /* EvChargingCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE129C1FB4EDBCA2CA7052AF /* EvChargingCatalog.swift */; };
+		AF20DEA60EB160C7BE1CED81 /* EvTripPlanning.swift in Sources */ = {isa = PBXBuildFile; fileRef = A35A85068BA2C2A1EE243EF0 /* EvTripPlanning.swift */; };
+		5DB862F906076F29E8FA918C /* AnpSurveyModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736414FD8B8DA0F3A43ED95D /* AnpSurveyModel.swift */; };
+		FFBAC7EE98ED49CCFE9ABD3F /* AnpWeekViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4716E65195737D64025D410 /* AnpWeekViews.swift */; };
+		132744597D01B55E292CD9E4 /* EvCatalogModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 388FE04499A8214E2E0706BB /* EvCatalogModel.swift */; };
+		09328F08CD48975563BA2ECA /* EvCatalogViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2268EC2FD73D59703B8E6ACB /* EvCatalogViews.swift */; };
+		D4A2FCCFA21B96CA560E45A9 /* PublicReadFallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7DC5F9E178C7745D1EE756 /* PublicReadFallback.swift */; };
+		05543C43EFBB17B6982FE6F6 /* EvCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7905FC5E633589A869B332CD /* EvCatalogTests.swift */; };
+		2A0275B8E7FAABF1C474C16D /* EvTripPlanningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D5B09F49D65D93A92D77F8 /* EvTripPlanningTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -205,6 +214,15 @@
 		FD0BA879FE1CAA3D38EEECDA /* AnpXlsxImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnpXlsxImportTests.swift; sourceTree = "<group>"; };
 		D4749E3CC2E3FCC7490D8DFC /* PublicReadCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicReadCache.swift; sourceTree = "<group>"; };
 		8C3525AEABA63D491F905380 /* PublicReadCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicReadCacheTests.swift; sourceTree = "<group>"; };
+		AE129C1FB4EDBCA2CA7052AF /* EvChargingCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvChargingCatalog.swift; sourceTree = "<group>"; };
+		A35A85068BA2C2A1EE243EF0 /* EvTripPlanning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvTripPlanning.swift; sourceTree = "<group>"; };
+		736414FD8B8DA0F3A43ED95D /* AnpSurveyModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnpSurveyModel.swift; sourceTree = "<group>"; };
+		D4716E65195737D64025D410 /* AnpWeekViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnpWeekViews.swift; sourceTree = "<group>"; };
+		388FE04499A8214E2E0706BB /* EvCatalogModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvCatalogModel.swift; sourceTree = "<group>"; };
+		2268EC2FD73D59703B8E6ACB /* EvCatalogViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvCatalogViews.swift; sourceTree = "<group>"; };
+		ED7DC5F9E178C7745D1EE756 /* PublicReadFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicReadFallback.swift; sourceTree = "<group>"; };
+		7905FC5E633589A869B332CD /* EvCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvCatalogTests.swift; sourceTree = "<group>"; };
+		A5D5B09F49D65D93A92D77F8 /* EvTripPlanningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvTripPlanningTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -275,6 +293,8 @@
 			C02FCFE7AC6CD83192D2B002,
 			931AC29265ACF493BF9F17DB,
 			D4749E3CC2E3FCC7490D8DFC,
+			AE129C1FB4EDBCA2CA7052AF,
+			A35A85068BA2C2A1EE243EF0,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -290,6 +310,11 @@
 			EEC212679466C9CB915C3262,
 			82A4FFC58A989E7A9E20B82F,
 			CB65E76B45587A26AB94A626,
+			736414FD8B8DA0F3A43ED95D,
+			D4716E65195737D64025D410,
+			388FE04499A8214E2E0706BB,
+			2268EC2FD73D59703B8E6ACB,
+			ED7DC5F9E178C7745D1EE756,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -323,6 +348,8 @@
 			03C36B61345AC0E98C47A0CE,
 			FD0BA879FE1CAA3D38EEECDA,
 			8C3525AEABA63D491F905380,
+			7905FC5E633589A869B332CD,
+			A5D5B09F49D65D93A92D77F8,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -447,6 +474,8 @@
 			93D66C15F4054281902038F5,
 			666313A17F4EBD5F614FAB9D,
 			E8279CC4A8F814C275B67E39,
+			63714BA6423C905DD005DEE1,
+			AF20DEA60EB160C7BE1CED81,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -462,6 +491,11 @@
 			17AB0609B4F552D4FFC137EA,
 			E9D7BBCC4A6E654AB7DC4F47,
 			5799D51E49CB8564B224EC1E,
+			5DB862F906076F29E8FA918C,
+			FFBAC7EE98ED49CCFE9ABD3F,
+			132744597D01B55E292CD9E4,
+			09328F08CD48975563BA2ECA,
+			D4A2FCCFA21B96CA560E45A9,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -491,6 +525,8 @@
 			7F4F44D593277505FECD85E1,
 			D04DF1A366B1E2D21F93FBB6,
 			5AC17D72D63ACBEA50B85321,
+			05543C43EFBB17B6982FE6F6,
+			2A0275B8E7FAABF1C474C16D,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

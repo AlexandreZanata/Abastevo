@@ -17,7 +17,7 @@ public struct ExploreRootView: View {
                         onSelect: { viewModel.selectFuel($0) }
                     )
 
-                    officialAnpCard
+                    AnpCityAverageCard(app: viewModel, anp: viewModel.anpSurvey)
                         .padding(.horizontal, 16)
 
                     communitySummaryCard
@@ -38,20 +38,7 @@ public struct ExploreRootView: View {
             }
             .refreshable {
                 await viewModel.refreshCityData()
-            }
-        }
-    }
-
-    private var officialAnpCard: some View {
-        EnergiaCard {
-            Text("Pesquisa oficial da ANP")
-                .font(.subheadline.bold())
-            Text("Média municipal indisponível. Consulte as coletas oficiais na ficha de cada posto.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            if let url = URL(string: OfficialAnpAverage.anpOfficialSourceUrl) {
-                Link("Consulte a ANP", destination: url)
-                    .font(.caption.bold())
+                await viewModel.anpSurvey.manualSync()
             }
         }
     }
@@ -88,6 +75,16 @@ public struct ExploreRootView: View {
                 Text("Sem preços comunitários recentes para este combustível.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+            }
+            if let cachedAt = viewModel.communityCachedAt {
+                Text(viewModel.cachedLabel(cachedAt))
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                if viewModel.communityExpiredCount > 0 {
+                    Text("\(viewModel.communityExpiredCount) relato(s) salvos expiraram e não são exibidos.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -208,6 +205,11 @@ public struct ExploreRootView: View {
             } else if filtered.isEmpty {
                 Text("Nenhum posto encontrado nesta lista.")
             }
+            if let cachedAt = viewModel.directoryCachedAt {
+                Text(viewModel.cachedLabel(cachedAt))
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
             if viewModel.sortOrder == .distance && viewModel.lastDeviceCoordinate == nil {
                 Text("Use sua localização no mapa para ordenar por distância.")
                     .font(.caption)
@@ -281,6 +283,7 @@ public struct StationDetailSheetView: View {
     @State private var publicComments: [PublicStationComment] = []
     @State private var commentsReadState: PublicReadState = .loading
     @State private var officialPrices: [OfficialStationPrice] = []
+    @State private var officialSource: OfficialPriceSource?
     @State private var officialReadState: PublicReadState = .loading
     @State private var officialReadAttempt = 0
     @State private var showRoute = false
@@ -350,6 +353,18 @@ public struct StationDetailSheetView: View {
                             if officialPrices.isEmpty {
                                 Text("Nenhuma coleta oficial registrada para este posto.")
                             }
+                            switch officialSource {
+                            case .cached(let savedAt):
+                                Text(viewModel.cachedLabel(savedAt))
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            case .anpDownload(let week):
+                                Text("Sem conexão: preços ANP da semana baixada \(AnpWeekText.range(week)), por CNPJ.")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            default:
+                                EmptyView()
+                            }
                         }
                         ForEach(FuelProduct.allCases) { product in
                             let comm = viewModel.communityObservation(stationId: station.id, product: product)
@@ -391,6 +406,8 @@ public struct StationDetailSheetView: View {
                             }
                         }
                     }
+
+                    StationOfficialHistoryCard(viewModel: viewModel, station: station)
 
                     EnergiaCard {
                         Text("Qualidade e Fiscalização (PMQC / ANP)")
@@ -442,11 +459,13 @@ public struct StationDetailSheetView: View {
             }
             .task(id: officialReadAttempt) {
                 officialPrices = []
+                officialSource = nil
                 officialReadState = .loading
                 do {
-                    let prices = try await viewModel.officialPrices(for: station)
+                    let read = try await viewModel.officialPriceRead(for: station)
                     guard !Task.isCancelled else { return }
-                    officialPrices = prices
+                    officialPrices = read.prices
+                    officialSource = read.source
                     officialReadState = .loaded
                 } catch {
                     guard !Task.isCancelled else { return }
@@ -521,110 +540,6 @@ public struct LocationPickerSheetView: View {
                 }
             }
             .navigationTitle("Escolher Cidade")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct WeekPickerSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    public var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "Semanas indisponíveis",
-                systemImage: "calendar",
-                description: Text("As datas das coletas disponíveis aparecem na ficha do posto.")
-            )
-            .navigationTitle("Semanas da Pesquisa ANP")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct PriceHistorySheetView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    public var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "Histórico municipal indisponível",
-                systemImage: "chart.line.uptrend.xyaxis",
-                description: Text("Consulte o preço oficial e a data da coleta na ficha de cada posto.")
-            )
-            .navigationTitle("Histórico de Preços")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct EvChargingExploreSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AppStateViewModel
-    @State private var connectorFilter = "Todos"
-    @State private var kwhChargeAmount = 35.0
-
-    public var body: some View {
-        let connectors = ["Todos", "CCS2", "Type 2", "CHAdeMO"]
-        let filtered = viewModel.evSites.filter { site in
-            connectorFilter == "Todos" || site.connectorTypes.contains(connectorFilter)
-        }
-        NavigationStack {
-            List {
-                Section("Simular Recarga (\(Int(kwhChargeAmount)) kWh)") {
-                    Slider(value: $kwhChargeAmount, in: 10...90, step: 5)
-                    Picker("Conector", selection: $connectorFilter) {
-                        ForEach(connectors, id: \.self) { Text($0) }
-                    }
-                    .pickerStyle(.segmented)
-                }
-                Section("Eletropostos Verificados") {
-                    if viewModel.evSites.isEmpty {
-                        Text("Catálogo de recarga indisponível.")
-                            .foregroundStyle(.secondary)
-                    } else if filtered.isEmpty {
-                        Text("Nenhum local encontrado para este conector.")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(filtered) { site in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(site.name).font(.headline)
-                                Spacer()
-                                Text("\(site.maxPowerKw) kW")
-                                    .font(.caption.bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(AbastevoTheme.accentLight.opacity(0.16))
-                                    .clipShape(Capsule())
-                            }
-                            Text("\(site.operatorName) · \(site.cityLabel)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("Conectores: \(site.connectorTypes.joined(separator: ", ")) · \(site.availablePorts)/\(site.totalPorts) vagas livres")
-                                .font(.caption)
-                            let estCentavos = site.sessionFeeCentavos + Int64(kwhChargeAmount * Double(site.pricePerKwhCentavos))
-                            Text("Tarifa: \(AbastevoTheme.formatCentavos(site.pricePerKwhCentavos))/kWh · Estimativa \(Int(kwhChargeAmount)) kWh: \(AbastevoTheme.formatCentavos(estCentavos))")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(AbastevoTheme.accentLight)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-            }
-            .navigationTitle("Recarga Elétrica (EV)")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fechar") { dismiss() }

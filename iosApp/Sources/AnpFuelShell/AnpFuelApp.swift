@@ -17,6 +17,7 @@ struct AnpFuelApp: App {
 
 public struct AbastevoRootView: View {
     @ObservedObject var viewModel: AppStateViewModel
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(viewModel: AppStateViewModel) {
         self.viewModel = viewModel
@@ -38,6 +39,10 @@ public struct AbastevoRootView: View {
         .sheet(item: $viewModel.activeSheet) { sheet in
             sheetDestination(sheet)
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { viewModel.anpSurvey.automaticSyncIfDue() }
+        }
+        .task { viewModel.anpSurvey.automaticSyncIfDue() }
     }
 
     private var mainFourTabShell: some View {
@@ -81,9 +86,9 @@ public struct AbastevoRootView: View {
         case .locationPicker:
             LocationPickerSheetView(viewModel: viewModel)
         case .weekPicker:
-            WeekPickerSheetView()
+            WeekPickerSheetView(viewModel: viewModel)
         case .priceHistory:
-            PriceHistorySheetView()
+            PriceHistorySheetView(viewModel: viewModel)
         case .evExplore:
             EvChargingExploreSheetView(viewModel: viewModel)
         case .qualityReports:
