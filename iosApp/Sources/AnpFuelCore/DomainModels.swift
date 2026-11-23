@@ -1473,8 +1473,12 @@ Os controles buscam restringir acesso e evitar reutilização indevida, sem prom
 Declaração opcional: “Li este documento e autorizo, de forma livre e específica, o registro da minha preferência para a finalidade descrita, ciente de que a coleta está desativada e de que sua futura ativação exigirá novos termos e nova autorização.”
 """
 
+    /// The exact served bytes: the backend file ends with a newline, which a
+    /// Swift multi-line literal omits.
+    public static var canonicalBytes: Data { Data((fullTextPtBr + "\n").utf8) }
+
     public static func verifiedDigestMatches() -> Bool {
-        let data = Data(fullTextPtBr.utf8)
+        let data = canonicalBytes
         let computed = IosDeviceProofSigner.sha256Hex(data)
         return computed == digestSha256
     }
