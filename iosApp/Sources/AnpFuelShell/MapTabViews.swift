@@ -272,7 +272,7 @@ public struct NativeRouteSheetView: View {
             }
         } catch {
             guard !Task.isCancelled else { return }
-            routeMessage = "Não foi possível calcular a rota. Verifique a conexão e tente novamente."
+            routeMessage = "Não foi possível calcular a rota. Sem internet, toque em Abrir no Apple Maps para navegar com a região baixada nos Mapas Offline."
         }
     }
 }
@@ -385,26 +385,6 @@ public struct SavedPlacesSheetView: View {
                 }
             }
             .navigationTitle("Salvos & Viagens")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct MapDownloadsSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    public var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "Mapas regionais indisponíveis",
-                systemImage: "map",
-                description: Text("O abastevo ainda não oferece downloads de mapas regionais no iOS.")
-            )
-            .navigationTitle("Mapas Offline por Região")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fechar") { dismiss() }

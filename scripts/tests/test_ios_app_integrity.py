@@ -332,7 +332,14 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("station.pinTier.allowsMapPin", maps)
         self.assertIn("await viewModel.requestRouteOrigin()", maps)
         self.assertIn("await MKDirections(request: request).calculate()", maps)
-        self.assertIn("Mapas regionais indisponíveis", maps)
+        self.assertIn("MKLaunchOptionsDirectionsModeDriving", maps)
+        offline = (shell / "OfflineNavigationViews.swift").read_text(encoding="utf-8")
+        # B-BR-IOS-01: offline navigation hands off to Apple Maps offline maps;
+        # the app never claims its own regional package is available.
+        self.assertIn("Mapas regionais indisponíveis", offline)
+        self.assertIn("Mapas Offline", offline)
+        self.assertIn("https://maps.apple.com/", offline)
+        self.assertNotIn("FileManager", offline)
         store = (IOS_ROOT / "Sources/AnpFuelCore/IosLocalStore.swift").read_text(encoding="utf-8")
         self.assertNotIn("downloadedMapRegions", store)
 

@@ -105,7 +105,7 @@ public struct AbastevoRootView: View {
         case .savedPlaces:
             SavedPlacesSheetView(viewModel: viewModel)
         case .mapDownloads:
-            MapDownloadsSheetView()
+            MapDownloadsSheetView(viewModel: viewModel)
         case .auth:
             AuthSheetView(viewModel: viewModel)
         case .accountManagement:

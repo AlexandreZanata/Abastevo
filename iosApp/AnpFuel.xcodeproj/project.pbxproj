@@ -66,6 +66,7 @@
 		135A04C12F737F3CAD1FAE14 /* PremiumStoreBilling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0493AF2D8A1FA7031BBC213 /* PremiumStoreBilling.swift */; };
 		936016342055A9842CF8598E /* PremiumStoreViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83261BC7B666205267E2EEA8 /* PremiumStoreViews.swift */; };
 		62FB0FF8814890A98599EB6E /* PremiumStoreBillingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950D311BD03373EDFFEF6789 /* PremiumStoreBillingTests.swift */; };
+		17AB0609B4F552D4FFC137EA /* OfflineNavigationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC212679466C9CB915C3262 /* OfflineNavigationViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -161,6 +162,7 @@
 		B0493AF2D8A1FA7031BBC213 /* PremiumStoreBilling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStoreBilling.swift; sourceTree = "<group>"; };
 		83261BC7B666205267E2EEA8 /* PremiumStoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStoreViews.swift; sourceTree = "<group>"; };
 		950D311BD03373EDFFEF6789 /* PremiumStoreBillingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStoreBillingTests.swift; sourceTree = "<group>"; };
+		EEC212679466C9CB915C3262 /* OfflineNavigationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineNavigationViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -231,6 +233,7 @@
 			DBE025F1EC7F3B42D8DB21A5,
 			9B48D62A0266CED3D9707C9E,
 			83261BC7B666205267E2EEA8,
+			EEC212679466C9CB915C3262,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -381,6 +384,7 @@
 			BCBCAE5A996CF7C2A5DF38F7,
 			960D3FE8D8D6FA85DBCA24AA,
 			936016342055A9842CF8598E,
+			17AB0609B4F552D4FFC137EA,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,

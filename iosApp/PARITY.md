@@ -22,7 +22,8 @@ Acceptance is open. Each supported Android journey needs an equivalent iOS entry
 ## B-BR-IOS-01 / BUC-IOS-01 — Driving routes and offline maps
 
 - A driving route uses the selected station's routable coordinates and a current, user-requested location. Directions and distance come from the navigation provider. Missing coordinates, denied location, and a failed provider request produce an unavailable state. An external navigator can still open a routable destination.
-- A regional package becomes available offline after download, manifest and checksum verification, and successful opening by the map engine. A saved identifier, display sample, or cached online tile cannot establish package availability. On iOS, show the unavailable state until the engine and package lifecycle meet this contract.
+- A regional package becomes available offline after download, manifest and checksum verification, and successful opening by the map engine. A saved identifier, display sample, or cached online tile cannot establish package availability. Abastevo's own regional packages need the Android map engine, so iOS shows them as unavailable.
+- On iOS, offline turn-by-turn navigation uses the offline maps the user downloads in Apple Maps (iOS 17+). The Offline navigation sheet explains the download and opens the selected city in Apple Maps; the route sheet hands a routable station to Apple Maps for driving directions. The app does not report whether Apple Maps holds a region.
 
 Android references: `NativeRouteViewModel`, the native map engine, and the map region download flow. Acceptance uses a valid station and a routable current location, then repeats with permission denied, a provider error, and no station pin. For offline acceptance, verify download, process restart in airplane mode, route creation, and deletion. The iOS route preview is one-shot. Foreground guidance, rerouting, and regional offline navigation require separate execution evidence.
 
