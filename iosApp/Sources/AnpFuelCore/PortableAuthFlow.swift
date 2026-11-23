@@ -105,6 +105,13 @@ public protocol AuthAccountApi {
         nonce: String
     ) -> AuthApiResult<EmptyAuthValue>
     func deleteAccount(session: PortableAuth.Session) -> AuthApiResult<EmptyAuthValue>
+    /// `POST /v1/accounts/providers/login`: native provider token plus the raw nonce, same reply as e-mail consume.
+    func loginWithProvider(
+        provider: String,
+        idToken: String,
+        nonce: String,
+        authorizationCode: String?
+    ) -> AuthApiResult<AuthConsumeOk>
 }
 
 public protocol AuthOperationLock {
@@ -147,7 +154,8 @@ public struct AuthPorts {
 }
 
 /// Swift port of `AuthFlow` (`application/portable/PortableAuthFlow.kt`).
-public final class AuthFlow {
+/// Every mutation runs under `ports.lock`; the shell calls it off the main actor through `AuthBlockingWork`.
+public final class AuthFlow: @unchecked Sendable {
     public static let clientInvalid = "client-invalid"
     public static let secureStorageUnavailable = "secure-storage-unavailable"
     public static let maxProofChars = 8192
@@ -179,6 +187,42 @@ public final class AuthFlow {
             case .err(let verdict):
                 return .err(verdict)
             case .ok(let res):
+                if persistSession(res.session) {
+                    return .ok(AuthLoginOutcome(session: res.session, created: res.created))
+                }
+                return .err(Self.secureStorageUnavailable)
+            }
+        }
+    }
+
+    /// Native provider login (Sign in with Apple). The raw nonce spends once client-side; the server
+    /// matches its SHA-256 against the token claim. A retained key account refuses, as e-mail login does.
+    public func loginWithProvider(
+        provider: String,
+        idToken: String,
+        rawNonce: String,
+        authorizationCode: String?
+    ) -> AuthApiResult<AuthLoginOutcome> {
+        return ports.lock.withLock {
+            if ports.keys.loadKey() != nil {
+                return .err(Self.clientInvalid)
+            }
+            if !PortableAuth.isProvider(provider) || idToken.isEmpty || idToken.count > Self.maxProofChars ||
+                rawNonce.isEmpty || rawNonce.count > AccountProviderLogin.maxNonceChars {
+                return .err(Self.clientInvalid)
+            }
+            if spentNonces.contains(rawNonce) {
+                return .err(PortableAuth.Verdict.codeUnknown)
+            }
+            let code: String? = (authorizationCode?.isEmpty ?? true) ? nil : authorizationCode
+            switch ports.api.loginWithProvider(provider: provider, idToken: idToken, nonce: rawNonce, authorizationCode: code) {
+            case .err(let verdict):
+                if verdict == PortableAuth.Verdict.codeUnknown || verdict == "oidc-nonce-reused" {
+                    spentNonces.insert(rawNonce)
+                }
+                return .err(verdict)
+            case .ok(let res):
+                spentNonces.insert(rawNonce)
                 if persistSession(res.session) {
                     return .ok(AuthLoginOutcome(session: res.session, created: res.created))
                 }

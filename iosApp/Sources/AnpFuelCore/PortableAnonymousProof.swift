@@ -197,6 +197,13 @@ public final class IosDeviceProofSigner {
         self.accountKey = accountKey
     }
 
+    /// Test seam for golden vectors: starts from a known raw P-256 scalar and never reads the Keychain item.
+    init(service: String, accountKey: String, privateKeyRaw: Data) {
+        self.service = service
+        self.accountKey = accountKey
+        self.cachedPrivateKeyData = privateKeyRaw
+    }
+
     public static func sha256Hex(_ data: Data) -> String {
         #if canImport(CryptoKit)
         let digest = SHA256.hash(data: data)

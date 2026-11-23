@@ -138,7 +138,9 @@ public struct OfficialStationPrice: Identifiable, Sendable {
     public let surveyEnd: String
 }
 
-/// Real URLSession transport for Abastevo backend APIs, including RFC 9421 / P10-T03 signed requests.
+/// URLSession transport for public reads and the synchronous account bridge used by `AuthFlow`.
+/// The bridge blocks its caller, so the shell runs it through `AuthBlockingWork`, never on the main actor.
+/// Signed device requests live in `SignedRequestTransport`.
 public final class AbastevoHttpClient: AuthAccountApi {
     private static let maxResponseBytes = 512 * 1024
     private static let requestTimeout: TimeInterval = 20.0
@@ -276,6 +278,33 @@ public final class AbastevoHttpClient: AuthAccountApi {
             }
             return .ok(EmptyAuthValue())
         case .err(let verdict): return .err(verdict)
+        }
+    }
+
+    public func loginWithProvider(
+        provider: String,
+        idToken: String,
+        nonce: String,
+        authorizationCode: String?
+    ) -> AuthApiResult<AuthConsumeOk> {
+        let res = postAuthSync(
+            path: AccountProviderLogin.path,
+            body: AccountProviderLogin.body(
+                provider: provider,
+                idToken: idToken,
+                rawNonce: nonce,
+                authorizationCode: authorizationCode
+            )
+        )
+        switch res {
+        case .err(let verdict): return .err(verdict)
+        case .ok(let json):
+            guard let sessionDict = json["session"] as? [String: Any],
+                  let parsed = parseSession(sessionDict) else {
+                return .err(PortableAuth.unavailable)
+            }
+            let created = json["created"] as? Bool ?? false
+            return .ok(AuthConsumeOk(session: parsed, created: created))
         }
     }
 

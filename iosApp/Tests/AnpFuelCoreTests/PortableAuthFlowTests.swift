@@ -69,6 +69,30 @@ final class PortableAuthFlowTests: XCTestCase {
             deletedSessions.append(session)
             return deleteResult
         }
+
+        struct ProviderCall: Equatable {
+            let provider: String
+            let idToken: String
+            let nonce: String
+            let authorizationCode: String?
+        }
+
+        var providerResult: AuthApiResult<AuthConsumeOk>?
+        var providerCalls: [ProviderCall] = []
+
+        func loginWithProvider(provider: String, idToken: String, nonce: String, authorizationCode: String?) -> AuthApiResult<AuthConsumeOk> {
+            providerCalls.append(ProviderCall(provider: provider, idToken: idToken, nonce: nonce, authorizationCode: authorizationCode))
+            if let custom = providerResult { return custom }
+            let s = PortableAuth.Session(
+                familyId: "fam-apple",
+                accountId: "acc-apple",
+                accessToken: "at-apple",
+                refreshToken: "rt-apple",
+                accessExpiresAt: 1_700_000_900,
+                absoluteExpiresAt: 1_702_592_000
+            )
+            return .ok(AuthConsumeOk(session: s, created: true))
+        }
     }
 
     func testEmailCodeLoginAndLogoutClearsLocalAuth() {
@@ -121,6 +145,71 @@ final class PortableAuthFlowTests: XCTestCase {
         let callback = PortableAuth.ProviderCallback(provider: PortableAuth.providerApple, idToken: "jwt-tok", nonce: attempt.nonce, state: attempt.state)
         XCTAssertEqual(flow.completeProviderLogin(session: session, attempt: attempt, callback: callback), .ok(EmptyAuthValue()))
         XCTAssertEqual(flow.completeProviderLogin(session: session, attempt: attempt, callback: callback), .err(PortableAuth.Verdict.codeUnknown))
+    }
+
+    func testAppleProviderLoginSendsRawNonceAndPersistsSession() {
+        let store = IosKeychainSecretStore(useMemoryOnly: true)
+        let api = StubAuthApi()
+        let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: StubClock(), nonces: StubNonce(), api: api))
+
+        let result = flow.loginWithProvider(
+            provider: PortableAuth.providerApple,
+            idToken: "header.payload.signature",
+            rawNonce: "raw-nonce-1",
+            authorizationCode: ""
+        )
+        guard case .ok(let outcome) = result else {
+            return XCTFail("Expected provider login")
+        }
+        XCTAssertTrue(outcome.created)
+        XCTAssertEqual(store.load(), outcome.session)
+        XCTAssertEqual(flow.rehydrate(), .active(outcome.session))
+        XCTAssertEqual(api.providerCalls, [
+            StubAuthApi.ProviderCall(provider: "apple", idToken: "header.payload.signature", nonce: "raw-nonce-1", authorizationCode: nil),
+        ])
+
+        let replay = flow.loginWithProvider(
+            provider: PortableAuth.providerApple,
+            idToken: "header.payload.signature",
+            rawNonce: "raw-nonce-1",
+            authorizationCode: "code"
+        )
+        XCTAssertEqual(replay, .err(PortableAuth.Verdict.codeUnknown))
+        XCTAssertEqual(api.providerCalls.count, 1)
+    }
+
+    func testAppleProviderLoginRefusesLocallyInvalidInputWithoutNetwork() throws {
+        let store = IosKeychainSecretStore(useMemoryOnly: true)
+        let api = StubAuthApi()
+        let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: StubClock(), nonces: StubNonce(), api: api))
+
+        XCTAssertEqual(flow.loginWithProvider(provider: "github", idToken: "t", rawNonce: "n", authorizationCode: nil), .err(AuthFlow.clientInvalid))
+        XCTAssertEqual(flow.loginWithProvider(provider: "apple", idToken: "", rawNonce: "n", authorizationCode: nil), .err(AuthFlow.clientInvalid))
+        XCTAssertEqual(flow.loginWithProvider(provider: "apple", idToken: "t", rawNonce: "", authorizationCode: nil), .err(AuthFlow.clientInvalid))
+        let longToken = String(repeating: "a", count: AuthFlow.maxProofChars + 1)
+        XCTAssertEqual(flow.loginWithProvider(provider: "apple", idToken: longToken, rawNonce: "n", authorizationCode: nil), .err(AuthFlow.clientInvalid))
+        try store.saveKey(AuthKeyBackup(username: "maria", accountKey: "abv-secret-key"))
+        XCTAssertEqual(flow.loginWithProvider(provider: "apple", idToken: "t", rawNonce: "n", authorizationCode: nil), .err(AuthFlow.clientInvalid))
+        XCTAssertTrue(api.providerCalls.isEmpty)
+        XCTAssertNil(store.load())
+    }
+
+    func testAppleProviderUnavailableKeepsDeviceSignedOut() {
+        let store = IosKeychainSecretStore(useMemoryOnly: true)
+        let api = StubAuthApi()
+        api.providerResult = .err(AccountProviderLogin.unavailableVerdict)
+        let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: StubClock(), nonces: StubNonce(), api: api))
+
+        XCTAssertEqual(
+            flow.loginWithProvider(provider: "apple", idToken: "t", rawNonce: "n-1", authorizationCode: nil),
+            .err("provider-unavailable")
+        )
+        XCTAssertNil(store.load())
+        XCTAssertEqual(flow.rehydrate(), .loggedOut)
+        api.providerResult = nil
+        guard case .ok = flow.loginWithProvider(provider: "apple", idToken: "t", rawNonce: "n-1", authorizationCode: nil) else {
+            return XCTFail("An unavailable reply must not spend the nonce")
+        }
     }
 
     func testLegacyLocalAppleSessionCannotRehydrateOrAuthorizeDeletion() throws {
