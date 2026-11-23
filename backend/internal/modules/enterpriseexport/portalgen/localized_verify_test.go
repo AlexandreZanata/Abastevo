@@ -102,12 +102,12 @@ func TestVerifyAcceptsLegacyPortugueseSitemapFilename(t *testing.T) {
 	}
 }
 
-func TestVerificationLimitsTranslatedCityRoutesToTheClosedList(t *testing.T) {
+func TestVerificationRecognizesEnglishMunicipalitiesAndFeaturedSpanishRoutes(t *testing.T) {
 	locales, err := loadPortalLocales(localizationAssets)
 	if err != nil {
 		t.Fatal(err)
 	}
-	portuguese, english := locales[defaultPortalLocale], locales["en"]
+	portuguese, english, spanish := locales[defaultPortalLocale], locales["en"], locales["es"]
 	for _, test := range []struct {
 		locale portalLocale
 		route  string
@@ -115,9 +115,10 @@ func TestVerificationLimitsTranslatedCityRoutesToTheClosedList(t *testing.T) {
 	}{
 		{locale: english, route: "/en/fuel-prices/mt/cuiaba/", want: "/precos/mt/cuiaba/"},
 		{locale: english, route: "/en/fuel-prices/mt/cuiaba-5103403/", want: "/precos/mt/cuiaba-5103403/"},
-		{locale: english, route: "/en/fuel-prices/mt/cuiaba-5108402/"},
-		{locale: english, route: "/en/fuel-prices/sp/cuiaba/"},
-		{locale: english, route: "/en/fuel-prices/mt/varzea-grande/"},
+		{locale: spanish, route: "/es/precios/mt/cuiaba-5108402/"},
+		{locale: spanish, route: "/es/precios/sp/cuiaba/"},
+		{locale: english, route: "/en/fuel-prices/mt/varzea-grande/", want: "/precos/mt/varzea-grande/"},
+		{locale: spanish, route: "/es/precios/mt/varzea-grande/"},
 		{locale: portuguese, route: "/precos/mt/varzea-grande/", want: "/precos/mt/varzea-grande/"},
 	} {
 		if got := portalRouteIdentity(test.route, test.locale, portuguese); got != test.want {

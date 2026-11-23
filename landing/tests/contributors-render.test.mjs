@@ -129,3 +129,27 @@ test('compiled asset carries no unsafe DOM calls', async () => {
   const asset = fs.readFileSync(compiled.modPath, 'utf8');
   assert.doesNotMatch(asset, /innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(/);
 });
+
+test('English contributor cards localize status and public roles', async () => {
+  const mod = await contributorsModule();
+  const { doc, container } = makeDoc();
+  doc.getElementById = () => container;
+  doc.querySelector = () => ({ getAttribute: () => 'https://api.example.invalid' });
+  container.dataset = { language: 'en' };
+  await mod.setupContributorsList({
+    document: doc,
+    fetchFn: async () => ({
+      ok: true,
+      json: async () => ({ items: [{
+        display_name: 'Bia',
+        links: [],
+        github_login: 'example',
+        contributor_since: '2026-03',
+        roles: ['Criador do projeto', 'Revisão de postos', 'Suporte'],
+      }] }),
+    }),
+  });
+  assert.deepEqual(flatten(container).filter((n) => n.textContent).map((n) => n.textContent), [
+    'Bia', 'Verified GitHub: example', 'Since 2026-03', 'Project creator', 'Station review', 'Support',
+  ]);
+});

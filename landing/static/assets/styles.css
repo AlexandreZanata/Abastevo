@@ -1151,88 +1151,6 @@ a.store-pill {
 }
 @media (max-width: 39.999rem) { .landing-home .hide-sm { display: none !important; } }
 
-.landing-home .language-picker { position: relative; flex: none; }
-.landing-home .language-picker summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  padding-inline: 0.75rem;
-  border: 1px solid #555;
-  border-radius: 999px;
-  color: #fff;
-  font-family: var(--display);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  cursor: pointer;
-  list-style: none;
-}
-.landing-home .language-picker summary::-webkit-details-marker { display: none; }
-.landing-home .language-picker summary:hover,
-.landing-home .language-picker[open] summary { border-color: #999; background: #262626; }
-.landing-home .language-picker-globe {
-  position: relative;
-  width: 1rem;
-  height: 1rem;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-}
-.landing-home .language-picker-globe::before,
-.landing-home .language-picker-globe::after { position: absolute; content: ""; }
-.landing-home .language-picker-globe::before { inset: -1px 3px; border-inline: 1px solid; border-radius: 50%; }
-.landing-home .language-picker-globe::after { inset: 50% 0 auto; border-top: 1px solid; }
-.landing-home .language-picker-code { display: flex; align-items: center; gap: 0.5rem; text-transform: uppercase; white-space: nowrap; }
-.landing-home .language-picker-code::after {
-  width: 0.375rem;
-  height: 0.375rem;
-  margin-top: -0.1875rem;
-  border: solid currentColor;
-  border-width: 0 1.5px 1.5px 0;
-  transform: rotate(45deg);
-  content: "";
-}
-.landing-home .language-picker[open] .language-picker-code::after { transform: translateY(0.1875rem) rotate(225deg); }
-.landing-home .language-picker-options {
-  position: absolute;
-  z-index: 61;
-  inset: calc(100% + 0.5rem) 0 auto auto;
-  width: max-content;
-  min-width: 11rem;
-  margin: 0;
-  padding: 0.375rem;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--page);
-  color: var(--ink);
-  box-shadow: 0 10px 30px #0003;
-  list-style: none;
-}
-.landing-home .language-picker-options li + li { margin-top: 0.125rem; }
-.landing-home .language-picker-options li > * {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 44px;
-  padding-inline: 0.75rem;
-  border-radius: 8px;
-  font-family: var(--display);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-.landing-home .language-picker-options a:hover { background: var(--surface); }
-.landing-home .language-picker-options a:focus-visible { outline-color: var(--ink); outline-offset: -3px; }
-.landing-home .language-picker-options [aria-current] { background: #e9f7ef; color: var(--accent); }
-.landing-home .language-picker-options [aria-current]::after {
-  width: 0.375rem;
-  height: 0.625rem;
-  border: solid currentColor;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  content: "";
-}
 @media (max-width: 75.999rem) {
   .landing-home .topbar-inner:has(.language-picker) { gap: 0.75rem; }
   .landing-home .topbar-actions:has(.language-picker) { gap: 0.25rem; }
@@ -1243,8 +1161,6 @@ a.store-pill {
 @media (max-width: 39.999rem) {
   .landing-home .topbar-inner:has(.language-picker) { gap: 0.5rem; }
   .landing-home .topbar-inner:has(.language-picker) .brand-word { height: 0.75rem; }
-  .landing-home .language-picker summary { width: 44px; padding-inline: 0; }
-  .landing-home .language-picker-code { display: none; }
 }
 
 /* Buttons and links */

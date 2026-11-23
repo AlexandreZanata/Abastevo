@@ -121,20 +121,6 @@ function setupMobileNav(): void {
   });
 }
 
-function setupLanguagePicker(): void {
-  const picker = document.querySelector<HTMLDetailsElement>('.language-picker');
-  if (!picker) return;
-
-  document.addEventListener('click', (event) => {
-    if (event.target instanceof Node && !picker.contains(event.target)) picker.open = false;
-  });
-  picker.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !picker.open) return;
-    picker.open = false;
-    picker.querySelector('summary')?.focus();
-  });
-}
-
 /**
  * App captures open enlarged in a native modal dialog. Without JavaScript the
  * captures stay as plain images. The dialog closes with its button, a click on
@@ -345,7 +331,6 @@ function init(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       setupMobileNav();
-      setupLanguagePicker();
       setupNavigationHighlight();
       setupCopyHelper();
       setupBackToTop();
@@ -354,7 +339,6 @@ function init(): void {
     });
   } else {
     setupMobileNav();
-    setupLanguagePicker();
     setupNavigationHighlight();
     setupCopyHelper();
     setupBackToTop();

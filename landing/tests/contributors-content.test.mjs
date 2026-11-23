@@ -56,3 +56,22 @@ test('contribuidores page carries the configured API origin', () => {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+test('the English contributor page shares the header and has a reciprocal Portuguese target', () => {
+  const outDir = buildTmp({ apiOrigin: 'https://api.example.invalid' });
+  try {
+    const portuguese = fs.readFileSync(path.join(outDir, 'contribuidores/index.html'), 'utf8');
+    const english = fs.readFileSync(path.join(outDir, 'en/contributors/index.html'), 'utf8');
+    const enHome = fs.readFileSync(path.join(outDir, 'en/index.html'), 'utf8');
+    assert.match(english, /<html lang="en">/);
+    assert.match(english, /<h1>Project contributors<\/h1>/);
+    assert.match(english, /id="contributors-list" data-language="en"/);
+    assert.match(english, /<meta name="abastevo-api" content="https:\/\/api\.example\.invalid">/);
+    assert.match(english, /\/assets\/contributors\.[a-f0-9]{8}\.js/);
+    assert.match(portuguese.split('</header>')[0], /class="language-picker"[\s\S]+href="\/en\/contributors\/"/);
+    assert.match(english.split('</header>')[0], /class="language-picker"[\s\S]+href="\/contribuidores\/"/);
+    assert.match(enHome, /<a href="\/en\/contributors\/">Contributors<\/a>/);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
