@@ -49,12 +49,12 @@ public final class PremiumStoreModel: ObservableObject {
     public func start() {
         guard updates == nil else { return }
         updates = Task { [weak self] in
-            for await result in Transaction.updates {
+            for await result in StoreKit.Transaction.updates {
                 await self?.handle(result, kind: .verify)
             }
         }
         Task { [weak self] in
-            for await result in Transaction.unfinished {
+            for await result in StoreKit.Transaction.unfinished {
                 await self?.handle(result, kind: .verify)
             }
         }
@@ -124,7 +124,7 @@ public final class PremiumStoreModel: ObservableObject {
             return
         }
         var found = false
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             if case .verified(let transaction) = result, transaction.productType == .autoRenewable {
                 found = true
                 await handle(result, kind: .restore)
@@ -135,7 +135,7 @@ public final class PremiumStoreModel: ObservableObject {
         }
     }
 
-    private func handle(_ result: VerificationResult<Transaction>, kind: PremiumPurchaseKind) async {
+    private func handle(_ result: VerificationResult<StoreKit.Transaction>, kind: PremiumPurchaseKind) async {
         guard case .verified(let transaction) = result else {
             // An unverified transaction is never sent or finished.
             phase = .message(String(localized: "A App Store não confirmou esta transação."))
