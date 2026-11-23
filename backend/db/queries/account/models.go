@@ -81,6 +81,15 @@ type AccountOidcNonce struct {
 	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
 }
 
+type AccountProviderGrant struct {
+	ID          pgtype.UUID        `json:"id"`
+	AccountID   pgtype.UUID        `json:"account_id"`
+	Provider    string             `json:"provider"`
+	Subject     string             `json:"subject"`
+	SealedToken []byte             `json:"sealed_token"`
+	CapturedAt  pgtype.Timestamptz `json:"captured_at"`
+}
+
 type AccountProviderLink struct {
 	AccountID pgtype.UUID        `json:"account_id"`
 	Provider  string             `json:"provider"`
@@ -88,6 +97,17 @@ type AccountProviderLink struct {
 	Subject   string             `json:"subject"`
 	Email     string             `json:"email"`
 	LinkedAt  pgtype.Timestamptz `json:"linked_at"`
+}
+
+type AccountProviderRevocation struct {
+	ID            pgtype.UUID        `json:"id"`
+	Provider      string             `json:"provider"`
+	SealedToken   []byte             `json:"sealed_token"`
+	RequestedAt   pgtype.Timestamptz `json:"requested_at"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+	Attempts      int32              `json:"attempts"`
+	LeaseNonce    pgtype.UUID        `json:"lease_nonce"`
+	LeaseUntil    pgtype.Timestamptz `json:"lease_until"`
 }
 
 type AccountSessionFamily struct {

@@ -8490,6 +8490,18 @@ paths:
                   pattern: '^[\x21-\x7E]+$'
                   description: Raw nonce whose SHA-256 hex the app placed in the Apple request.
                   example: 3f9c1d2e7a6b4c58
+                authorization_code:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                  pattern: '^[\x21-\x7E]+$'
+                  description: >
+                    Optional single-use authorization code of the same Apple
+                    authorization. When revocation is configured the server
+                    redeems it best-effort for a sealed refresh token that is
+                    revoked at Apple on account deletion; it never changes the
+                    sign-in outcome.
+                  example: c1a2b3.0.synthetic
       responses:
         '200':
           description: Authenticated session with bearer tokens shown once.

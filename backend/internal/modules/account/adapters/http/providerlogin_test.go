@@ -143,6 +143,7 @@ func TestProviderLoginHTTPRefusals(t *testing.T) {
 		{"unknown field", `{"provider":"apple","id_token":"` + good + `","nonce":"` + nonce + `","audience":"com.anpfuel.app"}`, 400, "account.bad-body"},
 		{"link audience token", loginBody("apple", f.nativeToken(t, "apple-http-subject-2", providerAudience, nonce), nonce), 401, "account.oidc-wrong-audience"},
 		{"raw nonce mismatch", loginBody("apple", good, nonce+"-other"), 401, "account.oidc-nonce-mismatch"},
+		{"malformed authorization code", `{"provider":"apple","id_token":"` + good + `","nonce":"` + nonce + `","authorization_code":"has space"}`, 400, "account.bad-body"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -152,8 +153,11 @@ func TestProviderLoginHTTPRefusals(t *testing.T) {
 			}
 		})
 	}
-	// None of the refusals consumed the honest proof.
-	if rec := f.call(t, "POST", "/v1/accounts/providers/login", loginBody("apple", good, nonce)); rec.Code != 200 {
+	// None of the refusals consumed the honest proof. A well-formed
+	// authorization code is accepted and, with capture unconfigured,
+	// ignored.
+	body := `{"provider":"apple","id_token":"` + good + `","nonce":"` + nonce + `","authorization_code":"c0ffee.0.synthetic-code"}`
+	if rec := f.call(t, "POST", "/v1/accounts/providers/login", body); rec.Code != 200 {
 		t.Fatalf("honest login after refusals: %d (%s)", rec.Code, rec.Body.String())
 	}
 }

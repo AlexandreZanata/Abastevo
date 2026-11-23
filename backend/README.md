@@ -165,7 +165,10 @@ unsafe combinations; staging and production require an explicit DSN.
   `ANPFUEL_ENTERPRISE_EXPORT_{ENABLED,ROOT,WINDOW_WEEKS}`,
   `ANPFUEL_ENTERPRISE_PORTAL_{ROOT,SITE_URL,LANDING_URL,SEARCH_JS,INDEXABLE,OFFICIAL_ONLY,REFRESH_ENABLED}`.
 - Accounts: `ANPFUEL_APPLE_NATIVE_AUDIENCE` (iOS bundle ID; unset keeps native
-  Sign in with Apple answering 503, never `anpfuel-backend`).
+  Sign in with Apple answering 503, never `anpfuel-backend`);
+  `ANPFUEL_APPLE_{TEAM_ID,KEY_ID,PRIVATE_KEY_FILE,GRANT_KEY_FILE}` (all or
+  none, absolute file paths, read by API and worker at start) enable Apple
+  token revocation on account deletion.
 - Payments: `ANPFUEL_PAYMENTS_{CATALOG_VERSION,RETURN_ORIGIN}`, `ANPFUEL_STRIPE_*`,
   `ANPFUEL_ASAAS_*` (modes, keys, webhook secrets, per-method sale switches).
 - Maps and misc: `ANPFUEL_MAP_DIST_DIR`, `ANPFUEL_MAP_DIST_PUBLIC_KEYS`,

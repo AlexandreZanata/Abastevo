@@ -21,6 +21,7 @@ import (
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountapple "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/apple"
 	accountjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/jobs"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
@@ -421,6 +422,21 @@ func run() error {
 			_, err := privacyapp.Erase(ctx, privacyErasePorts, contributorID, privacyapp.EraseDTO{ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID, Reason: "account-deletion"})
 			return err
 		},
+	}
+	// Sign in with Apple grant revocation (P13-T05, App Store 5.1.1(v)):
+	// deletion queues sealed refresh tokens; this reconcile revokes them
+	// at Apple. Without credentials on this process every attempt backs
+	// off and rows still drain at the retention window.
+	var accountGrantRevoker accountapp.GrantRevoker
+	if cfg.AppleSignIn.RevocationConfigured() {
+		appleClient, err := accountapple.NewClient(cfg.AppleSignIn.TeamID, cfg.AppleSignIn.KeyID, cfg.AppleSignIn.NativeAudience, cfg.AppleSignIn.PrivateKeyFile, cfg.AppleSignIn.GrantKeyFile)
+		if err != nil {
+			return errors.New("worker: Sign in with Apple credentials unavailable")
+		}
+		accountGrantRevoker = appleClient
+	}
+	accountGrantRevocations := accountapp.GrantRevocations{
+		Store: accountadapters.NewPGStore(pool.Underlying()), Revoker: accountGrantRevoker, NewNonce: jobs.NewUUIDv4, Now: time.Now,
 	}
 	// retentionPurges runs every inventory category bounded
 	// oldest-first (P07-T05): expired challenges, idempotency windows
@@ -867,7 +883,8 @@ func run() error {
 			_, _, err = modStore.OpenCaseTx(ctx, tx, c)
 			return err
 		}},
-		"account-erasure-reconcile": accountjobs.Erasure{Reconcile: accountRecovery.Reconcile},
+		"account-erasure-reconcile":     accountjobs.Erasure{Reconcile: accountRecovery.Reconcile},
+		accountjobs.GrantRevocationKind: accountjobs.GrantRevocation{Reconcile: accountGrantRevocations.Reconcile},
 		"privacy-erasure": privacyjobs.Erasure{
 			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {
 				return privacyStore.Get(ctx, requestID)
@@ -1168,6 +1185,7 @@ func run() error {
 		},
 		evidenceSweepSchedule(),
 		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
+		{Name: "account-provider-revoke-every-minute", Kind: accountjobs.GrantRevocationKind, Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{
 			Name: "privacy-retention-daily", Kind: "privacy-retention", Version: 1,
 			Interval: 24 * time.Hour, Enabled: true,

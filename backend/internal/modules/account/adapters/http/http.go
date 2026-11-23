@@ -398,21 +398,25 @@ func (h Handler) linkProvider(w http.ResponseWriter, r *http.Request) {
 // verified token is the proof. The expected audience is the
 // server-configured native client audience, never a request field;
 // unconfigured deployments answer 503 account.provider-unavailable.
-// The response shape is identical to the email-code consume.
+// The response shape is identical to the email-code consume. The
+// optional authorization_code feeds best-effort grant capture for
+// revocation on account deletion; it never changes the sign-in outcome.
 func (h Handler) loginWithProvider(w http.ResponseWriter, r *http.Request) {
 	var dto struct {
-		Provider string `json:"provider"`
-		IDToken  string `json:"id_token"`
-		Nonce    string `json:"nonce"`
+		Provider          string `json:"provider"`
+		IDToken           string `json:"id_token"`
+		Nonce             string `json:"nonce"`
+		AuthorizationCode string `json:"authorization_code"`
 	}
 	if err := read(r, &dto); err != nil || !validProvider(dto.Provider) || dto.IDToken == "" || dto.Nonce == "" {
 		bad(w, r)
 		return
 	}
 	got, err := h.Service.LoginWithProvider(r.Context(), application.ProviderLogin{
-		Provider: dto.Provider,
-		IDToken:  dto.IDToken,
-		Nonce:    dto.Nonce,
+		Provider:          dto.Provider,
+		IDToken:           dto.IDToken,
+		Nonce:             dto.Nonce,
+		AuthorizationCode: dto.AuthorizationCode,
 	})
 	if err != nil {
 		fail(w, r, err)

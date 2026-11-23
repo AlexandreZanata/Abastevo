@@ -49,8 +49,9 @@ type Store interface {
 	SuspendAccount(ctx context.Context, accountID string, nowUnix int64) error
 	ReactivateAccount(ctx context.Context, accountID string) error
 	// DeleteAccount revokes, captures contributor bindings into
-	// durable erasure intents and unlinks — atomically — returning
-	// the captured contributor IDs for scope cleanup (SEC04-B).
+	// durable erasure intents, queues sealed provider grants for
+	// revocation and unlinks — atomically — returning the captured
+	// contributor IDs for scope cleanup (SEC04-B, P13-T05).
 	DeleteAccount(ctx context.Context, accountID string, nowUnix int64) ([]string, error)
 	// ListErasureIntents replays durable intents after a crash
 	// between revocation and scope cleanup (SEC04-B/D).
@@ -71,6 +72,11 @@ type Store interface {
 	// only the creator observes created=true. The returned account
 	// carries its stored status for the caller's usability check.
 	ResolveProviderAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error)
+	// SaveProviderGrant stores one sealed provider refresh token,
+	// replacing the account's previous grant for the same subject. It
+	// serializes with DeleteAccount on the account row: a grant that
+	// arrives after deletion is queued for revocation instead.
+	SaveProviderGrant(ctx context.Context, grant domain.ProviderGrant) error
 	CreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential) error
 	FindKeyCredentialByUsername(ctx context.Context, usernameHash string) (domain.KeyCredential, bool, error)
 	FindKeyCredentialByLookup(ctx context.Context, lookup string) (domain.KeyCredential, bool, error)
@@ -124,7 +130,15 @@ type Service struct {
 	// (Apple: the app bundle ID). A missing or empty entry refuses
 	// native sign-in closed with ErrProviderLoginUnavailable.
 	NativeAudiences map[string]string
-	KeyProver       domain.KeyProver
+	// Grants redeems native authorization codes into sealed provider
+	// refresh tokens for revocation on deletion (App Store 5.1.1(v)).
+	// Nil disables capture: sign-in still works and deletion queues
+	// nothing to revoke.
+	Grants GrantExchanger
+	// OnGrantFailure observes best-effort capture failures. It never
+	// receives the code or any token.
+	OnGrantFailure func(ctx context.Context, provider string, err error)
+	KeyProver      domain.KeyProver
 	// RequestErasure enqueues owned scope cleanup for the captured
 	// contributor IDs plus account-social erasure after revocation
 	// (SEC04-B). Nil refuses deletion closed: unwired deletion would

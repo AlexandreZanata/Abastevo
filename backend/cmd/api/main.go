@@ -27,6 +27,7 @@ import (
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	dbstationprofile "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/stationprofile"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountapple "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/apple"
 	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
 	accountkeyprover "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover"
 	accountmail "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/mail"
@@ -527,6 +528,21 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		IDGen:           newUUID,
 	}
 	accountService.RequestBillingExit = billingExit.RequestAccountExit
+	// Sign in with Apple grant capture (P13-T05, App Store 5.1.1(v)):
+	// with revocation credentials configured, a native sign-in's
+	// authorization code is redeemed into a sealed refresh token that
+	// account deletion revokes. Unreadable configured key files refuse
+	// startup; absent configuration leaves capture off.
+	if cfg.AppleSignIn.RevocationConfigured() {
+		appleClient, err := accountapple.NewClient(cfg.AppleSignIn.TeamID, cfg.AppleSignIn.KeyID, cfg.AppleSignIn.NativeAudience, cfg.AppleSignIn.PrivateKeyFile, cfg.AppleSignIn.GrantKeyFile)
+		if err != nil {
+			return errors.New("api: Sign in with Apple credentials unavailable")
+		}
+		accountService.Grants = appleClient
+		accountService.OnGrantFailure = func(ctx context.Context, provider string, err error) {
+			logger.Warn(ctx, "account.provider_grant", "provider grant not captured", slog.String("provider", provider), slog.String("reason", accountapple.Reason(err)))
+		}
+	}
 	// PAY-20: proof-gated owner commands verify one live session per
 	// action through the account service; the proof value itself never
 	// leaves this closure.

@@ -49,6 +49,7 @@ account, email, billing, sync and analytics are not collected in MVP
 | Challenges/nonces | Proof of possession, replay defense | Until expiry (5 min) | Server only | Retention sweeper (`privacy-retention-daily`) |
 | Idempotency windows | Safe mobile retries | 7 days | Server only | Retention sweeper |
 | IP digests/quota windows | Abuse/cost bounding | ≤24 h rotating digest | Server only | Self-clean on check; provider edge retention configured consistently |
+| Sign in with Apple grant (sealed refresh token) | Revoke the app's Apple authorization when the account is deleted (App Store 5.1.1(v)) | While the account lives; after deletion until Apple accepts the revocation, at most 30 days | Server only; AES-256-GCM, key outside the database | Moved to the revocation queue with the deletion; row deleted on revocation or at 30 days |
 | Export archives | Rights access | 24 h download window | Owner only | Bytes purged on expiry/erasure; receipts stay |
 | Deletion ledger | Restore-safe replay | Backup horizon (35 days) | Restricted operators | Aged out by retention; never payload |
 | Operational logs | Diagnosis | 14 days trace data; 12-month aggregates without individual labels | Operators | Rotation (no sensitive bodies/tokens/URLs ever logged) |

@@ -41,10 +41,29 @@ the only provider route that issues a session:
   never stored or logged.
 - The response is the email-code consume shape (`account`, `session`,
   `created`). Refusals: 400 `account.bad-body` (shape, token over 4096
-  bytes, nonce outside 16–128 visible ASCII characters), 401
-  `account.oidc-*` (issuer, audience, signature, expiry, nonce mismatch or
-  reuse), 403/410 account status, 429 session budget, 503 provider
-  unavailable or JWKS outage.
+  bytes, nonce outside 16–128 visible ASCII characters, authorization code
+  over 512 bytes or not visible ASCII), 401 `account.oidc-*` (issuer,
+  audience, signature, expiry, nonce mismatch or reuse), 403/410 account
+  status, 429 session budget, 503 provider unavailable or JWKS outage.
+- Token revocation on deletion (App Store guideline 5.1.1(v)): the request
+  may carry the native `authorization_code`. With `ANPFUEL_APPLE_TEAM_ID`,
+  `ANPFUEL_APPLE_KEY_ID`, `ANPFUEL_APPLE_PRIVATE_KEY_FILE` (the `.p8` Sign
+  in with Apple key) and `ANPFUEL_APPLE_GRANT_KEY_FILE` (32 random bytes)
+  configured, the server redeems it at Apple's `/auth/token` (client secret:
+  ES256 JWT, `iss` team, `sub` and `client_id` the native audience, `aud`
+  `https://appleid.apple.com`, 5-minute lifetime), keeps the refresh token
+  only sealed with AES-256-GCM bound to the grant id, and only when the
+  returned identity matches the verified subject. One grant per account and
+  subject; a newer sign-in replaces it. Capture is best-effort: an
+  unavailable endpoint or stale code never blocks sign-in (a redacted
+  warning is logged), and without the four variables the code is ignored
+  and deletion has nothing to revoke. Deletion moves the account's sealed
+  grants to the revocation queue in the deletion transaction (a grant saved
+  concurrently with deletion is queued, never kept); the worker job
+  `account-provider-revoke` calls `/auth/revoke` and deletes each row on
+  acceptance, retrying with backoff and dropping the sealed token 30 days
+  after deletion at the latest. The queue keeps no account, subject or
+  email.
 
 For account deletion, the iOS client requires a deletion receipt with
 `status: deleted` and `erasure_requested: true` before it confirms the request
@@ -72,7 +91,8 @@ never to make a failing test pass. Executable mirror:
   SHA-256 before comparison; identity token at most 4096 bytes.
 - Proof boundary: social writes require active account + live session +
   fresh device-key proof together; public reads stay anonymous.
-- Inventory/retention: account row, provider links, code verifiers (purged
+- Inventory/retention: account row, provider links, sealed Apple grants
+  (dropped ≤30d after deletion), code verifiers (purged
   ≤24h after expiry), sessions (purged ≤7d after absolute expiry),
   link/recovery audit (180d). Erasure cascades to keys, social
   revisions/votes and replicas via deletion ledger (P13-T04).

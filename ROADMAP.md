@@ -136,6 +136,7 @@ The organic growth and multilingual items follow
 ## iOS app
 
 - **Android parity.** Complete the [journey contracts](iosApp/PARITY.md), starting with native build and device acceptance, public data coverage and the signed account and contribution flows. Verify the remaining Android capabilities and their iOS-specific permissions and accessibility.
+- **Sign in with Apple activation.** The backend exchange and deletion-time token revocation exist but are off: the app must send the raw nonce (request nonce = its SHA-256 hex) plus `authorization_code` to `POST /v1/accounts/providers/login`; the owner creates the Sign in with Apple key, sets `ANPFUEL_APPLE_*` and mounts the `.p8` and grant-key files for API and worker on the VPS; then live evidence with a real Apple ID (sign-in, re-sign-in, deletion → `/auth/revoke` accepted). Apple server-to-server notifications (consent revoked, Apple ID deleted) are not consumed yet. ([free account access](docs/security/free-account-access.md))
 
 ## Deferred (start only on an explicit owner request)
 

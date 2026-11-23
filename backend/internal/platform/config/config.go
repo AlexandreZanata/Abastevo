@@ -289,6 +289,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Bool("github_token_configured", c.GitHubToken != ""),
 		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
 		slog.Bool("apple_native_login_configured", c.AppleSignIn.NativeLoginConfigured()),
+		slog.Bool("apple_revocation_configured", c.AppleSignIn.RevocationConfigured()),
 		slog.Any("r2", c.R2.r2LogValue()),
 		slog.Any("payments", c.Payments.logValue()),
 		slog.Any("store_billing", c.StoreBilling.logValue()),

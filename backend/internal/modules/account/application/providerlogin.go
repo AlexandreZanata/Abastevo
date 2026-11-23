@@ -14,6 +14,10 @@ type ProviderLogin struct {
 	Provider string
 	IDToken  string
 	Nonce    string
+	// AuthorizationCode is the optional single-use code of the same
+	// native authorization. When grant capture is configured it is
+	// redeemed for a revocable refresh token; otherwise it is ignored.
+	AuthorizationCode string
 }
 
 // LoginWithProvider opens a FREE account session from a verified native
@@ -25,7 +29,9 @@ type ProviderLogin struct {
 // subject is the only lookup key: an existing link signs in to its
 // account (suspended and deleted accounts refuse with their verdicts);
 // an unknown subject creates one FREE account bound to it. Equal email
-// strings never select or merge an account.
+// strings never select or merge an account. An accompanying
+// authorization code is redeemed best-effort into a sealed, revocable
+// provider grant once the account is known to be usable.
 func (s *Service) LoginWithProvider(ctx context.Context, req ProviderLogin) (AuthResult, error) {
 	if !domain.ValidProvider(req.Provider) {
 		return AuthResult{}, domain.ErrOIDCUnknownIssuer
@@ -34,7 +40,8 @@ func (s *Service) LoginWithProvider(ctx context.Context, req ProviderLogin) (Aut
 	if !domain.NativeLoginProvider(req.Provider) || audience == "" || s.Verifier == nil {
 		return AuthResult{}, domain.ErrProviderLoginUnavailable
 	}
-	if !domain.ValidProviderToken(req.IDToken) || !domain.ValidNativeNonce(req.Nonce) {
+	if !domain.ValidProviderToken(req.IDToken) || !domain.ValidNativeNonce(req.Nonce) ||
+		(req.AuthorizationCode != "" && !domain.ValidAuthorizationCode(req.AuthorizationCode)) {
 		return AuthResult{}, domain.ErrProviderProofMalformed
 	}
 	subject, err := s.Verifier.Verify(ctx, req.Provider, req.IDToken, audience, domain.NativeNonceClaim(req.Nonce))
@@ -69,6 +76,7 @@ func (s *Service) LoginWithProvider(ctx context.Context, req ProviderLogin) (Aut
 	if err := accountUsable(acc); err != nil {
 		return AuthResult{}, err
 	}
+	s.captureGrant(ctx, acc.ID, req.Provider, subject.Subject, req.AuthorizationCode, now)
 	sess, err := s.newSession(ctx, acc.ID, now)
 	if err != nil {
 		return AuthResult{}, err
