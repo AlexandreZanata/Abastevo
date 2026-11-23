@@ -63,6 +63,9 @@
 		78C491DFB89378EFA71C4EE2 /* AnpFuelCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AACC75FCC42674A9CCAA6349 /* AnpFuelCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		B4B2D398EE49CE354D4B2E4C /* AnpFuelCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AACC75FCC42674A9CCAA6349 /* AnpFuelCore.framework */; };
 		D07860F0CA26F3EF9BDB913D /* AnpFuelCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AACC75FCC42674A9CCAA6349 /* AnpFuelCore.framework */; };
+		135A04C12F737F3CAD1FAE14 /* PremiumStoreBilling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0493AF2D8A1FA7031BBC213 /* PremiumStoreBilling.swift */; };
+		936016342055A9842CF8598E /* PremiumStoreViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83261BC7B666205267E2EEA8 /* PremiumStoreViews.swift */; };
+		62FB0FF8814890A98599EB6E /* PremiumStoreBillingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950D311BD03373EDFFEF6789 /* PremiumStoreBillingTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -155,6 +158,9 @@
 		D50C8D32B54C0C943F6F5444 /* PortablePhotoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortablePhotoTests.swift; sourceTree = "<group>"; };
 		E6E3D0851E05E4EDA2D161DA /* PortableTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableTextTests.swift; sourceTree = "<group>"; };
 		70F9F0BC136BF9EA9B9D8705 /* TankFillUseCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankFillUseCaseTests.swift; sourceTree = "<group>"; };
+		B0493AF2D8A1FA7031BBC213 /* PremiumStoreBilling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStoreBilling.swift; sourceTree = "<group>"; };
+		83261BC7B666205267E2EEA8 /* PremiumStoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStoreViews.swift; sourceTree = "<group>"; };
+		950D311BD03373EDFFEF6789 /* PremiumStoreBillingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStoreBillingTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -212,6 +218,7 @@
 			37EB66AC846EED2DC2C30483,
 			51EF41871414D5A17F1A5281,
 			B23443AAEE6B20D4BFC3F7F2,
+			B0493AF2D8A1FA7031BBC213,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -223,6 +230,7 @@
 			AC4764C8ABCB3186114D67F1,
 			DBE025F1EC7F3B42D8DB21A5,
 			9B48D62A0266CED3D9707C9E,
+			83261BC7B666205267E2EEA8,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -248,6 +256,7 @@
 			D50C8D32B54C0C943F6F5444,
 			E6E3D0851E05E4EDA2D161DA,
 			70F9F0BC136BF9EA9B9D8705,
+			950D311BD03373EDFFEF6789,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -359,6 +368,7 @@
 			1B4B9BC6FE18E1872EF3B72E,
 			222AAB07FB649BD66815B20E,
 			195DD67E08B2511C4F229CA9,
+			135A04C12F737F3CAD1FAE14,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -370,6 +380,7 @@
 			3BE6397E18A589ED912C0BB7,
 			BCBCAE5A996CF7C2A5DF38F7,
 			960D3FE8D8D6FA85DBCA24AA,
+			936016342055A9842CF8598E,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -391,6 +402,7 @@
 			E12A462B419DBFAC732DA3B6,
 			DA38F2B93EFB4F499451177B,
 			66DBFE52A564A3911A029577,
+			62FB0FF8814890A98599EB6E,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

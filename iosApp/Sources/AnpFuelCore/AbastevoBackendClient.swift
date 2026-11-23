@@ -144,7 +144,7 @@ public final class AbastevoHttpClient: AuthAccountApi {
     private static let requestTimeout: TimeInterval = 20.0
 
     public var environment: ApiEnvironment
-    private let session: URLSession
+    let session: URLSession
 
     public init(environment: ApiEnvironment = .staging) {
         self.environment = environment

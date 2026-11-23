@@ -42,6 +42,13 @@ public struct ProfileRootView: View {
                 }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    viewModel.activeSheet = .premium
+                } label: {
+                    Label("Abastevo Premium", systemImage: "crown.fill")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
             } else {
                 Text("Exploração como Convidado")
                     .font(.headline)

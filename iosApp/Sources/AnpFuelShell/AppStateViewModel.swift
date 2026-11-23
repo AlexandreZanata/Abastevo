@@ -71,6 +71,13 @@ public final class AppStateViewModel: ObservableObject {
     private var communityRead: Task<Void, Never>?
     private var cityReadGeneration = UUID()
 
+    /// StoreKit 2 Premium; the server verifies every App Store transaction.
+    public lazy var premiumStore: PremiumStoreModel = PremiumStoreModel(
+        client: httpClient,
+        session: { [weak self] in self?.authFlow.currentSession() },
+        signer: { [weak self] in self?.premiumRequestSigner() }
+    )
+
     public init(store: IosLocalStore = IosLocalStore()) {
         self.store = store
         self.municipalityCatalog = (try? MunicipalityCatalog(bundle: .main)) ?? .empty
@@ -741,6 +748,12 @@ public final class AppStateViewModel: ObservableObject {
     public func persist() {
         store.save(snapshot)
     }
+
+    /// The device-key signer bound to the signed-in account, or nil while the
+    /// device has no bound contributor key.
+    func premiumRequestSigner() -> PremiumRequestSigner? {
+        return nil
+    }
 }
 
 public enum PublicReadState: Equatable {
@@ -766,6 +779,7 @@ public enum AppModalSheet: String, Identifiable {
     case mapDownloads
     case auth
     case accountManagement
+    case premium
     case vehiclesLedger
     case driverHub
     case enterpriseHub

@@ -110,6 +110,8 @@ public struct AbastevoRootView: View {
             AuthSheetView(viewModel: viewModel)
         case .accountManagement:
             AccountManagementSheetView(viewModel: viewModel)
+        case .premium:
+            PremiumStoreSheetView(model: viewModel.premiumStore)
         case .vehiclesLedger:
             VehiclesAndLedgerSheetView(viewModel: viewModel)
         case .driverHub:
