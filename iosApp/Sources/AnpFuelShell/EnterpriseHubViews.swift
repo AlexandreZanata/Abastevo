@@ -762,7 +762,7 @@ struct EnterpriseExpenseView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button("Remover foto", role: .destructive) {
-                        receipt = nil
+                        self.receipt = nil
                     }
                 } else {
                     PhotosPicker(selection: $pickerItem, matching: .images) {
