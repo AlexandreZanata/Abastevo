@@ -247,6 +247,9 @@ type Config struct {
 	// Payments holds provider switches and credentials; LogValue/Preflight
 	// expose readiness only, never key material.
 	Payments PaymentsConfig
+	// StoreBilling holds the Google Play and App Store channels; LogValue
+	// exposes readiness only, never key material.
+	StoreBilling StoreBillingConfig
 	// AdminKeyHashes are the accepted lowercase SHA-256 digests (current
 	// plus optional rotation value). Empty keeps the admin routes unmounted.
 	// AdminOrigin must exactly match the browser Origin for non-GET admin
@@ -261,6 +264,9 @@ type Config struct {
 	GitHubRepo       string
 	GitHubToken      string
 	PublicWebOrigins []string
+	// AppleSignIn configures native Sign in with Apple; zero keeps the
+	// native sign-in route answering provider-unavailable.
+	AppleSignIn AppleSignInConfig
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -282,8 +288,11 @@ func (c Config) LogValue() slog.Value {
 		slog.String("github_repo", c.GitHubRepo),
 		slog.Bool("github_token_configured", c.GitHubToken != ""),
 		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
+		slog.Bool("apple_native_login_configured", c.AppleSignIn.NativeLoginConfigured()),
+		slog.Bool("apple_revocation_configured", c.AppleSignIn.RevocationConfigured()),
 		slog.Any("r2", c.R2.r2LogValue()),
 		slog.Any("payments", c.Payments.logValue()),
+		slog.Any("store_billing", c.StoreBilling.logValue()),
 	)
 }
 
@@ -693,6 +702,7 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	cfg.R2 = r2
 	cfg.Payments = loadPayments(getenv, cfg.Env)
+	cfg.StoreBilling = loadStoreBilling(getenv)
 	adminHashes, adminOrigin, adminCIDRs, err := loadAdmin(getenv)
 	if err != nil {
 		return Config{}, err
@@ -707,6 +717,11 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	cfg.GitHubRepo = githubRepo
 	cfg.GitHubToken = githubToken
 	cfg.PublicWebOrigins = publicOrigins
+	apple, err := loadApple(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.AppleSignIn = apple
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {

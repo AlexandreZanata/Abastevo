@@ -794,6 +794,77 @@ func (s *PGStore) FindProviderOwner(ctx context.Context, provider, subject strin
 	return uuidString(row.AccountID), true, nil
 }
 
+// ResolveProviderAccount returns the account owning link's provider
+// subject or creates candidate bound to it (P13-T05 native sign-in). A
+// transaction-scoped advisory lock on the subject serializes concurrent
+// first sign-ins, so exactly one creates the account and the others
+// read the committed link. A unique violation against a concurrent
+// session-authenticated link of the same subject (which does not take
+// this lock) rolls back the candidate and re-resolves once.
+func (s *PGStore) ResolveProviderAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error) {
+	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" || link.AccountID != candidate.ID {
+		return domain.Account{}, false, domain.ErrOIDCWrongAudience
+	}
+	id, err := mustUUID(candidate.ID)
+	if err != nil {
+		return domain.Account{}, false, err
+	}
+	for attempt := 0; ; attempt++ {
+		acc, created, err := s.resolveProviderAccountOnce(ctx, id, link, candidate)
+		if isUniqueViolation(err) && attempt == 0 {
+			continue
+		}
+		return acc, created, err
+	}
+}
+
+func (s *PGStore) resolveProviderAccountOnce(ctx context.Context, id pgtype.UUID, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return domain.Account{}, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('provider-login:' || $1 || ':' || $2))`, link.Provider, link.Subject); err != nil {
+		return domain.Account{}, false, err
+	}
+	q := account.New(tx)
+	owner, err := q.FindProviderOwner(ctx, account.FindProviderOwnerParams{Provider: link.Provider, Subject: link.Subject})
+	if err == nil {
+		if owner.Issuer != link.Issuer {
+			return domain.Account{}, false, domain.ErrOIDCUnknownIssuer
+		}
+		row, err := q.GetAccountByID(ctx, owner.AccountID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Account{}, false, domain.ErrAccountNotFound
+			}
+			return domain.Account{}, false, err
+		}
+		return domain.Account{ID: uuidString(row.ID), Alias: row.Alias, Status: row.Status, CreatedAt: unix(row.CreatedAt)}, false, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return domain.Account{}, false, err
+	}
+	if err := q.InsertAccount(ctx, account.InsertAccountParams{
+		ID: id, Alias: candidate.Alias, Status: candidate.Status, CreatedAt: stamp(candidate.CreatedAt),
+	}); err != nil {
+		return domain.Account{}, false, err
+	}
+	if err := q.InsertProviderLink(ctx, account.InsertProviderLinkParams{
+		AccountID: id,
+		Provider:  link.Provider,
+		Issuer:    link.Issuer,
+		Subject:   link.Subject,
+		Email:     link.Email,
+		LinkedAt:  stamp(link.LinkedAt),
+	}); err != nil {
+		return domain.Account{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Account{}, false, err
+	}
+	return candidate, true, nil
+}
+
 // CountAddresses counts email bindings of one account.
 func (s *PGStore) CountAddresses(ctx context.Context, accountID string) (int, error) {
 	id, err := mustUUID(accountID)
@@ -988,6 +1059,9 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 	if err := q.DeleteAccountBindings(ctx, id); err != nil {
 		return nil, err
 	}
+	// P13-T05: the account_provider_grants_erasure trigger (000301) moved
+	// the sealed provider grants to the revocation queue when the status
+	// became deleted, inside this same transaction.
 	if err := tx.Commit(ctx); err != nil {
 		return nil, enterpriseRefusal(err)
 	}

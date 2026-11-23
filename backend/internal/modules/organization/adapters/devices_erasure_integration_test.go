@@ -33,14 +33,14 @@ func TestOrganizationDevicesOrdinaryAccountErasureEndsBothScopesAndPreservesRece
 	}
 	before := snapshot()
 	// Exact operations used by the installed personal erasure triggers in
-	// migrations075/081/133..143/164. This temporary fixture role/database is
+	// migrations075/081/133..143/164/301. This temporary fixture role/database is
 	// dropped by orgtest; no grant applies to arbitrary or future tables.
 	runtimeRole := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	for _, grant := range []string{
 		"GRANT SELECT,INSERT,UPDATE ON cloud_state,driver_earning_owner_state TO ",
-		"GRANT SELECT,INSERT ON cloud_erased_ids,cloud_device_revocations,subscription_retired_tokens TO ",
+		"GRANT SELECT,INSERT ON cloud_erased_ids,cloud_device_revocations,subscription_retired_tokens,account_provider_revocations TO ",
 		"GRANT SELECT,UPDATE ON cloud_records,cloud_changes,cloud_devices,entitlement_grants,contributor_github_links,staff_assignments,subscription_purchases,subscription_operations,subscription_verification_slots TO ",
-		"GRANT SELECT,DELETE ON driver_earning_adjustments,driver_earning_revisions,driver_earnings,driver_earning_commands,driver_earning_tombstones,driver_distance_commands,driver_distance_observations,driver_shift_commands,driver_shift_gaps,driver_shifts,driver_cost_profile_items,driver_cost_commands,driver_cost_tombstones,driver_cost_profiles,driver_maintenance_commands,driver_maintenance_tombstones,driver_maintenance_schedules,driver_reconciliation_commands,driver_reconciliation_records,driver_reconciliation_decisions,driver_report_snapshots,contributor_claims,contributor_profile_edits,contributor_links,contributor_profiles,forum_comment_reactions,forum_post_reactions TO ",
+		"GRANT SELECT,DELETE ON driver_earning_adjustments,driver_earning_revisions,driver_earnings,driver_earning_commands,driver_earning_tombstones,driver_distance_commands,driver_distance_observations,driver_shift_commands,driver_shift_gaps,driver_shifts,driver_cost_profile_items,driver_cost_commands,driver_cost_tombstones,driver_cost_profiles,driver_maintenance_commands,driver_maintenance_tombstones,driver_maintenance_schedules,driver_reconciliation_commands,driver_reconciliation_records,driver_reconciliation_decisions,driver_report_snapshots,contributor_claims,contributor_profile_edits,contributor_links,contributor_profiles,forum_comment_reactions,forum_post_reactions,account_provider_grants TO ",
 	} {
 		if _, e := fx.f.Admin.Exec(t.Context(), grant+runtimeRole); e != nil {
 			t.Fatal(e)

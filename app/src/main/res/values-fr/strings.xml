@@ -1084,8 +1084,8 @@
     <string name="premium_retained">Vos données restent accessibles sans Premium.</string>
     <string name="premium_manage">Gérer l’abonnement</string>
     <string name="premium_restore">Restaurer l’achat</string>
-    <string name="premium_restore_note">Restaure un abonnement vérifié par la boutique. L’achat payant est désactivé dans cette version.</string>
-    <string name="premium_restore_unavailable">Les achats ne sont pas disponibles dans cette version. Aucun achat ni droit local n’a été créé.</string>
+    <string name="premium_restore_note">Recherche dans Google Play les abonnements de ce compte et les vérifie.</string>
+    <string name="premium_restore_unavailable">Les achats Google Play ne sont pas disponibles pour le moment. Aucun achat ni droit local n’a été créé.</string>
     <string name="premium_offline">Impossible de vérifier Premium pour le moment. Réessayez.</string>
     <string name="premium_denied">Reconnectez-vous pour vérifier Premium.</string>
     <string name="premium_error">Le statut Premium n’a pas pu être vérifié.</string>
@@ -1466,4 +1466,34 @@
         <item quantity="other">%d nouvelles réponses</item>
     </plurals>
     <string name="home_open_map">Voir sur la carte</string>
+    <string name="premium_store_section_title">S’abonner</string>
+    <string name="premium_store_plans_loading">Chargement des formules Google Play…</string>
+    <string name="premium_store_plans_unavailable">Impossible de charger les formules Google Play.</string>
+    <string name="premium_store_subscribe">S’abonner</string>
+    <string name="premium_store_billing_note">Le paiement, le renouvellement et la résiliation sont gérés par Google Play.</string>
+    <string name="premium_plan_title_week">Formule hebdomadaire</string>
+    <string name="premium_plan_title_month">Formule mensuelle</string>
+    <string name="premium_plan_title_year">Formule annuelle</string>
+    <string name="premium_plan_title_months">Formule de %1$d mois</string>
+    <string name="premium_plan_title_other">Formule Premium</string>
+    <string name="premium_plan_price_week">%1$s par semaine</string>
+    <string name="premium_plan_price_month">%1$s par mois</string>
+    <string name="premium_plan_price_year">%1$s par an</string>
+    <string name="premium_plan_price_every_months">%1$s tous les %2$d mois</string>
+    <string name="premium_plan_price_other">%1$s par période de facturation</string>
+    <string name="premium_purchase_launching">En attente de Google Play…</string>
+    <string name="premium_purchase_verifying">Vérification de votre achat…</string>
+    <string name="premium_purchase_restoring">Recherche d’achats dans Google Play…</string>
+    <string name="premium_purchase_pending">Votre paiement est en attente dans Google Play. Premium ne démarre qu’une fois le paiement confirmé et vérifié.</string>
+    <string name="premium_purchase_cancelled">Achat annulé. Rien n’a été acheté.</string>
+    <string name="premium_purchase_verified">Achat vérifié avec Google Play.</string>
+    <string name="premium_purchase_denied">Cet achat n’a pas pu être confirmé pour ce compte, aucun accès n’a donc été accordé.</string>
+    <string name="premium_purchase_retry">L’achat n’a pas pu être confirmé pour le moment. Il reste enregistré dans Google Play et sera vérifié à nouveau.</string>
+    <string name="premium_purchase_store_error">Google Play n’a pas pu traiter la demande. Réessayez plus tard.</string>
+    <string name="premium_purchase_already_owned">Ce compte Google possède déjà cet abonnement. Restaurez-le sur ce compte.</string>
+    <string name="premium_purchase_owner_changed">Le compte a changé pendant l’achat. Le résultat n’a pas été appliqué.</string>
+    <string name="premium_restore_done">Achats restaurés et vérifiés.</string>
+    <string name="premium_restore_none">Aucun abonnement Google Play à restaurer n’a été trouvé.</string>
+    <string name="premium_restore_other_account">L’abonnement Google Play de cet appareil appartient à un autre compte Abastevo. Il n’a pas été transféré.</string>
+    <string name="premium_active_other_source">Premium est déjà actif sur ce compte via un autre canal. Aucun second achat n’est nécessaire.</string>
 </resources>

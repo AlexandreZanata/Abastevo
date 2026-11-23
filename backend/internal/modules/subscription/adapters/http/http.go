@@ -21,6 +21,13 @@ type Service interface {
 	Admit(context.Context, app.Principal, app.Command) (app.Receipt, error)
 	Export(context.Context, app.Principal, int, time.Time, string) ([]app.ExportRow, error)
 }
+
+// offerSource lists the configured store offers for an owner. The
+// application Storefront implements it; a plain service has no offers.
+type offerSource interface {
+	Offers(app.Principal) []app.Offer
+}
+
 type Handler struct {
 	Service      Service
 	Sessions     func(context.Context, string, string) (string, error)
@@ -36,6 +43,7 @@ type purchaseRequest struct {
 	AccessToken string `json:"access_token"`
 	OperationID string `json:"operation_id"`
 	Token       string `json:"purchase_token"`
+	Provider    string `json:"provider,omitempty"`
 }
 
 func (h Handler) RegisterRoutes(r chi.Router) {
@@ -122,10 +130,15 @@ func (h Handler) status(w http.ResponseWriter, r *http.Request) {
 		premiumError(w, r, err)
 		return
 	}
+	offers := []app.Offer{}
+	if source, ok := h.Service.(offerSource); ok {
+		offers = source.Offers(p)
+	}
 	writePremium(w, r, struct {
 		domain.Status
-		ManagementURL string `json:"management_url"`
-	}{status, "https://play.google.com/store/account/subscriptions"})
+		ManagementURL string      `json:"management_url"`
+		StoreOffers   []app.Offer `json:"store_offers"`
+	}{status, "https://play.google.com/store/account/subscriptions", offers})
 }
 func (h Handler) purchase(w http.ResponseWriter, r *http.Request, kind string) {
 	var dto purchaseRequest
@@ -133,7 +146,7 @@ func (h Handler) purchase(w http.ResponseWriter, r *http.Request, kind string) {
 		premiumError(w, r, err)
 		return
 	}
-	if !domain.ValidID(dto.OperationID) || !domain.ValidToken(dto.Token) {
+	if !domain.ValidID(dto.OperationID) || !domain.ValidToken(dto.Token) || (dto.Provider != "" && !domain.ValidProvider(dto.Provider)) {
 		premiumError(w, r, domain.ErrInvalid)
 		return
 	}
@@ -151,7 +164,7 @@ func (h Handler) purchase(w http.ResponseWriter, r *http.Request, kind string) {
 		premiumError(w, r, err)
 		return
 	}
-	receipt, err := h.Service.Admit(r.Context(), p, app.Command{OperationID: dto.OperationID, Token: dto.Token, Kind: kind})
+	receipt, err := h.Service.Admit(r.Context(), p, app.Command{OperationID: dto.OperationID, Token: dto.Token, Kind: kind, Provider: dto.Provider})
 	if err != nil {
 		premiumError(w, r, err)
 		return

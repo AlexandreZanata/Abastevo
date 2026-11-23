@@ -351,6 +351,7 @@ sql:
       - db/migrations/000060_account_refresh_history.sql
       - db/migrations/000062_account_admission_events.sql
       - db/migrations/000063_account_erasure_recovery.sql
+      - db/migrations/000301_account_provider_grants.sql
     gen:
       go:
         package: account
@@ -444,6 +445,7 @@ sql:
       - db/migrations/000076_subscription_notifications.sql
       - db/migrations/000077_subscription_reconcile.sql
       - db/migrations/000141_entitlement_grants.sql
+      - db/migrations/000300_subscription_store_provider.sql
     gen:
       go:
         package: subscription

@@ -70,4 +70,25 @@ final class PortableMoneyTests: XCTestCase {
         XCTAssertThrowsError(try PortableMoney.parseCapacityMilliLiters("0"))
         XCTAssertThrowsError(try PortableMoney.parseCapacityMilliLiters("200,001"))
     }
+
+    func testBatteryCapacityAcceptsExactWattHoursAndAndroidBounds() throws {
+        XCTAssertEqual(try PortableMoney.parseBatteryCapacityWh(" 52,1250 "), 52_125)
+        XCTAssertEqual(try PortableMoney.parseBatteryCapacityWh("0.001"), 1)
+        XCTAssertEqual(try PortableMoney.parseBatteryCapacityWh("1000000"), 1_000_000_000)
+
+        for invalid in ["", "0", "-1", "1,0001", "1000000,001", "NaN", "inf", "1e999", "1.2,3"] {
+            XCTAssertThrowsError(try PortableMoney.parseBatteryCapacityWh(invalid), invalid)
+        }
+    }
+
+    func testDriverAmountsUseExactCentavosWithNoRoundingOrOverflow() throws {
+        XCTAssertEqual(try PortableMoney.parseBrlCentavos("0,00"), 0)
+        XCTAssertEqual(try PortableMoney.parseBrlCentavos("78,50"), 7_850)
+        XCTAssertEqual(try PortableMoney.parseBrlCentavos("320.0100"), 32_001)
+        XCTAssertEqual(try PortableMoney.parseBrlCentavos("10000000000"), 1_000_000_000_000)
+
+        for invalid in ["", "-0,01", "1,001", "10000000000,01", "NaN", "inf", "9e999"] {
+            XCTAssertThrowsError(try PortableMoney.parseBrlCentavos(invalid), invalid)
+        }
+    }
 }

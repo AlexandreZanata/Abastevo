@@ -12,8 +12,9 @@ periods.
 |---|---|---|---|
 | `evidence-sweep-hourly` | `evidence-sweep` | Hourly | Every app-owned copy 24 h from first receipt (P15-T04; case extensions no longer extend photo bytes), orphan/stuck sessions, 90 d hash purge |
 | `privacy-retention-daily` | `privacy-retention` | Daily | Challenges, idempotency windows, closed moderation cases (12 mo), expired export bytes, ledger horizon (35 d), observation-age metric |
+| `account-provider-revoke-every-minute` | `account-provider-revoke` | Every minute | Revokes deleted accounts' sealed Sign in with Apple refresh tokens at Apple (≤20 per run); each row is deleted on acceptance or 30 days after deletion even if Apple never accepts (backoff 1 min doubling to 1 h) |
 
-Both enqueue through the durable job queue with dedupe keys; poison
+All enqueue through the durable job queue with dedupe keys; poison
 jobs cap retries then park for audited replay. There is no manual
 purge procedure: ad-hoc SQL deletes outside these jobs are findings,
 not operations.

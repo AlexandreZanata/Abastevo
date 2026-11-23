@@ -112,6 +112,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-base:18.11.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
+    // Store billing dependency review: docs/android/premium-area.md
+    implementation(libs.play.billing)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 

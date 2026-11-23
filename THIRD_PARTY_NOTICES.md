@@ -22,6 +22,10 @@ sources, dependencies, fonts and other third-party material.
 - CameraX (`androidx.camera` 1.4.2) is Apache-2.0; its `camera-core` native
   image library bundles libyuv under BSD-3-Clause. Review:
   [live board framing](docs/android/ocr-live-framing.md).
+- Google Play Billing Library (`com.android.billingclient:billing` 9.1.0) is
+  governed by the [Android Software Development Kit License](https://developer.android.com/studio/terms.html);
+  its bundled `third_party_licenses.txt` covers its own dependencies. Review:
+  [Premium area](docs/android/premium-area.md#dependency-review-google-play-billing-library).
 - Kotlin, Android Jetpack, Room, OkHttp and other dependencies retain their own
   license files and notices. The Abastevo visible credit does not replace them.
 

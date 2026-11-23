@@ -40,7 +40,20 @@ var (
 	ErrQuota        = errors.New("subscription: admission exhausted")
 )
 
+// Store providers that issue in-app purchases (B-BR-STORE-01).
+const (
+	ProviderPlay     = "play"
+	ProviderAppStore = "app_store"
+)
+
+// ValidProvider reports whether provider names a supported store.
+func ValidProvider(provider string) bool {
+	return provider == ProviderPlay || provider == ProviderAppStore
+}
+
 type Snapshot struct {
+	// Provider is the store that issued the purchase; empty means Play.
+	Provider     string
 	State        State
 	ValidUntil   time.Time
 	VerifiedAt   time.Time
@@ -118,7 +131,11 @@ func Evaluate(s *Snapshot, now time.Time, live bool) Status {
 		result.Reason = "verified"
 		result.Capabilities = PremiumCapabilities()
 		until := s.ValidUntil.UTC()
-		result.Tiers = append(result.Tiers, TierStatus{Tier: "PRO", Source: "play", ValidUntil: &until})
+		source := s.Provider
+		if source == "" {
+			source = ProviderPlay
+		}
+		result.Tiers = append(result.Tiers, TierStatus{Tier: "PRO", Source: source, ValidUntil: &until})
 	default:
 		result.Reason = "state-ineligible"
 	}
@@ -219,6 +236,17 @@ func ValidToken(s string) bool {
 	return true
 }
 func TokenDigest(environment, packageName, token string) string {
-	sum := sha256.Sum256([]byte("play\x00" + environment + "\x00" + packageName + "\x00" + token))
+	return StoreTokenDigest(ProviderPlay, environment, packageName, token)
+}
+
+// StoreTokenDigest keys a purchase by store, environment, app identity and
+// the store's stable purchase key (B-BR-STORE-05). The Play form is the
+// frozen PRM01 digest, so rows written before App Store support keep their
+// keys. An unknown provider yields an empty digest, which no store accepts.
+func StoreTokenDigest(provider, environment, appID, token string) string {
+	if !ValidProvider(provider) {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(provider + "\x00" + environment + "\x00" + appID + "\x00" + token))
 	return hex.EncodeToString(sum[:])
 }

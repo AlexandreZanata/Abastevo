@@ -35,6 +35,10 @@ data class PremiumStatus(
     val retainedDataAccess: Boolean,
     val paymentsConfigured: Boolean,
     val managementUrl: String,
+    /** Active entitlement sources, each with its own paid-through time (B-BR-STORE-02). */
+    val tiers: List<PremiumTier> = emptyList(),
+    /** One validated offer per configured store; empty means no in-app purchase. */
+    val storeOffers: List<StoreOffer> = emptyList(),
 ) {
     init {
         require(policyVersion == 1)
@@ -42,7 +46,13 @@ data class PremiumStatus(
         require(capabilities.size <= 32)
         require(capabilities.all { it.isNotBlank() && it.length <= 64 })
         require(retainedDataAccess)
+        require(tiers.size <= MAX_TIERS)
+        require(storeOffers.size <= MAX_STORE_OFFERS)
     }
+
+    /** The single Google Play offer, or null when absent or ambiguous (fail closed). */
+    val playOffer: StoreOffer?
+        get() = storeOffers.filter { it.provider == StoreProvider.PLAY }.singleOrNull()
 
     /** Paid writes require a verified eligible state; free exits stay open. */
     val canUsePaidCapabilities: Boolean
@@ -53,6 +63,8 @@ data class PremiumStatus(
 
     companion object {
         const val MANAGEMENT_URL: String = "https://play.google.com/store/account/subscriptions"
+        const val MAX_TIERS: Int = 16
+        const val MAX_STORE_OFFERS: Int = 8
     }
 }
 

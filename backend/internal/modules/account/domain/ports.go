@@ -51,6 +51,8 @@ var (
 	ErrSessionBudgetExhausted      = errors.New("account: session budget exhausted")
 	ErrErasureWiringMissing        = errors.New("account: erasure wiring missing")
 	ErrBillingExitWiringMissing    = errors.New("account: billing exit wiring missing")
+	ErrProviderLoginUnavailable    = errors.New("account: provider sign-in unavailable")
+	ErrProviderProofMalformed      = errors.New("account: malformed provider proof")
 )
 
 // Clock is the only time source portable logic may use; tests inject a fake.
@@ -186,6 +188,10 @@ func VerdictCode(err error) string {
 		return "erasure-wiring-missing"
 	case errors.Is(err, ErrBillingExitWiringMissing):
 		return "billing-exit-wiring-missing"
+	case errors.Is(err, ErrProviderLoginUnavailable):
+		return "provider-unavailable"
+	case errors.Is(err, ErrProviderProofMalformed):
+		return "provider-proof-malformed"
 	default:
 		return "invalid-value"
 	}

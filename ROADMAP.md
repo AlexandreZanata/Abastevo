@@ -16,7 +16,8 @@ owner-signed AAB, the Console declarations and the CoMaps legal sign-off.
 
 - **Free-account data export.** Add the account data export endpoint (access right); the contract was frozen but no route or OpenAPI entry exists (only premium/cloud export). (P36-T03)
 - **Payments sandbox and test mode.** Run the gated sandbox harness with owner Stripe test-mode and Asaas sandbox credentials, then enable test mode on the VPS (real checkout off) and prove callbacks and order → access → renewal/cancel/refund. Live channels open one at a time after merchant approval and Pix Automático eligibility. (PAY-21, PAY-23)
-- **Commercial inputs (owner).** Real BRL prices, the Enterprise offer and fiscal/invoice/legal terms are undecided, so every paid channel stays disabled; Google Play Billing is later. (PAY-01, PRM10)
+- **Commercial inputs (owner).** Real BRL prices, the Enterprise offer and fiscal/invoice/legal terms are undecided, so every paid channel stays disabled. (PAY-01, PRM10)
+- **Store billing activation (owner + ops).** Code for Play Billing and App Store In-App Purchase is in place ([store billing](docs/product/payments/store-billing.md)). Remaining: create the Play subscription and base plans, the App Store subscription group and products, the Play service account with Console permissions, the RTDN Pub/Sub push subscription, the App Store In-App Purchase key and notification URLs; mount the keys and set the `ANPFUEL_STORE_*`, `ANPFUEL_PLAY_*` and `ANPFUEL_APPSTORE_*` values on a `test` deployment; run the [acceptance checklist](docs/backend/payments/store-billing-integration.md#acceptance-checklist) with license and sandbox testers; then production with the sandbox fallback on for App Review.
 - **Push delivery.** The alerts module enrolls tokens but no push provider or app SDK is integrated; implement per the notification content contract. (PRM11–PRM14)
 - **Admin suite contract decisions, then code.** Decide and implement: account detail with roles and contributor link (code returns only account, grants, paid summary); `/contribuidores/` API origin, CSP and paging; signed-owner proof and a quota on contributor writes, gist visibility; admin keys in headers/cookies (ADM-03) and logout reason; role codes vs pt-BR labels. Then mark ADR-023 accepted.
 - **Community reliability without GPS (stage B).** Media independence, abuse and price-context signals, contributor outcomes, a calibrated publication policy and its in-app explanation; never started. (OPT-B00–B08)
@@ -43,7 +44,7 @@ owner-signed AAB, the Console declarations and the CoMaps legal sign-off.
 - **Native navigation.** My-position modes, route from the current location, follow camera, rerouting, screen-off guidance; fix the suspected main-thread stall at TTS start-up.
 - **Offline community.** Outbox for votes, comments and reports; city packs; revalidation and deletion propagation; offline media expiry; end-to-end acceptance. (CS16–CS25)
 - **Driver suite (Premium, `ANPFUEL_DRIVER_ENABLED` off).** Owner decisions D1 shift checkpoints, D2 Play foreground-service location declaration, D3 session invalidation events; close DRV-18–25 (logout/Room races, permission/account changes, break-even and cost windows, Compose/a11y tests, field GPS/battery proof); DRV-26–35 (import, reports, privacy/offline/battery/security acceptance, pilot) not started.
-- **Premium purchase/restore UI.** Disabled by design; wire it once the payment path is chosen. (PRM09-T02)
+- **Premium Play purchase acceptance.** The Android Play Billing flow is wired and stays hidden until the server lists a `play` offer; remaining: Play Console subscription and base plans, license testers, and a signed internal-track device run of purchase, pending, cancel, restore, refund and outage recovery against the backend verify/restore routes. (PRM09-T02)
 - **Fuel-quality journeys.** Enforcement/sanction screens once safe station links exist; check overlap with the existing occurrence explorer first. (FQ-14)
 - **Optional: Android Auto.** Select and license-review the Car App Library; no adapter exists. (MAP-30)
 - **Optional: games.** Backend ranking/leaderboard and the device/performance matrix. (GME-03, GME-05)
@@ -132,11 +133,15 @@ The organic growth and multilingual items follow
 - **Live charging status and tariffs.** No source exists; the optional operator adapter needs real credentials. (EE-17)
 - **Optional licensed coverage.** Partner opening feeds or paid POI data only if a measured gap remains after the OSM/CNEFE/RFB pipeline. (P28)
 
+## iOS app
+
+- **Android parity.** Complete the [journey contracts](iosApp/PARITY.md), starting with native build and device acceptance, public data coverage and the signed account and contribution flows. Verify the remaining Android capabilities and their iOS-specific permissions and accessibility.
+- **Sign in with Apple activation.** The backend exchange and deletion-time token revocation exist but are off: the app must send the raw nonce (request nonce = its SHA-256 hex) plus `authorization_code` to `POST /v1/accounts/providers/login`; the owner creates the Sign in with Apple key, sets `ANPFUEL_APPLE_*` and mounts the `.p8` and grant-key files for API and worker on the VPS; then live evidence with a real Apple ID (sign-in, re-sign-in, deletion → `/auth/revoke` accepted). Apple server-to-server notifications (consent revoked, Apple ID deleted) are not consumed yet. ([free account access](docs/security/free-account-access.md))
+
 ## Deferred (start only on an explicit owner request)
 
 - **Stage D.** Fuel-purchase receipts/NFC-e and business claim/management/portal, until the app is consolidated with thousands of real users; this also holds enterprise F7 and station-profile activation (code exists, routes contained with 503 until trust roots, revocation sources and proof storage are accepted).
 - **Mandatory contribution proximity.** Only after more than 90% of stations have verified coordinates and the owner decides. (PRM22)
-- **iOS.** Archived (ADR-016); on resumption: real Xcode target, native login/Keychain, camera and 24-hour expiry, Core Location, device acceptance, parity with the Android flows.
 
 ## Repository hygiene
 

@@ -26,3 +26,11 @@ implemented `fuel-purchase-interval` projection; `matched-window` is refused
 until its own expenses/distance evidence port exists (never mislabeled as
 fuel-only consumption). Its private bounded reader refuses truncation and
 excludes void/deleted records, independently of public 101-row pagination.
+
+Store billing (2026-11-23): verify and restore take `provider` (`play` or
+`app_store`); the status read adds `store_offers` with the owner's store
+binding; `POST /v1/premium/app-store-notifications` receives App Store Server
+Notifications V2. Purchases carry their issuing store in
+`subscription_purchases.provider`. See the
+[store billing contract](../../product/payments/store-billing.md) and the
+[integration guide](../payments/store-billing-integration.md).

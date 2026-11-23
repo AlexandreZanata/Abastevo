@@ -39,7 +39,7 @@ func (s *Store) ForJob(ctx context.Context, digest string) (app.StoredToken, err
 	if err = tx.Commit(ctx); err != nil {
 		return app.StoredToken{}, domain.ErrUnavailable
 	}
-	return app.StoredToken{AccountID: idstr(p.AccountID), Environment: p.Environment, PackageName: p.PackageName, Digest: digest, CipherToken: p.TokenCipher, Snapshot: *snapshot(p), Revision: p.Revision}, nil
+	return app.StoredToken{Provider: p.Provider, AccountID: idstr(p.AccountID), Environment: p.Environment, PackageName: p.PackageName, Digest: digest, CipherToken: p.TokenCipher, Snapshot: *snapshot(p), Revision: p.Revision}, nil
 }
 func (s *Store) MarkAcknowledged(ctx context.Context, digest string, revision int64) error {
 	row, err := s.ForJob(ctx, digest)
@@ -92,7 +92,7 @@ func (s *Store) ReceiveNotification(ctx context.Context, n app.Notification) (bo
 	}
 	known := lookup == nil
 	if known {
-		if purchase.Environment != n.Environment || purchase.PackageName != n.PackageName {
+		if purchase.Provider != providerOf(n.Provider) || purchase.Environment != n.Environment || purchase.PackageName != n.PackageName {
 			return false, domain.ErrDenied
 		}
 		if err = s.authorize(ctx, q, app.Principal{AccountID: idstr(purchase.AccountID)}, false, false); err != nil {

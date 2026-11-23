@@ -1,5 +1,8 @@
 package com.anpfuel.app.ui.premium
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -42,8 +46,14 @@ import com.anpfuel.app.ui.components.ProfileActionRow
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.app.ui.theme.PremiumColors
+import com.anpfuel.application.port.StorePurchaseHost
 import com.anpfuel.domain.premium.PremiumState
 import com.anpfuel.domain.premium.PremiumStatus
+import com.anpfuel.domain.premium.StoreBillingPeriod
+import com.anpfuel.domain.premium.StoreOffer
+import com.anpfuel.domain.premium.StorePlan
+import com.anpfuel.domain.premium.StoreProduct
+import com.anpfuel.domain.premium.StoreProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +65,7 @@ fun PremiumScreen(
     viewModel: PremiumViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(viewModel, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -69,8 +80,25 @@ fun PremiumScreen(
         onRefresh = viewModel::forceRefresh,
         onRestoreUnavailable = viewModel::restoreUnavailable,
         onClearNotice = viewModel::clearNotice,
+        onSubscribe = { plan ->
+            val activity = context.findActivity()
+            if (activity == null) {
+                viewModel.storeOpenFailed()
+            } else {
+                viewModel.subscribe(StorePurchaseHost(activity), plan)
+            }
+        },
+        onRetryPlans = viewModel::retryPlans,
+        onRestore = viewModel::restore,
+        onRetryVerification = viewModel::retryVerification,
         modifier = modifier,
     )
+}
+
+private fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +112,10 @@ internal fun PremiumContent(
     onRestoreUnavailable: () -> Unit,
     onClearNotice: () -> Unit,
     modifier: Modifier = Modifier,
+    onSubscribe: (StorePlan) -> Unit = {},
+    onRetryPlans: () -> Unit = {},
+    onRestore: () -> Unit = onRestoreUnavailable,
+    onRetryVerification: () -> Unit = {},
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -108,6 +140,7 @@ internal fun PremiumContent(
                         state = state,
                         onRefresh = onRefresh,
                         onManageSubscription = onManageSubscription,
+                        onRestore = onRestore,
                         onRestoreUnavailable = onRestoreUnavailable,
                     )
                 }
@@ -115,9 +148,10 @@ internal fun PremiumContent(
                     PremiumSignedOutCard(onSignIn = onSignIn)
                 }
                 else -> {
-                    if (state.loading) {
+                    if (state.loading && !state.purchaseBusy) {
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                     }
+                    PremiumPurchaseProgress(state.purchasePhase)
                     PremiumSectionTitle(stringResource(R.string.premium_status_section_title))
                     PremiumStatusCard(status = state.status)
                     state.notice?.let { notice ->
@@ -126,8 +160,11 @@ internal fun PremiumContent(
                             onRetry = onRefresh,
                             onSignIn = onSignIn,
                             onDismiss = onClearNotice,
+                            onRetryVerification = onRetryVerification,
+                            onRestore = onRestore,
                         )
                     }
+                    PremiumStoreSection(state = state, onSubscribe = onSubscribe, onRetryPlans = onRetryPlans)
                     state.status?.let { status ->
                         PremiumSectionTitle(stringResource(R.string.premium_capabilities_title))
                         PremiumCapabilitiesCard(status = status)
@@ -137,6 +174,7 @@ internal fun PremiumContent(
                         state = state,
                         onRefresh = onRefresh,
                         onManageSubscription = onManageSubscription,
+                        onRestore = onRestore,
                         onRestoreUnavailable = onRestoreUnavailable,
                     )
                 }
@@ -150,6 +188,7 @@ private fun PremiumSkeletonSections(
     state: PremiumUiState,
     onRefresh: () -> Unit,
     onManageSubscription: () -> Unit,
+    onRestore: () -> Unit,
     onRestoreUnavailable: () -> Unit,
 ) {
     Text(
@@ -166,6 +205,7 @@ private fun PremiumSkeletonSections(
         state = state,
         onRefresh = onRefresh,
         onManageSubscription = onManageSubscription,
+        onRestore = onRestore,
         onRestoreUnavailable = onRestoreUnavailable,
     )
 }
@@ -215,6 +255,7 @@ private fun PremiumActionsCard(
     state: PremiumUiState,
     onRefresh: () -> Unit,
     onManageSubscription: () -> Unit,
+    onRestore: () -> Unit,
     onRestoreUnavailable: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -246,7 +287,8 @@ private fun PremiumActionsCard(
                 icon = Icons.Default.Restore,
                 title = stringResource(R.string.premium_restore),
                 subtitle = stringResource(R.string.premium_restore_note),
-                onClick = onRestoreUnavailable,
+                onClick = if (state.canRestore) onRestore else onRestoreUnavailable,
+                enabled = !state.purchaseBusy,
                 iconTint = palette.accent,
             )
         }
@@ -263,6 +305,49 @@ private val previewStatus = PremiumStatus(
     paymentsConfigured = false,
     managementUrl = PremiumStatus.MANAGEMENT_URL,
 )
+
+private val previewOffer = StoreOffer(
+    provider = StoreProvider.PLAY,
+    products = listOf(StoreProduct("abastevo_premium", listOf("monthly", "yearly"))),
+    accountBinding = "0".repeat(64),
+    managementUrl = PremiumStatus.MANAGEMENT_URL,
+)
+
+private val previewPlans = listOf(
+    StorePlan(
+        "abastevo_premium", "monthly", "preview-monthly", "R$ 9,90",
+        StoreBillingPeriod(StoreBillingPeriod.PeriodUnit.MONTH, 1),
+    ),
+    StorePlan(
+        "abastevo_premium", "yearly", "preview-yearly", "R$ 99,00",
+        StoreBillingPeriod(StoreBillingPeriod.PeriodUnit.YEAR, 1),
+    ),
+)
+
+@Preview(showBackground = true, name = "Premium plans")
+@Composable
+private fun PremiumPlansPreview() {
+    AnpFuelTheme(darkTheme = false, dynamicColor = false) {
+        PremiumContent(
+            state = PremiumUiState(
+                signedOut = false,
+                status = previewStatus.copy(
+                    state = PremiumState.NONE,
+                    capabilities = emptySet(),
+                    validUntil = null,
+                    storeOffers = listOf(previewOffer),
+                ),
+                plans = previewPlans,
+            ),
+            onBack = {},
+            onSignIn = {},
+            onManageSubscription = {},
+            onRefresh = {},
+            onRestoreUnavailable = {},
+            onClearNotice = {},
+        )
+    }
+}
 
 @Preview(showBackground = true, name = "Premium light")
 @Composable

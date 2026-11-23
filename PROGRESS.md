@@ -1,5 +1,7 @@
 # Current delivery
 
+- iOS parity (PR #250, baseline `9c7752dd`): follow the [journey contracts](iosApp/PARITY.md). The public-data, route and misleading-success corrections await native verification. The PR remains open and Android feature parity remains pending.
+
 - English municipality summaries cover the Portuguese portal census, and the public contributors page has an English edition. The home language menu is the single header control for landing and portal pages. Verify the route pairs, contributor privacy surface and protected release before recording public readiness.
 
 - Public web localization extends English and Spanish to search, station details, enforcement, the editorial forum, app tutorials and informative legal pages. Public source data and authorization rules stay in place. Verify the protected release, public locale navigation and the refreshed portal artifact before declaring publication complete.

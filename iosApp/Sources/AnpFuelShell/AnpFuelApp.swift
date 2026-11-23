@@ -1,27 +1,138 @@
 import SwiftUI
 import AnpFuelCore
 
-/// Thin iPhone host for the shared-fixture use case (P12-T04).
-///
-/// Runs `TankFillUseCase.fillCheapest` against the frozen golden vectors and
-/// presents the source-separated result. Live reads, accounts and persistence
-/// arrive in P10/P13/P17; this shell proves native wiring only.
-///
-/// NOT COMPILED: no Xcode toolchain on this Linux host. First real
-/// simulator/device run happens on macOS (Xcode 26.4); see iosApp/README.md.
+/// Main Abastevo iPhone/iPad application shell synchronized with `main` (v3.1.18).
+/// Preserves `TankFillViewModel` and `TankFillView` for P12 contract tests.
 @main
 struct AnpFuelApp: App {
+    @StateObject private var viewModel = AppStateViewModel()
+
     var body: some Scene {
         WindowGroup {
-            TankFillView(
-                viewModel: TankFillViewModel(
-                    prices: [
-                        StationPrice(station: "Expensive", unitMilli: 5990),
-                        StationPrice(station: "Cheap", unitMilli: 5499),
-                    ],
-                    capacityMilliLiters: 50_000
-                )
+            AbastevoRootView(viewModel: viewModel)
+                .preferredColorScheme(viewModel.preferredColorScheme)
+        }
+    }
+}
+
+public struct AbastevoRootView: View {
+    @ObservedObject var viewModel: AppStateViewModel
+    @Environment(\.scenePhase) private var scenePhase
+
+    public init(viewModel: AppStateViewModel) {
+        self.viewModel = viewModel
+    }
+
+    public var body: some View {
+        Group {
+            if !viewModel.snapshot.termsAccepted {
+                TermsGateView(viewModel: viewModel)
+            } else if !viewModel.snapshot.onboardingCompleted {
+                OnboardingFlowView(viewModel: viewModel)
+            } else {
+                mainFourTabShell
+            }
+        }
+        .sheet(item: $viewModel.selectedStation) { station in
+            StationDetailSheetView(viewModel: viewModel, station: station)
+        }
+        .sheet(item: $viewModel.activeSheet) { sheet in
+            sheetDestination(sheet)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { viewModel.anpSurvey.automaticSyncIfDue() }
+        }
+        .task { viewModel.anpSurvey.automaticSyncIfDue() }
+    }
+
+    private var mainFourTabShell: some View {
+        VStack(spacing: 0) {
+            AbastevoTopChromeBar(
+                locationLabel: viewModel.municipalityLabel,
+                weekLabel: viewModel.surveyWeekLabel,
+                isOffline: viewModel.isOfflineSimulation,
+                signedInAlias: viewModel.signedInAlias,
+                onLocationTap: { viewModel.activeSheet = .locationPicker },
+                onWeekTap: { viewModel.activeSheet = .weekPicker },
+                onSettingsTap: { viewModel.activeSheet = .settings },
+                onProfileTap: { viewModel.selectTab(.profile) }
             )
+
+            Group {
+                switch viewModel.selectedTab {
+                case .explore:
+                    ExploreRootView(viewModel: viewModel)
+                case .community:
+                    CommunityRootView(viewModel: viewModel)
+                case .map:
+                    MapRootView(viewModel: viewModel)
+                case .profile:
+                    ProfileRootView(viewModel: viewModel)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            AbastevoBottomTabBar(
+                selectedTab: viewModel.selectedTab,
+                locale: viewModel.currentLocale,
+                onSelectTab: { viewModel.selectTab($0) }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func sheetDestination(_ sheet: AppModalSheet) -> some View {
+        switch sheet {
+        case .locationPicker:
+            LocationPickerSheetView(viewModel: viewModel)
+        case .weekPicker:
+            WeekPickerSheetView(viewModel: viewModel)
+        case .priceHistory:
+            PriceHistorySheetView(viewModel: viewModel)
+        case .evExplore:
+            EvChargingExploreSheetView(viewModel: viewModel)
+        case .qualityReports:
+            QualityReportsSheetView()
+        case .suggestStation:
+            SuggestStationSheetView(viewModel: viewModel)
+        case .masterFaq:
+            MasterFaqSheetView()
+        case .capturePrice:
+            CapturePriceSheetView(viewModel: viewModel)
+        case .forumFeed:
+            ForumFeedSheetView(viewModel: viewModel)
+        case .contributors:
+            ContributorsSheetView(viewModel: viewModel)
+        case .myContributions:
+            MyContributionsSheetView(viewModel: viewModel)
+        case .evTripPlanner:
+            EvTripPlannerSheetView(viewModel: viewModel)
+        case .savedPlaces:
+            SavedPlacesSheetView(viewModel: viewModel)
+        case .mapDownloads:
+            MapDownloadsSheetView(viewModel: viewModel)
+        case .auth:
+            AuthSheetView(viewModel: viewModel)
+        case .accountManagement:
+            AccountManagementSheetView(viewModel: viewModel)
+        case .premium:
+            PremiumStoreSheetView(model: viewModel.premiumStore)
+        case .vehiclesLedger:
+            VehiclesAndLedgerSheetView(viewModel: viewModel)
+        case .driverHub:
+            DriverHubSheetView(viewModel: viewModel)
+        case .enterpriseHub:
+            EnterpriseHubSheetView(viewModel: viewModel)
+        case .arcadeGames:
+            ArcadeGamesSheetView(viewModel: viewModel)
+        case .trainingConsent:
+            TrainingConsentSheetView()
+        case .settings:
+            SettingsSheetView(viewModel: viewModel)
+        case .help:
+            HelpSheetView()
+        case .privacy:
+            PrivacyDocumentSheet()
         }
     }
 }

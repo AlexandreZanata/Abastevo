@@ -48,15 +48,17 @@ func (q *Queries) DeferReconciliation(ctx context.Context, tokenDigest string) (
 
 const duePurchases = `-- name: DuePurchases :many
 SELECT p.token_digest,p.account_id FROM subscription_purchases p JOIN accounts a ON a.id=p.account_id
-WHERE p.environment=$1 AND p.package_name=$2 AND NOT p.retired AND p.token_cipher IS NOT NULL
+WHERE p.provider=$1 AND p.environment=$2 AND p.package_name=$3
+AND NOT p.retired AND p.token_cipher IS NOT NULL
 AND p.next_check_at<=clock_timestamp() AND a.status='active'
-ORDER BY p.next_check_at,p.token_digest LIMIT $3
+ORDER BY p.next_check_at,p.token_digest LIMIT $4::int
 `
 
 type DuePurchasesParams struct {
+	Provider    string `json:"provider"`
 	Environment string `json:"environment"`
 	PackageName string `json:"package_name"`
-	Limit       int32  `json:"limit"`
+	LimitCount  int32  `json:"limit_count"`
 }
 
 type DuePurchasesRow struct {
@@ -65,7 +67,12 @@ type DuePurchasesRow struct {
 }
 
 func (q *Queries) DuePurchases(ctx context.Context, arg DuePurchasesParams) ([]DuePurchasesRow, error) {
-	rows, err := q.db.Query(ctx, duePurchases, arg.Environment, arg.PackageName, arg.Limit)
+	rows, err := q.db.Query(ctx, duePurchases,
+		arg.Provider,
+		arg.Environment,
+		arg.PackageName,
+		arg.LimitCount,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +92,7 @@ func (q *Queries) DuePurchases(ctx context.Context, arg DuePurchasesParams) ([]D
 }
 
 const exportPurchases = `-- name: ExportPurchases :many
-SELECT token_digest,product_id,base_plan_id,state,valid_until,verified_at,retired,acknowledged
+SELECT token_digest,provider,product_id,base_plan_id,state,valid_until,verified_at,retired,acknowledged
 FROM subscription_purchases WHERE account_id=$1::uuid
 AND (NOT $2::boolean OR (verified_at,token_digest)<($3::timestamptz,$4::text))
 ORDER BY verified_at DESC,token_digest DESC LIMIT $5::int
@@ -101,6 +108,7 @@ type ExportPurchasesParams struct {
 
 type ExportPurchasesRow struct {
 	TokenDigest  string             `json:"token_digest"`
+	Provider     string             `json:"provider"`
 	ProductID    string             `json:"product_id"`
 	BasePlanID   string             `json:"base_plan_id"`
 	State        string             `json:"state"`
@@ -127,6 +135,7 @@ func (q *Queries) ExportPurchases(ctx context.Context, arg ExportPurchasesParams
 		var i ExportPurchasesRow
 		if err := rows.Scan(
 			&i.TokenDigest,
+			&i.Provider,
 			&i.ProductID,
 			&i.BasePlanID,
 			&i.State,
@@ -218,7 +227,7 @@ func (q *Queries) GetProviderReceipt(ctx context.Context, arg GetProviderReceipt
 }
 
 const getPurchase = `-- name: GetPurchase :one
-SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest, next_check_at FROM subscription_purchases WHERE token_digest=$1
+SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest, next_check_at, provider FROM subscription_purchases WHERE token_digest=$1
 `
 
 func (q *Queries) GetPurchase(ctx context.Context, tokenDigest string) (SubscriptionPurchase, error) {
@@ -241,6 +250,7 @@ func (q *Queries) GetPurchase(ctx context.Context, tokenDigest string) (Subscrip
 		&i.TokenCipher,
 		&i.LinkedDigest,
 		&i.NextCheckAt,
+		&i.Provider,
 	)
 	return i, err
 }
@@ -514,7 +524,7 @@ func (q *Queries) PurgeTerminalPurchase(ctx context.Context, tokenDigest string)
 }
 
 const readStatus = `-- name: ReadStatus :one
-SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest, next_check_at FROM subscription_purchases WHERE account_id=$1
+SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest, next_check_at, provider FROM subscription_purchases WHERE account_id=$1
 ORDER BY (NOT retired AND NOT refresh_required AND state IN ('ACTIVE','CANCELED','GRACE')
 AND valid_until>clock_timestamp() AND verified_at>clock_timestamp()-interval '15 minutes') DESC,
 verified_at DESC,token_digest LIMIT 1
@@ -540,6 +550,7 @@ func (q *Queries) ReadStatus(ctx context.Context, accountID pgtype.UUID) (Subscr
 		&i.TokenCipher,
 		&i.LinkedDigest,
 		&i.NextCheckAt,
+		&i.Provider,
 	)
 	return i, err
 }
@@ -594,19 +605,21 @@ func (q *Queries) RetireToken(ctx context.Context, arg RetireTokenParams) (pgtyp
 }
 
 const savePurchase = `-- name: SavePurchase :one
-INSERT INTO subscription_purchases(token_digest,account_id,environment,package_name,product_id,base_plan_id,state,valid_until,verified_at,token_cipher,acknowledged,linked_digest)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+INSERT INTO subscription_purchases(token_digest,account_id,provider,environment,package_name,product_id,base_plan_id,state,valid_until,verified_at,token_cipher,acknowledged,linked_digest)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 ON CONFLICT (token_digest) DO UPDATE SET state=EXCLUDED.state,valid_until=EXCLUDED.valid_until,
 verified_at=EXCLUDED.verified_at,revision=subscription_purchases.revision+1,refresh_required=false,
 token_cipher=EXCLUDED.token_cipher,acknowledged=(subscription_purchases.acknowledged OR EXCLUDED.acknowledged),linked_digest=EXCLUDED.linked_digest,
 product_id=EXCLUDED.product_id,base_plan_id=EXCLUDED.base_plan_id
-WHERE subscription_purchases.account_id=EXCLUDED.account_id AND NOT subscription_purchases.retired AND subscription_purchases.state<>'REVOKED'
+WHERE subscription_purchases.account_id=EXCLUDED.account_id AND subscription_purchases.provider=EXCLUDED.provider
+AND NOT subscription_purchases.retired AND subscription_purchases.state<>'REVOKED'
 RETURNING token_digest
 `
 
 type SavePurchaseParams struct {
 	TokenDigest  string             `json:"token_digest"`
 	AccountID    pgtype.UUID        `json:"account_id"`
+	Provider     string             `json:"provider"`
 	Environment  string             `json:"environment"`
 	PackageName  string             `json:"package_name"`
 	ProductID    string             `json:"product_id"`
@@ -623,6 +636,7 @@ func (q *Queries) SavePurchase(ctx context.Context, arg SavePurchaseParams) (str
 	row := q.db.QueryRow(ctx, savePurchase,
 		arg.TokenDigest,
 		arg.AccountID,
+		arg.Provider,
 		arg.Environment,
 		arg.PackageName,
 		arg.ProductID,
