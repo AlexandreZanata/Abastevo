@@ -95,6 +95,12 @@ public final class AppStateViewModel: ObservableObject {
         signer: { [weak self] in self?.premiumRequestSigner() }
     )
 
+    /// Vehicle ledger, monthly indicators, admission and private cloud sync (B-BR-IOS-VEHICLE).
+    public lazy var ledger: LedgerCoordinator = LedgerCoordinator(
+        host: self,
+        sessions: AuthFlowSessionSource(flow: authFlow)
+    )
+
     public init(store: IosLocalStore = IosLocalStore()) {
         self.store = store
         self.municipalityCatalog = (try? MunicipalityCatalog(bundle: .main)) ?? .empty
@@ -613,6 +619,7 @@ public final class AppStateViewModel: ObservableObject {
         photoCache.purgeAll()
         identity.purgeOwnedData()
         enterprise.purgeOwnedData()
+        ledger.purgeOwnedData(accountId: ownerId)
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
         let flow = authFlow
         runAuth({ flow.logout() }) { viewModel, _ in
@@ -642,6 +649,7 @@ public final class AppStateViewModel: ObservableObject {
         proofSigner.resetKey()
         identity.forgetDeviceIdentity()
         enterprise.purgeOwnedData()
+        ledger.purgeOwnedData(accountId: ownerId)
         photoCache.purgeAll()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
         rehydrateAuth()
@@ -794,8 +802,9 @@ public final class AppStateViewModel: ObservableObject {
     // MARK: - Vehicles, Ledger & Driver Hub
 
     public func addVehicle(name: String, propulsion: Propulsion, primaryFuel: FuelProduct, tankLitersText: String, batteryKwhText: String) -> Result<VehicleRecord, AppValidationError> {
-        guard snapshot.vehicles.count < VehicleRecord.maxFreeVehicles else {
-            return .failure(AppValidationError("O plano gratuito permite cadastrar um veículo."))
+        let admission = ledger.admissionForNewVehicle()
+        guard admission == .accept else {
+            return .failure(AppValidationError(LedgerCoordinator.admissionMessage(admission)))
         }
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty else { return .failure(AppValidationError("Informe o nome do veículo.")) }
@@ -832,48 +841,6 @@ public final class AppStateViewModel: ObservableObject {
     public func removeVehicles(_ vehicleIds: Set<String>) {
         snapshot.vehicles.removeAll { vehicleIds.contains($0.id) }
         persist()
-    }
-
-    public func addLedgerEntry(vehicleId: String, kind: LedgerEntryKind, odometerKm: Int64, quantityMilli: Int64, totalCentavos: Int64, note: String) -> Result<Void, AppValidationError> {
-        guard let vehicle = snapshot.vehicles.first(where: { $0.id == vehicleId }) else {
-            return .failure(AppValidationError("Selecione um veículo cadastrado."))
-        }
-        if kind == .refuel && (!vehicle.propulsion.supportsFuel || vehicle.primaryFuel == .lpgP13) {
-            return .failure(AppValidationError("Abastecimento indisponível para este veículo."))
-        }
-        if kind == .charge && !vehicle.propulsion.supportsElectric {
-            return .failure(AppValidationError("Recarga elétrica indisponível para este veículo."))
-        }
-        let maxOdometerKm: Int64 = kind == .charge ? 1_000_000 : PremiumEnergyCalculator.maxDistanceMetres / 1000
-        guard (0...maxOdometerKm).contains(odometerKm) else {
-            return .failure(AppValidationError("Informe um hodômetro válido em quilômetros."))
-        }
-        let validQuantity: ClosedRange<Int64> = kind == .refuel ? 1...1_000_000_000 : 0...1_000_000_000
-        guard validQuantity.contains(quantityMilli), (0...PremiumEnergyCalculator.maxTotalCentavos).contains(totalCentavos) else {
-            return .failure(AppValidationError("Informe uma quantidade e um total válidos."))
-        }
-        guard note.unicodeScalars.count <= 280, note.rangeOfCharacter(from: .controlCharacters) == nil else {
-            return .failure(AppValidationError("Use até 280 caracteres de texto na observação."))
-        }
-        let formatter = DateFormatter()
-        let date = Date()
-        formatter.dateFormat = "dd/MM/yyyy"
-        let dateStr = formatter.string(from: date)
-        formatter.dateFormat = "yyyy-MM"
-        let monthStr = formatter.string(from: date)
-        let entry = LedgerEntryRecord(
-            vehicleId: vehicleId,
-            kind: kind,
-            dateLabel: dateStr,
-            monthKey: monthStr,
-            odometerKm: odometerKm,
-            quantityMilli: quantityMilli,
-            totalCentavos: totalCentavos,
-            note: note
-        )
-        snapshot.ledgerEntries.insert(entry, at: 0)
-        persist()
-        return .success(())
     }
 
     public func startDriverShift(vehicleId: String, startOdometerKm: Int64) -> Result<Void, AppValidationError> {

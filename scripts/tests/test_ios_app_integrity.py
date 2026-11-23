@@ -64,6 +64,12 @@ class IosAppIntegrityTests(unittest.TestCase):
             "FeedbackFlow.swift",
             "IosLocalStore.swift",
             "IosPlatformServices.swift",
+            "LedgerEntryForm.swift",
+            "LedgerExactMath.swift",
+            "LedgerIndicators.swift",
+            "LedgerModels.swift",
+            "LedgerSyncClient.swift",
+            "LedgerSyncEngine.swift",
             "LocationSignals.swift",
             "PortableAnonymousProof.swift",
             "PortableAuth.swift",
@@ -80,6 +86,7 @@ class IosAppIntegrityTests(unittest.TestCase):
             "PortableText.swift",
             "SignedRequestTransport.swift",
             "TankFillUseCase.swift",
+            "VehicleAdmission.swift",
         ]
         for fname in expected_core:
             self.assertTrue((IOS_ROOT / "Sources/AnpFuelCore" / fname).is_file(), fname)
@@ -95,6 +102,8 @@ class IosAppIntegrityTests(unittest.TestCase):
             "ExploreTabViews.swift",
             "FeedbackView.swift",
             "IdentityCoordinator.swift",
+            "LedgerCoordinator.swift",
+            "LedgerViews.swift",
             "MapTabViews.swift",
             "OnboardingAndTermsViews.swift",
             "ProfileTabViews.swift",
@@ -114,6 +123,10 @@ class IosAppIntegrityTests(unittest.TestCase):
             "FeedbackDisplayTests.swift",
             "FeedbackFlowTests.swift",
             "FeedbackLifecycleTests.swift",
+            "LedgerFixtures.swift",
+            "LedgerMathTests.swift",
+            "LedgerModelsTests.swift",
+            "LedgerSyncTests.swift",
             "LocationSignalsTests.swift",
             "PortableAnonymousProofTests.swift",
             "PortableAuthFlowTests.swift",
@@ -349,20 +362,102 @@ class IosAppIntegrityTests(unittest.TestCase):
             row = reference.get(name.replace("_", "-")) or attachment[name.replace("_", "-")]
             self.assertEqual(bytes.fromhex(row[2]).decode("utf-8"), text, name)
 
-    def test_ledger_cannot_use_sample_metrics_or_an_unselected_vehicle(self):
+    def test_ledger_uses_a_selected_vehicle_exact_rules_and_real_sync_routes(self):
         shell = IOS_ROOT / "Sources/AnpFuelShell"
+        core = IOS_ROOT / "Sources/AnpFuelCore"
         profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
-        ledger = profile.split("public struct VehiclesAndLedgerSheetView: View {", 1)[1].split(
-            "public struct DriverHubSheetView", 1
-        )[0]
-        self.assertIn("selection: $ledgerVehicleId", ledger)
-        self.assertNotIn('?? "default"', ledger)
-        self.assertNotIn("PremiumEnergyCalculator.IntervalInput", ledger)
+        views = (shell / "LedgerViews.swift").read_text(encoding="utf-8")
+        self.assertNotIn("public struct VehiclesAndLedgerSheetView", profile)
+        self.assertEqual(views.count("public struct VehiclesAndLedgerSheetView: View {"), 1)
+        editor = views.split("struct LedgerEntryEditorView: View {", 1)[1].split("struct LedgerIndicatorsSection", 1)[0]
+        self.assertIn("selection: $ledgerVehicleId", editor)
+        self.assertIn('Text("Selecione um veículo").tag(nil as String?)', editor)
+        self.assertIn("self._ledgerVehicleId = State(initialValue: existing?.vehicleId)", editor)
+        self.assertIn(".disabled(ledgerVehicleId == nil)", editor)
+        self.assertNotIn('?? "default"', views)
+        # Indicators come only from the exact Core port of Android MonthlyIndicators; the former
+        # "unavailable" placeholder is gone and every unknown result keeps its reason.
+        self.assertNotIn("PremiumEnergyCalculator.IntervalInput", views)
+        self.assertNotIn("Indisponíveis enquanto o diário", views)
+        self.assertIn("ledger.indicators(vehicle: vehicle, year: year, month: month)", views)
+        self.assertIn("LedgerCoordinator.reasonLabel(reason)", views)
+        coordinator = (shell / "LedgerCoordinator.swift").read_text(encoding="utf-8")
+        self.assertIn("try LedgerIndicators.monthly(", coordinator)
+        form = (core / "LedgerEntryForm.swift").read_text(encoding="utf-8")
+        self.assertIn("guard let vehicleId, let vehicle = vehicles.first(where: { $0.id == vehicleId }) else {", form)
+        self.assertNotIn("Double(", form)
+        indicators = (core / "LedgerIndicators.swift").read_text(encoding="utf-8")
+        for reason in ("odometer-unit-unverified", "no-records", "phev-shared-distance", "odometer-missing",
+                       "declared-fill-gap", "odometer-segment-boundary"):
+            self.assertIn(f'"{reason}"', indicators)
 
         state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
         vehicle = state.split("func addVehicle(", 1)[1].split("func removeVehicle", 1)[0]
         self.assertIn("PortableMoney.parseBatteryCapacityWh", vehicle)
         self.assertNotIn("Double(batteryKwhText", vehicle)
+        self.assertIn("ledger.admissionForNewVehicle()", vehicle)
+        self.assertNotIn("VehicleRecord.maxFreeVehicles", vehicle)
+        self.assertNotIn("func addLedgerEntry(", state)
+        self.assertEqual(state.count("ledger.purgeOwnedData(accountId: ownerId)"), 2)
+
+        client = (core / "LedgerSyncClient.swift").read_text(encoding="utf-8")
+        backend = (ROOT / "backend/internal/modules/ledger/adapters/http/http.go").read_text(encoding="utf-8")
+        for route in ("/v1/ledger/commands", "/v1/ledger/records", "/v1/ledger/consent", "/v1/ledger/erase"):
+            self.assertIn(f'"{route}"', client)
+            self.assertIn(f'r.Post("{route}"', backend)
+        for path in ("commandsPath", "consentPath", "erasePath"):
+            self.assertIn(f'transport.signedRequest(method: "POST", path: LedgerSyncWire.{path}', client)
+        self.assertIn("transport.plainPost(path: LedgerSyncWire.recordsPath", client)
+        self.assertIn("guard session.accountId == accountId else { throw LedgerSyncError.ownerMismatch }", client)
+
+        tests = (IOS_ROOT / "Tests/AnpFuelCoreTests/LedgerSyncTests.swift").read_text(encoding="utf-8")
+        api = ROOT / "contracts/testdata/api"
+        commands = json.loads((api / "ledger-commands-valid.json").read_text(encoding="utf-8"))
+        self.assertTrue(commands["valid"])
+        value = commands["value"]
+        self.assertIn(f'familyId: "{value["family_id"]}"', tests)
+        self.assertIn(f'accessToken: "{value["access_token"]}"', tests)
+        self.assertIn(f'operationId: "{value["commands"][0]["operation_id"]}"', tests)
+        self.assertIn(f'"{value["commands"][0]["id"]}"', tests)
+        page = json.loads((api / "ledger-page-valid.json").read_text(encoding="utf-8"))["value"]
+        self.assertIn(f'dataset: .{page["dataset"]}, vehicleId: nil, limit: {page["limit"]}, cursor: nil', tests)
+        consent = json.loads((api / "ledger-consent-valid.json").read_text(encoding="utf-8"))["value"]
+        self.assertIn(f'datasets: [.{consent["datasets"][0]}], enabled: true', tests)
+        erase = json.loads((api / "ledger-erase-valid.json").read_text(encoding="utf-8"))["value"]
+        self.assertEqual(set(erase), {"family_id", "access_token"})
+        self.assertIn('Set(erase.keys), ["family_id", "access_token"]', tests)
+        invalid = json.loads((api / "ledger-consent-invalid.json").read_text(encoding="utf-8"))["value"]
+        self.assertIn('\\"datasets\\":[\\"' + invalid["datasets"][0] + '\\"]', tests)
+
+    def test_ledger_tests_replay_the_shared_premium_corpora_verbatim(self):
+        fixtures = (IOS_ROOT / "Tests/AnpFuelCoreTests/LedgerFixtures.swift").read_text(encoding="utf-8")
+        premium = ROOT / "contracts/testdata/premium"
+        expected_lines = {"financial-execution-v1.csv": 37, "energy-execution-v1.csv": 12, "financial-wire-v1.csv": 23}
+        for name, count in expected_lines.items():
+            lines = [line for line in (premium / name).read_text(encoding="utf-8").splitlines() if line]
+            self.assertEqual(len(lines), count, name)
+            for line in lines:
+                self.assertIn("        " + line + "\n", fixtures, f"{name}: {line}")
+        registration = json.loads((premium / "vehicle-registration-v2.json").read_text(encoding="utf-8"))
+        self.assertEqual(registration["version"], 2)
+        self.assertEqual(fixtures.count("RegistrationCase(id: "), len(registration["cases"]))
+        for case in registration["cases"]:
+            self.assertIn(
+                f'RegistrationCase(id: "{case["id"]}", registeredBefore: {case["registered_before"]}, '
+                f'newDistinctIds: {case["new_distinct_ids"]}, scope: "{case["scope"]}", '
+                f'authority: "{case["authority"]}", outcome: "{case["outcome"]}", '
+                f'registeredAfter: {case["registered_after"]})',
+                fixtures,
+            )
+        tests = IOS_ROOT / "Tests/AnpFuelCoreTests"
+        math = (tests / "LedgerMathTests.swift").read_text(encoding="utf-8")
+        self.assertIn("LedgerFixtures.financialExecution", math)
+        self.assertIn("XCTAssertEqual(lines.count, 37)", math)
+        self.assertIn("LedgerFixtures.energyExecution", math)
+        self.assertIn("XCTAssertEqual(combinedRows, 2)", math)
+        self.assertIn("LedgerFixtures.vehicleRegistration", math)
+        models = (tests / "LedgerModelsTests.swift").read_text(encoding="utf-8")
+        self.assertIn("LedgerFixtures.financialWire", models)
 
     def test_manual_shift_uses_selected_vehicle_exact_money_and_clock(self):
         shell = IOS_ROOT / "Sources/AnpFuelShell"

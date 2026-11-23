@@ -937,56 +937,6 @@ public struct VehicleRecord: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-public enum LedgerEntryKind: String, CaseIterable, Codable, Sendable {
-    case refuel = "REFUEL"
-    case charge = "CHARGE"
-    case expense = "EXPENSE"
-    case odometer = "ODOMETER"
-
-    public var labelPtBr: String {
-        switch self {
-        case .refuel: return "Abastecimento"
-        case .charge: return "Recarga Elétrica"
-        case .expense: return "Despesa"
-        case .odometer: return "Hodômetro"
-        }
-    }
-}
-
-public struct LedgerEntryRecord: Codable, Equatable, Identifiable, Sendable {
-    public let id: String
-    public let vehicleId: String
-    public let kind: LedgerEntryKind
-    public let dateLabel: String
-    public let monthKey: String
-    public let odometerKm: Int64
-    public let quantityMilli: Int64
-    public let totalCentavos: Int64
-    public let note: String
-
-    public init(
-        id: String = UUID().uuidString.lowercased(),
-        vehicleId: String,
-        kind: LedgerEntryKind,
-        dateLabel: String,
-        monthKey: String,
-        odometerKm: Int64,
-        quantityMilli: Int64,
-        totalCentavos: Int64,
-        note: String = ""
-    ) {
-        self.id = id
-        self.vehicleId = vehicleId
-        self.kind = kind
-        self.dateLabel = dateLabel
-        self.monthKey = monthKey
-        self.odometerKm = odometerKm
-        self.quantityMilli = quantityMilli
-        self.totalCentavos = totalCentavos
-        self.note = note
-    }
-}
-
 /// Exact integer rational math mirroring `PremiumBounds.kt` and `PremiumEnergy.kt`
 /// and passing `contracts/testdata/premium/energy-v1.json`.
 public enum PremiumEnergyCalculator {

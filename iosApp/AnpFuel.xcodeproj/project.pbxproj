@@ -110,6 +110,19 @@
 		97790D665BE2167A189FA45C /* EnterpriseOperationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71E3B30B58526FD0810EDED6 /* EnterpriseOperationTests.swift */; };
 		A9340558C6CE13296F138F5E /* EnterpriseQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8C2294DB2B6CE9233192879 /* EnterpriseQueueTests.swift */; };
 		7D162B6E99A4B8D79F69F597 /* EnterpriseTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4C1B7A19D67886B9792F75 /* EnterpriseTransportTests.swift */; };
+		4AC550EDE35C0043593F13E1 /* LedgerEntryForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFC391613DCFA12B9E050A81 /* LedgerEntryForm.swift */; };
+		9B640FA48983FD36F8D4F77E /* LedgerExactMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7CDF2712E38FD02F2686265 /* LedgerExactMath.swift */; };
+		C379BAD1B5BE283383993518 /* LedgerIndicators.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B3C1A7656E141CAAFE5FCF /* LedgerIndicators.swift */; };
+		2D34CBAA34EC242448D64653 /* LedgerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA16EFDA0826505B9DD6C0C /* LedgerModels.swift */; };
+		3129149072F3F47A04F18F40 /* LedgerSyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B759DD9FC21D0AAD62EDBA /* LedgerSyncClient.swift */; };
+		8BFE9047B20A0F055B47337F /* LedgerSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B71AE4C1631944F8FB4953B /* LedgerSyncEngine.swift */; };
+		932DA70EA8E3FCDDAF6A6C2B /* VehicleAdmission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF4B1183E525244A69AC0AD /* VehicleAdmission.swift */; };
+		D678B8CC22C596908C4C5477 /* LedgerCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5C25C23337593034D0BDD3 /* LedgerCoordinator.swift */; };
+		D395D2E6C7E507C2C6EC44CB /* LedgerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3013762CA6B1A57282813B72 /* LedgerViews.swift */; };
+		D8492F2B9865BA1AA5E84E52 /* LedgerFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBFB9DBBD3A1B2A956253E63 /* LedgerFixtures.swift */; };
+		F57922C607471F6AAA9954B0 /* LedgerMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1661DDCB1B3C39962F1748 /* LedgerMathTests.swift */; };
+		8245A3F5FFA9FA3253DFEB4B /* LedgerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30750A091480D6A3A2C78EE2 /* LedgerModelsTests.swift */; };
+		816E2BC8ED6D605E934DCC41 /* LedgerSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B8D1395C1678213C90DFA9 /* LedgerSyncTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -249,6 +262,19 @@
 		71E3B30B58526FD0810EDED6 /* EnterpriseOperationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseOperationTests.swift; sourceTree = "<group>"; };
 		B8C2294DB2B6CE9233192879 /* EnterpriseQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseQueueTests.swift; sourceTree = "<group>"; };
 		DF4C1B7A19D67886B9792F75 /* EnterpriseTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseTransportTests.swift; sourceTree = "<group>"; };
+		CFC391613DCFA12B9E050A81 /* LedgerEntryForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerEntryForm.swift; sourceTree = "<group>"; };
+		F7CDF2712E38FD02F2686265 /* LedgerExactMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerExactMath.swift; sourceTree = "<group>"; };
+		D8B3C1A7656E141CAAFE5FCF /* LedgerIndicators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerIndicators.swift; sourceTree = "<group>"; };
+		9EA16EFDA0826505B9DD6C0C /* LedgerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModels.swift; sourceTree = "<group>"; };
+		F9B759DD9FC21D0AAD62EDBA /* LedgerSyncClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerSyncClient.swift; sourceTree = "<group>"; };
+		2B71AE4C1631944F8FB4953B /* LedgerSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerSyncEngine.swift; sourceTree = "<group>"; };
+		8CF4B1183E525244A69AC0AD /* VehicleAdmission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAdmission.swift; sourceTree = "<group>"; };
+		1A5C25C23337593034D0BDD3 /* LedgerCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerCoordinator.swift; sourceTree = "<group>"; };
+		3013762CA6B1A57282813B72 /* LedgerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerViews.swift; sourceTree = "<group>"; };
+		FBFB9DBBD3A1B2A956253E63 /* LedgerFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFixtures.swift; sourceTree = "<group>"; };
+		DC1661DDCB1B3C39962F1748 /* LedgerMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerMathTests.swift; sourceTree = "<group>"; };
+		30750A091480D6A3A2C78EE2 /* LedgerModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModelsTests.swift; sourceTree = "<group>"; };
+		34B8D1395C1678213C90DFA9 /* LedgerSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerSyncTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -327,6 +353,13 @@
 			C93F7D3639CA65B635C6BCBB,
 			B18B4777E40F96706468B12F,
 			166509623E096600AC2A75CD,
+			CFC391613DCFA12B9E050A81,
+			F7CDF2712E38FD02F2686265,
+			D8B3C1A7656E141CAAFE5FCF,
+			9EA16EFDA0826505B9DD6C0C,
+			F9B759DD9FC21D0AAD62EDBA,
+			2B71AE4C1631944F8FB4953B,
+			8CF4B1183E525244A69AC0AD,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -349,6 +382,8 @@
 			ED7DC5F9E178C7745D1EE756,
 			B3BBF1393044D8D5BD5C2E22,
 			BDD16B7694540EE6489A9EFD,
+			1A5C25C23337593034D0BDD3,
+			3013762CA6B1A57282813B72,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -389,6 +424,10 @@
 			71E3B30B58526FD0810EDED6,
 			B8C2294DB2B6CE9233192879,
 			DF4C1B7A19D67886B9792F75,
+			FBFB9DBBD3A1B2A956253E63,
+			DC1661DDCB1B3C39962F1748,
+			30750A091480D6A3A2C78EE2,
+			34B8D1395C1678213C90DFA9,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -521,6 +560,13 @@
 			94180283F6F1C9103D8ABFF0,
 			0156A9F8015D6C41F715EA98,
 			264BFE068B515FC55E145A11,
+			4AC550EDE35C0043593F13E1,
+			9B640FA48983FD36F8D4F77E,
+			C379BAD1B5BE283383993518,
+			2D34CBAA34EC242448D64653,
+			3129149072F3F47A04F18F40,
+			8BFE9047B20A0F055B47337F,
+			932DA70EA8E3FCDDAF6A6C2B,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -543,6 +589,8 @@
 			D4A2FCCFA21B96CA560E45A9,
 			4F07F7C91AAE447E5BE5AA53,
 			6AB148630145DD1045E2595A,
+			D678B8CC22C596908C4C5477,
+			D395D2E6C7E507C2C6EC44CB,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -579,6 +627,10 @@
 			97790D665BE2167A189FA45C,
 			A9340558C6CE13296F138F5E,
 			7D162B6E99A4B8D79F69F597,
+			D8492F2B9865BA1AA5E84E52,
+			F57922C607471F6AAA9954B0,
+			8245A3F5FFA9FA3253DFEB4B,
+			816E2BC8ED6D605E934DCC41,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
