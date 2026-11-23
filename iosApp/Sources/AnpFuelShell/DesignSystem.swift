@@ -110,10 +110,10 @@ public struct AbastevoTopChromeBar: View {
     let weekLabel: String
     let isOffline: Bool
     let signedInAlias: String?
-    let onLocationTap: () -> UnitAction
-    let onWeekTap: () -> UnitAction
-    let onSettingsTap: () -> UnitAction
-    let onProfileTap: () -> UnitAction
+    let onLocationTap: UnitAction
+    let onWeekTap: UnitAction
+    let onSettingsTap: UnitAction
+    let onProfileTap: UnitAction
 
     public typealias UnitAction = () -> Void
 
