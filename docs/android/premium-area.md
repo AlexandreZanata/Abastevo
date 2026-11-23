@@ -1,8 +1,9 @@
 # Premium area organization
 
 Parent: `b90a0cd1` (maintained dev). Date: 2026-10-24.
-Scope: Android presentation/navigation only. No backend, billing, entitlement,
-purchase, permission or commercial-rule change.
+Scope: Android Premium pages, navigation and the Google Play purchase flow
+([Google Play purchases](#google-play-purchases)). The server alone grants
+access; the app never creates a local entitlement.
 
 ## Before behavior
 
@@ -17,10 +18,11 @@ impossible.
 - Routes `premium` and `premium-management` with no navigation arguments.
 - `ui/premium/PremiumScreen.kt`: Premium title/back, verified status, paid-through
   date only for states that keep paid access, known-capability labels, retained
-  data notice, refresh, manage-subscription and honest restore-unavailable action.
+  data notice, Play plans, refresh, manage-subscription and restore.
 - `ui/premium/PremiumManagementScreen.kt`: subscription state, store guidance,
-  fixed Play subscription destination and post-store refresh through a
-  resume-scoped refresh flow. No cancellation or renewal is simulated.
+  the offer's Play management page (the frozen Play URL when no offer is
+  listed), restore and post-store refresh through a resume-scoped refresh
+  flow. No cancellation or renewal is simulated.
 - `ui/premium/PremiumEntry.kt`: one gold/crown entry component, full in Profile
   and compact in Manage account. It uses the shared container shape rather than a
   one-off radius.
@@ -85,12 +87,12 @@ impossible.
 
 ## Limits and manual review
 
-- Play Billing acquisition/token retrieval is still absent. Restore remains
-  explicitly unavailable; no purchase or local entitlement is created. The
-  management page opens only the frozen Play subscription URL and does not
+- The purchase flow is tested on the JVM only. No Play Console product, license
+  tester or sandbox purchase has been run, and the backend verify/restore with
+  `provider` and `store_offers` is built separately. Until the server lists a
+  Play offer the app shows no purchase button. The management page does not
   confirm cancellation, renewal or restoration.
-- No provider sandbox or live store proof was run. No release or production
-  certification is claimed.
+- No release or production certification is claimed.
 - Rendered screenshots were not captured in this environment. Previews exist for
   Premium, management and both entry variants; rendered light/dark/dynamic,
   enlarged-font, narrow-screen and TalkBack checks remain for the owner.
@@ -101,6 +103,50 @@ impossible.
   leave and re-enter within 60s to confirm the verified preview is reused. On
   Profile, confirm the full loading skeleton and no mount animation; confirm the
   login step crossfade still works.
+
+## Google Play purchases
+
+Contract: `docs/product/payments/store-billing.md` (B-BR-STORE-01..10,
+BUC-STORE-01/02/04). Code: `PremiumViewModel` (app), the store use cases in
+`application/.../usecase/premium/StoreBillingUseCases.kt`,
+`PlayBillingGateway` and `StorePurchaseHttpClient` (data).
+
+1. The status read returns `tiers` and `store_offers`. Only a valid, single
+   `play` offer enables purchases; a missing, malformed or duplicated offer
+   leaves the page as status only (fail closed). No web price or checkout link
+   is ever shown.
+2. Plans: the server's `plan_ids` decide which base plans exist and their
+   order; Play's `ProductDetails` give the localized recurring price and
+   period. Developer offers (trials, introductory prices) and prepaid plans are
+   not presented.
+3. Subscribe opens the Play sheet with the offer's `account_binding` as
+   `obfuscatedAccountId`. A purchased result is sent to
+   `/v1/premium/purchases/verify`, signed by the device key bound to the
+   account, with a fresh lowercase UUID `operation_id` that a retry of the same
+   attempt reuses. Only the returned status changes the page and the status
+   cache. The app never acknowledges: the server does after verification.
+4. Restore lists the owned Play subscriptions of the catalog and sends those
+   bound to this account (or with no binding) to `/restore`. A purchase bound
+   to another account is never sent.
+5. On every app start (`MainActivity`, STARTED), purchased but unacknowledged
+   subscriptions are sent to verify again, so a server outage never loses a
+   purchase. Nothing leaves the device when none exists.
+
+| State | Shown as |
+| --- | --- |
+| No Play offer, unknown state | Status only, no purchase button |
+| Plans loading / unavailable | Progress text / message with retry |
+| Launching, verifying, restoring | Progress bar; actions disabled |
+| Play payment pending | Pending notice; nothing granted, no second purchase |
+| User cancelled | Cancelled notice; nothing bought |
+| Verified | Server status, verified notice |
+| Denied (403) | Not confirmed for this account; no access |
+| 409, 429, 503, network | Kept in Play, retry with the same operation ID |
+| 401 | Sign in again |
+| Already owned | Suggests restore |
+| Active through web, App Store or a grant | Already active, no purchase offered |
+| A Play subscription exists | Manage in Google Play |
+| Account changed mid-purchase | Result discarded, new owner's status read |
 
 ## Dependency review: Google Play Billing Library
 
