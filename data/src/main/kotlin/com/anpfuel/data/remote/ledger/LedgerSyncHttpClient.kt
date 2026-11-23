@@ -53,7 +53,7 @@ fun interface LedgerSignedPost {
 }
 
 /**
- * MEX-14 private ledger transport (backend `/v1/ledger/*`).
+ * MEX-14 private ledger transport (backend `/v1/ledger` routes).
  *
  * Writes (`/v1/ledger/commands`, `/v1/ledger/consent`) go through [signed]:
  * the backend resolves their owner from the session and the device key bound
