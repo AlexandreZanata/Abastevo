@@ -75,6 +75,8 @@
 		9ECD85C4D8565E5D4E230541 /* CommunityOutboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC56E0AF9DC373EF5476334 /* CommunityOutboxTests.swift */; };
 		6164B5107E532FE16BC8E932 /* CommunityWriteWireTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5083744FBD9A0B5E8AEE04 /* CommunityWriteWireTests.swift */; };
 		6D3EBE21827EE9907916454C /* SignedRequestTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C202D05FA5EC7E7353B1EC5C /* SignedRequestTransportTests.swift */; };
+		E9D7BBCC4A6E654AB7DC4F47 /* CommunityPublishingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A4FFC58A989E7A9E20B82F /* CommunityPublishingViews.swift */; };
+		5799D51E49CB8564B224EC1E /* IdentityCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB65E76B45587A26AB94A626 /* IdentityCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -179,6 +181,8 @@
 		5DC56E0AF9DC373EF5476334 /* CommunityOutboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityOutboxTests.swift; sourceTree = "<group>"; };
 		6E5083744FBD9A0B5E8AEE04 /* CommunityWriteWireTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityWriteWireTests.swift; sourceTree = "<group>"; };
 		C202D05FA5EC7E7353B1EC5C /* SignedRequestTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignedRequestTransportTests.swift; sourceTree = "<group>"; };
+		82A4FFC58A989E7A9E20B82F /* CommunityPublishingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityPublishingViews.swift; sourceTree = "<group>"; };
+		CB65E76B45587A26AB94A626 /* IdentityCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -255,6 +259,8 @@
 			9B48D62A0266CED3D9707C9E,
 			83261BC7B666205267E2EEA8,
 			EEC212679466C9CB915C3262,
+			82A4FFC58A989E7A9E20B82F,
+			CB65E76B45587A26AB94A626,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -414,6 +420,8 @@
 			960D3FE8D8D6FA85DBCA24AA,
 			936016342055A9842CF8598E,
 			17AB0609B4F552D4FFC137EA,
+			E9D7BBCC4A6E654AB7DC4F47,
+			5799D51E49CB8564B224EC1E,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,

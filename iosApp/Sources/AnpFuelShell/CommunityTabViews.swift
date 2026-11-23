@@ -52,9 +52,9 @@ public struct CommunityRootView: View {
                     .font(.system(size: 32))
                     .foregroundStyle(AbastevoTheme.accentLight)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Preparar contribuição com foto")
+                    Text("Contribuir com um preço")
                         .font(.headline)
-                    Text("O OCR sugere os valores no dispositivo. O rascunho fica aqui e a foto local expira em 24h.")
+                    Text("O OCR sugere os valores no dispositivo. O envio é assinado por este aparelho e aguarda na fila quando você está sem conexão.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -103,7 +103,7 @@ public struct CommunityRootView: View {
             Button {
                 viewModel.activeSheet = .myContributions
             } label: {
-                Label("Minhas contribuições (\(viewModel.snapshot.myContributions.count))", systemImage: "tray.full.fill")
+                Label("Minhas contribuições (\(viewModel.identity.items(of: .priceObservation).count))", systemImage: "tray.full.fill")
                     .font(.caption.bold())
                     .frame(maxWidth: .infinity)
             }
@@ -140,7 +140,7 @@ public struct CommunityRootView: View {
                     Text("Nenhuma observação comunitária para \(viewModel.snapshot.selectedFuel.displayNamePtBr) ainda.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Button("Preparar uma contribuição") {
+                    Button("Contribuir com um preço") {
                         viewModel.activeSheet = .capturePrice
                     }
                     .font(.subheadline.bold())
@@ -192,6 +192,10 @@ public struct CapturePriceSheetView: View {
     @State private var statusBanner: String?
     @State private var draftSaved = false
     @State private var showCameraPicker = false
+    @State private var photoGrant: PhotoCaptureGrant?
+    @State private var photoCapturedAtMillis: Int64?
+    @State private var photoIsEvidence = false
+    @State private var isAuthorizingCamera = false
     @State private var zoomState = LiveBoardZoom.State(ratio: 1.0)
     #if canImport(PhotosUI)
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -223,11 +227,12 @@ public struct CapturePriceSheetView: View {
                     HStack(spacing: 10) {
                         #if os(iOS)
                         Button {
-                            showCameraPicker = true
+                            openEvidenceCamera()
                         } label: {
-                            Label("Câmera", systemImage: "camera.fill")
+                            Label(isAuthorizingCamera ? "Autorizando..." : "Câmera", systemImage: "camera.fill")
                         }
                         .buttonStyle(.bordered)
+                        .disabled(isAuthorizingCamera || selectedStationId.isEmpty)
                         #endif
 
                         #if canImport(PhotosUI)
@@ -239,7 +244,7 @@ public struct CapturePriceSheetView: View {
                             guard let newItem = newItem else { return }
                             Task {
                                 if let data = try? await newItem.loadTransferable(type: Data.self) {
-                                    await processPhotoBytes(data, mime: "image/jpeg")
+                                    await processPhotoBytes(data, mime: "image/jpeg", fromCamera: false)
                                 }
                             }
                         }
@@ -253,9 +258,20 @@ public struct CapturePriceSheetView: View {
                     }
 
                     if let data = rawPhotoData {
-                        Text("Foto pronta (\(data.count / 1024) KiB) · Enquadramento zoom \(String(format: "%.1fx", zoomState.ratio)) · Expira localmente em 24h")
-                            .font(.caption)
-                            .foregroundStyle(AbastevoTheme.accentLight)
+                        if photoIsEvidence {
+                            Text("Foto autorizada como evidência (\(data.count / 1024) KiB). Será reduzida, sem metadados, e expira em 24 h.")
+                                .font(.caption)
+                                .foregroundStyle(AbastevoTheme.accentLight)
+                        } else {
+                            Text("Foto usada só para a leitura local do preço. Ela não será enviada.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if let notice = viewModel.identity.identityNotice, photoGrant == nil, rawPhotoData != nil {
+                        Text(notice)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
 
                     if !ocrCandidates.isEmpty {
@@ -291,7 +307,7 @@ public struct CapturePriceSheetView: View {
                         .foregroundStyle(code == "ok" ? AbastevoTheme.accentLight : .secondary)
                 }
 
-                Section("4. Verificação de Localização (One-shot)") {
+                Section("4. Verificação de Localização (local, não enviada)") {
                     Button {
                         Task { await viewModel.requestOneShotDeviceLocation() }
                     } label: {
@@ -315,25 +331,29 @@ public struct CapturePriceSheetView: View {
                         guard let st = cityStations.first(where: { $0.id == selectedStationId }) ?? cityStations.first else {
                             return
                         }
-                        switch viewModel.savePriceContributionDraft(
+                        switch viewModel.submitPriceContribution(
                             station: st,
                             product: selectedFuel,
                             priceText: priceInputText,
                             condition: selectedCondition,
-                            rawPhotoData: rawPhotoData,
-                            photoMime: photoMime
+                            evidencePhoto: photoIsEvidence ? rawPhotoData : nil,
+                            photoMime: photoMime,
+                            photoCapturedAtMillis: photoCapturedAtMillis,
+                            photoGrant: photoGrant
                         ) {
-                        case .success(let entry):
+                        case .success(let item):
                             IosHaptics.success()
-                            statusBanner = entry.statusLabel
+                            statusBanner = IdentityCoordinator.statusLabel(for: item)
                             rawPhotoData = nil
+                            photoIsEvidence = false
+                            photoGrant = nil
                             draftSaved = true
                         case .failure(let errorMsg):
                             IosHaptics.warning()
                             statusBanner = errorMsg.localizedDescription
                         }
                     } label: {
-                        Text("Salvar rascunho neste dispositivo")
+                        Text("Enviar contribuição")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -348,6 +368,11 @@ public struct CapturePriceSheetView: View {
                 }
                 selectedFuel = viewModel.snapshot.selectedFuel
             }
+            .onChange(of: selectedStationId) { _, newStation in
+                if let grant = photoGrant, grant.stationId.lowercased() != newStation.lowercased() {
+                    photoIsEvidence = false
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fechar") { dismiss() }
@@ -356,7 +381,7 @@ public struct CapturePriceSheetView: View {
             #if os(iOS) && canImport(UIKit)
             .sheet(isPresented: $showCameraPicker) {
                 IosCameraCaptureView { imageData in
-                    Task { await processPhotoBytes(imageData, mime: "image/jpeg") }
+                    Task { await processPhotoBytes(imageData, mime: "image/jpeg", fromCamera: true) }
                 }
             }
             #endif
@@ -378,9 +403,34 @@ public struct CapturePriceSheetView: View {
         }
     }
 
-    private func processPhotoBytes(_ data: Data, mime: String) async {
+    /// Requests a camera window for evidence first; without it the photo only feeds local OCR.
+    private func openEvidenceCamera() {
+        #if os(iOS) && canImport(UIKit)
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            photoGrant = nil
+            showCameraPicker = true
+            return
+        }
+        #endif
+        isAuthorizingCamera = true
+        let stationId = selectedStationId
+        Task {
+            photoGrant = await viewModel.identity.authorizePhotoCapture(stationId: stationId)
+            isAuthorizingCamera = false
+            showCameraPicker = true
+        }
+    }
+
+    private func processPhotoBytes(_ data: Data, mime: String, fromCamera: Bool) async {
         self.rawPhotoData = data
         self.photoMime = mime
+        let capturedAt = Int64(Date().timeIntervalSince1970 * 1000)
+        self.photoCapturedAtMillis = capturedAt
+        if fromCamera, let grant = photoGrant {
+            self.photoIsEvidence = grant.admits(stationId: selectedStationId, capturedAtMillis: capturedAt)
+        } else {
+            self.photoIsEvidence = false
+        }
         if let board = LiveBoardZoom.Board(left: 0.15, top: 0.20, right: 0.85, bottom: 0.80) {
             self.zoomState = LiveBoardZoom.next(state: zoomState, board: board, minRatio: 1.0, maxRatio: 5.0)
         }
@@ -498,8 +548,16 @@ public struct ForumFeedSheetView: View {
                         }
                     }
                 }
+                let myTopics = viewModel.identity.items(of: .forumTopic)
+                if !myTopics.isEmpty {
+                    Section("Meus tópicos") {
+                        ForEach(myTopics) { item in
+                            CommunityOutboxRow(viewModel: viewModel, item: item)
+                        }
+                    }
+                }
                 if !viewModel.snapshot.forumTopics.isEmpty {
-                    Section("Rascunhos neste dispositivo") {
+                    Section("Rascunhos antigos neste dispositivo") {
                         ForEach(viewModel.snapshot.forumTopics) { draft in
                             NavigationLink(draft.title.isEmpty ? "Rascunhos de comentários" : draft.title) {
                                 List {
@@ -523,7 +581,7 @@ public struct ForumFeedSheetView: View {
                 }
                 if !categories.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Novo rascunho", systemImage: "square.and.pencil") { showNewDraft = true }
+                        Button("Novo tópico", systemImage: "square.and.pencil") { showNewDraft = true }
                     }
                 }
             }
@@ -614,6 +672,7 @@ public struct ForumPostDetailView: View {
                     Text("Não foi possível carregar os comentários.").foregroundStyle(.secondary)
                 }
             }
+            ForumCommentComposer(viewModel: viewModel, postId: post.id)
         }
         .navigationTitle("Publicação")
         .task {
@@ -642,7 +701,6 @@ public struct ForumNewTopicSheetView: View {
     @State private var categoryCode = ""
     @State private var title = ""
     @State private var bodyText = ""
-    @State private var refUrl = ""
     @State private var errorText: String?
 
     public var body: some View {
@@ -653,15 +711,22 @@ public struct ForumNewTopicSheetView: View {
                         Text(category.name).tag(category.code)
                     }
                 }
-                TextField("Título do tópico", text: $title)
-                TextField("Descrição", text: $bodyText, axis: .vertical)
+                TextField("Título do tópico (até 120 caracteres)", text: $title)
+                TextField("Descrição (até 4000 caracteres)", text: $bodyText, axis: .vertical)
                     .lineLimit(4...8)
-                TextField("Link HTTPS opcional", text: $refUrl)
+                Text("O tópico passa por moderação antes de aparecer no fórum.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if viewModel.currentAccountIdOrNil == nil {
+                    Text("Entre na conta gratuita para publicar. Até lá, o tópico fica como rascunho neste aparelho.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 if let errorText {
                     Text(errorText).foregroundStyle(.red)
                 }
-                Button("Salvar rascunho neste dispositivo") {
-                    switch viewModel.saveForumTopicDraft(categorySlug: categoryCode, title: title, body: bodyText, referenceUrl: refUrl) {
+                Button("Publicar tópico") {
+                    switch viewModel.publishForumTopic(categoryCode: categoryCode, title: title, body: bodyText) {
                     case .success:
                         dismiss()
                     case .failure(let error):
@@ -671,7 +736,7 @@ public struct ForumNewTopicSheetView: View {
                 .disabled(categoryCode.isEmpty)
             }
             .onAppear { categoryCode = categories.first?.code ?? "" }
-            .navigationTitle("Rascunho de tópico")
+            .navigationTitle("Novo tópico")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
@@ -738,28 +803,29 @@ public struct MyContributionsSheetView: View {
     @ObservedObject var viewModel: AppStateViewModel
 
     public var body: some View {
+        let items = viewModel.identity.items(of: .priceObservation)
         NavigationStack {
             List {
-                if viewModel.snapshot.myContributions.isEmpty {
-                    Text("Você ainda não tem rascunhos de contribuição neste dispositivo.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(viewModel.snapshot.myContributions) { item in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(item.stationName).font(.headline)
-                                Spacer()
-                                Text(AbastevoTheme.formatBrlMilli(item.amountMilli))
-                                    .font(.headline)
+                Section("Envios deste aparelho") {
+                    if items.isEmpty {
+                        Text("Nenhuma contribuição enviada por este aparelho.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(items) { item in
+                        CommunityOutboxRow(viewModel: viewModel, item: item)
+                    }
+                }
+                OwnObservationHistorySection(viewModel: viewModel)
+                if !viewModel.snapshot.myContributions.isEmpty {
+                    Section("Rascunhos antigos (não enviados)") {
+                        ForEach(viewModel.snapshot.myContributions) { entry in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(entry.stationName).font(.headline)
+                                Text("\(entry.product.displayNamePtBr) · \(AbastevoTheme.formatBrlMilli(entry.amountMilli))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
-                            Text("\(item.product.displayNamePtBr) · \(item.condition.labelPtBr)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("Rascunho neste dispositivo · GPS: \(item.locationVerdict) · \(item.createdAtLabel)")
-                                .font(.caption2)
-                                .foregroundStyle(AbastevoTheme.accentLight)
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -768,6 +834,10 @@ public struct MyContributionsSheetView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fechar") { dismiss() }
                 }
+            }
+            .task {
+                viewModel.identity.dispatchPending()
+                await viewModel.identity.refreshAcceptedStatuses()
             }
         }
     }

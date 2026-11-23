@@ -182,10 +182,7 @@ public struct AuthSheetView: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Iniciar sessão com a Apple") {
-                    Text("Indisponível nesta versão.")
-                        .foregroundStyle(.secondary)
-                }
+                AppleSignInSection(viewModel: viewModel)
 
                 Section("E-mail + Código de 6 dígitos") {
                     TextField("seu@email.com", text: $email)
@@ -201,7 +198,9 @@ public struct AuthSheetView: View {
                 Section("Conta Anônima com Chave de Recuperação") {
                     TextField("Apelido (3 a 20 letras/números)", text: $username)
                     Button("Gerar nova conta com chave") {
-                        issuedKey = viewModel.createAnonymousKeyAccount(username: username)
+                        Task {
+                            issuedKey = await viewModel.createAnonymousKeyAccount(username: username)
+                        }
                     }
                     if let issued = issuedKey {
                         VStack(alignment: .leading, spacing: 4) {
@@ -217,12 +216,18 @@ public struct AuthSheetView: View {
                     }
                 }
 
-                if let msg = viewModel.authStatusMessage {
+                if viewModel.isAuthWorking || viewModel.authStatusMessage != nil {
                     Section("Status") {
-                        Text(msg).font(.subheadline)
+                        if viewModel.isAuthWorking {
+                            ProgressView()
+                        }
+                        if let msg = viewModel.authStatusMessage {
+                            Text(msg).font(.subheadline)
+                        }
                     }
                 }
             }
+            .disabled(viewModel.isAuthWorking)
             .navigationTitle("Conta Gratuita")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

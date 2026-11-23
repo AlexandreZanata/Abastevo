@@ -278,8 +278,6 @@ public struct StationDetailSheetView: View {
     @ObservedObject var viewModel: AppStateViewModel
     let station: StationRecord
 
-    @State private var commentText = ""
-    @State private var commentNotice: String?
     @State private var publicComments: [PublicStationComment] = []
     @State private var commentsReadState: PublicReadState = .loading
     @State private var officialPrices: [OfficialStationPrice] = []
@@ -418,43 +416,13 @@ public struct StationDetailSheetView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(comment.publicAlias).font(.caption.bold())
                                     Text(comment.text)
+                                    StationCommentVoteBar(viewModel: viewModel, commentId: comment.id)
                                 }
                             }
                         }
                     }
 
-                    EnergiaCard {
-                        Text("Rascunhos neste dispositivo")
-                            .font(.headline)
-                        HStack {
-                            TextField("Escreva sua experiência (até 280 caracteres)...", text: $commentText)
-                                .textFieldStyle(.roundedBorder)
-                            Button("Salvar rascunho") {
-                                switch viewModel.saveStationCommentDraft(stationId: station.id, text: commentText) {
-                                case .success:
-                                    commentText = ""
-                                    commentNotice = "Comentário salvo neste dispositivo."
-                                case .failure(let msg):
-                                    commentNotice = msg.localizedDescription
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(AbastevoTheme.ink)
-                        }
-                        if let notice = commentNotice {
-                            Text(notice)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        let comments = viewModel.snapshot.stationComments.filter { $0.isOwn && $0.stationId == station.id }
-                        ForEach(comments) { c in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(c.text).font(.subheadline)
-                                Divider()
-                            }
-                        }
-                    }
+                    StationCommentComposerCard(viewModel: viewModel, station: station)
                 }
                 .padding(16)
             }

@@ -36,6 +36,7 @@ public final class AppStateViewModel: ObservableObject {
     @Published public var authFlowState: AuthFlowState = .loggedOut
     @Published public var signedInAlias: String?
     @Published public var authStatusMessage: String?
+    @Published public private(set) var isAuthWorking = false
 
     // Location & Map
     @Published public var lastDeviceCoordinate: CLLocationCoordinate2D?
@@ -70,6 +71,10 @@ public final class AppStateViewModel: ObservableObject {
     private var directoryRead: Task<Void, Never>?
     private var communityRead: Task<Void, Never>?
     private var cityReadGeneration = UUID()
+    /// Device contributor identity and signed community writes (outbox, receipts, owner history).
+    public let identity: IdentityCoordinator
+    private var identityRelay: AnyCancellable?
+    private var pendingAppleNonce: String?
 
     /// StoreKit 2 Premium; the server verifies every App Store transaction.
     public lazy var premiumStore: PremiumStoreModel = PremiumStoreModel(
@@ -108,9 +113,22 @@ public final class AppStateViewModel: ObservableObject {
                 ids: RandomPhotoIdSource()
             )
         )
+        self.identity = IdentityCoordinator(
+            authFlow: authFlow,
+            signer: proofSigner,
+            photoCache: cache,
+            environment: loaded.apiEnvironment
+        )
         _ = self.photoFlow.sweepExpired()
         rehydrateAuth()
         reloadCityData()
+        identityRelay = identity.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+        identity.isOfflineProbe = { [weak self] in
+            self?.isOfflineSimulation ?? false
+        }
+        identity.start()
     }
 
     public var currentLocale: SupportedAppLocale {
@@ -236,6 +254,7 @@ public final class AppStateViewModel: ObservableObject {
         guard env != snapshot.apiEnvironment, canSwitchApiEnvironment else { return }
         snapshot.apiEnvironment = env
         httpClient.environment = env
+        identity.updateEnvironment(env)
         persist()
         reloadCityData()
     }
@@ -372,30 +391,40 @@ public final class AppStateViewModel: ObservableObject {
             authStatusMessage = "Modo offline: conecte-se para solicitar código por e-mail."
             return
         }
-        switch authFlow.requestEmailCode(email: email) {
-        case .ok:
-            authStatusMessage = "Se o e-mail for válido, enviamos um código de 6 dígitos."
-        case .err(let code):
-            authStatusMessage = "Não foi possível enviar o código (\(code))."
+        let flow = authFlow
+        runAuth({ flow.requestEmailCode(email: email) }) { viewModel, result in
+            switch result {
+            case .ok:
+                viewModel.authStatusMessage = "Se o e-mail for válido, enviamos um código de 6 dígitos."
+            case .err(let code):
+                viewModel.authStatusMessage = "Não foi possível enviar o código (\(code))."
+            }
         }
     }
 
     public func verifyEmailOtp(email: String, code: String) {
-        switch authFlow.consumeEmailCode(email: email, code: code) {
-        case .ok(let outcome):
-            authStatusMessage = outcome.created ? "Conta gratuita criada e conectada." : "Sessão conectada com sucesso."
-            rehydrateAuth()
-        case .err(let verdict):
-            authStatusMessage = "Falha ao entrar (\(verdict))."
+        let flow = authFlow
+        runAuth({ flow.consumeEmailCode(email: email, code: code) }) { viewModel, result in
+            switch result {
+            case .ok(let outcome):
+                viewModel.authStatusMessage = outcome.created ? "Conta gratuita criada e conectada." : "Sessão conectada com sucesso."
+                viewModel.completeSignIn()
+            case .err(let verdict):
+                viewModel.authStatusMessage = "Falha ao entrar (\(verdict))."
+            }
         }
     }
 
-    public func createAnonymousKeyAccount(username: String) -> AuthKeyIssued? {
+    public func createAnonymousKeyAccount(username: String) async -> AuthKeyIssued? {
         guard !isOfflineSimulation else {
             authStatusMessage = "Conecte-se para criar sua conta e receber a chave."
             return nil
         }
-        switch authFlow.createKeyAccount(username: username) {
+        let flow = authFlow
+        isAuthWorking = true
+        let result = await AuthBlockingWork.run { flow.createKeyAccount(username: username) }
+        isAuthWorking = false
+        switch result {
         case .ok(let issued):
             authStatusMessage = "Chave emitida. Guarde-a antes de prosseguir."
             rehydrateAuth()
@@ -407,22 +436,106 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     public func loginWithAccountKey(_ rawKey: String) {
-        switch authFlow.loginWithKey(rawKey: rawKey) {
-        case .ok:
-            authStatusMessage = "Acesso via chave restaurado."
-            rehydrateAuth()
-        case .err(let verdict):
-            authStatusMessage = "Chave inválida ou indisponível (\(verdict))."
+        let flow = authFlow
+        runAuth({ flow.loginWithKey(rawKey: rawKey) }) { viewModel, result in
+            switch result {
+            case .ok:
+                viewModel.authStatusMessage = "Acesso via chave restaurado."
+                viewModel.completeSignIn()
+            case .err(let verdict):
+                viewModel.authStatusMessage = "Chave inválida ou indisponível (\(verdict))."
+            }
+        }
+    }
+
+    /// Value for `ASAuthorizationAppleIDRequest.nonce`; the raw nonce stays here until the reply arrives.
+    public func prepareAppleSignInNonce() -> String? {
+        guard let raw = AppleSignInNonce.makeRawNonce() else {
+            pendingAppleNonce = nil
+            return nil
+        }
+        pendingAppleNonce = raw
+        return AppleSignInNonce.requestNonce(forRaw: raw)
+    }
+
+    public func completeAppleSignIn(identityToken: Data?, authorizationCode: Data?) {
+        guard let rawNonce = pendingAppleNonce else {
+            authStatusMessage = "Não foi possível iniciar o login com a Apple. Tente novamente."
+            return
+        }
+        pendingAppleNonce = nil
+        guard let tokenData = identityToken,
+              let idToken = String(data: tokenData, encoding: .utf8),
+              !idToken.isEmpty else {
+            authStatusMessage = "A Apple não retornou um token de identidade."
+            return
+        }
+        guard !isOfflineSimulation else {
+            authStatusMessage = "Conecte-se para entrar com a Apple."
+            return
+        }
+        let code = authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
+        let hasKeyAccount = authFlow.currentKey() != nil
+        let flow = authFlow
+        runAuth({
+            flow.loginWithProvider(
+                provider: PortableAuth.providerApple,
+                idToken: idToken,
+                rawNonce: rawNonce,
+                authorizationCode: code
+            )
+        }) { viewModel, result in
+            switch result {
+            case .ok(let outcome):
+                viewModel.authStatusMessage = outcome.created ? "Conta gratuita criada com a Apple." : "Conectado com a Apple."
+                viewModel.completeSignIn()
+            case .err(let verdict):
+                if verdict == AccountProviderLogin.unavailableVerdict {
+                    viewModel.authStatusMessage = "Login com a Apple ainda não está disponível neste servidor."
+                } else if verdict == AuthFlow.clientInvalid && hasKeyAccount {
+                    viewModel.authStatusMessage = "Saia da conta com chave antes de entrar com a Apple."
+                } else {
+                    viewModel.authStatusMessage = "Falha no login com a Apple (\(verdict))."
+                }
+            }
+        }
+    }
+
+    public func failAppleSignIn(cancelled: Bool) {
+        pendingAppleNonce = nil
+        authStatusMessage = cancelled ? "Login com a Apple cancelado." : "Login com a Apple indisponível neste aparelho."
+    }
+
+    /// After any login: refresh the visible state, then register and bind the device key for owner-signed writes.
+    private func completeSignIn() {
+        rehydrateAuth()
+        identity.afterSignIn()
+    }
+
+    /// Runs one blocking `AuthFlow` call off the main actor and applies its result on the main actor.
+    private func runAuth<T>(
+        _ work: @escaping @Sendable () -> T,
+        apply: @escaping (AppStateViewModel, T) -> Void
+    ) {
+        isAuthWorking = true
+        Task { [weak self] in
+            let result = await AuthBlockingWork.run(work)
+            guard let self else { return }
+            self.isAuthWorking = false
+            apply(self, result)
         }
     }
 
     public func logout() {
         let ownerId = currentAccountIdOrNil
-        _ = authFlow.logout()
         photoCache.purgeAll()
+        identity.purgeOwnedData()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
-        rehydrateAuth()
-        authStatusMessage = "Sessão encerrada e dados privados limpos."
+        let flow = authFlow
+        runAuth({ flow.logout() }) { viewModel, _ in
+            viewModel.rehydrateAuth()
+            viewModel.authStatusMessage = "Sessão encerrada e dados privados limpos."
+        }
     }
 
     public func deleteAccountAndPurge() {
@@ -430,17 +543,25 @@ public final class AppStateViewModel: ObservableObject {
             authStatusMessage = "Entre na sua conta com conexão à internet para solicitar a exclusão."
             return
         }
-        switch authFlow.deleteAccount() {
-        case .ok:
-            proofSigner.resetKey()
-            photoCache.purgeAll()
-            store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
-            rehydrateAuth()
-            authStatusMessage = "O servidor registrou seu pedido de exclusão."
-        case .err:
-            rehydrateAuth()
-            authStatusMessage = "Não foi possível confirmar a exclusão. Verifique sua conexão e tente novamente."
+        let flow = authFlow
+        runAuth({ flow.deleteAccount() }) { viewModel, result in
+            switch result {
+            case .ok:
+                viewModel.finishAccountDeletion(ownerId: ownerId)
+            case .err:
+                viewModel.rehydrateAuth()
+                viewModel.authStatusMessage = "Não foi possível confirmar a exclusão. Verifique sua conexão e tente novamente."
+            }
         }
+    }
+
+    private func finishAccountDeletion(ownerId: String) {
+        proofSigner.resetKey()
+        identity.forgetDeviceIdentity()
+        photoCache.purgeAll()
+        store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
+        rehydrateAuth()
+        authStatusMessage = "O servidor registrou seu pedido de exclusão."
     }
 
     public func exportMyDataJson() -> String {
@@ -455,14 +576,18 @@ public final class AppStateViewModel: ObservableObject {
 
     // MARK: - Contributions and Photo Pipeline
 
-    public func savePriceContributionDraft(
+    /// Queues a signed price observation (`POST /v1/observations`). An evidence photo needs a capture grant
+    /// for the same station and a capture inside its camera window; other photos never leave the device.
+    public func submitPriceContribution(
         station: StationRecord,
         product: FuelProduct,
         priceText: String,
         condition: PriceConditionKind,
-        rawPhotoData: Data?,
-        photoMime: String
-    ) -> Result<MyContributionEntry, AppValidationError> {
+        evidencePhoto: Data?,
+        photoMime: String,
+        photoCapturedAtMillis: Int64?,
+        photoGrant: PhotoCaptureGrant?
+    ) -> Result<CommunityOutboxItem, AppValidationError> {
         let milli: Int64
         do {
             milli = try PortableMoney.parse(priceText)
@@ -471,61 +596,68 @@ public final class AppStateViewModel: ObservableObject {
         } catch {
             return .failure(AppValidationError("Preço inválido."))
         }
+        guard milli <= CommunityWire.maxAmountMilli else {
+            return .failure(AppValidationError("Preço acima do limite aceito pelo servidor."))
+        }
+        guard CommunityWire.conditionWire(condition) != nil else {
+            return .failure(AppValidationError("O servidor ainda não aceita a condição Pix. Escolha outra condição."))
+        }
 
         let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
-        var photoId: String?
-        var photoExpiresAt: Int64?
-
-        if let bytes = rawPhotoData, !bytes.isEmpty {
-            switch photoFlow.prepare(intentBytes: bytes, mime: photoMime) {
+        var photo: CommunityPhotoEvidence?
+        if let bytes = evidencePhoto, !bytes.isEmpty {
+            guard let grant = photoGrant,
+                  let capturedAt = photoCapturedAtMillis,
+                  grant.admits(stationId: station.id, capturedAtMillis: capturedAt) else {
+                return .failure(AppValidationError("A autorização da foto não vale para este posto ou expirou. Tire a foto novamente."))
+            }
+            guard condition == .standard else {
+                return .failure(AppValidationError("Foto como evidência exige o preço padrão na bomba."))
+            }
+            switch photoFlow.prepareAt(intentBytes: bytes, mime: photoMime, capturedAtMillis: min(capturedAt, nowMs)) {
             case .ready(let id, _, _):
-                photoId = id
-                photoExpiresAt = nowMs + PortablePhoto.transientTTLMillis
+                photo = CommunityPhotoEvidence(
+                    photoId: id,
+                    captureId: grant.captureId,
+                    capturedAtMillis: capturedAt,
+                    captureExpiresAtMillis: grant.expiresAtMillis
+                )
             case .refused(let code):
                 return .failure(AppValidationError("Foto recusada (\(code)). Use JPEG/HEIC/PNG até 256 KiB comprimidos."))
             }
         }
 
-        let riskVerdict = lastLocationRisk?.verdict ?? PortableLocation.manual
-        let entry = MyContributionEntry(
-            commandId: UUID().uuidString.lowercased(),
+        let draft = CommunityPriceDraft(
             stationId: station.id,
             stationName: station.name,
             product: product,
             amountMilli: milli,
             condition: condition,
-            statusLabel: "Rascunho neste dispositivo",
-            locationVerdict: riskVerdict,
-            photoCacheId: photoId,
-            photoExpiresAtMillis: photoExpiresAt,
-            createdAtLabel: "Agora"
+            capturedAtMillis: photo?.capturedAtMillis ?? nowMs,
+            photo: photo
         )
-        snapshot.myContributions.insert(entry, at: 0)
-
-        persist()
-        return .success(entry)
+        guard let item = identity.enqueue(kind: .priceObservation, price: draft, text: nil) else {
+            if let photo {
+                photoFlow.discard(id: photo.photoId)
+            }
+            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+        }
+        return .success(item)
     }
 
     // MARK: - Station Comments & Forum
 
-    public func saveStationCommentDraft(stationId: String, text: String) -> Result<StationCommentItem, AppValidationError> {
+    /// Queues a station comment (`POST /v1/feedback/comments`, account session). Up to 280 Unicode scalars.
+    public func publishStationComment(stationId: String, product: FuelProduct, text: String) -> Result<CommunityOutboxItem, AppValidationError> {
         let normalized = PortableText.normalize(text)
         guard PortableText.isValidComment(normalized) else {
             return .failure(AppValidationError("Comentário deve ter entre 1 e 280 caracteres."))
         }
-        let comment = StationCommentItem(
-            stationId: stationId,
-            authorAlias: signedInAlias ?? "Você",
-            text: normalized,
-            createdAtLabel: "Agora",
-            validVotes: 0,
-            invalidVotes: 0,
-            revision: 1,
-            isOwn: true
-        )
-        snapshot.stationComments.insert(comment, at: 0)
-        persist()
-        return .success(comment)
+        let draft = CommunityTextDraft(text: normalized, stationId: stationId, product: product)
+        guard let item = identity.enqueue(kind: .stationComment, price: nil, text: draft) else {
+            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+        }
+        return .success(item)
     }
 
     func socialReadClient() throws -> AbastevoHttpClient {
@@ -533,32 +665,41 @@ public final class AppStateViewModel: ObservableObject {
         return httpClient
     }
 
-    public func saveForumTopicDraft(categorySlug: String, title: String, body: String, referenceUrl: String) -> Result<ForumTopicItem, AppValidationError> {
+    /// Queues a forum topic (`POST /v1/forum/topics`, account session plus device proof). It enters moderation.
+    public func publishForumTopic(categoryCode: String, title: String, body: String) -> Result<CommunityOutboxItem, AppValidationError> {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard cleanTitle.count >= 4 && !cleanBody.isEmpty else {
-            return .failure(AppValidationError("Informe título e descrição."))
+        guard !categoryCode.isEmpty else {
+            return .failure(AppValidationError("Escolha uma categoria."))
         }
-        let trimmedUrl = referenceUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedUrl.isEmpty && !ForumSafeLinks.isAllowedHttpsLink(trimmedUrl) {
-            return .failure(AppValidationError("Link de referência deve usar HTTPS válido sem credenciais."))
+        guard CommunityWire.isValidTopic(title: cleanTitle, body: cleanBody) else {
+            return .failure(AppValidationError("Informe título (até 120 caracteres) e descrição (até 4000)."))
         }
-        let topic = ForumTopicItem(
-            id: UUID().uuidString.lowercased(),
-            categorySlug: categorySlug,
-            kind: .community,
+        let city = selectedMunicipality
+        let draft = CommunityTextDraft(
+            text: cleanBody,
+            categoryCode: categoryCode,
             title: cleanTitle,
-            summary: String(cleanBody.prefix(120)),
-            body: cleanBody,
-            authorId: currentAccountIdOrNil ?? "local-user",
-            authorName: signedInAlias ?? "Colaborador",
-            regionLabel: municipalityLabel,
-            createdAtLabel: "Agora",
-            externalReferenceUrl: trimmedUrl.isEmpty ? nil : trimmedUrl
+            regionUf: city?.state.rawValue,
+            regionMunicipalityIbge: city.flatMap { Int($0.ibgeCode) }
         )
-        snapshot.forumTopics.insert(topic, at: 0)
-        persist()
-        return .success(topic)
+        guard let item = identity.enqueue(kind: .forumTopic, price: nil, text: draft) else {
+            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+        }
+        return .success(item)
+    }
+
+    /// Queues a forum comment (`POST /v1/forum/posts/{id}/comments`). Up to 280 Unicode scalars.
+    public func publishForumComment(postId: String, text: String) -> Result<CommunityOutboxItem, AppValidationError> {
+        let normalized = PortableText.normalize(text)
+        guard CommunityWire.isUuid(postId), PortableText.isValidComment(normalized) else {
+            return .failure(AppValidationError("Comentário deve ter entre 1 e 280 caracteres."))
+        }
+        let draft = CommunityTextDraft(text: normalized, postId: postId)
+        guard let item = identity.enqueue(kind: .forumComment, price: nil, text: draft) else {
+            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+        }
+        return .success(item)
     }
 
     public func unblockUser(userId: String) {
