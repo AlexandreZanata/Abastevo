@@ -63,7 +63,7 @@ public enum PortableAuth {
         }
     }
 
-    public struct LoginAttempt {
+    public struct LoginAttempt: Equatable {
         public let provider: String
         public let nonce: String
         public let state: String
@@ -75,7 +75,7 @@ public enum PortableAuth {
         }
     }
 
-    public struct ProviderCallback {
+    public struct ProviderCallback: Equatable {
         public let provider: String
         public let idToken: String
         public let nonce: String
