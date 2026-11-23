@@ -402,22 +402,22 @@ public final class AbastevoHttpClient: AuthAccountApi {
         return comments
     }
 
-    private func publicRead(path: String, query: [URLQueryItem] = []) async throws -> Data {
+    func publicRead(path: String, query: [URLQueryItem] = [], maxBytes: Int? = nil) async throws -> Data {
         guard let origin = environment.join(path),
               var components = URLComponents(url: origin, resolvingAgainstBaseURL: false) else {
             throw HttpClientError.invalidRequest
         }
         components.queryItems = query.isEmpty ? nil : query
         guard let url = components.url else { throw HttpClientError.invalidRequest }
-        return try await performGet(url: url)
+        return try await performGet(url: url, maxBytes: maxBytes ?? Self.maxResponseBytes)
     }
 
-    private func performGet(url: URL) async throws -> Data {
+    private func performGet(url: URL, maxBytes: Int) async throws -> Data {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let (data, response) = try await session.data(for: request)
-        if data.count > Self.maxResponseBytes { throw HttpClientError.oversizedResponse }
+        if data.count > maxBytes { throw HttpClientError.oversizedResponse }
         guard let http = response as? HTTPURLResponse, http.statusCode >= 200 && http.statusCode < 300 else {
             throw HttpClientError.unavailable
         }
@@ -530,7 +530,7 @@ public final class AbastevoHttpClient: AuthAccountApi {
         Self.readIsoDate(raw)
     }
 
-    private static func readIsoDate(_ raw: String) -> Date? {
+    static func readIsoDate(_ raw: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let d = formatter.date(from: raw) { return d }
@@ -631,7 +631,7 @@ extension AbastevoHttpClient {
         }
     }
 
-    private static func publicDecoder() -> JSONDecoder {
+    static func publicDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder
