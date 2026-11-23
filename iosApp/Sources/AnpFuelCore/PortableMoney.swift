@@ -1,3 +1,5 @@
+import Foundation
+
 /// Portable exact money in integer milli-BRL (P12-T04, Swift port of P12-T02).
 ///
 /// Pure Swift with no platform imports in logic paths, mirroring the Kotlin
@@ -18,6 +20,8 @@ public enum PortableMoney {
 
     /// Tank capacity bound in milli-liters (200 L, mirrors TankCapacity).
     public static let maxCapacityMilliLiters: Int64 = 200_000
+    public static let maxBatteryCapacityWh: Int64 = 1_000_000_000
+    public static let maxRecordCentavos: Int64 = 1_000_000_000_000
 
     /// Parses ANP price text into integer milli-BRL. Throws with a stable
     /// quarantine-style code (`missing-price`, `negative-price`,
@@ -102,12 +106,31 @@ public enum PortableMoney {
     /// Parses tank capacity text with the same comma grammar into
     /// milli-liters. Range is 1...200_000 (0 < liters <= 200).
     public static func parseCapacityMilliLiters(_ text: String) throws -> Int64 {
-        let milliLiters = try parseCapacityRaw(text)
+        let milliLiters = try parseCapacityRaw(text, maxWholeUnits: maxCapacityMilliLiters / 1000)
         if milliLiters < 1 {
             throw PortableMoneyError(milliLiters == 0 ? "zero-price" : "invalid-price")
         }
         if milliLiters > maxCapacityMilliLiters { throw PortableMoneyError("over-range") }
         return milliLiters
+    }
+
+    /// Parses kWh as exact Wh, accepting comma or period decimal separators (EE-19).
+    public static func parseBatteryCapacityWh(_ text: String) throws -> Int64 {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ".", with: ",")
+        let wattHours = try parseCapacityRaw(normalized, maxWholeUnits: maxBatteryCapacityWh / 1000)
+        if wattHours == 0 { throw PortableMoneyError("zero-price") }
+        if wattHours > maxBatteryCapacityWh { throw PortableMoneyError("over-range") }
+        return wattHours
+    }
+
+    /// Exact BRL record amounts, including zero, use the shared driver and ledger bound.
+    public static func parseBrlCentavos(_ text: String) throws -> Int64 {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ".", with: ",")
+        let milli = try parseCapacityRaw(normalized, maxWholeUnits: maxRecordCentavos / 100)
+        if milli % 10 != 0 { throw PortableMoneyError("over-precision") }
+        let centavos = milli / 10
+        if centavos > maxRecordCentavos { throw PortableMoneyError("over-range") }
+        return centavos
     }
 
     /// Exact tank-fill total in milli-BRL: round-half-up of
@@ -124,8 +147,8 @@ public enum PortableMoney {
         return (product + 500) / 1000
     }
 
-    private static func parseCapacityRaw(_ text: String) throws -> Int64 {
-        var trimmed = text.trimmingCharacters(in: .whitespaces)
+    private static func parseCapacityRaw(_ text: String, maxWholeUnits: Int64) throws -> Int64 {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty { throw PortableMoneyError("missing-price") }
         if trimmed.hasPrefix("-") { throw PortableMoneyError("negative-price") }
         if trimmed.hasPrefix("+") { throw PortableMoneyError("invalid-price") }
@@ -152,16 +175,16 @@ public enum PortableMoney {
             frac = String(frac.prefix(3))
         }
         while frac.count < 3 { frac += "0" }
-        var liters: Int64 = 0
+        var wholeUnits: Int64 = 0
         for ch in intPart {
-            liters = liters * 10 + (try digit(ch))
-            if liters > maxCapacityMilliLiters { throw PortableMoneyError("over-range") }
+            wholeUnits = wholeUnits * 10 + (try digit(ch))
+            if wholeUnits > maxWholeUnits { throw PortableMoneyError("over-range") }
         }
         var fracValue: Int64 = 0
         for ch in frac {
             fracValue = fracValue * 10 + (try digit(ch))
         }
-        return liters * 1000 + fracValue
+        return wholeUnits * 1000 + fracValue
     }
 
     private static func digit(_ c: Character) throws -> Int64 {

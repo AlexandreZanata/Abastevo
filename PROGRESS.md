@@ -1,5 +1,7 @@
 # Current delivery
 
+- iOS parity (PR #250, baseline `e7733912`): follow the [journey contracts](iosApp/PARITY.md). The public-data, route and misleading-success corrections await native verification. The PR remains open and Android feature parity remains pending.
+
 - Public web localization extends English and Spanish to search, station details, enforcement, the editorial forum, app tutorials and informative legal pages. Public source data and authorization rules stay in place. Verify the protected release, public locale navigation and the refreshed portal artifact before declaring publication complete.
 
 - Web localization (SEO-28/SEO-56) restores the home controls and section content, guide and calculator navigation, and the portal's price explorer and comparable data sections in English and Spanish. The public guide set has 13 editorial translations and five category pages per locale. Follow the protected `dev` to `main` release and verify the landing bundle and subsequent portal snapshot on the official origin.

@@ -43,8 +43,8 @@ public struct AbastevoRootView: View {
     private var mainFourTabShell: some View {
         VStack(spacing: 0) {
             AbastevoTopChromeBar(
-                locationLabel: viewModel.selectedMunicipality.displayTitle,
-                weekLabel: viewModel.selectedWeek.id,
+                locationLabel: viewModel.municipalityLabel,
+                weekLabel: viewModel.surveyWeekLabel,
                 isOffline: viewModel.isOfflineSimulation,
                 signedInAlias: viewModel.signedInAlias,
                 onLocationTap: { viewModel.activeSheet = .locationPicker },
@@ -81,13 +81,13 @@ public struct AbastevoRootView: View {
         case .locationPicker:
             LocationPickerSheetView(viewModel: viewModel)
         case .weekPicker:
-            WeekPickerSheetView(viewModel: viewModel)
+            WeekPickerSheetView()
         case .priceHistory:
-            PriceHistorySheetView(viewModel: viewModel)
+            PriceHistorySheetView()
         case .evExplore:
             EvChargingExploreSheetView(viewModel: viewModel)
         case .qualityReports:
-            QualityReportsSheetView(viewModel: viewModel)
+            QualityReportsSheetView()
         case .suggestStation:
             SuggestStationSheetView(viewModel: viewModel)
         case .masterFaq:
@@ -97,17 +97,15 @@ public struct AbastevoRootView: View {
         case .forumFeed:
             ForumFeedSheetView(viewModel: viewModel)
         case .contributors:
-            ContributorsSheetView()
+            ContributorsSheetView(viewModel: viewModel)
         case .myContributions:
             MyContributionsSheetView(viewModel: viewModel)
-        case .nativeRoute:
-            NativeRouteSheetView(viewModel: viewModel)
         case .evTripPlanner:
             EvTripPlannerSheetView(viewModel: viewModel)
         case .savedPlaces:
             SavedPlacesSheetView(viewModel: viewModel)
         case .mapDownloads:
-            MapDownloadsSheetView(viewModel: viewModel)
+            MapDownloadsSheetView()
         case .auth:
             AuthSheetView(viewModel: viewModel)
         case .accountManagement:
@@ -117,11 +115,11 @@ public struct AbastevoRootView: View {
         case .driverHub:
             DriverHubSheetView(viewModel: viewModel)
         case .enterpriseHub:
-            EnterpriseHubSheetView(viewModel: viewModel)
+            EnterpriseHubSheetView()
         case .arcadeGames:
             ArcadeGamesSheetView(viewModel: viewModel)
         case .trainingConsent:
-            TrainingConsentSheetView(viewModel: viewModel)
+            TrainingConsentSheetView()
         case .settings:
             SettingsSheetView(viewModel: viewModel)
         case .help:

@@ -14,6 +14,38 @@ IOS_ROOT = ROOT / "iosApp"
 
 
 class IosAppIntegrityTests(unittest.TestCase):
+    def test_city_picker_and_onboarding_share_the_android_ibge_asset(self):
+        asset = ROOT / "data/src/main/assets/ibge_municipalities.json"
+        rows = json.loads(asset.read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(rows), 5570)
+        self.assertEqual(len({row["ibgeCode"] for row in rows}), len(rows))
+        self.assertEqual(len({row["state"] for row in rows}), 27)
+        self.assertFalse(any(IOS_ROOT.rglob(asset.name)))
+
+        project = (IOS_ROOT / "AnpFuel.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
+        manifest = (IOS_ROOT / "project.yml").read_text(encoding="utf-8")
+        source_path = "../" + asset.relative_to(ROOT).as_posix()
+        self.assertIn(f'path = "{source_path}"; sourceTree = SOURCE_ROOT;', project)
+        self.assertEqual(manifest.count(f"path: {source_path}"), 2)
+        self.assertEqual(len(re.findall(r"^\s*[A-F0-9]{24} /\* ibge_municipalities\.json in Resources \*/,", project, re.M)), 2)
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        for name in ("ExploreTabViews.swift", "OnboardingAndTermsViews.swift"):
+            source = (shell / name).read_text(encoding="utf-8")
+            self.assertIn("viewModel.municipalityCatalog.search(", source)
+            self.assertNotIn("SeedCatalog.municipalities", source)
+
+    def test_public_explore_uses_real_sources_and_never_sample_prices(self):
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        explore = (shell / "ExploreTabViews.swift").read_text(encoding="utf-8")
+        client = (IOS_ROOT / "Sources/AnpFuelCore/AbastevoBackendClient.swift").read_text(encoding="utf-8")
+        self.assertIn('"/v1/stations"', client)
+        self.assertIn("/prices", client)
+        self.assertNotIn("SeedCatalog.stationsFor", state)
+        self.assertNotIn("SeedCatalog.officialAverage", state)
+        self.assertNotIn("SeedCatalog.priceHistory", explore)
+        self.assertNotIn("downloadedWeekIds.append", state)
+
     def test_required_core_shell_test_and_xcode_files_exist(self):
         expected_core = [
             "AbastevoBackendClient.swift",
@@ -167,6 +199,50 @@ class IosAppIntegrityTests(unittest.TestCase):
             self.assertEqual(braces, 0, f"Unclosed brace in {swift.name}")
             self.assertEqual(parens, 0, f"Unclosed paren in {swift.name}")
 
+    def test_unintegrated_enterprise_screen_cannot_issue_local_authorizations(self):
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
+        enterprise = profile.split("public struct EnterpriseHubSheetView: View {", 1)[1].split(
+            "public struct ArcadeGamesSheetView", 1
+        )[0]
+        self.assertIn("ContentUnavailableView", enterprise)
+        self.assertNotIn("TextField(", enterprise)
+        self.assertNotIn("viewModel", enterprise)
+
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        self.assertNotIn("joinSampleEnterprise", state)
+        self.assertNotIn("fuelingAuthCode", state)
+
+    def test_ledger_cannot_use_sample_metrics_or_an_unselected_vehicle(self):
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
+        ledger = profile.split("public struct VehiclesAndLedgerSheetView: View {", 1)[1].split(
+            "public struct DriverHubSheetView", 1
+        )[0]
+        self.assertIn("selection: $ledgerVehicleId", ledger)
+        self.assertNotIn('?? "default"', ledger)
+        self.assertNotIn("PremiumEnergyCalculator.IntervalInput", ledger)
+
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        vehicle = state.split("func addVehicle(", 1)[1].split("func removeVehicle", 1)[0]
+        self.assertIn("PortableMoney.parseBatteryCapacityWh", vehicle)
+        self.assertNotIn("Double(batteryKwhText", vehicle)
+
+    def test_manual_shift_uses_selected_vehicle_exact_money_and_clock(self):
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
+        driver = profile.split("public struct DriverHubSheetView: View {", 1)[1].split(
+            "public struct EnterpriseHubSheetView", 1
+        )[0]
+        self.assertIn("selection: $driverVehicleId", driver)
+        self.assertIn("PortableMoney.parseBrlCentavos", driver)
+        self.assertNotIn('"driver-vehicle"', driver)
+        self.assertNotIn("Double(cleaned)", driver)
+
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        self.assertIn("startedAtLabel: Date().ISO8601Format()", state)
+        self.assertIn("endedAtLabel: Date().ISO8601Format()", state)
+
     def test_info_plist_privacy_manifest_and_entitlements_are_valid_and_safe(self):
         with (IOS_ROOT / "App/Info.plist").open("rb") as fh:
             info = plistlib.load(fh)
@@ -203,6 +279,9 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;", pbx)
         self.assertIn("PRODUCT_BUNDLE_IDENTIFIER = com.anpfuel.app;", pbx)
         self.assertIn("PrivacyInfo.xcprivacy", pbx)
+        self.assertEqual(re.findall(r"SWIFT_VERSION = ([^;]+);", pbx), ["5.0", "5.0"])
+        self.assertIn('SWIFT_VERSION: "5.0"', (IOS_ROOT / "project.yml").read_text())
+        self.assertIn("ENABLE_TESTABILITY = YES;", pbx)
 
         ET.parse(IOS_ROOT / "AnpFuel.xcodeproj/xcshareddata/xcschemes/AnpFuel.xcscheme")
 
@@ -220,14 +299,31 @@ class IosAppIntegrityTests(unittest.TestCase):
         http_text = (IOS_ROOT / "Sources/AnpFuelCore/AbastevoBackendClient.swift").read_text(encoding="utf-8")
         self.assertIn("https://abastevo.com.br", http_text)
         self.assertIn("/v1/community/feed", http_text)
-        self.assertIn("/v1/privacy/training-consent/grant", http_text)
-        self.assertIn("/v1/privacy/training-consent/revoke", http_text)
+        profile = (IOS_ROOT / "Sources/AnpFuelShell/ProfileTabViews.swift").read_text(encoding="utf-8")
+        consent = profile.split("public struct TrainingConsentSheetView", 1)[1].split("public struct SettingsSheetView", 1)[0]
+        self.assertIn("TrainingTermsContract.verifiedDigestMatches()", consent)
+        self.assertNotIn("grantTrainingConsent", consent)
+        self.assertNotIn("revokeTrainingConsentImmediately", consent)
 
         energy_fixture = json.loads((ROOT / "contracts/testdata/premium/energy-v1.json").read_text(encoding="utf-8"))
         self.assertEqual(energy_fixture["cases"][0]["expected_wh_per_km"], "800/3")
-        tests_text = (IOS_ROOT / "Tests/AnpFuelCoreTests/DomainAndFeaturesTests.swift").read_text(encoding="utf-8")
-        self.assertIn('"800/3"', tests_text)
-        self.assertIn('"phev-shared-distance"', tests_text)
+        test_source = (IOS_ROOT / "Tests/AnpFuelCoreTests/DomainAndFeaturesTests.swift").read_text(encoding="utf-8")
+        self.assertIn("for vector in intervals", test_source)
+        pbx = (IOS_ROOT / "AnpFuel.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
+        self.assertIn("../contracts/testdata/premium/energy-v1.json", pbx)
+        self.assertIn("energy-v1.json in Resources", pbx)
+
+    def test_map_routes_and_download_state_have_no_sample_data(self):
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        explore = (shell / "ExploreTabViews.swift").read_text(encoding="utf-8")
+        maps = (shell / "MapTabViews.swift").read_text(encoding="utf-8")
+        self.assertIn("NativeRouteSheetView(viewModel: viewModel, station: station)", explore)
+        self.assertIn("station.pinTier.allowsMapPin", maps)
+        self.assertIn("await viewModel.requestRouteOrigin()", maps)
+        self.assertIn("await MKDirections(request: request).calculate()", maps)
+        self.assertIn("Mapas regionais indisponíveis", maps)
+        store = (IOS_ROOT / "Sources/AnpFuelCore/IosLocalStore.swift").read_text(encoding="utf-8")
+        self.assertNotIn("downloadedMapRegions", store)
 
 
 if __name__ == "__main__":

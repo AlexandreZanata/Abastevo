@@ -52,9 +52,9 @@ public struct CommunityRootView: View {
                     .font(.system(size: 32))
                     .foregroundStyle(AbastevoTheme.accentLight)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Contribuir preço com foto")
+                    Text("Preparar contribuição com foto")
                         .font(.headline)
-                    Text("Fotografe a placa do posto. O OCR sugere os valores no dispositivo e a foto local expira em 24h.")
+                    Text("O OCR sugere os valores no dispositivo. O rascunho fica aqui e a foto local expira em 24h.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -63,7 +63,7 @@ public struct CommunityRootView: View {
                 IosHaptics.lightTap()
                 viewModel.activeSheet = .capturePrice
             } label: {
-                Text(IosStrings.contributePriceCta(viewModel.currentLocale))
+                Text("Abrir captura")
                     .font(.subheadline.bold())
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -91,7 +91,7 @@ public struct CommunityRootView: View {
             Button {
                 viewModel.activeSheet = .forumFeed
             } label: {
-                Text("Abrir Fórum (\(viewModel.snapshot.forumTopics.count) tópicos)")
+                Text("Abrir Fórum")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -124,7 +124,7 @@ public struct CommunityRootView: View {
         let items = viewModel.visibleCommunityFeed
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Feed de Preços — \(viewModel.selectedMunicipality.name)")
+                Text("Feed de Preços — \(viewModel.municipalityLabel)")
                     .font(.headline)
                 Spacer()
                 Picker("Ordem", selection: $viewModel.feedSortOrder) {
@@ -140,7 +140,7 @@ public struct CommunityRootView: View {
                     Text("Nenhuma observação comunitária para \(viewModel.snapshot.selectedFuel.displayNamePtBr) ainda.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Button("Seja o primeiro a enviar uma foto") {
+                    Button("Preparar uma contribuição") {
                         viewModel.activeSheet = .capturePrice
                     }
                     .font(.subheadline.bold())
@@ -167,24 +167,9 @@ public struct CommunityRootView: View {
                             Text(AbastevoTheme.formatBrlMilli(obs.amountMilli))
                                 .font(.title3.bold())
                         }
-                        HStack(spacing: 12) {
-                            Button {
-                                IosHaptics.lightTap()
-                                viewModel.confirmObservation(obs)
-                            } label: {
-                                Label("Confirmar (\(obs.confirmations))", systemImage: "hand.thumbsup.fill")
-                                    .font(.caption.bold())
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                viewModel.markObservationHelpful(obs, isHelpful: true)
-                            } label: {
-                                Label("Útil (\(obs.helpfulCount))", systemImage: "checkmark.circle")
-                                    .font(.caption)
-                            }
-                            .buttonStyle(.borderless)
-                        }
+                        Label("Confirmações: \(obs.confirmations)", systemImage: "hand.thumbsup")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -205,6 +190,7 @@ public struct CapturePriceSheetView: View {
     @State private var ocrCandidates: [PortablePriceOcr.OcrCandidate] = []
     @State private var ocrAssociationSummary: String?
     @State private var statusBanner: String?
+    @State private var draftSaved = false
     @State private var showCameraPicker = false
     @State private var zoomState = LiveBoardZoom.State(ratio: 1.0)
     #if canImport(PhotosUI)
@@ -329,7 +315,7 @@ public struct CapturePriceSheetView: View {
                         guard let st = cityStations.first(where: { $0.id == selectedStationId }) ?? cityStations.first else {
                             return
                         }
-                        switch viewModel.submitPriceContribution(
+                        switch viewModel.savePriceContributionDraft(
                             station: st,
                             product: selectedFuel,
                             priceText: priceInputText,
@@ -339,18 +325,20 @@ public struct CapturePriceSheetView: View {
                         ) {
                         case .success(let entry):
                             IosHaptics.success()
-                            statusBanner = "Registrado: \(entry.statusLabel)"
-                            dismiss()
+                            statusBanner = entry.statusLabel
+                            rawPhotoData = nil
+                            draftSaved = true
                         case .failure(let errorMsg):
                             IosHaptics.warning()
-                            statusBanner = errorMsg
+                            statusBanner = errorMsg.localizedDescription
                         }
                     } label: {
-                        Text("Enviar preço para validação")
+                        Text("Salvar rascunho neste dispositivo")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.accentLight)
+                    .disabled(draftSaved || cityStations.isEmpty)
                 }
             }
             .navigationTitle("Contribuir Preço")
@@ -470,57 +458,61 @@ struct IosCameraCaptureView: UIViewControllerRepresentable {
 public struct ForumFeedSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
-    @State private var selectedCategorySlug: String = "all"
-    @State private var showNewTopic = false
+    @State private var selectedCategory: String?
+    @State private var showNewDraft = false
+    @State private var categories: [ForumPublicCategory] = []
+    @State private var posts: [ForumPublicPost] = []
+    @State private var readState: PublicReadState = .loading
 
     public var body: some View {
-        let blockedIds = Set(viewModel.snapshot.blockedUsers.map { $0.id })
-        let topics = viewModel.snapshot.forumTopics.filter { topic in
-            !blockedIds.contains(topic.authorId)
-                && (selectedCategorySlug == "all" || topic.categorySlug == selectedCategorySlug)
-        }
         NavigationStack {
-            VStack(spacing: 10) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        Button("Todas") { selectedCategorySlug = "all" }
-                            .buttonStyle(.bordered)
-                            .tint(selectedCategorySlug == "all" ? AbastevoTheme.accentLight : .secondary)
-                        ForEach(SeedCatalog.forumCategories) { cat in
-                            Button(cat.title) { selectedCategorySlug = cat.slug }
-                                .buttonStyle(.bordered)
-                                .tint(selectedCategorySlug == cat.slug ? AbastevoTheme.accentLight : .secondary)
+            List {
+                Section("Publicações") {
+                    Picker("Categoria", selection: $selectedCategory) {
+                        Text("Todas").tag(Optional<String>.none)
+                        ForEach(categories) { category in
+                            Text(category.name).tag(Optional(category.code))
                         }
                     }
-                    .padding(.horizontal, 16)
-                }
-
-                List(topics) { topic in
-                    NavigationLink {
-                        ForumPostDetailView(viewModel: viewModel, topic: topic)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(topic.kind == .editorial ? "Guia Oficial" : "Comunidade")
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background((topic.kind == .editorial ? Color.blue : AbastevoTheme.accentLight).opacity(0.15))
-                                    .clipShape(Capsule())
-                                Text(topic.regionLabel).font(.caption2).foregroundStyle(.secondary)
-                                Spacer()
-                                Text(topic.createdAtLabel).font(.caption2).foregroundStyle(.secondary)
-                            }
-                            Text(topic.title).font(.headline)
-                            Text(topic.summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                            HStack(spacing: 14) {
-                                Label("\(topic.reactionCount)", systemImage: "hand.thumbsup")
-                                Label("\(topic.comments.count)", systemImage: "bubble.right")
-                            }
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                    switch readState {
+                    case .loading:
+                        ProgressView()
+                    case .unavailable:
+                        Text("Não foi possível carregar o fórum.").foregroundStyle(.secondary)
+                    case .loaded:
+                        if posts.isEmpty {
+                            Text("Nenhuma publicação nesta categoria.").foregroundStyle(.secondary)
                         }
-                        .padding(.vertical, 4)
+                        ForEach(posts) { post in
+                            NavigationLink {
+                                ForumPostDetailView(viewModel: viewModel, post: post)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(post.title).font(.headline)
+                                    Text(postLabel(post.kind)).font(.caption).foregroundStyle(.secondary)
+                                    if let excerpt = post.excerpt {
+                                        Text(excerpt).font(.caption).lineLimit(2)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if !viewModel.snapshot.forumTopics.isEmpty {
+                    Section("Rascunhos neste dispositivo") {
+                        ForEach(viewModel.snapshot.forumTopics) { draft in
+                            NavigationLink(draft.title.isEmpty ? "Rascunhos de comentários" : draft.title) {
+                                List {
+                                    if !draft.body.isEmpty {
+                                        Text(draft.body)
+                                    }
+                                    ForEach(draft.comments.filter(\.isOwn)) { comment in
+                                        Text(comment.body)
+                                    }
+                                }
+                                .navigationTitle("Rascunho local")
+                            }
+                        }
                     }
                 }
             }
@@ -529,95 +521,125 @@ public struct ForumFeedSheetView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fechar") { dismiss() }
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showNewTopic = true
-                    } label: {
-                        Image(systemName: "square.and.pencil")
+                if !categories.isEmpty {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Novo rascunho", systemImage: "square.and.pencil") { showNewDraft = true }
                     }
                 }
             }
-            .sheet(isPresented: $showNewTopic) {
-                ForumNewTopicSheetView(viewModel: viewModel)
+            .sheet(isPresented: $showNewDraft) {
+                ForumNewTopicSheetView(viewModel: viewModel, categories: categories)
             }
+            .task {
+                guard let client = try? viewModel.socialReadClient(),
+                      let loaded = try? await client.fetchForumCategories(),
+                      !Task.isCancelled else { return }
+                categories = loaded
+            }
+            .task(id: selectedCategory) {
+                posts = []
+                readState = .loading
+                do {
+                    let loaded = try await viewModel.socialReadClient().fetchForumPosts(category: selectedCategory)
+                    guard !Task.isCancelled else { return }
+                    posts = loaded
+                    readState = .loaded
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    readState = .unavailable
+                }
+            }
+        }
+    }
+
+    private func postLabel(_ kind: ForumPublicPost.Kind) -> String {
+        switch kind {
+        case .editorial: return "Guia editorial"
+        case .news: return "Notícia"
+        case .topic: return "Comunidade"
+        case .bulletin: return "Boletim"
         }
     }
 }
 
 public struct ForumPostDetailView: View {
     @ObservedObject var viewModel: AppStateViewModel
-    let topic: ForumTopicItem
-    @State private var replyText = ""
+    let post: ForumPublicPost
+    @State private var detail: ForumPublicDetail?
+    @State private var comments: [ForumPublicComment]?
+    @State private var isLoadingDetail = true
+    @State private var isLoadingComments = true
 
     public var body: some View {
-        let liveTopic = viewModel.snapshot.forumTopics.first(where: { $0.id == topic.id }) ?? topic
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                EnergiaCard {
-                    Text(liveTopic.title).font(.title3.bold())
-                    Text("\(liveTopic.authorName) · \(liveTopic.regionLabel) · \(liveTopic.createdAtLabel)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(liveTopic.body).font(.body)
-                    if let urlStr = liveTopic.externalReferenceUrl,
-                       ForumSafeLinks.isAllowedHttpsLink(urlStr),
-                       let url = URL(string: urlStr) {
-                        Link("Abrir guia completo (HTTPS)", destination: url)
-                            .font(.subheadline.bold())
+        List {
+            Section {
+                Text(post.title).font(.title3.bold())
+                if let alias = post.publicAlias {
+                    Text(alias).font(.caption).foregroundStyle(.secondary)
+                }
+                if let detail {
+                    if let body = detail.bodyText {
+                        Text(body)
+                    }
+                    if let source = detail.source,
+                       ForumSafeLinks.isAllowedHttpsLink(source.url),
+                       let url = URL(string: source.url) {
+                        Link(source.name, destination: url)
                     }
                     HStack(spacing: 12) {
-                        Button {
-                            viewModel.toggleForumReaction(topicId: liveTopic.id)
-                        } label: {
-                            Label("Útil (\(liveTopic.reactionCount))", systemImage: liveTopic.myReacted ? "hand.thumbsup.fill" : "hand.thumbsup")
-                        }
-                        .buttonStyle(.bordered)
-
-                        if liveTopic.kind == .community {
-                            Button("Bloquear autor") {
-                                viewModel.blockUser(userId: liveTopic.authorId, alias: liveTopic.authorName)
-                            }
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                        }
+                        Label("\(detail.likeCount)", systemImage: "hand.thumbsup")
+                        Label("\(detail.dislikeCount)", systemImage: "hand.thumbsdown")
                     }
-                }
-
-                EnergiaCard {
-                    Text("Comentários (\(liveTopic.comments.count))").font(.headline)
-                    HStack {
-                        TextField("Adicionar comentário (até 280 caracteres)...", text: $replyText)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Enviar") {
-                            viewModel.addForumComment(topicId: liveTopic.id, text: replyText)
-                            replyText = ""
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AbastevoTheme.ink)
-                    }
-                    ForEach(liveTopic.comments) { c in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(c.authorName).font(.caption.bold())
-                                Spacer()
-                                Text(c.createdAtLabel).font(.caption2).foregroundStyle(.secondary)
-                            }
-                            Text(c.body).font(.subheadline)
-                            Divider()
-                        }
-                    }
+                    .foregroundStyle(.secondary)
+                } else if isLoadingDetail {
+                    ProgressView()
+                } else {
+                    Text("Não foi possível carregar a publicação.").foregroundStyle(.secondary)
                 }
             }
-            .padding(16)
+            Section("Comentários publicados") {
+                if let comments {
+                    if comments.isEmpty {
+                        Text("Nenhum comentário publicado.").foregroundStyle(.secondary)
+                    }
+                    ForEach(comments) { comment in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(comment.publicAlias).font(.caption.bold())
+                            Text(comment.bodyText)
+                        }
+                    }
+                } else if isLoadingComments {
+                    ProgressView()
+                } else {
+                    Text("Não foi possível carregar os comentários.").foregroundStyle(.secondary)
+                }
+            }
         }
-        .navigationTitle("Tópico")
+        .navigationTitle("Publicação")
+        .task {
+            if let client = try? viewModel.socialReadClient() {
+                let loaded = try? await client.fetchForumPost(id: post.id)
+                guard !Task.isCancelled else { return }
+                detail = loaded
+            }
+            isLoadingDetail = false
+        }
+        .task {
+            if let client = try? viewModel.socialReadClient() {
+                let loaded = try? await client.fetchForumComments(postId: post.id)
+                guard !Task.isCancelled else { return }
+                comments = loaded
+            }
+            isLoadingComments = false
+        }
     }
 }
 
 public struct ForumNewTopicSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
-    @State private var categorySlug = "dicas-regionais"
+    let categories: [ForumPublicCategory]
+    @State private var categoryCode = ""
     @State private var title = ""
     @State private var bodyText = ""
     @State private var refUrl = ""
@@ -626,30 +648,30 @@ public struct ForumNewTopicSheetView: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Picker("Categoria", selection: $categorySlug) {
-                    ForEach(SeedCatalog.forumCategories) { cat in
-                        Text(cat.title).tag(cat.slug)
+                Picker("Categoria", selection: $categoryCode) {
+                    ForEach(categories) { category in
+                        Text(category.name).tag(category.code)
                     }
                 }
                 TextField("Título do tópico", text: $title)
                 TextField("Descrição", text: $bodyText, axis: .vertical)
                     .lineLimit(4...8)
                 TextField("Link HTTPS opcional", text: $refUrl)
-                if let err = errorText {
-                    Text(err).foregroundStyle(.red).font(.caption)
+                if let errorText {
+                    Text(errorText).foregroundStyle(.red)
                 }
-                Button("Publicar tópico") {
-                    switch viewModel.createForumTopic(categorySlug: categorySlug, title: title, body: bodyText, referenceUrl: refUrl) {
+                Button("Salvar rascunho neste dispositivo") {
+                    switch viewModel.saveForumTopicDraft(categorySlug: categoryCode, title: title, body: bodyText, referenceUrl: refUrl) {
                     case .success:
                         dismiss()
-                    case .failure(let msg):
-                        errorText = msg
+                    case .failure(let error):
+                        errorText = error.localizedDescription
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AbastevoTheme.accentLight)
+                .disabled(categoryCode.isEmpty)
             }
-            .navigationTitle("Novo Tópico")
+            .onAppear { categoryCode = categories.first?.code ?? "" }
+            .navigationTitle("Rascunho de tópico")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
@@ -661,21 +683,32 @@ public struct ForumNewTopicSheetView: View {
 
 public struct ContributorsSheetView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: AppStateViewModel
+    @State private var contributors: [PublicContributor] = []
+    @State private var readState: PublicReadState = .loading
 
     public var body: some View {
         NavigationStack {
-            List(SeedCatalog.contributors) { c in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(c.alias).font(.headline)
-                        Text("\(c.cityLabel) · \(c.badgeTitle)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            List {
+                switch readState {
+                case .loading:
+                    ProgressView()
+                case .unavailable:
+                    Text("Não foi possível carregar os colaboradores.").foregroundStyle(.secondary)
+                case .loaded:
+                    if contributors.isEmpty {
+                        Text("Nenhum perfil público disponível.").foregroundStyle(.secondary)
                     }
-                    Spacer()
-                    VStack(alignment: .trailing) {
-                        Text("\(c.acceptedPrices) preços").font(.subheadline.bold())
-                        Text("\(c.confirmationsGiven) confirmações").font(.caption2).foregroundStyle(.secondary)
+                    ForEach(contributors.indices, id: \.self) { index in
+                        let contributor = contributors[index]
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(contributor.displayName).font(.headline)
+                            if let roles = contributor.roles, !roles.isEmpty {
+                                Text(roles.joined(separator: " · "))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }
@@ -683,6 +716,17 @@ public struct ContributorsSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fechar") { dismiss() }
+                }
+            }
+            .task {
+                do {
+                    let loaded = try await viewModel.socialReadClient().fetchContributors()
+                    guard !Task.isCancelled else { return }
+                    contributors = loaded
+                    readState = .loaded
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    readState = .unavailable
                 }
             }
         }
@@ -697,7 +741,7 @@ public struct MyContributionsSheetView: View {
         NavigationStack {
             List {
                 if viewModel.snapshot.myContributions.isEmpty {
-                    Text("Você ainda não enviou contribuições neste dispositivo.")
+                    Text("Você ainda não tem rascunhos de contribuição neste dispositivo.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(viewModel.snapshot.myContributions) { item in
@@ -711,7 +755,7 @@ public struct MyContributionsSheetView: View {
                             Text("\(item.product.displayNamePtBr) · \(item.condition.labelPtBr)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text("Status: \(item.statusLabel) · GPS: \(item.locationVerdict) · \(item.createdAtLabel)")
+                            Text("Rascunho neste dispositivo · GPS: \(item.locationVerdict) · \(item.createdAtLabel)")
                                 .font(.caption2)
                                 .foregroundStyle(AbastevoTheme.accentLight)
                         }

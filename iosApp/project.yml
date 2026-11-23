@@ -6,7 +6,7 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    SWIFT_VERSION: "5.9"
+    SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     MARKETING_VERSION: "3.1.18"
@@ -28,11 +28,14 @@ targets:
       - path: Sources/AnpFuelShell
       - path: Assets.xcassets
       - path: App/PrivacyInfo.xcprivacy
+      - path: ../data/src/main/assets/ibge_municipalities.json
+        buildPhase: resources
     dependencies:
       - target: AnpFuelCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anpfuel.app
+        GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/AnpFuel.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -42,6 +45,10 @@ targets:
     platform: iOS
     sources:
       - path: Tests/AnpFuelCoreTests
+      - path: ../contracts/testdata/premium/energy-v1.json
+        buildPhase: resources
+      - path: ../data/src/main/assets/ibge_municipalities.json
+        buildPhase: resources
     dependencies:
       - target: AnpFuelCore
     settings:

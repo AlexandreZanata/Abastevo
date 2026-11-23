@@ -1,0 +1,9 @@
+# Public reads on iOS
+
+- **B-BR-IOS-READ-01.** Display directory records from the selected Abastevo origin and IBGE municipality. A record without coordinates in an accepted pin tier remains in the directory and stays ineligible for map pins or routing.
+- **B-BR-IOS-READ-02.** Display dated official prices only from the station's ANP weekly observations. City averages, survey downloads and historical charts require admitted data for that scope. Missing sources have an explicit unavailable state.
+- **B-BR-IOS-READ-03.** Decode the community feed using its canonical fuel, condition, currency and publication time. Keep its projections separate from official prices. Switching the origin, city or fuel cancels the previous read and prevents an older response from reopening its scope.
+- **BUC-IOS-READ-01.** A user can browse the directory on the selected origin, request the next page, and open a station's dated official prices. A valid empty response and an unavailable API produce different states.
+- **BR-016 / BR-017.** Onboarding and the city picker share Android's bundled [IBGE municipality asset](../data/src/main/assets/ibge_municipalities.json) and retain selections by IBGE code. Name matching ignores accents and supports filtering by UF. When a city cannot be read from the catalog, require a manual city selection before requesting data. One-shot GPS centers the map without inferring a city from unrelated sample centroids. City coverage does not imply that ANP or directory records exist for that city.
+
+The Android official survey importer, regional map distribution, the city-wide official history, and the EV and quality catalogs require separate adapters and acceptance. This increment exercises the public directory, city community feed and official station price wire formats.

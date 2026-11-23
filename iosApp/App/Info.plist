@@ -61,7 +61,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>O abastevo usa a câmera para fotografar placas de preços nos postos. Os metadados de GPS/EXIF são removidos no aparelho.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>O abastevo usa sua localização pontualmente (sob demanda) para identificar seu município e postos próximos, sem rastreamento em segundo plano.</string>
+	<string>O abastevo usa sua localização quando solicitada para centralizar o mapa, ordenar postos por distância e calcular rotas.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Permite selecionar fotos de placas de postos para reconhecimento local de preços (OCR).</string>
 	<key>UIApplicationSceneManifest</key>

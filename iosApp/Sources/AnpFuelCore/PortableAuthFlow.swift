@@ -454,7 +454,7 @@ public final class IosKeychainSecretStore: AuthSessionStore, AuthKeyStore {
     private let service: String
     private let sessionAccount = "session-v1"
     private let keyAccount = "account-key-v1"
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
     private var memoryCache: [String: Data] = [:]
     private let useMemoryOnly: Bool
 
@@ -472,8 +472,15 @@ public final class IosKeychainSecretStore: AuthSessionStore, AuthKeyStore {
     }
 
     public func load() -> PortableAuth.Session? {
-        guard let data = read(account: sessionAccount) else { return nil }
-        return try? JSONDecoder().decode(PortableAuth.Session.self, from: data)
+        lock.lock()
+        defer { lock.unlock() }
+        guard let data = read(account: sessionAccount),
+              let session = try? JSONDecoder().decode(PortableAuth.Session.self, from: data) else { return nil }
+        if session.familyId.hasPrefix("apple-") && session.refreshToken.hasPrefix("apple-refresh-") {
+            try? delete(account: sessionAccount)
+            return nil
+        }
+        return session
     }
 
     public func clear() throws {
@@ -486,8 +493,15 @@ public final class IosKeychainSecretStore: AuthSessionStore, AuthKeyStore {
     }
 
     public func loadKey() -> AuthKeyBackup? {
-        guard let data = read(account: keyAccount) else { return nil }
-        return try? JSONDecoder().decode(AuthKeyBackup.self, from: data)
+        lock.lock()
+        defer { lock.unlock() }
+        guard let data = read(account: keyAccount),
+              let backup = try? JSONDecoder().decode(AuthKeyBackup.self, from: data) else { return nil }
+        if backup.accountKey.hasPrefix("abv-") && backup.accountKey.count == 16 {
+            try? delete(account: keyAccount)
+            return nil
+        }
+        return backup
     }
 
     public func clearKey() throws {

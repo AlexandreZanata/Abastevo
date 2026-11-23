@@ -6,6 +6,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6817AB20D0A048A490CBD235 /* ibge_municipalities.json in Resources */ = {isa = PBXBuildFile; fileRef = 8721A3D56CC54CF19FE0045C /* ibge_municipalities.json */; };
+		57C83211AA244FD4988AB321 /* ibge_municipalities.json in Resources */ = {isa = PBXBuildFile; fileRef = 8721A3D56CC54CF19FE0045C /* ibge_municipalities.json */; };
+		6F6ECEB8A6F8477B9F15E9C4 /* energy-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = 5B8592E22DC34B23BC324295 /* energy-v1.json */; };
 		8DCE461A2AC29A0B7B875916 /* AbastevoBackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0CA927CA3B53C9AE2D3EF9 /* AbastevoBackendClient.swift */; };
 		88673363A862EC44839E10C7 /* DomainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C86663F22EFEB9ABAA26764 /* DomainModels.swift */; };
 		C402CD732937C971844A8DC5 /* FeedbackDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B778E1E0C9DD4A9BF1E83F8 /* FeedbackDisplay.swift */; };
@@ -94,6 +97,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8721A3D56CC54CF19FE0045C /* ibge_municipalities.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = ibge_municipalities.json; path = "../data/src/main/assets/ibge_municipalities.json"; sourceTree = SOURCE_ROOT; };
+		5B8592E22DC34B23BC324295 /* energy-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "energy-v1.json"; path = "../contracts/testdata/premium/energy-v1.json"; sourceTree = SOURCE_ROOT; };
 		9F358B13F44DE59E1E33F607 /* AnpFuel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnpFuel.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AACC75FCC42674A9CCAA6349 /* AnpFuelCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AnpFuelCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FFCFC3F2DBA5048A64E8DF8C /* AnpFuelCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnpFuelCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -164,6 +169,7 @@
 
 /* Begin PBXGroup section */
 		0C54F0470E2253EA01E96383 = {isa = PBXGroup; children = (
+			8721A3D56CC54CF19FE0045C,
 			8F91E2D59E4024DA7927DEE4,
 			D29A9AA1D40D68CDEC6567F6,
 			185C22871963EE22412CBA7E,
@@ -222,6 +228,7 @@
 			C94131A3A8D14E2994E71B30,
 		); path = Tests; sourceTree = "<group>"; };
 		C94131A3A8D14E2994E71B30 /* AnpFuelCoreTests */ = {isa = PBXGroup; children = (
+			5B8592E22DC34B23BC324295 /* energy-v1.json */,
 			D52F9826062E98A83D5C141F,
 			EF28F54E5A14F14B1E33901C,
 			D5FE46947E93C739F65ACA68,
@@ -283,6 +290,7 @@
 			buildPhases = (
 				58E6D120C756DCA8062CCDE6,
 				D3EBE2A39C92DFAD39E94CAC,
+				63D3C43CBC8448E58527B63E /* Resources */,
 			);
 			buildRules = ();
 			dependencies = (
@@ -317,9 +325,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		63D3C43CBC8448E58527B63E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+			6F6ECEB8A6F8477B9F15E9C4 /* energy-v1.json in Resources */,
+			57C83211AA244FD4988AB321 /* ibge_municipalities.json in Resources */,
+		); runOnlyForDeploymentPostprocessing = 0; };
 		81B4DC0F6E7E97037B63B86E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 			1228440DDBCFF603473E79E6 /* Assets.xcassets in Resources */,
 			F49879C4F16F82BEE5490E90 /* PrivacyInfo.xcprivacy in Resources */,
+			6817AB20D0A048A490CBD235 /* ibge_municipalities.json in Resources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
@@ -393,13 +406,14 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_TESTABILITY = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 3.1.18;
 				CURRENT_PROJECT_VERSION = 30118;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -450,7 +464,7 @@
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};

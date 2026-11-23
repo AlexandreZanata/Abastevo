@@ -5,7 +5,7 @@ import AnpFuelCore
 import UIKit
 #endif
 
-/// Map Tab + Native Route + EV Trip Planner + Saved Places & Regional Map Downloads.
+/// Map tab with station pins, route preview, EV trip planner and saved places.
 public struct MapRootView: View {
     @ObservedObject var viewModel: AppStateViewModel
     @State private var cameraPosition: MapCameraPosition = .automatic
@@ -23,7 +23,7 @@ public struct MapRootView: View {
                     Map(position: $cameraPosition) {
                         if showCombustionStations {
                             ForEach(pinStations) { st in
-                                if sourceFilter != "community" || st.latestCommunityPrice(for: viewModel.snapshot.selectedFuel) != nil {
+                                if sourceFilter != "community" || viewModel.communityObservation(stationId: st.id, product: viewModel.snapshot.selectedFuel) != nil {
                                     Annotation(
                                         st.name,
                                         coordinate: CLLocationCoordinate2D(latitude: st.latitude, longitude: st.longitude)
@@ -62,9 +62,8 @@ public struct MapRootView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .onAppear { recenterOnCity() }
-                    .onChange(of: viewModel.selectedMunicipality.ibgeCode) { _, _ in
-                        recenterOnCity()
+                    .onChange(of: viewModel.selectedMunicipality?.ibgeCode) { _, _ in
+                        cameraPosition = .automatic
                     }
 
                     VStack(spacing: 8) {
@@ -153,7 +152,7 @@ public struct MapRootView: View {
 
     private func stationMapPin(_ st: StationRecord) -> some View {
         let fuel = viewModel.snapshot.selectedFuel
-        let price = st.effectiveDisplayPrice(for: fuel)
+        let price = viewModel.communityObservation(stationId: st.id, product: fuel)?.amountMilli
         return VStack(spacing: 2) {
             Text(price.map { AbastevoTheme.formatBrlMilli($0) } ?? "—")
                 .font(.caption2.bold())
@@ -168,83 +167,112 @@ public struct MapRootView: View {
         }
     }
 
-    private func recenterOnCity() {
-        let city = viewModel.selectedMunicipality
-        cameraPosition = .region(MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: city.latitude, longitude: city.longitude),
-            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-        ))
-    }
 }
 
 public struct NativeRouteSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
-    @State private var avoidTolls = false
-    @State private var avoidUnpaved = true
-    @State private var currentStepIndex = 0
+    let station: StationRecord
+    @State private var requestCount = 0
+    @State private var isCalculating = false
+    @State private var route: MKRoute?
+    @State private var routeMessage: String?
 
     public var body: some View {
-        let station = viewModel.activeRouteStation ?? viewModel.sortedStations.first
-        let city = viewModel.selectedMunicipality
-        let steps = [
-            "Siga pela via principal em direção a \(station?.neighborhood ?? "Centro").",
-            "Vire à direita na \(station?.address ?? "avenida indicada") em 600 metros.",
-            "Seu destino \(station?.name ?? "Posto") estará à direita."
-        ]
         NavigationStack {
             List {
-                if let st = station {
-                    let distKm = st.distanceKm(fromLat: city.latitude, fromLon: city.longitude)
-                    Section("Destino Selecionado") {
-                        Text(st.name).font(.headline)
-                        Text("\(st.address) · \(String(format: "%.1f km", max(0.3, distKm)))")
+                if station.pinTier.allowsMapPin {
+                    Section("Destino") {
+                        Text(station.name).font(.headline)
+                        Text(station.address)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Toggle("Evitar pedágios", isOn: $avoidTolls)
-                        Toggle("Evitar vias sem asfalto", isOn: $avoidUnpaved)
-                        Toggle("Guia por voz (AVSpeech)", isOn: $viewModel.isVoiceGuidanceEnabled)
-                    }
-
-                    Section("Navegação Passo a Passo") {
-                        ForEach(Array(steps.enumerated()), id: \.offset) { idx, text in
-                            HStack {
-                                Image(systemName: idx == currentStepIndex ? "speaker.wave.2.fill" : "arrow.turn.up.right")
-                                    .foregroundStyle(idx == currentStepIndex ? AbastevoTheme.accentLight : .secondary)
-                                Text(text).font(.subheadline)
-                            }
-                            .onTapGesture {
-                                currentStepIndex = idx
-                                viewModel.speakGuidanceStep(text)
-                            }
-                        }
-                        Button {
-                            let msg = steps[currentStepIndex % steps.count]
-                            viewModel.speakGuidanceStep(msg)
-                            currentStepIndex = (currentStepIndex + 1) % steps.count
-                        } label: {
-                            Label("Reproduzir instrução de voz", systemImage: "play.circle.fill")
+                        Button("Calcular rota de carro") { requestCount += 1 }
+                            .disabled(isCalculating)
+                        if isCalculating {
+                            ProgressView("Calculando rota…")
+                        } else if let routeMessage {
+                            Text(routeMessage).foregroundStyle(.secondary)
                         }
                     }
 
-                    Section("Abrir em Navegador Externo") {
+                    if let route {
+                        Section("Prévia da rota") {
+                            Text("\((route.distance / 1_000).formatted(.number.precision(.fractionLength(1)))) km")
+                            Toggle("Ler instruções em voz alta", isOn: $viewModel.isVoiceGuidanceEnabled)
+                            ForEach(route.steps.indices, id: \.self) { index in
+                                let instruction = route.steps[index].instructions
+                                if !instruction.isEmpty {
+                                    Button {
+                                        viewModel.speakGuidanceStep(instruction)
+                                    } label: {
+                                        Label(instruction, systemImage: "speaker.wave.2")
+                                    }
+                                    .disabled(!viewModel.isVoiceGuidanceEnabled)
+                                }
+                            }
+                        }
+                    }
+
+                    Section("Navegação em tempo real") {
                         Button("Abrir no Apple Maps") {
-                            let item = MKMapItem(placemark: MKPlacemark(coordinate: CLLocationCoordinate2D(latitude: st.latitude, longitude: st.longitude)))
-                            item.name = st.name
+                            let item = destination(for: station)
                             item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
                         }
-                        if let wazeUrl = URL(string: "https://waze.com/ul?ll=\(st.latitude),\(st.longitude)&navigate=yes") {
+                        if let wazeUrl = URL(string: "https://waze.com/ul?ll=\(station.latitude),\(station.longitude)&navigate=yes") {
                             Link("Abrir no Waze", destination: wazeUrl)
                         }
                     }
+                } else {
+                    ContentUnavailableView("Destino sem coordenadas verificadas", systemImage: "location.slash")
                 }
             }
-            .navigationTitle("Navegação Nativa")
+            .navigationTitle("Rota para o posto")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fechar") { dismiss() }
                 }
             }
+        }
+        .task(id: requestCount) {
+            if requestCount > 0, station.pinTier.allowsMapPin {
+                await calculateRoute(to: station)
+            }
+        }
+        .onDisappear { viewModel.stopGuidance() }
+    }
+
+    private func destination(for station: StationRecord) -> MKMapItem {
+        let coordinate = CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        item.name = station.name
+        return item
+    }
+
+    private func calculateRoute(to station: StationRecord) async {
+        isCalculating = true
+        route = nil
+        routeMessage = nil
+        defer { isCalculating = false }
+
+        guard let origin = await viewModel.requestRouteOrigin(), !Task.isCancelled else {
+            routeMessage = "Localização atual indisponível. Você pode abrir o destino em um aplicativo de navegação."
+            return
+        }
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin))
+        request.destination = destination(for: station)
+        request.transportType = .automobile
+        do {
+            let response = try await MKDirections(request: request).calculate()
+            guard !Task.isCancelled else { return }
+            route = response.routes.first
+            if route == nil {
+                routeMessage = "O Apple Maps não encontrou uma rota para este destino."
+            }
+        } catch {
+            guard !Task.isCancelled else { return }
+            routeMessage = "Não foi possível calcular a rota. Verifique a conexão e tente novamente."
         }
     }
 }
@@ -294,13 +322,18 @@ public struct EvTripPlannerSheetView: View {
                         Slider(value: $reserveSoc, in: 5...30, step: 5)
                     }
                 }
-                Section("Resumo do Planejamento") {
+                Section("Estimativa de consumo para a distância informada") {
                     Text("Energia total estimada: \(String(format: "%.1f kWh", outcome.totalEnergyKwh))")
-                    Text("Paradas de recarga: \(outcome.stops.count) · Tempo: \(outcome.totalChargingMinutes) min")
-                    Text("Custo estimado de recargas: \(AbastevoTheme.formatCentavos(outcome.totalCostCentavos))")
-                        .font(.headline)
-                        .foregroundStyle(AbastevoTheme.accentLight)
-                    Text("SoC estimado na chegada: \(Int(outcome.arrivalSocPercent))%")
+                    if !viewModel.evSites.isEmpty {
+                        Text("Paradas de recarga: \(outcome.stops.count) · Tempo: \(outcome.totalChargingMinutes) min")
+                        Text("Custo estimado de recargas: \(AbastevoTheme.formatCentavos(outcome.totalCostCentavos))")
+                            .font(.headline)
+                            .foregroundStyle(AbastevoTheme.accentLight)
+                        Text("SoC estimado na chegada: \(Int(outcome.arrivalSocPercent))%")
+                    } else {
+                        Text("Catálogo de recarga indisponível. Paradas, custo e autonomia de chegada ainda não podem ser verificados.")
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 if !outcome.stops.isEmpty {
                     Section("Paradas Sugeridas") {
@@ -363,28 +396,14 @@ public struct SavedPlacesSheetView: View {
 
 public struct MapDownloadsSheetView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AppStateViewModel
 
     public var body: some View {
         NavigationStack {
-            List(SeedCatalog.mapRegions) { pkg in
-                let isDownloaded = viewModel.snapshot.downloadedMapRegions.contains(pkg.id)
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(pkg.regionName).font(.headline)
-                        Text("UFs: \(pkg.statesCovered) · \(pkg.sizeMegabytes) MB · SHA-256 \(pkg.sha256Prefix)…")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button(isDownloaded ? "Remover" : "Baixar") {
-                        viewModel.toggleDownloadMapRegion(pkg)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(isDownloaded ? .red : AbastevoTheme.accentLight)
-                }
-                .padding(.vertical, 4)
-            }
+            ContentUnavailableView(
+                "Mapas regionais indisponíveis",
+                systemImage: "map",
+                description: Text("O abastevo ainda não oferece downloads de mapas regionais no iOS.")
+            )
             .navigationTitle("Mapas Offline por Região")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

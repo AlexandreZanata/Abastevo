@@ -1,6 +1,5 @@
 import SwiftUI
 import Combine
-import AuthenticationServices
 import AnpFuelCore
 
 /// Profile Tab + Auth + Account Management + Vehicles & Ledger + Driver Hub
@@ -65,7 +64,7 @@ public struct ProfileRootView: View {
         EnergiaCard {
             Text("Motorista, Veículos & Energia")
                 .font(.headline)
-            profileNavRow(icon: "car.fill", title: "Meus Veículos & Livro de Abastecimentos", subtitle: "\(viewModel.snapshot.vehicles.count)/\(VehicleRecord.maxFreeVehicles) veículos gratuitos · Wh/km e R$/km") {
+            profileNavRow(icon: "car.fill", title: "Meus Veículos & Livro de Abastecimentos", subtitle: "Abastecimentos, recargas e despesas") {
                 viewModel.activeSheet = .vehiclesLedger
             }
             Divider()
@@ -83,7 +82,7 @@ public struct ProfileRootView: View {
         EnergiaCard {
             Text("Empresas & Minijogos")
                 .font(.headline)
-            profileNavRow(icon: "building.2.fill", title: "Abastevo Empresas", subtitle: viewModel.snapshot.enterpriseOrganizations.first?.name ?? "Convites, frotas, viagens, despesas e checklists") {
+            profileNavRow(icon: "building.2.fill", title: "Abastevo Empresas", subtitle: "Indisponível no iOS") {
                 viewModel.activeSheet = .enterpriseHub
             }
             Divider()
@@ -116,15 +115,15 @@ public struct ProfileRootView: View {
         EnergiaCard {
             Text("Ferramentas, Privacidade & Cache")
                 .font(.headline)
-            profileNavRow(icon: "camera.badge.ellipsis", title: "Consentimento para Treinamento de OCR", subtitle: viewModel.currentTrainingConsent.granted ? "Ativo (revogável a qualquer momento)" : "Desativado por padrão (RVA08)") {
+            profileNavRow(icon: "camera.badge.ellipsis", title: "Consentimento para Treinamento de OCR", subtitle: "Coleta desativada") {
                 viewModel.activeSheet = .trainingConsent
             }
             Divider()
-            profileNavRow(icon: "calendar", title: "Semanas da Pesquisa ANP", subtitle: viewModel.selectedWeek.label) {
+            profileNavRow(icon: "calendar", title: "Semanas da Pesquisa ANP", subtitle: viewModel.surveyWeekLabel) {
                 viewModel.activeSheet = .weekPicker
             }
             Divider()
-            profileNavRow(icon: "map.fill", title: "Mapas Offline Regionais", subtitle: "\(viewModel.snapshot.downloadedMapRegions.count) região(ões) baixada(s)") {
+            profileNavRow(icon: "map.fill", title: "Mapas Offline Regionais", subtitle: "Indisponível no iOS") {
                 viewModel.activeSheet = .mapDownloads
             }
             Divider()
@@ -176,22 +175,9 @@ public struct AuthSheetView: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Sign in with Apple (Nativo iOS)") {
-                    SignInWithAppleButton(.signIn) { request in
-                        request.requestedScopes = [.email]
-                    } onCompletion: { result in
-                        switch result {
-                        case .success(let auth):
-                            if let cred = auth.credential as? ASAuthorizationAppleIDCredential {
-                                let tokenStr = cred.identityToken.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-                                viewModel.completeSignInWithApple(userIdentifier: cred.user, identityToken: tokenStr)
-                                dismiss()
-                            }
-                        case .failure:
-                            viewModel.authStatusMessage = "Autenticação Apple não concluída."
-                        }
-                    }
-                    .frame(height: 44)
+                Section("Iniciar sessão com a Apple") {
+                    Text("Indisponível nesta versão.")
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("E-mail + Código de 6 dígitos") {
@@ -249,14 +235,16 @@ public struct AccountManagementSheetView: View {
     public var body: some View {
         NavigationStack {
             List {
-                Section("Identidade Conectada") {
-                    Text(viewModel.signedInAlias ?? "Conta conectada")
-                    Button("Exportar meus dados (JSON)") {
-                        exportedJson = viewModel.exportMyDataJson()
-                    }
-                    if let json = exportedJson {
-                        Text(String(json.prefix(500)) + (json.count > 500 ? "..." : ""))
-                            .font(.caption2.monospaced())
+                if let alias = viewModel.signedInAlias {
+                    Section("Identidade Conectada") {
+                        Text(alias)
+                        Button("Exportar dados locais deste aparelho (JSON)") {
+                            exportedJson = viewModel.exportMyDataJson()
+                        }
+                        if let json = exportedJson {
+                            Text(String(json.prefix(500)) + (json.count > 500 ? "..." : ""))
+                                .font(.caption2.monospaced())
+                        }
                     }
                 }
 
@@ -277,25 +265,31 @@ public struct AccountManagementSheetView: View {
                     }
                 }
 
-                Section("Sessão e Exclusão") {
-                    Button("Sair e limpar dados locais privados") {
-                        viewModel.logout()
-                        dismiss()
+                if viewModel.currentAccountIdOrNil != nil {
+                    Section("Sessão e Exclusão") {
+                        Button("Sair e limpar dados locais privados") {
+                            viewModel.logout()
+                            dismiss()
+                        }
+                        Button("Solicitar exclusão da conta", role: .destructive) {
+                            confirmDelete = true
+                        }
                     }
-                    Button("Excluir conta permanentemente", role: .destructive) {
-                        confirmDelete = true
+                }
+                if let message = viewModel.authStatusMessage {
+                    Section {
+                        Text(message)
                     }
                 }
             }
             .navigationTitle("Gerenciar Conta")
             .alert("Excluir conta?", isPresented: $confirmDelete) {
-                Button("Excluir agora", role: .destructive) {
+                Button("Solicitar exclusão", role: .destructive) {
                     viewModel.deleteAccountAndPurge()
-                    dismiss()
                 }
                 Button("Cancelar", role: .cancel) {}
             } message: {
-                Text("Seus tokens no Keychain e dados privados locais serão apagados permanentemente.")
+                Text("A solicitação encerra seu acesso. Após a confirmação do servidor, o app limpará os dados privados locais da conta.")
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -317,17 +311,20 @@ public struct VehiclesAndLedgerSheetView: View {
     @State private var batteryKwh = "52"
     @State private var errorBanner: String?
 
+    @State private var ledgerVehicleId: String?
     @State private var entryKind: LedgerEntryKind = .refuel
-    @State private var entryKmText = "42500"
-    @State private var entryQtyText = "40000"
-    @State private var entryCostText = "23960"
+    @State private var entryKmText = ""
+    @State private var entryQtyText = ""
+    @State private var entryCostText = ""
     @State private var entryNote = ""
+    @State private var ledgerError: String?
 
     public var body: some View {
+        let vehicles = viewModel.snapshot.vehicles
         NavigationStack {
             List {
-                Section("Meus Veículos (\(viewModel.snapshot.vehicles.count)/\(VehicleRecord.maxFreeVehicles) gratuitos)") {
-                    ForEach(viewModel.snapshot.vehicles) { v in
+                Section("Meus veículos") {
+                    ForEach(vehicles) { v in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
                                 Text(v.name).font(.headline)
@@ -339,14 +336,16 @@ public struct VehiclesAndLedgerSheetView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .onDelete { idxSet in
-                        for idx in idxSet {
-                            viewModel.removeVehicle(viewModel.snapshot.vehicles[idx].id)
+                    .onDelete { offsets in
+                        let ids = Set(offsets.map { vehicles[$0].id })
+                        viewModel.removeVehicles(ids)
+                        if let selected = ledgerVehicleId, ids.contains(selected) {
+                            ledgerVehicleId = nil
                         }
                     }
                 }
 
-                if viewModel.snapshot.vehicles.count < VehicleRecord.maxFreeVehicles {
+                if vehicles.count < VehicleRecord.maxFreeVehicles {
                     Section("Adicionar Veículo") {
                         TextField("Apelido do carro / moto", text: $name)
                         Picker("Propulsão", selection: $propulsion) {
@@ -373,45 +372,21 @@ public struct VehiclesAndLedgerSheetView: View {
                             case .success:
                                 name = ""
                                 errorBanner = nil
-                            case .failure(let msg):
-                                errorBanner = msg
+                            case .failure(let error):
+                                errorBanner = error.localizedDescription
                             }
                         }
                     }
                 }
 
-                Section("Novo Registro no Diário (Livro de Bordo)") {
-                    Picker("Tipo", selection: $entryKind) {
-                        ForEach(LedgerEntryKind.allCases, id: \.self) { k in
-                            Text(k.labelPtBr).tag(k)
-                        }
-                    }
-                    TextField("Hodômetro (km)", text: $entryKmText)
-                    TextField("Quantidade (mL ou Wh)", text: $entryQtyText)
-                    TextField("Total (centavos, ex.: 23960)", text: $entryCostText)
-                    TextField("Observação", text: $entryNote)
-                    Button("Registrar lançamento") {
-                        let vId = viewModel.snapshot.vehicles.first?.id ?? "default"
-                        let km = Int64(entryKmText) ?? 0
-                        let qty = Int64(entryQtyText) ?? 0
-                        let centavos = Int64(entryCostText) ?? 0
-                        viewModel.addLedgerEntry(vehicleId: vId, kind: entryKind, odometerKm: km, quantityMilli: qty, totalCentavos: centavos, note: entryNote)
-                        entryNote = ""
-                    }
+                ledgerEntrySection
+
+                Section("Indicadores de energia e custo por km") {
+                    Text("Indisponíveis enquanto o diário não registrar intervalos de medição completos.")
+                        .foregroundStyle(.secondary)
                 }
 
-                Section("Indicadores Exatos (Energia / Custo por km)") {
-                    let energyResult = PremiumEnergyCalculator.compute(
-                        PremiumEnergyCalculator.IntervalInput(
-                            purchasedWh: 40_000,
-                            costCentavos: 4_000,
-                            distanceMetres: 150_000,
-                            hasEnergy: true,
-                            complete: true
-                        )
-                    )
-                    Text("Exemplo EE-23 exato: \(energyResult.whPerKm) Wh/km · \(energyResult.centavosPerKm) centavos/km")
-                        .font(.caption.monospaced())
+                Section("Lançamentos") {
                     ForEach(viewModel.snapshot.ledgerEntries) { entry in
                         HStack {
                             VStack(alignment: .leading) {
@@ -434,62 +409,134 @@ public struct VehiclesAndLedgerSheetView: View {
             }
         }
     }
+
+    private var ledgerEntrySection: some View {
+        Section("Novo lançamento") {
+            if viewModel.snapshot.vehicles.isEmpty {
+                Text("Cadastre um veículo para registrar lançamentos.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker("Veículo", selection: $ledgerVehicleId) {
+                    Text("Selecione um veículo").tag(nil as String?)
+                    ForEach(viewModel.snapshot.vehicles) { vehicle in
+                        Text(vehicle.name).tag(Optional(vehicle.id))
+                    }
+                }
+                Picker("Tipo", selection: $entryKind) {
+                    ForEach(LedgerEntryKind.allCases, id: \.self) { kind in
+                        Text(kind.labelPtBr).tag(kind)
+                    }
+                }
+                TextField("Hodômetro (km)", text: $entryKmText)
+                if entryKind == .refuel {
+                    TextField("Quantidade em milésimos de litro ou m³", text: $entryQtyText)
+                } else if entryKind == .charge {
+                    TextField("Energia (Wh)", text: $entryQtyText)
+                }
+                if entryKind != .odometer {
+                    TextField("Total (centavos)", text: $entryCostText)
+                }
+                TextField("Observação", text: $entryNote)
+                if let ledgerError {
+                    Text(ledgerError).font(.caption).foregroundStyle(.red)
+                }
+                Button("Registrar lançamento", action: saveLedgerEntry)
+                    .disabled(ledgerVehicleId == nil)
+            }
+        }
+    }
+
+    private func saveLedgerEntry() {
+        guard let vehicleId = ledgerVehicleId else { return }
+        let usesQuantity = entryKind == .refuel || entryKind == .charge
+        let quantity = usesQuantity ? Int64(entryQtyText.trimmingCharacters(in: .whitespaces)) : 0
+        let total = entryKind == .odometer ? 0 : Int64(entryCostText.trimmingCharacters(in: .whitespaces))
+        guard let km = Int64(entryKmText.trimmingCharacters(in: .whitespaces)), let quantity, let total else {
+            ledgerError = "Informe valores inteiros válidos para o lançamento."
+            return
+        }
+        switch viewModel.addLedgerEntry(vehicleId: vehicleId, kind: entryKind, odometerKm: km, quantityMilli: quantity, totalCentavos: total, note: entryNote) {
+        case .success:
+            entryKmText = ""
+            entryQtyText = ""
+            entryCostText = ""
+            entryNote = ""
+            ledgerError = nil
+        case .failure(let error):
+            ledgerError = error.localizedDescription
+        }
+    }
 }
 
 public struct DriverHubSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
 
-    @State private var startKmText = "80000"
-    @State private var endKmText = "80180"
-    @State private var grossReaisText = "320,00"
-    @State private var fuelReaisText = "78,50"
-    @State private var minutesText = "360"
+    @State private var driverVehicleId: String?
+    @State private var startKmText = ""
+    @State private var endKmText = ""
+    @State private var grossReaisText = ""
+    @State private var fuelReaisText = ""
+    @State private var minutesText = ""
+    @State private var shiftError: String?
 
     public var body: some View {
         let activeShift = viewModel.snapshot.driverShifts.first(where: { $0.isActive })
         let closedShifts = viewModel.snapshot.driverShifts.filter { !$0.isActive }
         NavigationStack {
             List {
-                Section("Turno Atual") {
+                Section("Turno manual neste aparelho") {
                     if let active = activeShift {
                         Text("Turno em andamento · Início Km \(active.startOdometerKm)")
                             .font(.headline)
                             .foregroundStyle(AbastevoTheme.accentLight)
+                        if let started = formattedDate(active.startedAtLabel) {
+                            Text("Início em \(started)").foregroundStyle(.secondary)
+                        }
                         TextField("Km final", text: $endKmText)
                         TextField("Ganho bruto (R$)", text: $grossReaisText)
                         TextField("Combustível gasto (R$)", text: $fuelReaisText)
-                        TextField("Duração (minutos)", text: $minutesText)
+                        TextField("Duração informada (minutos)", text: $minutesText)
                         Button("Encerrar turno") {
-                            let gross = parseReaisToCentavos(grossReaisText)
-                            let fuel = parseReaisToCentavos(fuelReaisText)
-                            viewModel.finishActiveDriverShift(
-                                endOdometerKm: Int64(endKmText) ?? active.startOdometerKm,
-                                grossCentavos: gross,
-                                fuelCentavos: fuel,
-                                expenseCentavos: 0,
-                                minutes: Int(minutesText) ?? 60
-                            )
+                            finishShift(active)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(AbastevoTheme.ink)
+                    } else if viewModel.snapshot.vehicles.isEmpty {
+                        Text("Cadastre um veículo para iniciar um turno.").foregroundStyle(.secondary)
                     } else {
-                        TextField("Hodômetro inicial (km)", text: $startKmText)
-                        Button("Iniciar turno de trabalho") {
-                            let vId = viewModel.snapshot.vehicles.first?.id ?? "driver-vehicle"
-                            viewModel.startDriverShift(vehicleId: vId, startOdometerKm: Int64(startKmText) ?? 0)
+                        Picker("Veículo", selection: $driverVehicleId) {
+                            Text("Selecione um veículo").tag(nil as String?)
+                            ForEach(viewModel.snapshot.vehicles) { vehicle in
+                                Text(vehicle.name).tag(Optional(vehicle.id))
+                            }
                         }
+                        TextField("Hodômetro inicial (km)", text: $startKmText)
+                        Button("Iniciar turno de trabalho", action: startShift)
                         .buttonStyle(.borderedProminent)
                         .tint(AbastevoTheme.accentLight)
+                        .disabled(driverVehicleId == nil)
+                    }
+                    if let shiftError {
+                        Text(shiftError).font(.caption).foregroundStyle(.red)
                     }
                 }
 
                 Section("Turnos Encerrados") {
                     ForEach(closedShifts) { s in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Líquido: \(AbastevoTheme.formatCentavos(s.netEarningsCentavos))")
-                                .font(.headline)
-                            Text("\(s.distanceKm) km rodados · Bruto \(AbastevoTheme.formatCentavos(s.grossEarningsCentavos)) · Combustível \(AbastevoTheme.formatCentavos(s.fuelCostCentavos))")
+                            if let balance = s.netEarningsCentavos {
+                                Text("Saldo registrado \(AbastevoTheme.formatCentavos(balance))").font(.headline)
+                            } else {
+                                Text("Saldo indisponível").font(.headline)
+                            }
+                            if let distance = s.distanceKm {
+                                Text("\(distance) km rodados")
+                            }
+                            if let ended = formattedDate(s.endedAtLabel) {
+                                Text("Encerrado em \(ended)")
+                            }
+                            Text("Bruto \(AbastevoTheme.formatCentavos(s.grossEarningsCentavos)) · Combustível \(AbastevoTheme.formatCentavos(s.fuelCostCentavos))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -505,102 +552,57 @@ public struct DriverHubSheetView: View {
         }
     }
 
-    private func parseReaisToCentavos(_ text: String) -> Int64 {
-        let cleaned = text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespacesAndNewlines)
-        return Int64(((Double(cleaned) ?? 0.0) * 100.0).rounded())
+    private func startShift() {
+        guard let vehicleId = driverVehicleId,
+              let startKm = Int64(startKmText.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            shiftError = "Informe o hodômetro inicial em quilômetros."
+            return
+        }
+        switch viewModel.startDriverShift(vehicleId: vehicleId, startOdometerKm: startKm) {
+        case .success:
+            startKmText = ""
+            shiftError = nil
+        case .failure(let error):
+            shiftError = error.localizedDescription
+        }
+    }
+
+    private func finishShift(_ active: DriverShiftRecord) {
+        guard let endKm = Int64(endKmText.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let minutes = Int(minutesText.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let gross = try? PortableMoney.parseBrlCentavos(grossReaisText),
+              let fuel = try? PortableMoney.parseBrlCentavos(fuelReaisText) else {
+            shiftError = "Confira o hodômetro, a duração e os valores do turno."
+            return
+        }
+        switch viewModel.finishActiveDriverShift(shiftId: active.id, endOdometerKm: endKm, grossCentavos: gross, fuelCentavos: fuel, minutes: minutes) {
+        case .success:
+            endKmText = ""
+            grossReaisText = ""
+            fuelReaisText = ""
+            minutesText = ""
+            shiftError = nil
+        case .failure(let error):
+            shiftError = error.localizedDescription
+        }
+    }
+
+    private func formattedDate(_ timestamp: String?) -> String? {
+        guard let timestamp, let date = ISO8601DateFormatter().date(from: timestamp) else { return nil }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }
 
 public struct EnterpriseHubSheetView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AppStateViewModel
-
-    @State private var inviteCode = ""
-    @State private var tripOdometer = "124500"
-    @State private var trackingConsent = false
-    @State private var checklistBrakeOk = true
-    @State private var checklistTiresOk = true
-    @State private var expenseDesc = ""
-    @State private var expenseCentavos = "4500"
 
     public var body: some View {
         NavigationStack {
-            List {
-                Section("Contexto Corporativo & Convite") {
-                    if let org = viewModel.snapshot.enterpriseOrganizations.first {
-                        Text(org.name).font(.headline)
-                        Text("CNPJ: \(org.cnpj) · Papel: \(org.roleTitle) · Status: \(org.status)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack {
-                        TextField("Código de convite (ex.: EMP-2026)", text: $inviteCode)
-                        Button("Vincular") {
-                            viewModel.joinSampleEnterprise(inviteCode: inviteCode)
-                            inviteCode = ""
-                        }
-                    }
-                }
-
-                Section("Missões & Viagens Corporativas") {
-                    ForEach(viewModel.snapshot.enterpriseTrips) { trip in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("\(trip.code) · \(trip.vehiclePlate) (\(trip.status.rawValue))")
-                                .font(.headline)
-                            Text("\(trip.originLabel) → \(trip.destinationLabel)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if trip.status == .assigned {
-                                Toggle("Autorizar telemetria desta viagem nesta tela", isOn: $trackingConsent)
-                                    .font(.caption)
-                                TextField("Hodômetro saída", text: $tripOdometer)
-                                Button("Iniciar viagem") {
-                                    viewModel.startEnterpriseTrip(trip.id, odometerKm: Int64(tripOdometer) ?? 0, explicitTrackingGrant: trackingConsent)
-                                }
-                                .buttonStyle(.borderedProminent)
-                            } else if trip.status == .active {
-                                if let code = trip.fuelingAuthCode {
-                                    Text("Autorização de abastecimento: \(code)")
-                                        .font(.caption.monospaced())
-                                        .foregroundStyle(AbastevoTheme.accentLight)
-                                }
-                                Button("Encerrar viagem") {
-                                    viewModel.finishEnterpriseTrip(trip.id, endOdometerKm: (trip.startOdometerKm ?? 0) + 120)
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-
-                Section("Checklist & Despesas") {
-                    Toggle("Freios e luzes verificados", isOn: $checklistBrakeOk)
-                    Toggle("Pneus e calibração verificados", isOn: $checklistTiresOk)
-                    Button("Registrar checklist") {
-                        let run = EnterpriseChecklistRun(
-                            vehiclePlate: "ABV-3A21",
-                            itemsChecked: ["Freios", "Pneus"],
-                            passed: checklistBrakeOk && checklistTiresOk,
-                            createdAtLabel: "Agora"
-                        )
-                        viewModel.snapshot.enterpriseChecklists.insert(run, at: 0)
-                        viewModel.persist()
-                    }
-                    TextField("Descrição da despesa (pedágio/estacionamento)", text: $expenseDesc)
-                    Button("Adicionar despesa (\(expenseCentavos) centavos)") {
-                        let item = EnterpriseExpenseItem(
-                            category: "Viagem",
-                            descriptionText: expenseDesc.isEmpty ? "Pedágio" : expenseDesc,
-                            amountCentavos: Int64(expenseCentavos) ?? 4500,
-                            dateLabel: "Hoje"
-                        )
-                        viewModel.snapshot.enterpriseExpenses.insert(item, at: 0)
-                        expenseDesc = ""
-                        viewModel.persist()
-                    }
-                }
-            }
+            ContentUnavailableView(
+                "Indisponível no iOS",
+                systemImage: "building.2",
+                description: Text("Os recursos do Abastevo Empresas ainda não estão integrados a este aplicativo.")
+            )
             .navigationTitle("Abastevo Empresas")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -745,67 +747,19 @@ public struct ArcadeGamesSheetView: View {
 
 public struct TrainingConsentSheetView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AppStateViewModel
-
-    @State private var explicitlyChecked = false
-    @State private var feedbackMsg: String?
 
     public var body: some View {
-        let current = viewModel.currentTrainingConsent
-        let digestOk = TrainingTermsContract.verifiedDigestMatches()
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    EnergiaCard {
-                        Text("Estado atual: \(current.granted ? "CONSENTIDO (Coleta bloqueada nesta versão)" : "DESATIVADO")")
-                            .font(.headline)
-                            .foregroundStyle(current.granted ? AbastevoTheme.accentLight : .primary)
-                        Text("Versão: \(TrainingTermsContract.version) · SHA-256 verificado: \(digestOk ? "OK" : "Divergente")")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if current.pendingSync {
-                            Text("Sincronização pendente com o servidor.")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                    }
-
-                    EnergiaCard {
+            List {
+                Section {
+                    Text("A coleta para treinamento está desativada. O gerenciamento dessa preferência ainda está indisponível no iOS.")
+                }
+                if TrainingTermsContract.verifiedDigestMatches() {
+                    Section("Termo de consentimento") {
                         Text(TrainingTermsContract.fullTextPtBr)
                             .font(.footnote)
                     }
-
-                    if viewModel.currentAccountIdOrNil == nil {
-                        Text("Entre em uma conta gratuita na aba Perfil para registrar ou revogar esta preferência.")
-                            .font(.subheadline)
-                            .foregroundStyle(.orange)
-                    } else if current.granted {
-                        Button("Revogar consentimento imediatamente (OFF)") {
-                            viewModel.revokeTrainingConsentImmediately()
-                            feedbackMsg = "Preferência gravada como DESATIVADA localmente."
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
-                    } else {
-                        Toggle("Li integralmente os termos e autorizo opcionalmente o registro desta preferência.", isOn: $explicitlyChecked)
-                            .font(.subheadline)
-                        Button("Confirmar consentimento opcional") {
-                            if viewModel.grantTrainingConsent(explicitlyChecked: explicitlyChecked) {
-                                feedbackMsg = "Preferência registrada (coleta continua desligada nesta versão)."
-                            } else {
-                                feedbackMsg = "Marque a caixa de confirmação para registrar."
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AbastevoTheme.ink)
-                        .disabled(!explicitlyChecked || !digestOk)
-                    }
-
-                    if let msg = feedbackMsg {
-                        Text(msg).font(.caption).foregroundStyle(.secondary)
-                    }
                 }
-                .padding(16)
             }
             .navigationTitle("Treinamento de OCR")
             .toolbar {
@@ -833,13 +787,18 @@ public struct SettingsSheetView: View {
                             Text(env.labelPtBr).tag(env)
                         }
                     }
+                    .disabled(!viewModel.canSwitchApiEnvironment)
+                    if !viewModel.canSwitchApiEnvironment {
+                        Text("Encerre a sessão para trocar de servidor.")
+                            .font(.caption)
+                    }
                     Toggle("Simular modo offline", isOn: $viewModel.isOfflineSimulation)
                 }
 
                 Section("Armazenamento Offline & Privacidade") {
                     Text("Uso aproximado em disco: \(viewModel.estimatedStorageKb()) KB (fora do backup iCloud)")
                         .font(.caption)
-                    Button("Limpar cache de mapas e semanas", role: .destructive) {
+                    Button("Limpar cache local, incluindo fotos temporárias", role: .destructive) {
                         viewModel.clearOfflineCache()
                     }
                 }

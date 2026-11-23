@@ -1,0 +1,47 @@
+name: iOS
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'iosApp/**'
+      - 'contracts/**'
+      - 'data/src/main/assets/ibge_municipalities.json'
+      - 'scripts/tests/test_ios_app_integrity.py'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'iosApp/**'
+      - 'contracts/**'
+      - 'data/src/main/assets/ibge_municipalities.json'
+      - 'scripts/tests/test_ios_app_integrity.py'
+      - '.github/workflows/ios.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  xcode:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    name: Build and test on iOS Simulator
+    runs-on: macos-26
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check project integrity
+        run: python3 -m unittest -v scripts.tests.test_ios_app_integrity
+      - name: Build the native app and run XCTest
+        working-directory: iosApp
+        run: |
+          xcodebuild -version
+          xcodebuild test -project AnpFuel.xcodeproj -scheme AnpFuel \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4' \
+            CODE_SIGNING_ALLOWED=NO

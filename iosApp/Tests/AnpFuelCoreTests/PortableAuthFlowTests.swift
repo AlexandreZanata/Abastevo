@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import AnpFuelCore
 
@@ -19,6 +20,7 @@ final class PortableAuthFlowTests: XCTestCase {
         var refreshResult: AuthApiResult<PortableAuth.Session>?
         var loginKeyResult: AuthApiResult<AuthKeyLogin>?
         var deleteResult: AuthApiResult<EmptyAuthValue> = .ok(EmptyAuthValue())
+        var deletedSessions: [PortableAuth.Session] = []
 
         func requestCode(email: String) -> AuthApiResult<EmptyAuthValue> { .ok(EmptyAuthValue()) }
 
@@ -64,6 +66,7 @@ final class PortableAuthFlowTests: XCTestCase {
         }
 
         func deleteAccount(session: PortableAuth.Session) -> AuthApiResult<EmptyAuthValue> {
+            deletedSessions.append(session)
             return deleteResult
         }
     }
@@ -118,5 +121,78 @@ final class PortableAuthFlowTests: XCTestCase {
         let callback = PortableAuth.ProviderCallback(provider: PortableAuth.providerApple, idToken: "jwt-tok", nonce: attempt.nonce, state: attempt.state)
         XCTAssertEqual(flow.completeProviderLogin(session: session, attempt: attempt, callback: callback), .ok(EmptyAuthValue()))
         XCTAssertEqual(flow.completeProviderLogin(session: session, attempt: attempt, callback: callback), .err(PortableAuth.Verdict.codeUnknown))
+    }
+
+    func testLegacyLocalAppleSessionCannotRehydrateOrAuthorizeDeletion() throws {
+        let store = IosKeychainSecretStore(useMemoryOnly: true)
+        let api = StubAuthApi()
+        let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: StubClock(), nonces: StubNonce(), api: api))
+        let legacy = PortableAuth.Session(
+            familyId: "apple-legacy-family",
+            accountId: "apple-legacy-account",
+            accessToken: "apple-local-proof",
+            refreshToken: "apple-refresh-legacy",
+            accessExpiresAt: 1_700_000_900,
+            absoluteExpiresAt: 1_702_592_000
+        )
+        let backup = AuthKeyBackup(username: "maria", accountKey: "abv-secret-key")
+        try store.save(legacy)
+        try store.saveKey(backup)
+
+        XCTAssertNil(flow.currentSession())
+        XCTAssertEqual(flow.rehydrate(), .pendingKeyAccount(backup))
+        XCTAssertEqual(flow.deleteAccount(), .err(AuthFlow.clientInvalid))
+        XCTAssertTrue(api.deletedSessions.isEmpty)
+        XCTAssertEqual(store.loadKey(), backup)
+    }
+
+    func testTemporaryDeletionFailureKeepsSessionAndBackupForRetry() throws {
+        let store = IosKeychainSecretStore(useMemoryOnly: true)
+        let api = StubAuthApi()
+        let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: StubClock(), nonces: StubNonce(), api: api))
+        guard case .ok(let outcome) = flow.loginWithKey(rawKey: "abv-secret-key") else {
+            return XCTFail("Expected key login")
+        }
+        api.deleteResult = .err(PortableAuth.unavailable)
+
+        XCTAssertEqual(flow.deleteAccount(), .err(PortableAuth.unavailable))
+        XCTAssertEqual(store.load(), outcome.session)
+        XCTAssertEqual(store.loadKey()?.accountKey, "abv-secret-key")
+
+        api.deleteResult = .ok(EmptyAuthValue())
+        XCTAssertEqual(flow.deleteAccount(), .ok(EmptyAuthValue()))
+        XCTAssertEqual(api.deletedSessions, [outcome.session, outcome.session])
+        XCTAssertNil(store.load())
+        XCTAssertNil(store.loadKey())
+    }
+
+    func testLegacyOfflineKeyDoesNotPreventEmailLogin() throws {
+        let store = IosKeychainSecretStore(useMemoryOnly: true)
+        let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: StubClock(), nonces: StubNonce(), api: StubAuthApi()))
+        try store.saveKey(AuthKeyBackup(username: "maria", accountKey: "abv-12345678-abc"))
+
+        XCTAssertEqual(flow.rehydrate(), .loggedOut)
+        guard case .ok = flow.consumeEmailCode(email: "ana@example.com", code: "123456") else {
+            return XCTFail("Expected email login")
+        }
+    }
+
+    func testOwnerPurgeUsesTheFullConsentScopePrefix() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = IosLocalStore(directory: directory)
+        let origin = ApiEnvironment.staging.origin
+        let ownerScope = "account:owner:fingerprint|\(origin)"
+        let differentScope = "account:owner-other:fingerprint|\(origin)"
+        let differentOwner = TrainingConsentRecord(ownerKey: differentScope, origin: origin, granted: false)
+        var snapshot = PersistedAppSnapshot(trainingConsentByOwner: [
+            ownerScope: TrainingConsentRecord(ownerKey: ownerScope, origin: origin, granted: true),
+            differentScope: differentOwner,
+        ])
+
+        store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: "owner")
+
+        XCTAssertEqual(snapshot.trainingConsentByOwner, [differentScope: differentOwner])
+        XCTAssertEqual(store.load().trainingConsentByOwner, [differentScope: differentOwner])
     }
 }

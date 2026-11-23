@@ -17,16 +17,11 @@ public enum FuelProduct: String, CaseIterable, Codable, Identifiable, Hashable, 
     public var id: String { rawValue }
 
     public var wireCode: String {
-        switch self {
-        case .gasolineRegular: return "GASOLINA_COMUM"
-        case .gasolinePremium: return "GASOLINA_ADITIVADA"
-        case .gasolinePremiumGrade: return "GASOLINA_PREMIUM"
-        case .ethanol: return "ETANOL"
-        case .dieselS10: return "OLEO_DIESEL_S10"
-        case .dieselS500: return "OLEO_DIESEL"
-        case .cng: return "GNV"
-        case .lpgP13: return "GLP"
-        }
+        self == .gasolinePremium ? "GASOLINE_ADDITIVED" : rawValue
+    }
+
+    public static func fromWireCode(_ code: String) -> FuelProduct? {
+        allCases.first { $0.wireCode == code }
     }
 
     public var unitWire: String {
@@ -135,7 +130,7 @@ public enum BrazilianRegion: String, CaseIterable, Codable, Identifiable, Sendab
     public var id: String { rawValue }
 }
 
-public enum BrazilianState: String, CaseIterable, Codable, Identifiable, Sendable {
+public enum BrazilianState: String, CaseIterable, Codable, Hashable, Identifiable, Sendable {
     case AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO
 
     public var id: String { rawValue }
@@ -188,58 +183,99 @@ public struct Municipality: Codable, Equatable, Identifiable, Hashable, Sendable
     public let ibgeCode: String
     public let name: String
     public let state: BrazilianState
-    public let latitude: Double
-    public let longitude: Double
-    public let hasOfficialAnpCoverage: Bool
-
-    public init(
-        ibgeCode: String,
-        name: String,
-        state: BrazilianState,
-        latitude: Double,
-        longitude: Double,
-        hasOfficialAnpCoverage: Bool = true
-    ) {
+    public init(ibgeCode: String, name: String, state: BrazilianState) {
         self.ibgeCode = ibgeCode
         self.name = name
         self.state = state
-        self.latitude = latitude
-        self.longitude = longitude
-        self.hasOfficialAnpCoverage = hasOfficialAnpCoverage
     }
 
     public var displayTitle: String { "\(name), \(state.rawValue)" }
+}
 
-    public static func normalizeSearch(_ text: String) -> String {
-        return text
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "pt_BR"))
-            .lowercased()
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+public struct MunicipalityCatalog: Sendable {
+    private struct Entry: Decodable, Sendable {
+        let ibgeCode: String
+        let municipality: String
+        let state: BrazilianState
+        let normalizedName: String
+
+        var city: Municipality { Municipality(ibgeCode: ibgeCode, name: municipality, state: state) }
     }
 
-    public static func rankMatches(
-        query: String,
-        stateFilter: BrazilianState?,
-        catalog: [Municipality]
-    ) -> [Municipality] {
-        let filtered = stateFilter == nil ? catalog : catalog.filter { $0.state == stateFilter }
-        let q = normalizeSearch(query)
-        if q.isEmpty {
-            return filtered.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    public enum CatalogError: Error, Equatable {
+        case missingAsset
+        case invalidCatalog
+    }
+
+    public static let resourceName = "ibge_municipalities"
+    public static let empty = MunicipalityCatalog(entries: [])
+    private let entries: [Entry]
+    private let byCode: [String: Municipality]
+
+    public var count: Int { entries.count }
+
+    public init(bundle: Bundle) throws {
+        guard let url = bundle.url(forResource: Self.resourceName, withExtension: "json") else {
+            throw CatalogError.missingAsset
         }
-        let scored: [(Int, Municipality)] = filtered.compactMap { city in
-            let normName = normalizeSearch(city.name)
-            let normState = normalizeSearch(city.state.rawValue)
-            if normName == q { return (0, city) }
-            if normName.hasPrefix(q) { return (1, city) }
-            if normName.contains(q) { return (2, city) }
-            if normState == q { return (3, city) }
-            return nil
+        try self.init(data: Data(contentsOf: url))
+    }
+
+    public init(data: Data) throws {
+        let rows = try JSONDecoder().decode([Entry].self, from: data)
+        let states = Set(rows.map(\.state))
+        guard rows.count >= 5_570,
+              states == Set(BrazilianState.allCases),
+              Set(rows.map(\.ibgeCode)).count == rows.count,
+              rows.allSatisfy({ row in
+                  row.ibgeCode.utf8.count == 7 && row.ibgeCode.utf8.allSatisfy({ (48...57).contains($0) })
+                      && !row.municipality.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                      && !row.normalizedName.isEmpty
+              }) else {
+            throw CatalogError.invalidCatalog
         }
-        return scored.sorted { lhs, rhs in
-            if lhs.0 != rhs.0 { return lhs.0 < rhs.0 }
-            return lhs.1.name.localizedCaseInsensitiveCompare(rhs.1.name) == .orderedAscending
-        }.map { $0.1 }
+        self.init(entries: rows)
+    }
+
+    private init(entries: [Entry]) {
+        self.entries = entries.sorted { lhs, rhs in
+            if lhs.normalizedName != rhs.normalizedName { return lhs.normalizedName < rhs.normalizedName }
+            return lhs.ibgeCode < rhs.ibgeCode
+        }
+        self.byCode = Dictionary(uniqueKeysWithValues: entries.map { ($0.ibgeCode, $0.city) })
+    }
+
+    public func municipality(code: String) -> Municipality? { byCode[code] }
+
+    private static func normalizeSearch(_ text: String) -> String {
+        return text
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "pt_BR"))
+            .replacingOccurrences(of: "'", with: "")
+            .replacingOccurrences(of: "’", with: "")
+            .replacingOccurrences(of: "-", with: " ")
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+            .uppercased()
+    }
+
+    public func search(query: String, state: BrazilianState? = nil) -> [Municipality] {
+        let normalized = Self.normalizeSearch(query)
+        let filtered = state.map { selectedState in entries.filter { $0.state == selectedState } } ?? entries
+        if normalized.isEmpty { return filtered.map(\.city) }
+
+        var exact: [Municipality] = []
+        var prefix: [Municipality] = []
+        var included: [Municipality] = []
+        for row in filtered {
+            if row.normalizedName == normalized || row.ibgeCode == normalized {
+                exact.append(row.city)
+            } else if row.normalizedName.hasPrefix(normalized) {
+                prefix.append(row.city)
+            } else if row.normalizedName.contains(normalized) || row.state.rawValue == normalized {
+                included.append(row.city)
+            }
+        }
+        return exact + prefix + included
     }
 }
 
@@ -460,9 +496,9 @@ public struct StationRecord: Codable, Equatable, Identifiable, Sendable {
         officialPricesMilli: [FuelProduct: Int64],
         officialDateLabel: String,
         communityObservations: [CommunityPriceObservation],
-        openingHours: String = "06:00 - 22:00",
-        paymentMethods: [String] = ["Pix", "Débito", "Crédito", "Dinheiro"],
-        qualitySummary: StationQualitySummary = StationQualitySummary(samplesTested: 3, nonConformingCount: 0, enforcementNotices: 0, lastAuditLabel: "2026-10"),
+        openingHours: String = "",
+        paymentMethods: [String] = [],
+        qualitySummary: StationQualitySummary = StationQualitySummary(samplesTested: 0, nonConformingCount: 0, enforcementNotices: 0, lastAuditLabel: ""),
         isClaimedOwner: Bool = false,
         ownerPromotionText: String? = nil
     ) {
@@ -827,6 +863,7 @@ public struct MyContributionEntry: Codable, Equatable, Identifiable, Sendable {
     public let condition: PriceConditionKind
     public let statusLabel: String
     public let locationVerdict: String
+    public let photoCacheId: String?
     public let photoExpiresAtMillis: Int64?
     public let createdAtLabel: String
 
@@ -840,6 +877,7 @@ public struct MyContributionEntry: Codable, Equatable, Identifiable, Sendable {
         condition: PriceConditionKind,
         statusLabel: String,
         locationVerdict: String,
+        photoCacheId: String? = nil,
         photoExpiresAtMillis: Int64?,
         createdAtLabel: String
     ) {
@@ -852,13 +890,14 @@ public struct MyContributionEntry: Codable, Equatable, Identifiable, Sendable {
         self.condition = condition
         self.statusLabel = statusLabel
         self.locationVerdict = locationVerdict
+        self.photoCacheId = photoCacheId
         self.photoExpiresAtMillis = photoExpiresAtMillis
         self.createdAtLabel = createdAtLabel
     }
 }
 
 public struct VehicleRecord: Codable, Equatable, Identifiable, Sendable {
-    public static let maxFreeVehicles = 3
+    public static let maxFreeVehicles = 1
 
     public let id: String
     public let name: String
@@ -1149,12 +1188,14 @@ public struct DriverShiftRecord: Codable, Equatable, Identifiable, Sendable {
     public let activeMinutes: Int
     public let isActive: Bool
 
-    public var distanceKm: Int64 {
-        guard let end = endOdometerKm, end >= startOdometerKm else { return 0 }
+    public var distanceKm: Int64? {
+        guard let end = endOdometerKm, startOdometerKm >= 0, end >= startOdometerKm else { return nil }
         return end - startOdometerKm
     }
 
-    public var netEarningsCentavos: Int64 {
+    public var netEarningsCentavos: Int64? {
+        let inputAmounts = [grossEarningsCentavos, fuelCostCentavos, otherExpenseCentavos]
+        guard inputAmounts.allSatisfy({ (0...PortableMoney.maxRecordCentavos).contains($0) }) else { return nil }
         return grossEarningsCentavos - fuelCostCentavos - otherExpenseCentavos
     }
 
@@ -1362,141 +1403,6 @@ public struct SavedTripRecord: Codable, Equatable, Identifiable, Sendable {
         self.originLabel = originLabel
         self.destinationLabel = destinationLabel
         self.distanceKm = distanceKm
-    }
-}
-
-public struct MapRegionPackage: Codable, Equatable, Identifiable, Sendable {
-    public let id: String
-    public let regionName: String
-    public let statesCovered: String
-    public let sizeMegabytes: Int
-    public let sha256Prefix: String
-    public let isDownloaded: Bool
-    public let downloadedAtLabel: String?
-
-    public init(
-        id: String,
-        regionName: String,
-        statesCovered: String,
-        sizeMegabytes: Int,
-        sha256Prefix: String,
-        isDownloaded: Bool,
-        downloadedAtLabel: String? = nil
-    ) {
-        self.id = id
-        self.regionName = regionName
-        self.statesCovered = statesCovered
-        self.sizeMegabytes = sizeMegabytes
-        self.sha256Prefix = sha256Prefix
-        self.isDownloaded = isDownloaded
-        self.downloadedAtLabel = downloadedAtLabel
-    }
-}
-
-public struct EnterpriseOrganization: Codable, Equatable, Identifiable, Sendable {
-    public let id: String
-    public let name: String
-    public let cnpj: String
-    public let roleTitle: String
-    public let status: String
-
-    public init(id: String, name: String, cnpj: String, roleTitle: String, status: String) {
-        self.id = id
-        self.name = name
-        self.cnpj = cnpj
-        self.roleTitle = roleTitle
-        self.status = status
-    }
-}
-
-public struct EnterpriseFleetAsset: Codable, Equatable, Identifiable, Sendable {
-    public let id: String
-    public let plate: String
-    public let model: String
-    public let odometerKm: Int64
-    public let statusLabel: String
-
-    public init(id: String, plate: String, model: String, odometerKm: Int64, statusLabel: String) {
-        self.id = id
-        self.plate = plate
-        self.model = model
-        self.odometerKm = odometerKm
-        self.statusLabel = statusLabel
-    }
-}
-
-public enum EnterpriseTripStatus: String, Codable, Equatable, Sendable {
-    case assigned = "ASSIGNED"
-    case active = "ACTIVE"
-    case finished = "FINISHED"
-}
-
-public struct EnterpriseTripMission: Codable, Equatable, Identifiable, Sendable {
-    public let id: String
-    public let code: String
-    public let originLabel: String
-    public let destinationLabel: String
-    public let vehiclePlate: String
-    public let status: EnterpriseTripStatus
-    public let startOdometerKm: Int64?
-    public let endOdometerKm: Int64?
-    public let trackingGrantedFromScreen: Bool
-    public let fuelingAuthCode: String?
-
-    public init(
-        id: String,
-        code: String,
-        originLabel: String,
-        destinationLabel: String,
-        vehiclePlate: String,
-        status: EnterpriseTripStatus,
-        startOdometerKm: Int64? = nil,
-        endOdometerKm: Int64? = nil,
-        trackingGrantedFromScreen: Bool = false,
-        fuelingAuthCode: String? = nil
-    ) {
-        self.id = id
-        self.code = code
-        self.originLabel = originLabel
-        self.destinationLabel = destinationLabel
-        self.vehiclePlate = vehiclePlate
-        self.status = status
-        self.startOdometerKm = startOdometerKm
-        self.endOdometerKm = endOdometerKm
-        self.trackingGrantedFromScreen = trackingGrantedFromScreen
-        self.fuelingAuthCode = fuelingAuthCode
-    }
-}
-
-public struct EnterpriseChecklistRun: Codable, Equatable, Identifiable, Sendable {
-    public let id: String
-    public let vehiclePlate: String
-    public let itemsChecked: [String]
-    public let passed: Bool
-    public let createdAtLabel: String
-
-    public init(id: String = UUID().uuidString.lowercased(), vehiclePlate: String, itemsChecked: [String], passed: Bool, createdAtLabel: String) {
-        self.id = id
-        self.vehiclePlate = vehiclePlate
-        self.itemsChecked = itemsChecked
-        self.passed = passed
-        self.createdAtLabel = createdAtLabel
-    }
-}
-
-public struct EnterpriseExpenseItem: Codable, Equatable, Identifiable, Sendable {
-    public let id: String
-    public let category: String
-    public let descriptionText: String
-    public let amountCentavos: Int64
-    public let dateLabel: String
-
-    public init(id: String = UUID().uuidString.lowercased(), category: String, descriptionText: String, amountCentavos: Int64, dateLabel: String) {
-        self.id = id
-        self.category = category
-        self.descriptionText = descriptionText
-        self.amountCentavos = amountCentavos
-        self.dateLabel = dateLabel
     }
 }
 

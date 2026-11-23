@@ -132,11 +132,14 @@ The organic growth and multilingual items follow
 - **Live charging status and tariffs.** No source exists; the optional operator adapter needs real credentials. (EE-17)
 - **Optional licensed coverage.** Partner opening feeds or paid POI data only if a measured gap remains after the OSM/CNEFE/RFB pipeline. (P28)
 
+## iOS app
+
+- **Android parity.** Complete the [journey contracts](iosApp/PARITY.md), starting with native build and device acceptance, public data coverage and the signed account and contribution flows. Verify the remaining Android capabilities and their iOS-specific permissions and accessibility.
+
 ## Deferred (start only on an explicit owner request)
 
 - **Stage D.** Fuel-purchase receipts/NFC-e and business claim/management/portal, until the app is consolidated with thousands of real users; this also holds enterprise F7 and station-profile activation (code exists, routes contained with 503 until trust roots, revocation sources and proof storage are accepted).
 - **Mandatory contribution proximity.** Only after more than 90% of stations have verified coordinates and the owner decides. (PRM22)
-- **iOS.** Archived (ADR-016); on resumption: real Xcode target, native login/Keychain, camera and 24-hour expiry, Core Location, device acceptance, parity with the Android flows.
 
 ## Repository hygiene
 

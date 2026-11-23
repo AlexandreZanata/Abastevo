@@ -120,67 +120,39 @@ public struct OnboardingFlowView: View {
                     )
                     .tag(2)
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Escolha a semana da pesquisa ANP")
-                            .font(.title3.bold())
-                        Text("Você pode alternar entre semanas oficiais a qualquer momento.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        ScrollView {
-                            VStack(spacing: 8) {
-                                ForEach(SeedCatalog.surveyWeeks) { week in
-                                    Button {
-                                        viewModel.selectWeek(week)
-                                    } label: {
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(week.label).font(.subheadline.bold())
-                                                Text("\(week.stationCount) postos pesquisados")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                            Spacer()
-                                            if viewModel.selectedWeek.id == week.id {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundStyle(AbastevoTheme.accentLight)
-                                            }
-                                        }
-                                        .padding(12)
-                                        .background(Color.secondary.opacity(0.1))
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
-                    .padding(20)
+                    onboardingCard(
+                        icon: "calendar",
+                        title: "Pesquisa oficial da ANP",
+                        subtitle: "As datas das coletas disponíveis aparecem na ficha de cada posto.",
+                        detail: "Os preços da comunidade aparecem em uma seção própria."
+                    )
                     .tag(3)
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Escolha sua cidade")
                             .font(.title3.bold())
-                        Button {
-                            Task { await viewModel.requestOneShotDeviceLocation() }
-                        } label: {
-                            Label("Detectar cidade pelo GPS (uma leitura)", systemImage: "location.circle.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
 
-                        TextField("Buscar município ou UF...", text: $citySearch)
+                        TextField("Buscar município, UF ou código IBGE", text: $citySearch)
                             .textFieldStyle(.roundedBorder)
 
+                        let cities = viewModel.municipalityCatalog.search(query: citySearch)
+                        if viewModel.municipalityCatalog.count == 0 {
+                            Text("Catálogo de municípios indisponível.")
+                                .foregroundStyle(.secondary)
+                        } else if cities.isEmpty {
+                            Text("Nenhum município encontrado.")
+                                .foregroundStyle(.secondary)
+                        }
                         ScrollView {
                             LazyVStack(spacing: 6) {
-                                ForEach(Municipality.rankMatches(query: citySearch, stateFilter: nil, catalog: SeedCatalog.municipalities)) { city in
+                                ForEach(cities) { city in
                                     Button {
                                         viewModel.selectMunicipality(city)
                                     } label: {
                                         HStack {
                                             Text(city.displayTitle)
                                             Spacer()
-                                            if viewModel.selectedMunicipality.ibgeCode == city.ibgeCode {
+                                            if viewModel.selectedMunicipality?.ibgeCode == city.ibgeCode {
                                                 Image(systemName: "checkmark.circle.fill")
                                                     .foregroundStyle(AbastevoTheme.accentLight)
                                             }

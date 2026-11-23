@@ -14,6 +14,17 @@ A05: FREE access includes registration and social participation. Future paid ent
 
 BUC-A01 signup/login, A02 link/unlink and recovery, A03 logout/revoke, A04 rights operations. Freeze additive contracts and a data inventory before implementation. Tests first: code replay/expiry/concurrent consume, token substitution, cross-account linking, stolen IDs, refresh reuse, suspension, provider outage and erasure/restore. Local provider stubs prove protocol behavior; real Google/Apple sandbox and native callback/device evidence remain phase acceptance, without production deployment.
 
+The iOS client opens a session only with credentials issued by the account API.
+The provider-link endpoint requires an existing live account session and does
+not issue one. Native Apple access remains unavailable until the backend
+accepts the configured Apple client audience and completes the appropriate
+account flow. Older iOS previews' locally generated Apple sessions are refused.
+
+For account deletion, the iOS client requires a deletion receipt with
+`status: deleted` and `erasure_requested: true` before it confirms the request
+and purges the local owner data. A transport failure keeps local data
+available for a retry. The receipt acknowledges a recorded erasure request.
+
 ## Frozen parameters
 
 Threat analysis behind each number; values change only with a new analysis,
