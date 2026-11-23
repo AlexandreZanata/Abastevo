@@ -29,6 +29,7 @@ export interface ParentNodeLike {
 }
 
 export interface ElementLike {
+  dataset?: { language?: string };
   textContent: string | null;
   appendChild(child: ElementLike): void;
   setAttribute(name: string, value: string): void;
@@ -43,6 +44,14 @@ const PLATFORM_HOSTS: Record<string, string> = {
   youtube: 'www.youtube.com',
   bluesky: 'bsky.app',
 };
+
+const ENGLISH_ROLES = new Map([
+  ['Criador do projeto', 'Project creator'],
+  ['Moderação da comunidade', 'Community moderation'],
+  ['Revisão de postos', 'Station review'],
+  ['Curadoria de contribuidores', 'Contributor curation'],
+  ['Suporte', 'Support'],
+]);
 
 const SINCE_PATTERN = /^\d{4}-\d{2}$/;
 
@@ -96,7 +105,9 @@ export function renderContributors(
   doc: ParentNodeLike,
   container: ElementLike,
   items: unknown,
+  language = 'pt-BR',
 ): number {
+  const english = language === 'en';
   let rendered = 0;
   if (!Array.isArray(items)) {
     return rendered;
@@ -111,12 +122,12 @@ export function renderContributors(
     card.appendChild(name);
     if (typeof raw.github_login === 'string' && raw.github_login !== '') {
       const badge = doc.createElement('p');
-      badge.textContent = `GitHub verificado: ${raw.github_login}`;
+      badge.textContent = `${english ? 'Verified GitHub' : 'GitHub verificado'}: ${raw.github_login}`;
       card.appendChild(badge);
     }
     if (typeof raw.contributor_since === 'string' && SINCE_PATTERN.test(raw.contributor_since)) {
       const since = doc.createElement('p');
-      since.textContent = `Desde ${raw.contributor_since}`;
+      since.textContent = `${english ? 'Since' : 'Desde'} ${raw.contributor_since}`;
       card.appendChild(since);
     }
     for (const role of raw.roles.slice(0, 8)) {
@@ -124,7 +135,7 @@ export function renderContributors(
         continue;
       }
       const chip = doc.createElement('p');
-      chip.textContent = role;
+      chip.textContent = english ? ENGLISH_ROLES.get(role) ?? role : role;
       card.appendChild(chip);
     }
     for (const link of raw.links.slice(0, 2)) {
@@ -197,7 +208,7 @@ export async function setupContributorsList(runtime: ContributorsRuntime = {}): 
   if (typeof payload !== 'object' || payload === null || !Array.isArray((payload as Record<string, unknown>)['items'])) {
     return;
   }
-  renderContributors(doc, container, (payload as Record<string, unknown>)['items']);
+  renderContributors(doc, container, (payload as Record<string, unknown>)['items'], container.dataset?.language);
 }
 
 if (typeof document !== 'undefined') {

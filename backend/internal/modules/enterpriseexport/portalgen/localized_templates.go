@@ -39,7 +39,8 @@ const localizedTemplates = `
       <nav class="topnav" aria-label="{{msg $locale "navigation"}}">{{template "localizedLinks" .TopNav}}</nav>
       <div class="topbar-actions">
         <a class="topbar-link hide-sm" href="https://github.com/AlexandreZanata/abastevo">GitHub</a>
-        <details class="nav-toggle"><summary class="nav-button" aria-label="{{msg $locale "nav.menu"}}"><span aria-hidden="true"></span></summary><nav class="site-nav" aria-label="{{msg $locale "navigation"}}">{{template "localizedLinks" .TopNav}}</nav></details>
+        {{template "languagePicker" (languagePicker .Route)}}
+        <details class="nav-toggle" name="landing-header"><summary class="nav-button" aria-label="{{msg $locale "nav.menu"}}"><span aria-hidden="true"></span></summary><nav class="site-nav" aria-label="{{msg $locale "navigation"}}">{{template "localizedLinks" .TopNav}}</nav></details>
       </div>
     </div>
   </header>
@@ -48,7 +49,6 @@ const localizedTemplates = `
       <a href="{{.Href}}"{{if eq .Href $.Route}} aria-current="page"{{end}}>{{.Label}}</a>
     {{end}}</div>
   </nav>
-  <nav class="wrap portal-nav-inner" aria-label="{{msg $locale "language"}}">{{template "languageMenuLinks" .Route}}</nav>
   <nav class="wrap breadcrumbs" aria-label="{{msg $locale "breadcrumb"}}">{{range $i, $c := .Breadcrumbs}}{{if $i}} · {{end}}{{if $c.Current}}<span aria-current="page">{{$c.Label}}</span>{{else}}<a href="{{$c.Href}}">{{$c.Label}}</a>{{end}}{{end}}</nav>
   <main id="conteudo" class="wrap">
     {{if .Station}}{{template "localizedStation" .}}

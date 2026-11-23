@@ -464,7 +464,7 @@ export function loadSite(root, options = {}) {
             problems.push(`${where}: translationOf must be a pt-BR route`);
           } else if (!source || source.locale) {
             problems.push(`${where}: translationOf ${data.translationOf} is not an existing pt-BR page`);
-          } else if (legal ? !source.legal : !sourceKinds[kind].includes(source.kind)) {
+          } else if (legal ? !source.legal : !sourceKinds[kind].includes(source.kind) && !(kind === 'page' && source.route === '/contribuidores/')) {
             problems.push(`${where}: translationOf ${data.translationOf} is not a ${kind === 'guide' ? 'guide' : kind}`);
           }
         }

@@ -66,7 +66,7 @@ var (
 	fiscalRecordIDShape   = regexp.MustCompile(`^[0-9a-f]{24}$`)
 	cpfTextPattern        = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
 	rawScriptTag          = regexp.MustCompile(`<script\b[^>]*>`)
-	allowedScript         = regexp.MustCompile(`^(?:<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>|<script type="application/ld\+json">)$`)
+	allowedScript         = regexp.MustCompile(`^(?:<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>|<script type="module" src="/assets/language-picker\.0a6803bb\.js">|<script type="application/ld\+json">)$`)
 	unsafeAttribute       = regexp.MustCompile(`(?i)<[^>]*\sonerror\s*=`)
 	unsafeURL             = regexp.MustCompile(`(?i)(?:href|src)="\s*javascript:`)
 	assetRef              = regexp.MustCompile(`(?:href|src)="(/assets/[^"]+)"`)
@@ -80,6 +80,7 @@ var (
 // root-relatively when the landing shares the portal origin. Any other
 // root-relative link must resolve to an artifact file.
 var LandingRoutes = map[string]bool{
+	"/assets/language-picker.0b779891.css": true, "/assets/language-picker.0a6803bb.js": true,
 	"/favicon.ico": true, "/assets/brand/favicon.svg": true, "/assets/brand/favicon-dark.svg": true,
 	"/": true, "/en/": true, "/es/": true, "/en/guides/": true, "/es/guias/": true, "/en/tools/": true, "/es/herramientas/": true,
 	"/en/about/": true, "/es/sobre/": true, "/en/editorial-policy/": true, "/es/politica-editorial/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,

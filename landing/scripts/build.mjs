@@ -22,7 +22,6 @@ import {
   renderLocalizedHeader,
   renderLocalizedFooter,
   renderHeaderLanguagePicker,
-  renderLanguageSwitch,
 } from './content/layouts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -170,7 +169,8 @@ export function build(options = {}) {
     if (!fs.existsSync(compiledJsPath)) {
       throw new Error('TypeScript compilation failed: compiled main.js not found');
     }
-    const jsContent = fs.readFileSync(compiledJsPath);
+    const pickerScript = fs.readFileSync(path.join(staticDir, 'assets', 'language-picker.js'));
+    const jsContent = Buffer.concat([fs.readFileSync(compiledJsPath), Buffer.from('\n{\n'), pickerScript, Buffer.from('\n}\n')]);
     const jsHash = computeHash(jsContent);
     const fingerprintedJsName = `main.${jsHash}.js`;
 
@@ -205,7 +205,8 @@ export function build(options = {}) {
     if (!fs.existsSync(cssPath)) {
       throw new Error('static/assets/styles.css not found');
     }
-    const cssContent = fs.readFileSync(cssPath);
+    const pickerStyles = fs.readFileSync(path.join(staticDir, 'assets', 'language-picker.css'));
+    const cssContent = Buffer.concat([fs.readFileSync(cssPath), Buffer.from('\n'), pickerStyles]);
     const cssHash = computeHash(cssContent);
     const fingerprintedCssName = `styles.${cssHash}.css`;
 
@@ -228,6 +229,10 @@ export function build(options = {}) {
     }
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedToolsName), toolsContent);
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedCssName), cssContent);
+
+    // Stable shared header assets are also used by the separately built portal.
+    fs.writeFileSync(path.join(outDir, 'assets', `language-picker.${computeHash(pickerStyles)}.css`), pickerStyles);
+    fs.writeFileSync(path.join(outDir, 'assets', `language-picker.${computeHash(pickerScript)}.js`), pickerScript);
 
     // 5. Copy brand assets
     const brandStaticDir = path.join(staticDir, 'assets', 'brand');
@@ -386,7 +391,6 @@ export function build(options = {}) {
         throw new Error(`Unknown page kind for ${entry.route}: ${entry.kind}`);
       }
       // Shared chrome markers: generated pages and "shared" pages take both,
-      // "footer" pages keep their own header and take the shared footer, and
       // locale pages take the localized chrome.
       const chrome = entry.chrome || 'shared';
       const members = site.hreflangMembers(entry.route);
@@ -404,8 +408,7 @@ export function build(options = {}) {
             ? renderLocalizedHeader(site, locale, picker)
             : sharedHeader.replace(languagePickerSlot, picker));
         }
-        const languageSwitch = !header && switchList.length >= 2 ? renderLanguageSwitch(switchList, entry.route, locale) : '';
-        html = html.replace(footer, `${languageSwitch}${chrome === 'locale' ? renderLocalizedFooter(site, locale) : sharedFooter}`);
+        html = html.replace(footer, chrome === 'locale' ? renderLocalizedFooter(site, locale) : sharedFooter);
       }
       // SEO-26: reciprocal hreflang for indexable members of this group.
       if (members.length >= 2) {

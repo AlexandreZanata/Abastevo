@@ -8,10 +8,12 @@ the actual AI reviewer. Each localized page discloses the AI review and states
 that Portuguese prevails. Other locales still follow ADR-026.
 
 National prices, fuel hubs, states, fuel by state, methodology, downloads and
-insights have localized routes. City variants use a closed IBGE-code allowlist
-of the 27 capitals and border cities already covered by the Portuguese portal.
-The same snapshot must supply the Portuguese page before it can have a variant.
-Station, fuel by city, enforcement, forum and search pages remain Portuguese.
+insights have localized routes. English covers all municipality summaries
+published in the same snapshot. Spanish municipality summaries use the
+closed IBGE-code list of capitals and border cities. Both depend on the
+Portuguese source route. Station details, enforcement, the editorial forum
+and search also have localized routes. Individual fuel-by-city pages
+keep their Portuguese routes.
 
 B-BR-SEO-01 applies the locale and catalog gates together with the existing
 page facts. A disabled locale or unreviewed catalog emits no pages. Emitted
