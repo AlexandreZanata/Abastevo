@@ -8,10 +8,9 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/analytics"
 )
 
-// Translation eligibility is a closed list of the capitals and the IBGE twin
-// cities confirmed on the Portuguese portal at rollout. Sant'Ana do Livramento
-// was named by the owner; it still needs a Portuguese page in the snapshot.
-var localizedCityCodes = map[string]bool{
+// Featured cities are the capitals and selected IBGE border twin cities.
+// They also define which municipality summaries have Spanish translations.
+var featuredCityCodes = map[string]bool{
 	// State and federal capitals.
 	"1100205": true, "1200401": true, "1302603": true, "1400100": true,
 	"1501402": true, "1600303": true, "1721000": true, "2111300": true,
@@ -90,9 +89,7 @@ func localizedSourcePage(data routedPage) localizedSource {
 		case familyFuelState:
 			source.kind, source.fuel, source.area = "prices", parts[0], parts[1]
 		case familyCity:
-			if city, ok := data.(municipalityPage); ok && localizedCityCodes[city.Code] {
-				source.kind, source.area, source.city = "prices", parts[0], parts[1]
-			}
+			source.kind, source.area, source.city = "prices", parts[0], parts[1]
 		}
 	}
 	return source
@@ -101,6 +98,9 @@ func localizedSourcePage(data routedPage) localizedSource {
 func (s localizedSource) route(locale portalLocale) string {
 	if s.kind != "prices" {
 		return locale.route(s.kind, s.slug, "", "")
+	}
+	if city, ok := s.data.(municipalityPage); ok && locale.Code == "es" && !featuredCityCodes[city.Code] {
+		return ""
 	}
 	return locale.route(s.kind, s.fuel, s.area, s.city)
 }
@@ -180,18 +180,43 @@ func (g *generator) registerLocalizationLinks(source localizedSource, locales []
 	}
 }
 
-func (g *generator) languageMenu(route string) []languageLink {
-	if menu := g.languageNavigation[route]; len(menu) > 1 {
-		return menu
+type portalLanguagePicker struct {
+	Route   string
+	Code    string
+	Label   string
+	Options []languageLink
+}
+
+func (g *generator) languagePicker(route string) portalLanguagePicker {
+	current := localeForPortalRoute(route, g.locales)
+	picker := portalLanguagePicker{
+		Route: route,
+		Code:  current.Code,
+		Label: current.text("language") + " · " + current.text("locale."+current.Code),
 	}
-	if g.opts.OfficialOnly || g.opts.LandingURL == "" {
-		return nil
+	picker.Options = g.languageNavigation[route]
+	if g.opts.OfficialOnly || g.opts.LandingURL == "" || len(picker.Options) == len(g.locales) {
+		return picker
 	}
-	menu := []languageLink{}
+	// Match the landing: exact equivalents first, otherwise the active
+	// language's home. The current language always represents this page.
+	original := g.languageLink(g.locales[defaultPortalLocale], route)
+	if len(picker.Options) > 0 {
+		original = picker.Options[0]
+	}
+	options := []languageLink{original}
 	for _, locale := range g.translationLocales() {
-		menu = append(menu, g.languageLink(locale, g.landingPrefix+locale.Prefix+"/"))
+		target := g.landingPrefix + locale.Prefix + "/"
+		for _, link := range picker.Options {
+			if link.Code == locale.Hreflang {
+				target = link.Path
+				break
+			}
+		}
+		options = append(options, g.languageLink(locale, target))
 	}
-	return menu
+	picker.Options = options
+	return picker
 }
 
 func (g *generator) languageLink(locale portalLocale, route string) languageLink {
@@ -266,7 +291,9 @@ func (g *generator) localizationViews(summaries []analytics.Summary, coverage an
 			routes: make(map[string]string, len(g.localizations)),
 		}
 		for _, source := range g.localizations {
-			p.routes[source.data.page().Route] = source.route(locale)
+			if route := source.route(locale); route != "" {
+				p.routes[source.data.page().Route] = route
+			}
 		}
 		views = append(views, p)
 	}
@@ -280,8 +307,12 @@ func (g *generator) writeLocalizations(views []localizedPortal) error {
 			return err
 		}
 		for _, source := range g.localizations {
+			route := source.route(p.portalLocale)
+			if route == "" {
+				continue
+			}
 			if err := p.write(source); err != nil {
-				return fmt.Errorf("portalgen: %s: %w", source.route(p.portalLocale), err)
+				return fmt.Errorf("portalgen: %s: %w", route, err)
 			}
 		}
 	}
@@ -533,7 +564,7 @@ func (p localizedPortal) addDirectory(data *localizedPage, cities bool) {
 		data.appendModule(p.text("section.states"), p.localizedLink(ufName(uf), stateRoute(uf)))
 	}
 	if cities {
-		for _, code := range sortedKeys(localizedCityCodes) {
+		for _, code := range sortedKeys(featuredCityCodes) {
 			if city := p.cities[code]; city != nil && city.HasData {
 				data.appendModule(p.text("section.cities"), p.localizedLink(placeLabel(city.Name, city.UF), city.Route))
 			}

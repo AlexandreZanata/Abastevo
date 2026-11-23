@@ -75,7 +75,7 @@ The project's source code is published in the
 under the Abastevo Visible Attribution License: anyone can study, audit, reuse
 and propose improvements, keeping visible credit to the original project.
 People who help on an ongoing basis appear on the page of
-[contributors](/contribuidores/) (in Portuguese).
+[contributors](/en/contributors/).
 
 ## Privacy
 

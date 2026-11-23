@@ -52,16 +52,30 @@ func TestLocalizedPortalRoutesAndIndexation(t *testing.T) {
 			}
 		}
 	}
-	for _, path := range []string{"en/fuel-prices/mt/varzea-grande", "es/precios/mt/sorriso",
+	for _, path := range []string{"es/precios/mt/varzea-grande", "es/precios/mt/sorriso",
 		"en/fuel-prices/regular-gasoline/mt/cuiaba", "es/precios/gasolina-comun/mt/cuiaba",
 		"en/consultar", "es/puestos", "en/fiscalizacao", "es/enforcement"} {
 		if _, err := os.Stat(filepath.Join(out, path)); !os.IsNotExist(err) {
 			t.Errorf("unexpected localized route %s: %v", path, err)
 		}
 	}
+	for _, routes := range [][2]string{
+		{"/precos/mt/cuiaba/", "/en/fuel-prices/mt/cuiaba/"},
+		{"/precos/mt/varzea-grande/", "/en/fuel-prices/mt/varzea-grande/"},
+	} {
+		for i, route := range routes {
+			body := readPortal(t, out, strings.TrimPrefix(route, "/")+"index.html")
+			header, rest, _ := strings.Cut(body, "</header>")
+			if !strings.Contains(header, `<details class="language-picker"`) ||
+				!strings.Contains(header, `href="`+routes[1-i]+`"`) ||
+				strings.Contains(rest, "language-picker") {
+				t.Errorf("missing equivalent language option in the header of %s", route)
+			}
+		}
+	}
 	for _, locale := range []string{"en", "es"} {
 		sitemap := readPortal(t, out, "sitemaps/portal-precos-"+locale+"-1.xml")
-		if !strings.Contains(sitemap, seoSite+"/"+locale+"/") || strings.Contains(sitemap, "/varzea-grande/") {
+		if !strings.Contains(sitemap, seoSite+"/"+locale+"/") || strings.Contains(sitemap, "/varzea-grande/") != (locale == "en") {
 			t.Errorf("misclassified sitemap for %s", locale)
 		}
 	}
@@ -198,7 +212,7 @@ func TestLocalizedPortalKeepsComparablePublicFields(t *testing.T) {
 		}{
 			{paths.prices, []string{`data-prices-fuel`, `data-prices-order`, `data-finder-input`, `id="portal-rankings"`, `class="footer-cols"`}},
 			{paths.fuel, []string{`id="survey-reading"`, `id="portal-faq"`, `href="/` + paths.methodology + `/#media-da-amostra"`}},
-			{paths.state, []string{`id="portal-rankings"`, `href="/precos/mt/varzea-grande/"`}},
+			{paths.state, []string{`id="portal-rankings"`}},
 			{paths.area, []string{`id="survey-reading"`, `id="portal-faq"`, `id="portal-rankings"`}},
 			{paths.city, []string{`id="unranked-observations"`, `IBGE 3550308`}},
 			{paths.methodology, []string{`id="media-da-amostra"`, `abastevo-metrics-v1`}},

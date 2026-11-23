@@ -44,11 +44,18 @@ English and Spanish variants use the price hub, fuel, state, fuel-by-state,
 methodology, download and insights paths in the
 [shared route contract](../product/landing/organic-growth-i18n-plan.md#61-locale-registry-and-routes).
 Prices start at `/en/fuel-prices/` and `/es/precios/`. Fuel slugs come from the
-locale registry, and UF and city slugs are shared. The city allowlist contains
-the 27 capitals and 33 selected border twin cities. Eligibility still depends
-on a Portuguese counterpart in the same snapshot. City pages can link to
-Portuguese station details. Stations, fuel-by-city pages, the ethanol-to-
-gasoline ratio, enforcement, the forum and search remain Portuguese.
+locale registry, and UF and city slugs are shared. Every municipality
+summary emitted in Portuguese has an English counterpart, including directory
+pages without current survey results. Spanish municipality summaries use
+the existing IBGE-code list of capitals and border twin cities. Both
+variants inherit the Portuguese page's indexation decision. The header
+language menu links equivalent pages when available and the language's
+home page otherwise. The language menu is never rendered as a separate
+row below the header.
+
+Station details, enforcement, the public forum and detailed search also
+have localized routes. Individual fuel-by-city pages and the national
+ethanol-to-gasoline ratio keep their Portuguese routes.
 
 Localized price pages link to ANP as their source and show the survey period.
 Prices use BRL and the canonical survey unit. The English and Spanish

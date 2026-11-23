@@ -301,7 +301,7 @@ test('production locales: every translation is AI-reviewed, fresh and emitted wi
       ]],
       categories: ['prices-and-taxes', 'choosing-fuel', 'fuel-economy', 'rights-and-quality', 'data-and-transparency'],
       ferramentas: ['tools', ['cost-per-km-calculator', 'ethanol-or-gasoline-calculator', 'fill-up-cost-calculator', 'fuel-consumption-calculator', 'trip-fuel-cost-calculator']],
-      paginas: ['', ['about', 'editorial-policy']],
+      paginas: ['', ['about', 'contributors', 'editorial-policy']],
       disclosure: 'This English version was translated and reviewed with AI against the Portuguese original, which prevails.',
     },
     es: {

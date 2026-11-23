@@ -6,6 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from '../scripts/build.mjs';
 
+const contributorPaths = new Set(['/contribuidores/*', '/en/contributors/*']);
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function buildTmp(apiOrigin) {
@@ -40,15 +42,16 @@ function blockFor(headers, route) {
   return block.join('\n');
 }
 
-test('csp: API origin appears only on the contribuidores path', () => {
+test('csp: API origin appears only on contributor pages', () => {
   const outDir = buildTmp('https://api.example.invalid');
   try {
     const headers = fs.readFileSync(path.join(outDir, '_headers'), 'utf8');
-    const scoped = blockFor(headers, '/contribuidores/*');
-    assert.match(scoped, /connect-src 'self' https:\/\/api\.example\.invalid;/);
+    for (const route of contributorPaths) {
+      assert.match(blockFor(headers, route), /connect-src 'self' https:\/\/api\.example\.invalid;/);
+    }
     let inScopedBlock = false;
     for (const line of headers.split('\n')) {
-      if (line.trim() === '/contribuidores/*') {
+      if (contributorPaths.has(line.trim())) {
         inScopedBlock = true;
         continue;
       }
@@ -67,8 +70,9 @@ test('csp: disabled build keeps a self-only connect-src on that path', () => {
   const outDir = buildTmp(undefined);
   try {
     const headers = fs.readFileSync(path.join(outDir, '_headers'), 'utf8');
-    const scoped = blockFor(headers, '/contribuidores/*');
-    assert.match(scoped, /connect-src 'self';/);
+    for (const route of contributorPaths) {
+      assert.match(blockFor(headers, route), /connect-src 'self';/);
+    }
     assert.doesNotMatch(headers, /example\.invalid/);
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });

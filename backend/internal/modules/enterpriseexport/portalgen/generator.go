@@ -474,11 +474,11 @@ func Generate(opts Options) (Result, error) {
 	g.languageNavigation = map[string][]languageLink{}
 	g.tmpl, err = template.New("portal").Funcs(template.FuncMap{
 		"brl": brl, "brlPtr": brlPtr, "dateBR": dateBR,
-		"msg":           portalLocale.text,
-		"tabTitle":      tabTitle,
-		"languageLinks": func(route string) []languageLink { return g.languageGroups[route] },
-		"languageMenu":  g.languageMenu,
-		"periodLabel":   periodLabel, "fuelLabel": fuelLabel, "plural": plural, "unitShort": unitShort,
+		"msg":            portalLocale.text,
+		"tabTitle":       tabTitle,
+		"languageLinks":  func(route string) []languageLink { return g.languageGroups[route] },
+		"languagePicker": g.languagePicker,
+		"periodLabel":    periodLabel, "fuelLabel": fuelLabel, "plural": plural, "unitShort": unitShort,
 	}).Parse(templates + localizedTemplates + stationForumTemplates + searchEnforcementTemplates)
 	if err != nil {
 		return Result{}, err

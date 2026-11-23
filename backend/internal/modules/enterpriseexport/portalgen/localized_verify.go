@@ -93,15 +93,15 @@ func portalRouteIdentity(route string, locale, source portalLocale) string {
 		return source.route("prices", fuel, area, "")
 	}
 	city := parts[1]
-	if !routeSlug.MatchString(city) || locale.Code != defaultPortalLocale && !localizedCityRouteAllowed(area, city) {
+	if !routeSlug.MatchString(city) || locale.Code == "es" && !featuredCityRouteAllowed(area, city) {
 		return ""
 	}
 	return source.route("prices", "", area, city)
 }
 
-func localizedCityRouteAllowed(area, city string) bool {
+func featuredCityRouteAllowed(area, city string) bool {
 	uf := strings.ToUpper(area)
-	for code := range localizedCityCodes {
+	for code := range featuredCityCodes {
 		entry, exists := ibgeTable()[code]
 		if !exists || entry.U != uf {
 			continue
