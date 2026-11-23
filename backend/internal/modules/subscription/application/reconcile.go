@@ -13,5 +13,5 @@ func (s *Service) Reconcile(ctx context.Context) (int, error) {
 	if !ok {
 		return 0, domain.ErrUnavailable
 	}
-	return store.ScheduleReconciliation(ctx, s.Environment, s.PackageName, 25)
+	return store.ScheduleReconciliation(ctx, s.store(), s.Environment, s.PackageName, 25)
 }

@@ -32,7 +32,7 @@ func (s *Store) ExportRows(ctx context.Context, p app.Principal, limit int, afte
 	}
 	result := make([]app.ExportRow, 0, len(rows))
 	for _, r := range rows {
-		row := app.ExportRow{ProductID: r.ProductID, BasePlanID: r.BasePlanID, State: domain.State(r.State), VerifiedAt: r.VerifiedAt.Time, Retired: r.Retired, Acknowledged: r.Acknowledged, Digest: r.TokenDigest}
+		row := app.ExportRow{Provider: r.Provider, ProductID: r.ProductID, BasePlanID: r.BasePlanID, State: domain.State(r.State), VerifiedAt: r.VerifiedAt.Time, Retired: r.Retired, Acknowledged: r.Acknowledged, Digest: r.TokenDigest}
 		if r.ValidUntil.Valid {
 			until := r.ValidUntil.Time
 			row.ValidUntil = &until

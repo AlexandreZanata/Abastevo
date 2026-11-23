@@ -47,6 +47,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var authFlow: AuthFlow
     @Inject lateinit var photoFlow: com.anpfuel.application.portable.PhotoFlow
     @Inject lateinit var enterpriseFence: com.anpfuel.application.enterprise.EnterpriseSessionFence
+    @Inject lateinit var storeRecovery: com.anpfuel.application.usecase.premium.RecoverStorePurchasesUseCase
+    @Inject lateinit var premiumStatusCache: com.anpfuel.app.ui.premium.PremiumStatusCache
 
     override fun onStop() {
         // A rotation recreates the activity without leaving the app; it keeps enterprise handles.
@@ -85,6 +87,24 @@ class MainActivity : ComponentActivity() {
                     withContext(Dispatchers.IO) { authFlow.refreshSession() }
                     delay(30_000L)
                 }
+            }
+        }
+        // B-BR-STORE-08: on every start, resend completed Play purchases the server has not
+        // acknowledged yet, so a server outage never loses one. Nothing leaves the device when
+        // no such purchase exists.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val result = withContext(Dispatchers.IO) {
+                    try {
+                        storeRecovery()
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                val submitted = result as? com.anpfuel.application.usecase.premium.StoreRecoveryResult.Submitted
+                if (submitted?.outcome is com.anpfuel.domain.premium.StoreVerification.Verified) premiumStatusCache.clear()
             }
         }
         enableEdgeToEdge()

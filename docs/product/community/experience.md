@@ -37,6 +37,16 @@ Station detail prioritizes current community fuel cards, time/condition, route a
 
 Cover first launch, manual city, denied permission, unsupported integrity, simulated GPS, no nearby stations, no recent community price, stale/disputed price, offline cache, expired media, illegible photo, wrong OCR, condition ambiguity, rejected contribution, timeout/retry, expired account, deleted comment revision, rate limit and moderation. Never display invented coverage, mock members or estimated prices as real.
 
+On iOS, a capture without a working submission transport is a private draft.
+The app keeps the draft in the user's local history and excludes it from the
+public price feed. Public counts display the server data until the app can
+send and reconcile signed votes.
+
+The iOS forum, contributor directory and station comment views use their
+anonymous API projections. Earlier local topics and comments are drafts.
+The public views keep drafts separate and show unavailable or empty states
+when the backend cannot supply content.
+
 ## Visual identity and accessibility
 
 Use the approved blue/green A on white, navy reference wordmark and generous whitespace. Blue is the principal action color; green signals contribution/community without implying price truth. Derive named theme tokens from approved assets; measure contrast before use, especially white text on green. Warning/error/state labels need text/icons as well as color. Retain readable money/time/fuel hierarchy, large touch targets, screen-reader labels, reduced-motion behavior and font-scale/layout testing. Do not redesign the approved logo. Content card outlines follow the [Android UI container guidelines](../../android/ui-containers.md).

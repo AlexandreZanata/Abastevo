@@ -1,58 +1,38 @@
-# iosApp — thin iPhone host (P12-T04)
+# Abastevo for iPhone and iPad
 
-> Archived: iOS is not maintained; do not work on this app unless the owner explicitly asks.
+The native application targets iOS 17 and later. Open `AnpFuel.xcodeproj` and select the shared `AnpFuel` scheme. SwiftUI owns presentation, and `AnpFuelCore` contains the portable business rules, URLSession client, and iOS adapters. The project preserves `com.anpfuel.app`.
 
-Status: IMPLEMENTED, NOT VERIFIED. No Swift/Xcode toolchain exists on the
-Linux workstation, so nothing here has been compiled or run. The first real
-build/test happens on macOS with Xcode 26.4 (see the BLOCKED checklist
-below). Per the owner's instruction, this phase ships Swift sources plus
-XCTest vectors now; the Mac run follows when hardware is available.
+The [parity contract](PARITY.md) tracks Android journeys and outstanding acceptance. The [public read contract](PUBLIC_READS.md) defines source attribution, city scope, missing data, offline cache and pin admission. Public forum, contributor and station-comment views read the backend. Official ANP survey weeks download from gov.br into verified local storage and remain usable offline. EV charging reads the admitted catalog. The vehicle ledger stores exact records on the device, computes monthly indicators from qualified intervals, and syncs through the signed `/v1/ledger/*` routes after explicit opt-in (B-BR-IOS-VEHICLE). Manual driver shifts are local. The route preview requests online directions from MapKit, and offline navigation hands routable stations to Apple Maps offline maps.
 
-## Layout
+Abastevo Empresas covers invitations, company selection with device enrollment, assigned assets, trip start and finish, the departure checklist, and expenses with an optional receipt photo. Each organization has its own protected, device-signed queue, which is purged on logout. Tracking stays off on iOS. [PARITY.md](PARITY.md) (B-BR-IOS-EMP) lists the routes and what still needs staging and device evidence.
 
-- `Package.swift` — SPM package `AnpFuel` (iOS 17, macOS 14).
-- `Sources/AnpFuelCore/` — portable kernel, Swift ports of P12-T02 with
-  identical semantics and quarantine codes: `PortableMoney` (integer
-  milli-BRL 1...1000000, ANP comma grammar, over-precision refusal,
-  canonical `"<int>,<3dp>"` format, overflow-checked tank-fill multiply),
-  `PortableText` (trim + CRLF normalization, `unicodeScalars` counting,
-  280-scalar F03 rule), `PortableIdTime` (lowercase UUID, strict UTC
-  instants with leap-year checks), `TankFillUseCase` (cheapest station plus
-  exact total — the use case the shell executes).
-- `Sources/AnpFuelShell/AnpFuelApp.swift` — thin SwiftUI host running the
-  use case against the frozen golden vectors. Live reads, accounts and
-  persistence arrive in P10/P13/P17.
-- `Tests/AnpFuelCoreTests/` — XCTest vectors transcribed 1:1 from
-  `contracts/testdata/compat/money-portable-v1.json` and the Kotlin
-  `PortableMoneyTest`/`PortableTextTest`/`PortableIdTimeTest` suites
-  (money valid/invalid + boundaries, format, tank-fill totals incl. half-up,
-  capacity bounds, 280/281 comments, emoji/combining scalars, UUID and
-  instant vectors, cheapest/tie/empty use-case behavior).
+Accounts use Sign in with Apple, e-mail codes or recovery keys. Account calls run off the main actor. After any login, the device P-256 key registers a contributor and binds it to the account. Price observations, an optional evidence photo, station comments and votes, and forum topics and comments go through a persistent outbox with server receipts. Owner history reads the signed `GET /v1/contributors/me/observations`. Sign in with Apple depends on `POST /v1/accounts/providers/login`; a server without it returns `account.provider-unavailable`, and the app reports that state. Premium is sold through StoreKit 2 and verified by the server ([store billing](../docs/product/payments/store-billing.md)).
 
-## Run on macOS (BLOCKED until Mac access)
+## Verification
+
+Run the structural checks on Linux or macOS.
+
+```sh
+bash scripts/check-mobile.sh --static-only
+python3 -m unittest -v scripts.tests.test_ios_app_integrity
+```
+
+Run the native build and XCTest on macOS with Xcode 26.4.1 and the iOS 26.4.1 simulator runtime. The GitHub iOS workflow uses the same Xcode command and bundles the shared Android municipality catalog and EE-23 fixture from their repository paths.
 
 ```sh
 cd iosApp
-swift build                                  # core + shell compile
-swift test                                   # 4 XCTest suites, must be green
-xcodebuild test -scheme AnpFuel \
-  -destination 'platform=iOS Simulator,name=iPhone 16'   # simulator run
+xcodebuild test -project AnpFuel.xcodeproj -scheme AnpFuel \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4.1' \
+  CODE_SIGNING_ALLOWED=NO
 ```
 
-Expected: `AnpFuelCore` builds for `iosArm64`/`iosSimulatorArm64`, all
-XCTest suites pass, and the shell renders the cheapest tank fill
-(Cheap / 5499 / R$ 274,950 for 50 L). Record device/Xcode versions; any failure stays open as a
-P12-T04 follow-up, never a silent skip.
+Acceptance requires the matching Android journeys, staging API checks, and a physical iPhone and iPad run for Keychain, permissions, camera, VoiceOver, Dynamic Type and location. The simulator suite covers native compilation and XCTest, including the Go identity vectors from `contracts/testdata/identity` verified with CryptoKit. It cannot certify code signing, Sign in with Apple, App Store distribution, private media uploads, or device behavior.
 
-## Porting notes (reviewed without a compiler — verify on Mac)
+## Testing on a Mac
 
-- `String.unicodeScalars.count` is the scalar count; `String.count` would
-  count grapheme clusters and break F03 parity — never substitute it.
-- `trimmingCharacters(in: .whitespaces)` covers ANP fixture spacing; full
-  Unicode trim parity with Kotlin `trim()` is fixture-equivalent, not
-  character-exact — do not feed exotic whitespace as identity proof.
-- No force-unwraps (`!`) in `AnpFuelCore`; every optional resolves to a
-  typed `PortableMoneyError` code or a `false` validator.
-- Swift export of the Kotlin framework (Alpha) is intentionally NOT used:
-  the first app ships framework interop plus this Swift wrapper per ADR-015.
-  KMP `shared` module wiring lands after the Mac run proves this shell.
+1. Install Xcode 26.4.1 or later with the iOS 26.4 simulator runtime, then open `iosApp/AnpFuel.xcodeproj` and pick the `AnpFuel` scheme.
+2. Simulator: choose an iPhone 17 or iPad simulator and press Run. The app starts on the `abastevo.com.br` origin; Settings → network environment switches origins only while no account is signed in.
+3. Device: in the `AnpFuel` target, Signing & Capabilities, select your team. Sign in with Apple and associated domains need a paid Apple Developer team; with a personal team, remove those two capabilities locally (do not commit the change). Keep the bundle ID `com.anpfuel.app` for App Store Connect products.
+4. Tests: `⌘U` in Xcode, or the `xcodebuild test` command above. CI runs the same command on every push to this branch.
+5. Premium purchases need the App Store channel configured on the server you use (see [store billing integration](../docs/backend/payments/store-billing-integration.md)) and a Sandbox Apple Account signed in on the device (Settings → App Store → Sandbox Account; recent iOS versions also list it under Settings → Developer). Without a server `app_store` offer the Premium sheet shows status only. An Xcode `.storekit` file is not useful end to end: the server refuses locally signed transactions.
+6. Things only a device proves: Keychain persistence across reinstall, camera evidence capture, location prompts, Sign in with Apple, notifications, VoiceOver and Dynamic Type, and Apple Maps offline navigation.

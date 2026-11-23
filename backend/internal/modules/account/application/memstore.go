@@ -38,6 +38,17 @@ type MemStore struct {
 	// newest superseded verifiers first, at most
 	// domain.MaxRefreshHistory per family. Salted hashes only.
 	refreshHist map[string][]domain.RotatedVerifier
+	// grants holds sealed provider refresh tokens per account, keyed by
+	// provider and subject; revocations is the deletion-time queue
+	// (P13-T05).
+	grants      map[string]map[string]domain.ProviderGrant
+	revocations map[string]*memRevocation
+}
+
+type memRevocation struct {
+	rev         domain.GrantRevocation
+	nextAttempt int64
+	leaseUntil  int64
 }
 
 type erasureIntentKey struct {
@@ -65,6 +76,8 @@ func NewMemStore() *MemStore {
 		intents:         map[erasureIntentKey]int64{},
 		erasureRequests: map[string]int64{},
 		refreshHist:     map[string][]domain.RotatedVerifier{},
+		grants:          map[string]map[string]domain.ProviderGrant{},
+		revocations:     map[string]*memRevocation{},
 	}
 }
 
@@ -528,6 +541,34 @@ func (m *MemStore) FindProviderOwner(_ context.Context, provider, subject string
 	return owner, ok, nil
 }
 
+// ResolveProviderAccount returns the owner of link's subject or creates
+// candidate bound to it, under one lock (P13-T05).
+func (m *MemStore) ResolveProviderAccount(_ context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" || link.AccountID != candidate.ID {
+		return domain.Account{}, false, domain.ErrOIDCWrongAudience
+	}
+	key := subjectKey(link.Provider, link.Subject)
+	if owner, ok := m.bySubject[key]; ok {
+		if m.links[owner][link.Provider].Issuer != link.Issuer {
+			return domain.Account{}, false, domain.ErrOIDCUnknownIssuer
+		}
+		acc, ok := m.accountsByID[owner]
+		if !ok {
+			return domain.Account{}, false, domain.ErrAccountNotFound
+		}
+		return acc, false, nil
+	}
+	if _, taken := m.accountsByID[candidate.ID]; taken {
+		return domain.Account{}, false, domain.ErrKeyCollision
+	}
+	m.accountsByID[candidate.ID] = candidate
+	m.links[candidate.ID] = map[string]domain.ProviderLink{link.Provider: link}
+	m.bySubject[key] = candidate.ID
+	return candidate, true, nil
+}
+
 // CountAddresses counts email bindings of one account.
 func (m *MemStore) CountAddresses(_ context.Context, accountID string) (int, error) {
 	m.mu.Lock()
@@ -659,7 +700,89 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		delete(m.keyByLookup, cred.KeyLookup)
 		delete(m.keyCreds, accountID)
 	}
+	// P13-T05: sealed provider grants move to the revocation queue.
+	for _, g := range m.grants[accountID] {
+		m.queueRevocationLocked(g, nowUnix)
+	}
+	delete(m.grants, accountID)
 	return contributors, nil
+}
+
+func (m *MemStore) queueRevocationLocked(g domain.ProviderGrant, nowUnix int64) {
+	if _, ok := m.revocations[g.ID]; ok {
+		return
+	}
+	m.revocations[g.ID] = &memRevocation{
+		rev:         domain.GrantRevocation{ID: g.ID, Provider: g.Provider, Sealed: append([]byte(nil), g.Sealed...), RequestedAt: nowUnix},
+		nextAttempt: nowUnix,
+	}
+}
+
+// SaveProviderGrant stores one sealed grant, replacing the account's
+// previous grant for the subject; a grant for a deleted account is
+// queued for revocation instead (P13-T05).
+func (m *MemStore) SaveProviderGrant(_ context.Context, g domain.ProviderGrant) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if g.ID == "" || g.Provider != "apple" || g.Subject == "" || len(g.Sealed) == 0 {
+		return domain.ErrProviderProofMalformed
+	}
+	acc, ok := m.accountsByID[g.AccountID]
+	if !ok {
+		return domain.ErrAccountNotFound
+	}
+	if acc.Status == domain.StatusDeleted {
+		m.queueRevocationLocked(g, g.CapturedAt)
+		return nil
+	}
+	if m.grants[g.AccountID] == nil {
+		m.grants[g.AccountID] = map[string]domain.ProviderGrant{}
+	}
+	g.Sealed = append([]byte(nil), g.Sealed...)
+	m.grants[g.AccountID][subjectKey(g.Provider, g.Subject)] = g
+	return nil
+}
+
+// ClaimGrantRevocation leases the oldest due revocation.
+func (m *MemStore) ClaimGrantRevocation(_ context.Context, nonce string, nowUnix int64) (domain.GrantRevocation, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var best *memRevocation
+	for _, r := range m.revocations {
+		if r.nextAttempt > nowUnix || r.leaseUntil > nowUnix {
+			continue
+		}
+		if best == nil || r.nextAttempt < best.nextAttempt || (r.nextAttempt == best.nextAttempt && r.rev.ID < best.rev.ID) {
+			best = r
+		}
+	}
+	if best == nil {
+		return domain.GrantRevocation{}, false, nil
+	}
+	best.rev.LeaseNonce = nonce
+	best.leaseUntil = nowUnix + domain.GrantRevocationLeaseSeconds
+	out := best.rev
+	out.Sealed = append([]byte(nil), best.rev.Sealed...)
+	return out, true, nil
+}
+
+// FinishGrantRevocation settles a leased revocation; a stale lease is a
+// no-op.
+func (m *MemStore) FinishGrantRevocation(_ context.Context, rev domain.GrantRevocation, outcome GrantOutcome, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	r, ok := m.revocations[rev.ID]
+	if !ok || r.rev.LeaseNonce != rev.LeaseNonce || rev.LeaseNonce == "" {
+		return nil
+	}
+	if outcome == GrantRetry {
+		r.rev.Attempts++
+		r.nextAttempt = nowUnix + domain.GrantRevocationBackoff(r.rev.Attempts)
+		r.rev.LeaseNonce, r.leaseUntil = "", 0
+		return nil
+	}
+	delete(m.revocations, rev.ID)
+	return nil
 }
 
 // ListErasureIntents returns the durable contributor intents of one

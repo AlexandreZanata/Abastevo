@@ -33,6 +33,15 @@ func digestOK(s string) bool {
 	_, err := hex.DecodeString(s)
 	return err == nil
 }
+
+// providerOf normalizes a store name; callers built before App Store
+// support only verify Google Play purchases.
+func providerOf(name string) string {
+	if name == "" {
+		return domain.ProviderPlay
+	}
+	return name
+}
 func stamp(t time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: t.UTC(), Valid: !t.IsZero()}
 }
@@ -88,6 +97,10 @@ func (s *Store) begin(ctx context.Context, a app.Attempt, background bool) (app.
 		return app.Attempt{}, domain.ErrInvalid
 	}
 	if a.Environment != "test" && a.Environment != "production" {
+		return app.Attempt{}, domain.ErrInvalid
+	}
+	a.Provider = providerOf(a.Provider)
+	if !domain.ValidProvider(a.Provider) {
 		return app.Attempt{}, domain.ErrInvalid
 	}
 	if a.PackageName == "" || len(a.PackageName) > 150 || (!background && a.Kind != "verify" && a.Kind != "restore") {
@@ -150,7 +163,7 @@ func (s *Store) begin(ctx context.Context, a app.Attempt, background bool) (app.
 		return app.Attempt{}, domain.ErrUnavailable
 	}
 	if purchase, e := q.GetPurchase(ctx, a.Digest); e == nil {
-		if idstr(purchase.AccountID) != a.Principal.AccountID || purchase.Retired || purchase.State == string(domain.Revoked) {
+		if idstr(purchase.AccountID) != a.Principal.AccountID || purchase.Provider != a.Provider || purchase.Retired || purchase.State == string(domain.Revoked) {
 			return app.Attempt{}, domain.ErrDenied
 		}
 	} else if !errors.Is(e, pgx.ErrNoRows) {
@@ -262,7 +275,7 @@ func (s *Store) Commit(ctx context.Context, a app.Attempt, v app.VerifiedPurchas
 	if v.Snapshot.State == domain.Revoked {
 		cipherToken = nil
 	}
-	if _, err = q.SavePurchase(ctx, qsub.SavePurchaseParams{TokenDigest: a.Digest, AccountID: uid(a.Principal.AccountID), Environment: a.Environment, PackageName: a.PackageName, ProductID: v.Snapshot.ProductID, BasePlanID: v.Snapshot.BasePlanID, State: string(v.Snapshot.State), ValidUntil: stamp(v.Snapshot.ValidUntil), VerifiedAt: stamp(v.Snapshot.VerifiedAt), TokenCipher: cipherToken, Acknowledged: v.Snapshot.Acknowledged, LinkedDigest: linked}); err != nil {
+	if _, err = q.SavePurchase(ctx, qsub.SavePurchaseParams{TokenDigest: a.Digest, AccountID: uid(a.Principal.AccountID), Provider: providerOf(a.Provider), Environment: a.Environment, PackageName: a.PackageName, ProductID: v.Snapshot.ProductID, BasePlanID: v.Snapshot.BasePlanID, State: string(v.Snapshot.State), ValidUntil: stamp(v.Snapshot.ValidUntil), VerifiedAt: stamp(v.Snapshot.VerifiedAt), TokenCipher: cipherToken, Acknowledged: v.Snapshot.Acknowledged, LinkedDigest: linked}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrDenied
 		}
@@ -304,7 +317,7 @@ func (s *Store) Reject(ctx context.Context, a app.Attempt) error {
 	return tx.Commit(ctx)
 }
 func snapshot(p qsub.SubscriptionPurchase) *domain.Snapshot {
-	s := &domain.Snapshot{State: domain.State(p.State), VerifiedAt: p.VerifiedAt.Time, ProductID: p.ProductID, BasePlanID: p.BasePlanID, Retired: p.Retired, Acknowledged: p.Acknowledged}
+	s := &domain.Snapshot{Provider: p.Provider, State: domain.State(p.State), VerifiedAt: p.VerifiedAt.Time, ProductID: p.ProductID, BasePlanID: p.BasePlanID, Retired: p.Retired, Acknowledged: p.Acknowledged}
 	if p.ValidUntil.Valid {
 		s.ValidUntil = p.ValidUntil.Time
 	}

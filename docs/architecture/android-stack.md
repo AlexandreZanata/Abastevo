@@ -15,6 +15,7 @@ This document lists the technology choices of the Android app. Implementation fo
 | **Background sync** | WorkManager + OkHttp |
 | **HTML discovery** | OkHttp + Jsoup |
 | **XLSX parsing** | Streaming XLSX parser (custom primary; Apache POI for validation/tests only) |
+| **Store billing** | Google Play Billing Library (Java artifact, `:data` only) |
 | **DI** | Hilt |
 | **Async** | Kotlin Coroutines + Flow |
 | **Navigation** | Navigation Compose |

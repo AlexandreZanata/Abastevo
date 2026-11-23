@@ -1103,8 +1103,8 @@
     <string name="premium_retained">Your data stays accessible without Premium.</string>
     <string name="premium_manage">Manage subscription</string>
     <string name="premium_restore">Restore purchase</string>
-    <string name="premium_restore_note">Restores a subscription verified by the store. Paid acquisition is disabled in this build.</string>
-    <string name="premium_restore_unavailable">Purchases are not available in this build. No purchase or local entitlement was created.</string>
+    <string name="premium_restore_note">Checks Google Play for subscriptions of this account and verifies them.</string>
+    <string name="premium_restore_unavailable">Google Play purchases are not available right now. No purchase or local entitlement was created.</string>
     <string name="premium_offline">Could not verify Premium right now. Try again.</string>
     <string name="premium_denied">Sign in again to verify Premium.</string>
     <string name="premium_error">Premium status could not be verified.</string>
@@ -1485,4 +1485,34 @@
         <item quantity="one">%d new reply</item>
         <item quantity="other">%d new replies</item>
     </plurals>
+    <string name="premium_store_section_title">Subscribe</string>
+    <string name="premium_store_plans_loading">Loading Google Play plans…</string>
+    <string name="premium_store_plans_unavailable">Google Play plans could not be loaded.</string>
+    <string name="premium_store_subscribe">Subscribe</string>
+    <string name="premium_store_billing_note">Payment, renewal and cancellation are handled by Google Play.</string>
+    <string name="premium_plan_title_week">Weekly plan</string>
+    <string name="premium_plan_title_month">Monthly plan</string>
+    <string name="premium_plan_title_year">Annual plan</string>
+    <string name="premium_plan_title_months">%1$d-month plan</string>
+    <string name="premium_plan_title_other">Premium plan</string>
+    <string name="premium_plan_price_week">%1$s per week</string>
+    <string name="premium_plan_price_month">%1$s per month</string>
+    <string name="premium_plan_price_year">%1$s per year</string>
+    <string name="premium_plan_price_every_months">%1$s every %2$d months</string>
+    <string name="premium_plan_price_other">%1$s per billing period</string>
+    <string name="premium_purchase_launching">Waiting for Google Play…</string>
+    <string name="premium_purchase_verifying">Verifying your purchase…</string>
+    <string name="premium_purchase_restoring">Checking Google Play for purchases…</string>
+    <string name="premium_purchase_pending">Your payment is pending in Google Play. Premium starts only after the payment is confirmed and verified.</string>
+    <string name="premium_purchase_cancelled">Purchase cancelled. Nothing was bought.</string>
+    <string name="premium_purchase_verified">Purchase verified with Google Play.</string>
+    <string name="premium_purchase_denied">This purchase could not be confirmed for this account, so no access was granted.</string>
+    <string name="premium_purchase_retry">The purchase could not be confirmed right now. It stays saved in Google Play and will be checked again.</string>
+    <string name="premium_purchase_store_error">Google Play could not complete the request. Try again later.</string>
+    <string name="premium_purchase_already_owned">This Google account already has this subscription. Restore it to this account.</string>
+    <string name="premium_purchase_owner_changed">The account changed during the purchase. The result was not applied.</string>
+    <string name="premium_restore_done">Purchases restored and verified.</string>
+    <string name="premium_restore_none">No Google Play subscription was found to restore.</string>
+    <string name="premium_restore_other_account">The Google Play subscription on this device belongs to another Abastevo account. It was not moved.</string>
+    <string name="premium_active_other_source">Premium is already active on this account through another channel. No second purchase is needed.</string>
 </resources>

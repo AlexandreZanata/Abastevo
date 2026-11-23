@@ -28,7 +28,7 @@ func (s *Service) Refresh(ctx context.Context, digest, operationID string) error
 	if err != nil {
 		return err
 	}
-	if row.Environment != s.Environment || row.PackageName != s.PackageName {
+	if row.Provider != s.store() || row.Environment != s.Environment || row.PackageName != s.PackageName {
 		return domain.ErrDenied
 	}
 	a, err := store.BeginRefresh(ctx, row, operationID)
@@ -66,7 +66,7 @@ func (s *Service) Refresh(ctx context.Context, digest, operationID string) error
 	canonical.Snapshot.VerifiedAt = s.now()
 	linked := ""
 	if canonical.LinkedToken != "" {
-		linked = domain.TokenDigest(row.Environment, row.PackageName, canonical.LinkedToken)
+		linked = domain.StoreTokenDigest(row.Provider, row.Environment, row.PackageName, canonical.LinkedToken)
 	}
 	return s.Store.Commit(ctx, a, VerifiedPurchase{Snapshot: canonical.Snapshot, LinkedDigest: linked})
 }

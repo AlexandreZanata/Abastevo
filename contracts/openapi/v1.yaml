@@ -8445,6 +8445,85 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/providers/login:
+    post:
+      summary: Sign in with a native Apple identity token.
+      operationId: loginWithProvider
+      tags: [accounts]
+      security: []
+      description: >
+        Native Sign in with Apple (P13-T05, B-BR-A01/A03). The server
+        verifies the identity token signature against Apple's JWKS, the
+        issuer, expiry and the server-configured native audience (the app
+        bundle ID, never a request field), then compares the token nonce
+        claim with the lowercase hex SHA-256 of the raw nonce sent here
+        and consumes it once. An existing link of the verified subject
+        signs in to its account; an unknown subject creates one FREE
+        account. Equal email strings never select or merge an account.
+        Deployments without a configured native audience answer 503
+        account.provider-unavailable. The response matches the email-code
+        consume.
+      requestBody:
+        required: true
+        description: Provider identity token plus the raw single-use nonce.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [provider, id_token, nonce]
+              properties:
+                provider:
+                  type: string
+                  enum: [apple, google]
+                  description: Only apple offers native sign-in; google answers 503 until its native flow is specified.
+                  example: apple
+                id_token:
+                  type: string
+                  maxLength: 4096
+                  description: Apple identity token (compact JWS); never stored or logged.
+                  example: eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiIwMDEyMzQifQ.c2ln
+                nonce:
+                  type: string
+                  minLength: 16
+                  maxLength: 128
+                  pattern: '^[\x21-\x7E]+$'
+                  description: Raw nonce whose SHA-256 hex the app placed in the Apple request.
+                  example: 3f9c1d2e7a6b4c58
+                authorization_code:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                  pattern: '^[\x21-\x7E]+$'
+                  description: >
+                    Optional single-use authorization code of the same Apple
+                    authorization. When revocation is configured the server
+                    redeems it best-effort for a sealed refresh token that is
+                    revoked at Apple on account deletion; it never changes the
+                    sign-in outcome.
+                  example: c1a2b3.0.synthetic
+      responses:
+        '200':
+          description: Authenticated session with bearer tokens shown once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/accounts/providers/link:
     post:
       summary: Link a verified Google/Apple subject to the caller's account.
@@ -9722,6 +9801,35 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/app-store-notifications:
+    post:
+      tags:
+      - premium
+      summary: App Store Server Notifications V2
+      description: Signed by the App Store; the x5c chain to Apple Root CA - G3 is
+        the authentication. A verified notification only schedules a refresh of a
+        bound purchase (B-BR-STORE-07). Private/no-store.
+      operationId: premiumAppStoreNotifications
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumAppStoreNotification'
+      responses:
+        '200':
+          description: Verified notification durably received, duplicate or test.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
         '429':
@@ -43853,6 +43961,8 @@ components:
       - retired
       - acknowledged
       properties:
+        provider:
+          $ref: '#/components/schemas/PremiumStoreProvider'
         product_id:
           type: string
         base_plan_id:
@@ -43927,6 +44037,62 @@ components:
           type: string
           minLength: 1
           maxLength: 4096
+          description: Play purchase token, or the App Store originalTransactionId
+            as a decimal string when provider is app_store.
+        provider:
+          $ref: '#/components/schemas/PremiumStoreProvider'
+    PremiumStoreProvider:
+      type: string
+      description: Store that issued an in-app purchase; absent means play.
+      enum:
+      - play
+      - app_store
+    PremiumStoreOffer:
+      type: object
+      additionalProperties: false
+      required:
+      - provider
+      - products
+      - account_binding
+      - management_url
+      properties:
+        provider:
+          $ref: '#/components/schemas/PremiumStoreProvider'
+        products:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - product_id
+            - plan_ids
+            properties:
+              product_id:
+                type: string
+                maxLength: 150
+              plan_ids:
+                type: array
+                items:
+                  type: string
+                  maxLength: 150
+        account_binding:
+          type: string
+          description: Play obfuscatedAccountId (64 hex characters) or StoreKit
+            appAccountToken (UUID), derived by the server from the account.
+          maxLength: 64
+        management_url:
+          type: string
+          format: uri
+    PremiumAppStoreNotification:
+      type: object
+      additionalProperties: false
+      required:
+      - signedPayload
+      properties:
+        signedPayload:
+          type: string
+          minLength: 1
+          maxLength: 32768
     PremiumCapability:
       type: string
       enum:
@@ -43993,6 +44159,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TierStatus'
+        store_offers:
+          type: array
+          description: Configured store offers for this owner (B-BR-STORE-04/10).
+          items:
+            $ref: '#/components/schemas/PremiumStoreOffer'
     AdminLoginRequest:
       type: object
       additionalProperties: false
@@ -44042,7 +44213,7 @@ components:
           enum: [PRO, CONTRIBUTOR, ENTERPRISE]
         source:
           type: string
-          enum: [play, web, admin]
+          enum: [play, app_store, web, admin]
         valid_until:
           type: [string, 'null']
           format: date-time

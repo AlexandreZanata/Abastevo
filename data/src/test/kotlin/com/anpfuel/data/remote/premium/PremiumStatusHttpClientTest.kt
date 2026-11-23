@@ -1,8 +1,11 @@
 package com.anpfuel.data.remote.premium
 
+import com.anpfuel.domain.premium.PremiumSource
 import com.anpfuel.domain.premium.PremiumState
 import com.anpfuel.domain.premium.PremiumStatus
 import com.anpfuel.domain.premium.PremiumStatusException
+import com.anpfuel.domain.premium.PremiumTier
+import com.anpfuel.domain.premium.StoreProvider
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -110,7 +113,88 @@ class PremiumStatusHttpClientTest {
         }
     }
 
+    @Test fun `store offers and tiers are parsed with their own validation`() = runTest {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(active.replace("\"management_url\"", "$OFFERS,$TIERS,\"management_url\"")))
+            val status = runBlocking { client(server).status("11111111-1111-4111-8111-111111111111", "token-1") }
+            val play = status.playOffer!!
+            assertEquals(StoreProvider.PLAY, play.provider)
+            assertEquals("a".repeat(64), play.accountBinding)
+            assertEquals(listOf("monthly", "yearly"), play.products.single().planIds)
+            assertEquals("$MANAGEMENT?package=com.anpfuel.app", play.managementUrl)
+            assertEquals(2, status.storeOffers.size)
+            assertEquals(
+                listOf(
+                    PremiumTier("PRO", PremiumSource.PLAY, "2026-11-30T23:59:59Z"),
+                    PremiumTier("PRO", PremiumSource.ADMIN, null),
+                    PremiumTier("PRO", PremiumSource.UNKNOWN, null),
+                ),
+                status.tiers,
+            )
+        }
+    }
+
+    @Test fun `absent offers keep the status readable without a purchase channel`() = runTest {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(active))
+            val status = runBlocking { client(server).status("11111111-1111-4111-8111-111111111111", "token-1") }
+            assertTrue(status.storeOffers.isEmpty())
+            assertTrue(status.tiers.isEmpty())
+            assertNull(status.playOffer)
+        }
+    }
+
+    @Test fun `malformed or foreign offers are dropped and never become a purchase channel`() = runTest {
+        val id = "11111111-1111-4111-8111-111111111111"
+        val badOffers = listOf(
+            OFFERS.replace("\"${"a".repeat(64)}\"", "\"SHORT\""),
+            OFFERS.replace("https://play.google.com/store/account/subscriptions?package=com.anpfuel.app", "https://pay.example/checkout"),
+            OFFERS.replace("\"provider\":\"play\"", "\"provider\":\"stripe\""),
+            OFFERS.replace("\"plan_ids\":[\"monthly\",\"yearly\"]", "\"plan_ids\":\"monthly\""),
+            OFFERS.replace("\"abastevo_premium\"", "7"),
+            "\"store_offers\":{\"provider\":\"play\"}",
+            "\"store_offers\":[\"play\"]",
+        )
+        MockWebServer().use { server ->
+            val api = client(server)
+            badOffers.forEach { offers ->
+                server.enqueue(MockResponse().setBody(active.replace("\"management_url\"", "$offers,\"management_url\"")))
+                val status = runBlocking { api.status(id, "t") }
+                assertNull(status.playOffer, offers)
+                assertEquals(PremiumState.ACTIVE, status.state)
+            }
+            val duplicated = OFFERS.replaceFirst("[{", "[$PLAY_OFFER,{")
+            server.enqueue(MockResponse().setBody(active.replace("\"management_url\"", "$duplicated,\"management_url\"")))
+            assertNull(runBlocking { api.status(id, "t") }.playOffer)
+        }
+    }
+
+    @Test fun `corrupt tiers fail closed like other core fields`() = runTest {
+        val id = "11111111-1111-4111-8111-111111111111"
+        MockWebServer().use { server ->
+            val api = client(server)
+            listOf(
+                "\"tiers\":{}",
+                "\"tiers\":[{\"tier\":\"\",\"source\":\"web\",\"valid_until\":null}]",
+                "\"tiers\":[{\"tier\":\"PRO\",\"source\":7,\"valid_until\":null}]",
+                "\"tiers\":[{\"tier\":\"PRO\",\"source\":\"web\",\"valid_until\":\"tomorrow\"}]",
+            ).forEach { tiers ->
+                server.enqueue(MockResponse().setBody(active.replace("\"management_url\"", "$tiers,\"management_url\"")))
+                assertThrows(PremiumStatusException.Invalid::class.java) { runBlocking { api.status(id, "t") } }
+            }
+        }
+    }
+
     private companion object {
         const val MANAGEMENT = "https://play.google.com/store/account/subscriptions"
+        val PLAY_OFFER = """{"provider":"play","products":[{"product_id":"abastevo_premium","plan_ids":["monthly","yearly"]}],""" +
+            """"account_binding":"${"a".repeat(64)}",""" +
+            """"management_url":"https://play.google.com/store/account/subscriptions?package=com.anpfuel.app"}"""
+        val OFFERS = """"store_offers":[$PLAY_OFFER,""" +
+            """{"provider":"app_store","products":[{"product_id":"com.anpfuel.app.premium.monthly","plan_ids":[]}],""" +
+            """"account_binding":"1a2b3c4d-1111-4111-8111-abcdefabcdef",""" +
+            """"management_url":"https://apps.apple.com/account/subscriptions"}]"""
+        const val TIERS = """"tiers":[{"tier":"PRO","source":"play","valid_until":"2026-11-30T23:59:59Z"},""" +
+            """{"tier":"PRO","source":"admin","valid_until":null},{"tier":"PRO","source":"future","valid_until":null}]"""
     }
 }

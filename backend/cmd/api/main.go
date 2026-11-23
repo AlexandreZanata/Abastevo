@@ -27,6 +27,7 @@ import (
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	dbstationprofile "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/stationprofile"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountapple "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/apple"
 	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
 	accountkeyprover "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover"
 	accountmail "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/mail"
@@ -112,7 +113,6 @@ import (
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/http"
-	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
 	subscriptiondomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
@@ -516,14 +516,33 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		MailEnabled: mailEnabled,
 		Store:       accountStore,
 		Verifier:    accountVerifier,
-		KeyProver:   accountKeys,
-		CodeGen:     accountdomain.GenerateCode,
-		TokenGen:    accountdomain.GenerateToken,
-		AliasGen:    accountdomain.GenerateAlias,
-		KeyGen:      accountdomain.GenerateAccountKey,
-		IDGen:       newUUID,
+		// Native Sign in with Apple (P13-T05): the identity token's
+		// audience is the configured app client, never the frozen link
+		// audience; unset keeps the login route provider-unavailable.
+		NativeAudiences: map[string]string{"apple": cfg.AppleSignIn.NativeAudience},
+		KeyProver:       accountKeys,
+		CodeGen:         accountdomain.GenerateCode,
+		TokenGen:        accountdomain.GenerateToken,
+		AliasGen:        accountdomain.GenerateAlias,
+		KeyGen:          accountdomain.GenerateAccountKey,
+		IDGen:           newUUID,
 	}
 	accountService.RequestBillingExit = billingExit.RequestAccountExit
+	// Sign in with Apple grant capture (P13-T05, App Store 5.1.1(v)):
+	// with revocation credentials configured, a native sign-in's
+	// authorization code is redeemed into a sealed refresh token that
+	// account deletion revokes. Unreadable configured key files refuse
+	// startup; absent configuration leaves capture off.
+	if cfg.AppleSignIn.RevocationConfigured() {
+		appleClient, err := accountapple.NewClient(cfg.AppleSignIn.TeamID, cfg.AppleSignIn.KeyID, cfg.AppleSignIn.NativeAudience, cfg.AppleSignIn.PrivateKeyFile, cfg.AppleSignIn.GrantKeyFile)
+		if err != nil {
+			return errors.New("api: Sign in with Apple credentials unavailable")
+		}
+		accountService.Grants = appleClient
+		accountService.OnGrantFailure = func(ctx context.Context, provider string, err error) {
+			logger.Warn(ctx, "account.provider_grant", "provider grant not captured", slog.String("provider", provider), slog.String("reason", accountapple.Reason(err)))
+		}
+	}
 	// PAY-20: proof-gated owner commands verify one live session per
 	// action through the account service; the proof value itself never
 	// leaves this closure.
@@ -860,10 +879,15 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	}.RegisterStationRoutes(privateProfiles)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
-	// Premium source is prepared; real payment/catalog/credential ports remain
-	// nil by owner direction. Free status/export use existing owner sessions.
+	// Store billing (B-BR-STORE-01..10): Google Play and App Store channels
+	// start only with complete configuration; otherwise every port stays nil
+	// and free status/export keep using existing owner sessions.
 	premiumStore := subscriptionadapters.NewStore(pool.Underlying())
-	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	storefront := subscriptionadapters.NewStorefront(premiumStore, storeChannels(cfg.StoreBilling), time.Now)
+	for _, issue := range append(append([]string{}, cfg.StoreBilling.Issues...), storefront.Issues...) {
+		logger.Warn(context.Background(), "subscription.store-channel-off", "issue", issue)
+	}
+	premiumService := storefront.Storefront
 	premiumHTTP := subscriptionhttp.Handler{
 		Service: premiumService, CursorSecret: cfg.CursorSecret,
 		Sessions: func(ctx context.Context, family, access string) (string, error) {
@@ -1283,7 +1307,16 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
 		Enabled: func() bool { return cfg.DriverEnabled },
 	}.RegisterRoutes(router)
-	subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: "production", PackageName: "com.anpfuel"}.RegisterRoutes(router)
+	playPush := subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: cfg.StoreBilling.Environment, PackageName: cfg.StoreBilling.Play.PackageName, Subscription: cfg.StoreBilling.Play.PushSubscription}
+	if verifier := playPushVerifier(cfg.StoreBilling); verifier != nil {
+		playPush.Verify = verifier.Verify
+	}
+	playPush.RegisterRoutes(router)
+	appStoreNotices := subscriptionhttp.AppStoreHandler{Store: premiumStore, Environment: cfg.StoreBilling.Environment, BundleID: cfg.StoreBilling.AppStore.BundleID}
+	if storefront.AppStore != nil {
+		appStoreNotices.Client = storefront.AppStore
+	}
+	appStoreNotices.RegisterRoutes(router)
 
 	// checkAccountGate refuses social writes from contributors bound
 	// to a suspended or deleted FREE account (P13-T04D). Unbound

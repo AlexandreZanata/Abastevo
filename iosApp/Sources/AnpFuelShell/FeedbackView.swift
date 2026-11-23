@@ -12,12 +12,18 @@ import AnpFuelCore
 ///
 /// NOT COMPILED: no Swift/Xcode toolchain on this Linux host. First real
 /// simulator/device run happens on macOS (Xcode 26.4); see iosApp/README.md.
-struct FeedbackView: View {
-    let commentsRemaining: Int
-    let agreementText: String
-    let state: FeedbackUiState
+public struct FeedbackView: View {
+    public let commentsRemaining: Int
+    public let agreementText: String
+    public let state: FeedbackUiState
 
-    var body: some View {
+    public init(commentsRemaining: Int, agreementText: String, state: FeedbackUiState) {
+        self.commentsRemaining = commentsRemaining
+        self.agreementText = agreementText
+        self.state = state
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("\(commentsRemaining) characters left")
                 .font(.caption)

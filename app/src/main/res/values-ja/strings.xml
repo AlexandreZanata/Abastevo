@@ -1084,8 +1084,8 @@
     <string name="premium_retained">Premiumがなくてもデータは利用できます。</string>
     <string name="premium_manage">サブスクリプションを管理</string>
     <string name="premium_restore">購入を復元</string>
-    <string name="premium_restore_note">ストアで確認されたサブスクリプションを復元します。このビルドでは有料購入は無効です。</string>
-    <string name="premium_restore_unavailable">このビルドでは購入を利用できません。購入やローカル権利は作成されていません。</string>
+    <string name="premium_restore_note">このアカウントのGoogle Playのサブスクリプションを探して確認します。</string>
+    <string name="premium_restore_unavailable">現在Google Playでの購入は利用できません。購入やローカル権利は作成されていません。</string>
     <string name="premium_offline">現在Premiumを確認できません。もう一度お試しください。</string>
     <string name="premium_denied">Premiumを確認するには再度ログインしてください。</string>
     <string name="premium_error">Premium状態を確認できませんでした。</string>
@@ -1464,4 +1464,34 @@
         <item quantity="other">新しい返信 %d 件</item>
     </plurals>
     <string name="home_open_map">地図で表示</string>
+    <string name="premium_store_section_title">登録</string>
+    <string name="premium_store_plans_loading">Google Playのプランを読み込んでいます…</string>
+    <string name="premium_store_plans_unavailable">Google Playのプランを読み込めませんでした。</string>
+    <string name="premium_store_subscribe">登録する</string>
+    <string name="premium_store_billing_note">支払い、更新、解約はGoogle Playで行われます。</string>
+    <string name="premium_plan_title_week">週間プラン</string>
+    <string name="premium_plan_title_month">月間プラン</string>
+    <string name="premium_plan_title_year">年間プラン</string>
+    <string name="premium_plan_title_months">%1$dか月プラン</string>
+    <string name="premium_plan_title_other">Premiumプラン</string>
+    <string name="premium_plan_price_week">1週間あたり%1$s</string>
+    <string name="premium_plan_price_month">1か月あたり%1$s</string>
+    <string name="premium_plan_price_year">1年あたり%1$s</string>
+    <string name="premium_plan_price_every_months">%2$dか月ごとに%1$s</string>
+    <string name="premium_plan_price_other">請求期間ごとに%1$s</string>
+    <string name="premium_purchase_launching">Google Playを待っています…</string>
+    <string name="premium_purchase_verifying">購入を確認しています…</string>
+    <string name="premium_purchase_restoring">Google Playで購入を確認しています…</string>
+    <string name="premium_purchase_pending">Google Playでの支払いが保留中です。Premiumは支払いが承認・確認されてから開始されます。</string>
+    <string name="premium_purchase_cancelled">購入はキャンセルされました。何も購入されていません。</string>
+    <string name="premium_purchase_verified">Google Playで購入が確認されました。</string>
+    <string name="premium_purchase_denied">このアカウントでは購入を確認できなかったため、アクセスは付与されていません。</string>
+    <string name="premium_purchase_retry">現在購入を確認できません。購入はGoogle Playに保存されたままで、後で再確認されます。</string>
+    <string name="premium_purchase_store_error">Google Playでリクエストを完了できませんでした。しばらくしてからもう一度お試しください。</string>
+    <string name="premium_purchase_already_owned">このGoogleアカウントはすでにこのサブスクリプションを持っています。このアカウントに復元してください。</string>
+    <string name="premium_purchase_owner_changed">購入中にアカウントが変更されました。結果は反映されていません。</string>
+    <string name="premium_restore_done">購入を復元し、確認しました。</string>
+    <string name="premium_restore_none">復元できるGoogle Playのサブスクリプションは見つかりませんでした。</string>
+    <string name="premium_restore_other_account">この端末のGoogle Playのサブスクリプションは別のAbastevoアカウントのものです。移行されていません。</string>
+    <string name="premium_active_other_source">このアカウントでは別の方法でPremiumがすでに有効です。追加の購入は不要です。</string>
 </resources>

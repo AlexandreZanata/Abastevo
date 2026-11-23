@@ -1,5 +1,9 @@
 # Stripe and Asaas payment contract
 
+In-app purchases follow the [store billing contract](store-billing.md): Play
+Billing on Android and In-App Purchase on iOS. Stripe and Asaas sell only on
+the web.
+
 Owner: PAY-00–PAY-23 plan. Sources: [provider admission register](../../backend/payments/provider-register.md).
 
 ## Selected scope and product boundary

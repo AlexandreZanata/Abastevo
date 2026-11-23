@@ -1084,8 +1084,8 @@
     <string name="premium_retained">Tus datos siguen accesibles sin Premium.</string>
     <string name="premium_manage">Gestionar suscripción</string>
     <string name="premium_restore">Restaurar compra</string>
-    <string name="premium_restore_note">Restaura una suscripción verificada por la tienda. La compra de pago está desactivada en esta versión.</string>
-    <string name="premium_restore_unavailable">Las compras no están disponibles en esta versión. No se creó ninguna compra ni derecho local.</string>
+    <string name="premium_restore_note">Busca en Google Play las suscripciones de esta cuenta y las verifica.</string>
+    <string name="premium_restore_unavailable">Las compras con Google Play no están disponibles ahora. No se creó ninguna compra ni acceso local.</string>
     <string name="premium_offline">No se pudo verificar Premium ahora. Inténtalo de nuevo.</string>
     <string name="premium_denied">Vuelve a iniciar sesión para verificar Premium.</string>
     <string name="premium_error">No se pudo verificar el estado de Premium.</string>
@@ -1466,4 +1466,34 @@
         <item quantity="other">%d respuestas nuevas</item>
     </plurals>
     <string name="home_open_map">Ver en el mapa</string>
+    <string name="premium_store_section_title">Suscribirse</string>
+    <string name="premium_store_plans_loading">Cargando planes de Google Play…</string>
+    <string name="premium_store_plans_unavailable">No se pudieron cargar los planes de Google Play.</string>
+    <string name="premium_store_subscribe">Suscribirse</string>
+    <string name="premium_store_billing_note">Google Play gestiona el pago, la renovación y la cancelación.</string>
+    <string name="premium_plan_title_week">Plan semanal</string>
+    <string name="premium_plan_title_month">Plan mensual</string>
+    <string name="premium_plan_title_year">Plan anual</string>
+    <string name="premium_plan_title_months">Plan de %1$d meses</string>
+    <string name="premium_plan_title_other">Plan Premium</string>
+    <string name="premium_plan_price_week">%1$s por semana</string>
+    <string name="premium_plan_price_month">%1$s al mes</string>
+    <string name="premium_plan_price_year">%1$s al año</string>
+    <string name="premium_plan_price_every_months">%1$s cada %2$d meses</string>
+    <string name="premium_plan_price_other">%1$s por periodo de facturación</string>
+    <string name="premium_purchase_launching">Esperando a Google Play…</string>
+    <string name="premium_purchase_verifying">Verificando tu compra…</string>
+    <string name="premium_purchase_restoring">Buscando compras en Google Play…</string>
+    <string name="premium_purchase_pending">Tu pago está pendiente en Google Play. Premium empieza solo cuando el pago se confirme y se verifique.</string>
+    <string name="premium_purchase_cancelled">Compra cancelada. No se compró nada.</string>
+    <string name="premium_purchase_verified">Compra verificada con Google Play.</string>
+    <string name="premium_purchase_denied">No se pudo confirmar esta compra para esta cuenta, así que no se concedió acceso.</string>
+    <string name="premium_purchase_retry">No se pudo confirmar la compra ahora. Sigue guardada en Google Play y se volverá a comprobar.</string>
+    <string name="premium_purchase_store_error">Google Play no pudo completar la solicitud. Inténtalo más tarde.</string>
+    <string name="premium_purchase_already_owned">Esta cuenta de Google ya tiene esta suscripción. Restáurala en esta cuenta.</string>
+    <string name="premium_purchase_owner_changed">La cuenta cambió durante la compra. El resultado no se aplicó.</string>
+    <string name="premium_restore_done">Compras restauradas y verificadas.</string>
+    <string name="premium_restore_none">No se encontró ninguna suscripción de Google Play para restaurar.</string>
+    <string name="premium_restore_other_account">La suscripción de Google Play de este dispositivo pertenece a otra cuenta de Abastevo. No se transfirió.</string>
+    <string name="premium_active_other_source">Premium ya está activo en esta cuenta por otro canal. No hace falta una segunda compra.</string>
 </resources>

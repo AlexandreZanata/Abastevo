@@ -25,7 +25,23 @@ public enum PortableAuth {
     public static let callbackHost = "auth"
     public static let callbackPath = "/callback"
 
-    public struct Session {
+    public static let unavailable = "unavailable"
+
+    public enum Verdict {
+        public static let ok = "ok"
+        public static let codeUnknown = "code-unknown"
+        public static let codeConsumed = "code-consumed"
+        public static let codeExpired = "code-expired"
+        public static let codeLocked = "code-attempts-exhausted"
+        public static let sessionReuse = "session-reuse-revoked"
+        public static let sessionRevoked = "session-revoked"
+        public static let sessionExpired = "session-expired"
+        public static let sessionInvalid = "session-invalid"
+        public static let accountSuspended = "account-suspended"
+        public static let accountDeleted = "account-deleted"
+    }
+
+    public struct Session: Equatable, Codable, Sendable {
         public let familyId: String
         public let accountId: String
         public let accessToken: String
@@ -47,7 +63,7 @@ public enum PortableAuth {
         }
     }
 
-    public struct LoginAttempt {
+    public struct LoginAttempt: Equatable {
         public let provider: String
         public let nonce: String
         public let state: String
@@ -59,7 +75,7 @@ public enum PortableAuth {
         }
     }
 
-    public struct ProviderCallback {
+    public struct ProviderCallback: Equatable {
         public let provider: String
         public let idToken: String
         public let nonce: String

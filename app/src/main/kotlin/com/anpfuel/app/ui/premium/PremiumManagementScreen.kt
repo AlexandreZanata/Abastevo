@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -52,7 +53,8 @@ fun PremiumManagementScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val openStore = {
-        if (runCatching { uriHandler.openUri(PremiumStatus.MANAGEMENT_URL) }.isFailure) {
+        // B-BR-STORE-09: the offer's own Play management page, else the frozen Play page.
+        if (runCatching { uriHandler.openUri(state.managementUrl) }.isFailure) {
             viewModel.storeOpenFailed()
         } else {
             viewModel.invalidateCache()
@@ -71,6 +73,8 @@ fun PremiumManagementScreen(
         onOpenStore = openStore,
         onRefresh = viewModel::forceRefresh,
         onClearNotice = viewModel::clearNotice,
+        onRestore = viewModel::restore,
+        onRetryVerification = viewModel::retryVerification,
         modifier = modifier,
     )
 }
@@ -85,6 +89,8 @@ internal fun PremiumManagementContent(
     onRefresh: () -> Unit,
     onClearNotice: () -> Unit,
     modifier: Modifier = Modifier,
+    onRestore: () -> Unit = {},
+    onRetryVerification: () -> Unit = {},
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -109,15 +115,17 @@ internal fun PremiumManagementContent(
                         state = state,
                         onOpenStore = onOpenStore,
                         onRefresh = onRefresh,
+                        onRestore = onRestore,
                     )
                 }
                 state.signedOut -> {
                     PremiumSignedOutCard(onSignIn = onSignIn)
                 }
                 else -> {
-                    if (state.loading) {
+                    if (state.loading && !state.purchaseBusy) {
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                     }
+                    PremiumPurchaseProgress(state.purchasePhase)
                     PremiumSectionTitle(stringResource(R.string.premium_status_section_title))
                     PremiumStatusCard(status = state.status)
                     state.notice?.let { notice ->
@@ -126,13 +134,16 @@ internal fun PremiumManagementContent(
                             onRetry = if (notice == PremiumNotice.STORE_FAILED) onOpenStore else onRefresh,
                             onSignIn = onSignIn,
                             onDismiss = onClearNotice,
+                            onRetryVerification = onRetryVerification,
+                            onRestore = onRestore,
                         )
                     }
                     PremiumManagementGuidanceCard()
                     PremiumManagementActionsCard(
+                        state = state,
                         onOpenStore = onOpenStore,
                         onRefresh = onRefresh,
-                        refreshEnabled = !state.loading,
+                        onRestore = onRestore,
                     )
                 }
             }
@@ -145,6 +156,7 @@ private fun PremiumManagementSkeletonSections(
     state: PremiumUiState,
     onOpenStore: () -> Unit,
     onRefresh: () -> Unit,
+    onRestore: () -> Unit,
 ) {
     Text(
         text = stringResource(R.string.premium_loading),
@@ -155,9 +167,10 @@ private fun PremiumManagementSkeletonSections(
     PremiumStatusSkeletonCard()
     PremiumManagementGuidanceCard()
     PremiumManagementActionsCard(
+        state = state,
         onOpenStore = onOpenStore,
         onRefresh = onRefresh,
-        refreshEnabled = !state.loading,
+        onRestore = onRestore,
     )
 }
 
@@ -189,9 +202,10 @@ private fun PremiumManagementGuidanceCard(modifier: Modifier = Modifier) {
 
 @Composable
 private fun PremiumManagementActionsCard(
+    state: PremiumUiState,
     onOpenStore: () -> Unit,
     onRefresh: () -> Unit,
-    refreshEnabled: Boolean,
+    onRestore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = PremiumColors.current()
@@ -212,10 +226,19 @@ private fun PremiumManagementActionsCard(
             )
             HorizontalDivider()
             ProfileActionRow(
+                icon = Icons.Default.Restore,
+                title = stringResource(R.string.premium_restore),
+                subtitle = stringResource(R.string.premium_restore_note),
+                onClick = onRestore,
+                enabled = !state.purchaseBusy,
+                iconTint = palette.accent,
+            )
+            HorizontalDivider()
+            ProfileActionRow(
                 icon = Icons.Default.Refresh,
                 title = stringResource(R.string.premium_refresh_status),
                 onClick = onRefresh,
-                enabled = refreshEnabled,
+                enabled = !state.loading,
                 iconTint = palette.accent,
             )
         }

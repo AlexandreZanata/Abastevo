@@ -11,17 +11,17 @@ import (
 	"time"
 )
 
-func (s *Store) ScheduleReconciliation(ctx context.Context, env, pkg string, limit int) (int, error) {
+func (s *Store) ScheduleReconciliation(ctx context.Context, provider, env, pkg string, limit int) (int, error) {
 	if s == nil || s.Pool == nil {
 		return 0, domain.ErrUnavailable
 	}
-	if limit < 1 || limit > 100 || (env != "test" && env != "production") || pkg == "" {
+	if limit < 1 || limit > 100 || !domain.ValidProvider(provider) || (env != "test" && env != "production") || pkg == "" {
 		return 0, domain.ErrInvalid
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	q := qsub.New(s.Pool)
-	rows, err := q.DuePurchases(ctx, qsub.DuePurchasesParams{Environment: env, PackageName: pkg, Limit: int32(limit)})
+	rows, err := q.DuePurchases(ctx, qsub.DuePurchasesParams{Provider: provider, Environment: env, PackageName: pkg, LimitCount: int32(limit)})
 	if err != nil {
 		return 0, domain.ErrUnavailable
 	}
