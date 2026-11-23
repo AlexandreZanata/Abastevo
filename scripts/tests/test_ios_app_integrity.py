@@ -49,6 +49,10 @@ class IosAppIntegrityTests(unittest.TestCase):
     def test_required_core_shell_test_and_xcode_files_exist(self):
         expected_core = [
             "AbastevoBackendClient.swift",
+            "AccountProviderLogin.swift",
+            "CommunityOutbox.swift",
+            "CommunityWriteClient.swift",
+            "DeviceIdentityFlow.swift",
             "DomainModels.swift",
             "FeedbackDisplay.swift",
             "FeedbackFlow.swift",
@@ -68,6 +72,7 @@ class IosAppIntegrityTests(unittest.TestCase):
             "PortablePhoto.swift",
             "PortablePhotoFlow.swift",
             "PortableText.swift",
+            "SignedRequestTransport.swift",
             "TankFillUseCase.swift",
         ]
         for fname in expected_core:
@@ -76,10 +81,12 @@ class IosAppIntegrityTests(unittest.TestCase):
         expected_shell = [
             "AnpFuelApp.swift",
             "AppStateViewModel.swift",
+            "CommunityPublishingViews.swift",
             "CommunityTabViews.swift",
             "DesignSystem.swift",
             "ExploreTabViews.swift",
             "FeedbackView.swift",
+            "IdentityCoordinator.swift",
             "MapTabViews.swift",
             "OnboardingAndTermsViews.swift",
             "ProfileTabViews.swift",
@@ -88,6 +95,8 @@ class IosAppIntegrityTests(unittest.TestCase):
             self.assertTrue((IOS_ROOT / "Sources/AnpFuelShell" / fname).is_file(), fname)
 
         expected_tests = [
+            "CommunityOutboxTests.swift",
+            "CommunityWriteWireTests.swift",
             "DomainAndFeaturesTests.swift",
             "FeedbackDisplayTests.swift",
             "FeedbackFlowTests.swift",
@@ -106,6 +115,7 @@ class IosAppIntegrityTests(unittest.TestCase):
             "PortablePhotoFlowTests.swift",
             "PortablePhotoTests.swift",
             "PortableTextTests.swift",
+            "SignedRequestTransportTests.swift",
             "TankFillUseCaseTests.swift",
         ]
         for fname in expected_tests:
@@ -323,6 +333,74 @@ class IosAppIntegrityTests(unittest.TestCase):
         pbx = (IOS_ROOT / "AnpFuel.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
         self.assertIn("../contracts/testdata/premium/energy-v1.json", pbx)
         self.assertIn("energy-v1.json in Resources", pbx)
+
+    def test_signed_transport_replays_the_backend_identity_vectors(self):
+        tests = (IOS_ROOT / "Tests/AnpFuelCoreTests/SignedRequestTransportTests.swift").read_text(encoding="utf-8")
+        vectors = {}
+        for path in sorted((ROOT / "contracts/testdata/identity").glob("*.json")):
+            vector = json.loads(path.read_text(encoding="utf-8"))
+            vectors[vector["id"]] = vector
+        for vector_id in ("auth-valid-register", "auth-valid-body"):
+            vector = vectors[vector_id]
+            self.assertTrue(vector["valid"])
+            self.assertIn(vector["signature"], tests, vector_id)
+            for line in vector["base_lines"]:
+                self.assertIn(json.dumps(line), tests, vector_id)
+        register = vectors["auth-valid-register"]
+        for key in ("jwk_x", "jwk_y", "private_d"):
+            self.assertIn(f'"{register[key]}"', tests)
+        tampered = [vid for vid, v in vectors.items() if not v["valid"] and vid not in ("auth-expired", "auth-wrong-key", "auth-der-encoding")]
+        self.assertGreaterEqual(len(tampered), 7)
+        for vector_id in tampered:
+            vector = vectors[vector_id]
+            self.assertIn(f'id: "{vector_id}"', tests)
+            self.assertIn(vector["signature"], tests, vector_id)
+            for line in vector["base_lines"]:
+                self.assertIn(json.dumps(line), tests, vector_id)
+        self.assertIn(vectors["auth-der-encoding"]["signature"], tests)
+
+        transport = (IOS_ROOT / "Sources/AnpFuelCore/SignedRequestTransport.swift").read_text(encoding="utf-8")
+        backend = (ROOT / "backend/internal/modules/identity/adapters/auth/auth.go").read_text(encoding="utf-8")
+        for header in ("Signature", "Signature-Created", "Signature-Expires", "Signature-Keyid", "Signature-Nonce"):
+            self.assertIn(f'"{header}"', backend)
+            self.assertIn(f'"{header}"', transport)
+        proof = (IOS_ROOT / "Sources/AnpFuelCore/PortableAnonymousProof.swift").read_text(encoding="utf-8")
+        self.assertIn("SHA512.hash(data: baseData)", proof)
+        self.assertIn("SHA256.hash(data: Data(statement.utf8))", proof)
+        self.assertIn("kSecAttrSynchronizable as String: false", (IOS_ROOT / "Sources/AnpFuelCore/DeviceIdentityFlow.swift").read_text(encoding="utf-8"))
+
+    def test_identity_login_and_community_writes_use_real_routes(self):
+        core = IOS_ROOT / "Sources/AnpFuelCore"
+        identity = (core / "DeviceIdentityFlow.swift").read_text(encoding="utf-8")
+        for route in ("/v1/identity/challenges", "/v1/contributors", "/v1/accounts/bindings/bind"):
+            self.assertIn(f'"{route}"', identity)
+        writes = (core / "CommunityWriteClient.swift").read_text(encoding="utf-8")
+        for route in ("/v1/observations", "/v1/contributors/me/observations", "/v1/photo-captures", "/v1/uploads",
+                      "/v1/feedback/comments", "/v1/forum/topics", "/v1/forum/posts/"):
+            self.assertIn(f'"{route}', writes)
+        self.assertIn('"region_uf"', writes)
+        self.assertNotIn('"region":', writes)
+        provider = (core / "AccountProviderLogin.swift").read_text(encoding="utf-8")
+        self.assertIn('"/v1/accounts/providers/login"', provider)
+        self.assertIn('"authorization_code"', provider)
+
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        apple = (shell / "CommunityPublishingViews.swift").read_text(encoding="utf-8")
+        self.assertIn("SignInWithAppleButton", apple)
+        self.assertIn("request.requestedScopes = []", apple)
+        self.assertIn("request.nonce = viewModel.prepareAppleSignInNonce()", apple)
+        profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
+        self.assertIn("AppleSignInSection(viewModel: viewModel)", profile)
+        self.assertNotIn("Indisponível nesta versão.", profile)
+
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        auth = state.split("// MARK: - Auth & Account Management", 1)[1].split("// MARK: - Contributions and Photo Pipeline", 1)[0]
+        for call in ("requestEmailCode", "consumeEmailCode", "createKeyAccount", "loginWithKey", "loginWithProvider", "logout()", "deleteAccount()"):
+            self.assertNotIn(f"switch authFlow.{call}", auth)
+        self.assertIn("AuthBlockingWork.run", auth)
+        self.assertNotIn("savePriceContributionDraft", state)
+        self.assertNotIn("saveStationCommentDraft", state)
+        self.assertNotIn("saveForumTopicDraft", state)
 
     def test_map_routes_and_download_state_have_no_sample_data(self):
         shell = IOS_ROOT / "Sources/AnpFuelShell"
