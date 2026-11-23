@@ -1084,8 +1084,8 @@
     <string name="premium_retained">没有 Premium 时您的数据仍可访问。</string>
     <string name="premium_manage">管理订阅</string>
     <string name="premium_restore">恢复购买</string>
-    <string name="premium_restore_note">恢复商店验证的订阅。此版本已禁用付费购买。</string>
-    <string name="premium_restore_unavailable">此版本不提供购买。未创建任何购买或本地权益。</string>
+    <string name="premium_restore_note">在 Google Play 中查找此账号的订阅并进行验证。</string>
+    <string name="premium_restore_unavailable">目前无法通过 Google Play 购买。未创建任何购买或本地权益。</string>
     <string name="premium_offline">现在无法验证 Premium。请重试。</string>
     <string name="premium_denied">请重新登录以验证 Premium。</string>
     <string name="premium_error">无法验证 Premium状态。</string>
@@ -1464,4 +1464,34 @@
         <item quantity="other">%d 条新回复</item>
     </plurals>
     <string name="home_open_map">在地图上查看</string>
+    <string name="premium_store_section_title">订阅</string>
+    <string name="premium_store_plans_loading">正在加载 Google Play 方案…</string>
+    <string name="premium_store_plans_unavailable">无法加载 Google Play 方案。</string>
+    <string name="premium_store_subscribe">订阅</string>
+    <string name="premium_store_billing_note">付款、续订和取消均由 Google Play 处理。</string>
+    <string name="premium_plan_title_week">按周方案</string>
+    <string name="premium_plan_title_month">按月方案</string>
+    <string name="premium_plan_title_year">按年方案</string>
+    <string name="premium_plan_title_months">%1$d 个月方案</string>
+    <string name="premium_plan_title_other">Premium 方案</string>
+    <string name="premium_plan_price_week">每周 %1$s</string>
+    <string name="premium_plan_price_month">每月 %1$s</string>
+    <string name="premium_plan_price_year">每年 %1$s</string>
+    <string name="premium_plan_price_every_months">每 %2$d 个月 %1$s</string>
+    <string name="premium_plan_price_other">每个计费周期 %1$s</string>
+    <string name="premium_purchase_launching">正在等待 Google Play…</string>
+    <string name="premium_purchase_verifying">正在验证您的购买…</string>
+    <string name="premium_purchase_restoring">正在 Google Play 中查找购买记录…</string>
+    <string name="premium_purchase_pending">您的付款在 Google Play 中待处理。付款确认并验证后 Premium 才会开始。</string>
+    <string name="premium_purchase_cancelled">购买已取消，未购买任何内容。</string>
+    <string name="premium_purchase_verified">已通过 Google Play 验证购买。</string>
+    <string name="premium_purchase_denied">无法为此账号确认这笔购买，因此未授予访问权限。</string>
+    <string name="premium_purchase_retry">目前无法确认购买。它仍保存在 Google Play 中，稍后会再次检查。</string>
+    <string name="premium_purchase_store_error">Google Play 无法完成请求，请稍后再试。</string>
+    <string name="premium_purchase_already_owned">此 Google 账号已拥有该订阅。请将其恢复到此账号。</string>
+    <string name="premium_purchase_owner_changed">购买过程中账号已更改，结果未被应用。</string>
+    <string name="premium_restore_done">已恢复并验证购买。</string>
+    <string name="premium_restore_none">未找到可恢复的 Google Play 订阅。</string>
+    <string name="premium_restore_other_account">此设备上的 Google Play 订阅属于另一个 Abastevo 账号，未被转移。</string>
+    <string name="premium_active_other_source">此账号已通过其他渠道开通 Premium，无需再次购买。</string>
 </resources>

@@ -1097,8 +1097,8 @@
     <string name="premium_retained">Seus dados continuam acessíveis sem o Premium.</string>
     <string name="premium_manage">Gerenciar assinatura</string>
     <string name="premium_restore">Restaurar compra</string>
-    <string name="premium_restore_note">Restaura uma assinatura verificada pela loja. A compra paga está desativada nesta versão.</string>
-    <string name="premium_restore_unavailable">As compras não estão disponíveis nesta versão. Nenhuma compra ou direito local foi criado.</string>
+    <string name="premium_restore_note">Procura no Google Play as assinaturas desta conta e confirma cada uma.</string>
+    <string name="premium_restore_unavailable">As compras pelo Google Play não estão disponíveis agora. Nenhuma compra ou acesso local foi criado.</string>
     <string name="premium_offline">Não foi possível verificar o Premium agora. Tente novamente.</string>
     <string name="premium_denied">Entre novamente para verificar o Premium.</string>
     <string name="premium_error">Não foi possível verificar o status do Premium.</string>
@@ -1479,4 +1479,34 @@
         <item quantity="many">%d novas respostas</item>
         <item quantity="other">%d novas respostas</item>
     </plurals>
+    <string name="premium_store_section_title">Assinar</string>
+    <string name="premium_store_plans_loading">Carregando planos do Google Play…</string>
+    <string name="premium_store_plans_unavailable">Não foi possível carregar os planos do Google Play.</string>
+    <string name="premium_store_subscribe">Assinar</string>
+    <string name="premium_store_billing_note">O pagamento, a renovação e o cancelamento são feitos pelo Google Play.</string>
+    <string name="premium_plan_title_week">Plano semanal</string>
+    <string name="premium_plan_title_month">Plano mensal</string>
+    <string name="premium_plan_title_year">Plano anual</string>
+    <string name="premium_plan_title_months">Plano de %1$d meses</string>
+    <string name="premium_plan_title_other">Plano Premium</string>
+    <string name="premium_plan_price_week">%1$s por semana</string>
+    <string name="premium_plan_price_month">%1$s por mês</string>
+    <string name="premium_plan_price_year">%1$s por ano</string>
+    <string name="premium_plan_price_every_months">%1$s a cada %2$d meses</string>
+    <string name="premium_plan_price_other">%1$s por período de cobrança</string>
+    <string name="premium_purchase_launching">Aguardando o Google Play…</string>
+    <string name="premium_purchase_verifying">Confirmando sua compra…</string>
+    <string name="premium_purchase_restoring">Procurando compras no Google Play…</string>
+    <string name="premium_purchase_pending">Seu pagamento está pendente no Google Play. O Premium só começa depois que o pagamento for aprovado e confirmado.</string>
+    <string name="premium_purchase_cancelled">Compra cancelada. Nada foi comprado.</string>
+    <string name="premium_purchase_verified">Compra confirmada com o Google Play.</string>
+    <string name="premium_purchase_denied">Não foi possível confirmar esta compra para esta conta, então nenhum acesso foi liberado.</string>
+    <string name="premium_purchase_retry">Não deu para confirmar a compra agora. Ela continua salva no Google Play e será verificada de novo.</string>
+    <string name="premium_purchase_store_error">O Google Play não conseguiu concluir o pedido. Tente de novo mais tarde.</string>
+    <string name="premium_purchase_already_owned">Esta conta Google já tem esta assinatura. Restaure a assinatura nesta conta.</string>
+    <string name="premium_purchase_owner_changed">A conta mudou durante a compra. O resultado não foi aplicado.</string>
+    <string name="premium_restore_done">Compras restauradas e confirmadas.</string>
+    <string name="premium_restore_none">Nenhuma assinatura do Google Play foi encontrada para restaurar.</string>
+    <string name="premium_restore_other_account">A assinatura do Google Play neste aparelho pertence a outra conta Abastevo. Ela não foi transferida.</string>
+    <string name="premium_active_other_source">O Premium já está ativo nesta conta por outro canal. Não é preciso comprar de novo.</string>
 </resources>

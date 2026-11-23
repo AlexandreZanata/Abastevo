@@ -147,20 +147,19 @@ internal fun PremiumNoticeCard(
     onSignIn: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onRetryVerification: (() -> Unit)? = null,
+    onRestore: (() -> Unit)? = null,
 ) {
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    val action = when (notice) {
-        PremiumNotice.DENIED -> onSignIn
+    val (action, actionLabel) = when (notice) {
+        PremiumNotice.DENIED -> onSignIn to R.string.profile_action_sign_in
         PremiumNotice.OFFLINE,
         PremiumNotice.ERROR,
         PremiumNotice.STORE_FAILED,
-        -> onRetry
-        PremiumNotice.RESTORE_UNAVAILABLE -> null
-    }
-    val actionLabel = if (notice == PremiumNotice.DENIED) {
-        R.string.profile_action_sign_in
-    } else {
-        R.string.action_retry
+        -> onRetry to R.string.action_retry
+        PremiumNotice.PURCHASE_RETRY -> onRetryVerification to R.string.action_retry
+        PremiumNotice.PURCHASE_ALREADY_OWNED -> onRestore to R.string.premium_restore
+        else -> null to R.string.action_retry
     }
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -175,7 +174,7 @@ internal fun PremiumNoticeCard(
             Text(
                 text = stringResource(premiumNoticeMessageRes(notice)),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (notice == PremiumNotice.ERROR) {
+                color = if (premiumNoticeIsError(notice)) {
                     MaterialTheme.colorScheme.error
                 } else {
                     MaterialTheme.colorScheme.onSurface

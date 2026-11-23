@@ -1084,8 +1084,8 @@
     <string name="premium_retained">Ihre Daten bleiben ohne Premium zugänglich.</string>
     <string name="premium_manage">Abo verwalten</string>
     <string name="premium_restore">Kauf wiederherstellen</string>
-    <string name="premium_restore_note">Stellt ein vom Store bestätigtes Abo wieder her. Der kostenpflichtige Erwerb ist in dieser Version deaktiviert.</string>
-    <string name="premium_restore_unavailable">Käufe sind in dieser Version nicht verfügbar. Es wurde kein Kauf und kein lokales Recht erstellt.</string>
+    <string name="premium_restore_note">Sucht bei Google Play nach Abos dieses Kontos und prüft sie.</string>
+    <string name="premium_restore_unavailable">Käufe über Google Play sind gerade nicht verfügbar. Es wurde kein Kauf und kein lokales Recht erstellt.</string>
     <string name="premium_offline">Premium konnte gerade nicht bestätigt werden. Erneut versuchen.</string>
     <string name="premium_denied">Melden Sie sich erneut an, um Premium zu bestätigen.</string>
     <string name="premium_error">Der Premium-Status konnte nicht bestätigt werden.</string>
@@ -1465,4 +1465,34 @@
         <item quantity="other">%d neue Antworten</item>
     </plurals>
     <string name="home_open_map">Auf der Karte anzeigen</string>
+    <string name="premium_store_section_title">Abonnieren</string>
+    <string name="premium_store_plans_loading">Google-Play-Tarife werden geladen…</string>
+    <string name="premium_store_plans_unavailable">Die Google-Play-Tarife konnten nicht geladen werden.</string>
+    <string name="premium_store_subscribe">Abonnieren</string>
+    <string name="premium_store_billing_note">Zahlung, Verlängerung und Kündigung laufen über Google Play.</string>
+    <string name="premium_plan_title_week">Wochentarif</string>
+    <string name="premium_plan_title_month">Monatstarif</string>
+    <string name="premium_plan_title_year">Jahrestarif</string>
+    <string name="premium_plan_title_months">%1$d-Monats-Tarif</string>
+    <string name="premium_plan_title_other">Premium-Tarif</string>
+    <string name="premium_plan_price_week">%1$s pro Woche</string>
+    <string name="premium_plan_price_month">%1$s pro Monat</string>
+    <string name="premium_plan_price_year">%1$s pro Jahr</string>
+    <string name="premium_plan_price_every_months">%1$s alle %2$d Monate</string>
+    <string name="premium_plan_price_other">%1$s pro Abrechnungszeitraum</string>
+    <string name="premium_purchase_launching">Warten auf Google Play…</string>
+    <string name="premium_purchase_verifying">Ihr Kauf wird geprüft…</string>
+    <string name="premium_purchase_restoring">Käufe bei Google Play werden gesucht…</string>
+    <string name="premium_purchase_pending">Ihre Zahlung ist bei Google Play noch ausstehend. Premium startet erst, wenn die Zahlung bestätigt und geprüft ist.</string>
+    <string name="premium_purchase_cancelled">Kauf abgebrochen. Es wurde nichts gekauft.</string>
+    <string name="premium_purchase_verified">Kauf mit Google Play bestätigt.</string>
+    <string name="premium_purchase_denied">Dieser Kauf konnte für dieses Konto nicht bestätigt werden, daher wurde kein Zugang gewährt.</string>
+    <string name="premium_purchase_retry">Der Kauf konnte gerade nicht bestätigt werden. Er bleibt bei Google Play gespeichert und wird erneut geprüft.</string>
+    <string name="premium_purchase_store_error">Google Play konnte die Anfrage nicht abschließen. Versuchen Sie es später erneut.</string>
+    <string name="premium_purchase_already_owned">Dieses Google-Konto hat dieses Abo bereits. Stellen Sie es für dieses Konto wieder her.</string>
+    <string name="premium_purchase_owner_changed">Das Konto hat sich während des Kaufs geändert. Das Ergebnis wurde nicht übernommen.</string>
+    <string name="premium_restore_done">Käufe wiederhergestellt und bestätigt.</string>
+    <string name="premium_restore_none">Es wurde kein Google-Play-Abo zum Wiederherstellen gefunden.</string>
+    <string name="premium_restore_other_account">Das Google-Play-Abo auf diesem Gerät gehört zu einem anderen Abastevo-Konto. Es wurde nicht übertragen.</string>
+    <string name="premium_active_other_source">Premium ist für dieses Konto bereits über einen anderen Kanal aktiv. Ein zweiter Kauf ist nicht nötig.</string>
 </resources>

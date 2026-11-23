@@ -1084,8 +1084,8 @@
     <string name="premium_retained">Ваши данные остаются доступны без Premium.</string>
     <string name="premium_manage">Управлять подпиской</string>
     <string name="premium_restore">Восстановить покупку</string>
-    <string name="premium_restore_note">Восстанавливает подписку, подтверждённую магазином. Платная покупка отключена в этой сборке.</string>
-    <string name="premium_restore_unavailable">Покупки недоступны в этой сборке. Покупка или локальное право не создавались.</string>
+    <string name="premium_restore_note">Ищет в Google Play подписки этого аккаунта и проверяет их.</string>
+    <string name="premium_restore_unavailable">Покупки через Google Play сейчас недоступны. Покупка и локальный доступ не созданы.</string>
     <string name="premium_offline">Не удалось проверить Premium. Повторите попытку.</string>
     <string name="premium_denied">Войдите снова, чтобы проверить Premium.</string>
     <string name="premium_error">Не удалось проверить статус Premium.</string>
@@ -1467,4 +1467,34 @@
         <item quantity="other">%d новых ответов</item>
     </plurals>
     <string name="home_open_map">Посмотреть на карте</string>
+    <string name="premium_store_section_title">Оформить подписку</string>
+    <string name="premium_store_plans_loading">Загрузка тарифов Google Play…</string>
+    <string name="premium_store_plans_unavailable">Не удалось загрузить тарифы Google Play.</string>
+    <string name="premium_store_subscribe">Оформить</string>
+    <string name="premium_store_billing_note">Оплата, продление и отмена выполняются через Google Play.</string>
+    <string name="premium_plan_title_week">Недельный тариф</string>
+    <string name="premium_plan_title_month">Месячный тариф</string>
+    <string name="premium_plan_title_year">Годовой тариф</string>
+    <string name="premium_plan_title_months">Тариф на %1$d мес.</string>
+    <string name="premium_plan_title_other">Тариф Premium</string>
+    <string name="premium_plan_price_week">%1$s в неделю</string>
+    <string name="premium_plan_price_month">%1$s в месяц</string>
+    <string name="premium_plan_price_year">%1$s в год</string>
+    <string name="premium_plan_price_every_months">%1$s раз в %2$d мес.</string>
+    <string name="premium_plan_price_other">%1$s за расчётный период</string>
+    <string name="premium_purchase_launching">Ожидание Google Play…</string>
+    <string name="premium_purchase_verifying">Проверяем покупку…</string>
+    <string name="premium_purchase_restoring">Ищем покупки в Google Play…</string>
+    <string name="premium_purchase_pending">Платёж в Google Play ожидает подтверждения. Premium начнёт работать только после подтверждения и проверки платежа.</string>
+    <string name="premium_purchase_cancelled">Покупка отменена. Ничего не куплено.</string>
+    <string name="premium_purchase_verified">Покупка подтверждена через Google Play.</string>
+    <string name="premium_purchase_denied">Не удалось подтвердить эту покупку для этого аккаунта, поэтому доступ не предоставлен.</string>
+    <string name="premium_purchase_retry">Сейчас не удалось подтвердить покупку. Она сохранена в Google Play и будет проверена снова.</string>
+    <string name="premium_purchase_store_error">Google Play не удалось выполнить запрос. Повторите попытку позже.</string>
+    <string name="premium_purchase_already_owned">У этого аккаунта Google уже есть эта подписка. Восстановите её для этого аккаунта.</string>
+    <string name="premium_purchase_owner_changed">Во время покупки сменился аккаунт. Результат не применён.</string>
+    <string name="premium_restore_done">Покупки восстановлены и подтверждены.</string>
+    <string name="premium_restore_none">Подписок Google Play для восстановления не найдено.</string>
+    <string name="premium_restore_other_account">Подписка Google Play на этом устройстве принадлежит другому аккаунту Abastevo. Она не перенесена.</string>
+    <string name="premium_active_other_source">Premium уже активен в этом аккаунте через другой канал. Повторная покупка не нужна.</string>
 </resources>
