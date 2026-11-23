@@ -97,6 +97,19 @@
 		D4A2FCCFA21B96CA560E45A9 /* PublicReadFallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7DC5F9E178C7745D1EE756 /* PublicReadFallback.swift */; };
 		05543C43EFBB17B6982FE6F6 /* EvCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7905FC5E633589A869B332CD /* EvCatalogTests.swift */; };
 		2A0275B8E7FAABF1C474C16D /* EvTripPlanningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D5B09F49D65D93A92D77F8 /* EvTripPlanningTests.swift */; };
+		14CE175948EB8572D002704A /* EnterpriseCanonicalJson.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29632992B29F03FAC133867 /* EnterpriseCanonicalJson.swift */; };
+		5659F9423D20CDB8D6E24152 /* EnterpriseCompanyAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A176060E484DDC830DED04 /* EnterpriseCompanyAccess.swift */; };
+		2EB01BF738DFEE3DFAA10820 /* EnterpriseDeviceSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE1528A276F9EC0641E1A1E /* EnterpriseDeviceSync.swift */; };
+		94180283F6F1C9103D8ABFF0 /* EnterpriseOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93F7D3639CA65B635C6BCBB /* EnterpriseOperations.swift */; };
+		0156A9F8015D6C41F715EA98 /* EnterpriseQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18B4777E40F96706468B12F /* EnterpriseQueue.swift */; };
+		264BFE068B515FC55E145A11 /* EnterpriseValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166509623E096600AC2A75CD /* EnterpriseValues.swift */; };
+		4F07F7C91AAE447E5BE5AA53 /* EnterpriseCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BBF1393044D8D5BD5C2E22 /* EnterpriseCoordinator.swift */; };
+		6AB148630145DD1045E2595A /* EnterpriseHubViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDD16B7694540EE6489A9EFD /* EnterpriseHubViews.swift */; };
+		8D293D03A79FA6B4D99F45F2 /* EnterpriseAccessWireTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 608F0944DCB8BBF0272C6F78 /* EnterpriseAccessWireTests.swift */; };
+		EC6A93A88717EE03F17B5DDC /* EnterpriseCanonicalJsonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EC276471C02889171AC3DD /* EnterpriseCanonicalJsonTests.swift */; };
+		97790D665BE2167A189FA45C /* EnterpriseOperationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71E3B30B58526FD0810EDED6 /* EnterpriseOperationTests.swift */; };
+		A9340558C6CE13296F138F5E /* EnterpriseQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8C2294DB2B6CE9233192879 /* EnterpriseQueueTests.swift */; };
+		7D162B6E99A4B8D79F69F597 /* EnterpriseTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4C1B7A19D67886B9792F75 /* EnterpriseTransportTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -223,6 +236,19 @@
 		ED7DC5F9E178C7745D1EE756 /* PublicReadFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicReadFallback.swift; sourceTree = "<group>"; };
 		7905FC5E633589A869B332CD /* EvCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvCatalogTests.swift; sourceTree = "<group>"; };
 		A5D5B09F49D65D93A92D77F8 /* EvTripPlanningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvTripPlanningTests.swift; sourceTree = "<group>"; };
+		B29632992B29F03FAC133867 /* EnterpriseCanonicalJson.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseCanonicalJson.swift; sourceTree = "<group>"; };
+		E7A176060E484DDC830DED04 /* EnterpriseCompanyAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseCompanyAccess.swift; sourceTree = "<group>"; };
+		3DE1528A276F9EC0641E1A1E /* EnterpriseDeviceSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseDeviceSync.swift; sourceTree = "<group>"; };
+		C93F7D3639CA65B635C6BCBB /* EnterpriseOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseOperations.swift; sourceTree = "<group>"; };
+		B18B4777E40F96706468B12F /* EnterpriseQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseQueue.swift; sourceTree = "<group>"; };
+		166509623E096600AC2A75CD /* EnterpriseValues.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseValues.swift; sourceTree = "<group>"; };
+		B3BBF1393044D8D5BD5C2E22 /* EnterpriseCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseCoordinator.swift; sourceTree = "<group>"; };
+		BDD16B7694540EE6489A9EFD /* EnterpriseHubViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseHubViews.swift; sourceTree = "<group>"; };
+		608F0944DCB8BBF0272C6F78 /* EnterpriseAccessWireTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseAccessWireTests.swift; sourceTree = "<group>"; };
+		C4EC276471C02889171AC3DD /* EnterpriseCanonicalJsonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseCanonicalJsonTests.swift; sourceTree = "<group>"; };
+		71E3B30B58526FD0810EDED6 /* EnterpriseOperationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseOperationTests.swift; sourceTree = "<group>"; };
+		B8C2294DB2B6CE9233192879 /* EnterpriseQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseQueueTests.swift; sourceTree = "<group>"; };
+		DF4C1B7A19D67886B9792F75 /* EnterpriseTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseTransportTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -295,6 +321,12 @@
 			D4749E3CC2E3FCC7490D8DFC,
 			AE129C1FB4EDBCA2CA7052AF,
 			A35A85068BA2C2A1EE243EF0,
+			B29632992B29F03FAC133867,
+			E7A176060E484DDC830DED04,
+			3DE1528A276F9EC0641E1A1E,
+			C93F7D3639CA65B635C6BCBB,
+			B18B4777E40F96706468B12F,
+			166509623E096600AC2A75CD,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -315,6 +347,8 @@
 			388FE04499A8214E2E0706BB,
 			2268EC2FD73D59703B8E6ACB,
 			ED7DC5F9E178C7745D1EE756,
+			B3BBF1393044D8D5BD5C2E22,
+			BDD16B7694540EE6489A9EFD,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -350,6 +384,11 @@
 			8C3525AEABA63D491F905380,
 			7905FC5E633589A869B332CD,
 			A5D5B09F49D65D93A92D77F8,
+			608F0944DCB8BBF0272C6F78,
+			C4EC276471C02889171AC3DD,
+			71E3B30B58526FD0810EDED6,
+			B8C2294DB2B6CE9233192879,
+			DF4C1B7A19D67886B9792F75,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -476,6 +515,12 @@
 			E8279CC4A8F814C275B67E39,
 			63714BA6423C905DD005DEE1,
 			AF20DEA60EB160C7BE1CED81,
+			14CE175948EB8572D002704A,
+			5659F9423D20CDB8D6E24152,
+			2EB01BF738DFEE3DFAA10820,
+			94180283F6F1C9103D8ABFF0,
+			0156A9F8015D6C41F715EA98,
+			264BFE068B515FC55E145A11,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -496,6 +541,8 @@
 			132744597D01B55E292CD9E4,
 			09328F08CD48975563BA2ECA,
 			D4A2FCCFA21B96CA560E45A9,
+			4F07F7C91AAE447E5BE5AA53,
+			6AB148630145DD1045E2595A,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -527,6 +574,11 @@
 			5AC17D72D63ACBEA50B85321,
 			05543C43EFBB17B6982FE6F6,
 			2A0275B8E7FAABF1C474C16D,
+			8D293D03A79FA6B4D99F45F2,
+			EC6A93A88717EE03F17B5DDC,
+			97790D665BE2167A189FA45C,
+			A9340558C6CE13296F138F5E,
+			7D162B6E99A4B8D79F69F597,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

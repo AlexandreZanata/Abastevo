@@ -54,6 +54,12 @@ class IosAppIntegrityTests(unittest.TestCase):
             "CommunityWriteClient.swift",
             "DeviceIdentityFlow.swift",
             "DomainModels.swift",
+            "EnterpriseCanonicalJson.swift",
+            "EnterpriseCompanyAccess.swift",
+            "EnterpriseDeviceSync.swift",
+            "EnterpriseOperations.swift",
+            "EnterpriseQueue.swift",
+            "EnterpriseValues.swift",
             "FeedbackDisplay.swift",
             "FeedbackFlow.swift",
             "IosLocalStore.swift",
@@ -84,6 +90,8 @@ class IosAppIntegrityTests(unittest.TestCase):
             "CommunityPublishingViews.swift",
             "CommunityTabViews.swift",
             "DesignSystem.swift",
+            "EnterpriseCoordinator.swift",
+            "EnterpriseHubViews.swift",
             "ExploreTabViews.swift",
             "FeedbackView.swift",
             "IdentityCoordinator.swift",
@@ -98,6 +106,11 @@ class IosAppIntegrityTests(unittest.TestCase):
             "CommunityOutboxTests.swift",
             "CommunityWriteWireTests.swift",
             "DomainAndFeaturesTests.swift",
+            "EnterpriseAccessWireTests.swift",
+            "EnterpriseCanonicalJsonTests.swift",
+            "EnterpriseOperationTests.swift",
+            "EnterpriseQueueTests.swift",
+            "EnterpriseTransportTests.swift",
             "FeedbackDisplayTests.swift",
             "FeedbackFlowTests.swift",
             "FeedbackLifecycleTests.swift",
@@ -209,19 +222,132 @@ class IosAppIntegrityTests(unittest.TestCase):
             self.assertEqual(braces, 0, f"Unclosed brace in {swift.name}")
             self.assertEqual(parens, 0, f"Unclosed paren in {swift.name}")
 
-    def test_unintegrated_enterprise_screen_cannot_issue_local_authorizations(self):
+    def test_enterprise_commands_are_device_signed_and_grant_no_local_authority(self):
+        core = IOS_ROOT / "Sources/AnpFuelCore"
         shell = IOS_ROOT / "Sources/AnpFuelShell"
-        profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
-        enterprise = profile.split("public struct EnterpriseHubSheetView: View {", 1)[1].split(
-            "public struct ArcadeGamesSheetView", 1
-        )[0]
-        self.assertIn("ContentUnavailableView", enterprise)
-        self.assertNotIn("TextField(", enterprise)
-        self.assertNotIn("viewModel", enterprise)
+        sync = (core / "EnterpriseDeviceSync.swift").read_text(encoding="utf-8")
+        # Every device-plane command and read goes through SignedRequestTransport.
+        self.assertEqual(sync.count("transport.signedRequest("), 1)
+        self.assertIn('transport.signedRequest(method: "POST", path: path, body: body)', sync)
+        for route in ("/sync/operations", "/sync/reference", "/sync/attachments", "devices/", '"check"', '"enroll"', '"contact"'):
+            self.assertIn(route, sync)
+        # The only unsigned request is the capability-bound content ingress of a saved receipt.
+        self.assertEqual(sync.count("uploads.send("), 1)
+        self.assertIn("/content/upload", sync)
+        self.assertIn("EnterpriseAttachmentWire.capabilityHeader", sync)
+        transport = (core / "SignedRequestTransport.swift").read_text(encoding="utf-8")
+        self.assertIn("SignedRequestProfile.enterpriseErrorCode(from: data)", transport)
+
+        # The cookie plane reads contexts, invitations and checklists; it never carries device proof.
+        company = (core / "EnterpriseCompanyAccess.swift").read_text(encoding="utf-8")
+        self.assertNotIn('forHTTPHeaderField: "Signature', company)
+        self.assertIn('"/v1/org-access/session/login"', company)
+        self.assertIn('"/v1/org-access/contexts/list"', company)
+        self.assertIn('"/v1/org-access/invitations/"', company)
+        self.assertIn("request.httpShouldHandleCookies = false", company)
+
+        coordinator = (shell / "EnterpriseCoordinator.swift").read_text(encoding="utf-8")
+        views = (shell / "EnterpriseHubViews.swift").read_text(encoding="utf-8")
+        for text in (coordinator, views):
+            self.assertNotIn("URLRequest", text)
+            self.assertNotIn("URLSession", text)
+        self.assertIn("sync.deliver(partition: current.partition", coordinator)
+        self.assertIn("EnterpriseOperationBuilder.startTrip(", coordinator)
+        self.assertIn("EnterpriseOperationBuilder.submitExpense(", coordinator)
+
+        # No locally minted authorization code, voucher or sample company.
+        enterprise_sources = sorted(core.glob("Enterprise*.swift")) + sorted(shell.glob("Enterprise*.swift"))
+        self.assertGreaterEqual(len(enterprise_sources), 8)
+        for path in enterprise_sources:
+            text = path.read_text(encoding="utf-8")
+            for token in ("fuelingAuthCode", "fueling-authorizations/issue", "joinSampleEnterprise", "voucher", "sampleCompany"):
+                self.assertNotIn(token, text, f"{token} in {path.name}")
+            # Tracking stays off on iOS: no location API in company mode.
+            for token in ("CLLocationManager", "requestAlwaysAuthorization", "startMonitoring", "CoreLocation"):
+                self.assertNotIn(token, text, f"{token} in {path.name}")
+        self.assertIn("Rastreamento desligado no iOS", views)
 
         state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
         self.assertNotIn("joinSampleEnterprise", state)
         self.assertNotIn("fuelingAuthCode", state)
+        logout = state.split("public func logout()", 1)[1].split("public func deleteAccountAndPurge", 1)[0]
+        self.assertIn("enterprise.purgeOwnedData()", logout)
+        deletion = state.split("private func finishAccountDeletion", 1)[1].split("public func exportMyDataJson", 1)[0]
+        self.assertIn("enterprise.purgeOwnedData()", deletion)
+        environment = state.split("public func setApiEnvironment", 1)[1].split("public func togglePriceDropAlert", 1)[0]
+        self.assertIn("enterprise.purgeOwnedData()", environment)
+
+        # The hub is the real flow, wired to the coordinator; the placeholder is gone.
+        profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
+        self.assertNotIn("struct EnterpriseHubSheetView", profile)
+        self.assertIn('title: "Abastevo Empresas", subtitle: "Convites, viagens e despesas da empresa"', profile)
+        self.assertIn("public struct EnterpriseHubSheetView: View", views)
+        self.assertIn("enterprise: viewModel.enterprise", views)
+        self.assertNotIn("ContentUnavailableView", views)
+        app = (shell / "AnpFuelApp.swift").read_text(encoding="utf-8")
+        self.assertIn("EnterpriseHubSheetView(viewModel: viewModel)", app)
+
+        # Protected queue: per-partition files, backup-excluded and file-protected, purged by account.
+        queue = (core / "EnterpriseQueue.swift").read_text(encoding="utf-8")
+        self.assertIn("values.isExcludedFromBackup = true", queue)
+        self.assertIn(".completeFileProtectionUntilFirstUserAuthentication", queue)
+        self.assertIn("func purgeAccounts(except accountId: String)", queue)
+        self.assertIn("public static let maxAttempts = 25", queue)
+
+    def test_enterprise_xctest_vectors_match_the_shared_contracts(self):
+        tests = IOS_ROOT / "Tests/AnpFuelCoreTests"
+        fixtures = ROOT / "contracts/testdata/enterprise"
+
+        def rows(relative):
+            lines = (fixtures / relative).read_text(encoding="utf-8").splitlines()
+            return {line.split("|")[0]: line.split("|") for line in lines[1:]}
+
+        canonical = rows("sync/canonical-v1.psv")
+        source = (tests / "EnterpriseCanonicalJsonTests.swift").read_text(encoding="utf-8")
+        copied = re.findall(
+            r'CanonicalVector\(id: "([^"]+)", rawHex: "([0-9a-f]*)", canonicalHex: (nil|"[0-9a-f]*"), failure: (nil|\.[a-z]+)\)',
+            source,
+        )
+        self.assertGreaterEqual(len(copied), 20)
+        for vector_id, raw, expected, failure in copied:
+            row = canonical[vector_id]
+            self.assertIn("raw_hex=" + raw, row[2].split(";"), vector_id)
+            if expected == "nil":
+                self.assertEqual(row[3], "error=" + failure[1:].upper(), vector_id)
+            else:
+                self.assertTrue(row[3].startswith("canonical_hex=" + expected.strip('"') + ";"), vector_id)
+
+        operations = {}
+        for relative in ("trip/trip-operations-v3.psv", "expense/expense-submit-v1.psv", "checklist/run-v1.psv"):
+            operations.update(rows(relative))
+        source = (tests / "EnterpriseOperationTests.swift").read_text(encoding="utf-8")
+        copied = re.findall(r'static let ([a-z0-9_]+) = #"(.*)"#', source)
+        self.assertGreaterEqual(len(copied), 9)
+        for name, text in copied:
+            row = operations[name.replace("_", "-")]
+            self.assertEqual(row[3], "OK", name)
+            self.assertEqual(bytes.fromhex(row[4]).decode("utf-8"), text, name)
+
+        acks = {k: v for k, v in rows("sync/operations-v1.psv").items() if v[1] == "ACK"}
+        copied = re.findall(r'AckVector\(id: "([^"]+)", expected: "([A-Z_]+)", raw: #"(.*)"#\)', source)
+        self.assertEqual(len(copied), len(acks))
+        for vector_id, expected, raw in copied:
+            row = acks[vector_id]
+            self.assertEqual(bytes.fromhex(row[2].split("raw_hex=", 1)[1].split(";", 1)[0]).decode("utf-8"), raw, vector_id)
+            outcome = row[3].split(";")[1].split("=")[1] if row[3].startswith("final") else row[3].split("=")[1]
+            self.assertEqual(outcome, expected, vector_id)
+
+        reference = rows("sync/reference-feed-v1.psv")
+        attachment = rows("sync/attachment-session-v1.psv")
+        source = (tests / "EnterpriseAccessWireTests.swift").read_text(encoding="utf-8")
+        copied = dict(re.findall(r'static let ([a-z0-9_]+) = #"(.*)"#', source))
+        self.assertEqual(bytes.fromhex(reference["request-no-cursor"][5]).decode(), copied.pop("request_no_cursor"))
+        self.assertEqual(bytes.fromhex(reference["request-with-cursor"][5]).decode(), copied.pop("request_with_cursor"))
+        self.assertEqual(bytes.fromhex(attachment["request-meter-reading"][5]).decode(), copied.pop("request_meter_reading"))
+        self.assertGreaterEqual(len(copied), 10)
+        for name, text in copied.items():
+            row = reference.get(name.replace("_", "-")) or attachment[name.replace("_", "-")]
+            self.assertEqual(bytes.fromhex(row[2]).decode("utf-8"), text, name)
 
     def test_ledger_cannot_use_sample_metrics_or_an_unselected_vehicle(self):
         shell = IOS_ROOT / "Sources/AnpFuelShell"
@@ -242,7 +368,7 @@ class IosAppIntegrityTests(unittest.TestCase):
         shell = IOS_ROOT / "Sources/AnpFuelShell"
         profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
         driver = profile.split("public struct DriverHubSheetView: View {", 1)[1].split(
-            "public struct EnterpriseHubSheetView", 1
+            "public struct ArcadeGamesSheetView", 1
         )[0]
         self.assertIn("selection: $driverVehicleId", driver)
         self.assertIn("PortableMoney.parseBrlCentavos", driver)

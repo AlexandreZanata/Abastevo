@@ -83,6 +83,8 @@ public final class AppStateViewModel: ObservableObject {
     private var cityReadGeneration = UUID()
     /// Device contributor identity and signed community writes (outbox, receipts, owner history).
     public let identity: IdentityCoordinator
+    /// Abastevo Empresas: company access, the protected per-organization queue and signed company commands.
+    public let enterprise: EnterpriseCoordinator
     private var identityRelay: AnyCancellable?
     private var pendingAppleNonce: String?
 
@@ -132,6 +134,7 @@ public final class AppStateViewModel: ObservableObject {
         self.anpSurvey = AnpSurveyModel()
         self.evCatalog = EvCatalogModel()
         self.publicReadCache = PublicReadCache()
+        self.enterprise = EnterpriseCoordinator(sessions: AuthFlowSessionSource(flow: authFlow), identity: identity)
         _ = self.photoFlow.sweepExpired()
         rehydrateAuth()
         reloadCityData()
@@ -139,6 +142,9 @@ public final class AppStateViewModel: ObservableObject {
             self?.objectWillChange.send()
         }
         identity.isOfflineProbe = { [weak self] in
+            self?.isOfflineSimulation ?? false
+        }
+        enterprise.isOfflineProbe = { [weak self] in
             self?.isOfflineSimulation ?? false
         }
         identity.start()
@@ -277,6 +283,7 @@ public final class AppStateViewModel: ObservableObject {
         snapshot.apiEnvironment = env
         httpClient.environment = env
         identity.updateEnvironment(env)
+        enterprise.purgeOwnedData()
         persist()
         evCatalog.originChanged()
         reloadCityData()
@@ -605,6 +612,7 @@ public final class AppStateViewModel: ObservableObject {
         let ownerId = currentAccountIdOrNil
         photoCache.purgeAll()
         identity.purgeOwnedData()
+        enterprise.purgeOwnedData()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
         let flow = authFlow
         runAuth({ flow.logout() }) { viewModel, _ in
@@ -633,6 +641,7 @@ public final class AppStateViewModel: ObservableObject {
     private func finishAccountDeletion(ownerId: String) {
         proofSigner.resetKey()
         identity.forgetDeviceIdentity()
+        enterprise.purgeOwnedData()
         photoCache.purgeAll()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
         rehydrateAuth()

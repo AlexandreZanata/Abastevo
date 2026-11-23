@@ -89,7 +89,7 @@ public struct ProfileRootView: View {
         EnergiaCard {
             Text("Empresas & Minijogos")
                 .font(.headline)
-            profileNavRow(icon: "building.2.fill", title: "Abastevo Empresas", subtitle: "Indisponível no iOS") {
+            profileNavRow(icon: "building.2.fill", title: "Abastevo Empresas", subtitle: "Convites, viagens e despesas da empresa") {
                 viewModel.activeSheet = .enterpriseHub
             }
             Divider()
@@ -602,26 +602,6 @@ public struct DriverHubSheetView: View {
     private func formattedDate(_ timestamp: String?) -> String? {
         guard let timestamp, let date = ISO8601DateFormatter().date(from: timestamp) else { return nil }
         return date.formatted(date: .abbreviated, time: .shortened)
-    }
-}
-
-public struct EnterpriseHubSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    public var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "Indisponível no iOS",
-                systemImage: "building.2",
-                description: Text("Os recursos do Abastevo Empresas ainda não estão integrados a este aplicativo.")
-            )
-            .navigationTitle("Abastevo Empresas")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
     }
 }
 

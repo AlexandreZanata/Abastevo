@@ -122,7 +122,7 @@ public struct AbastevoRootView: View {
         case .driverHub:
             DriverHubSheetView(viewModel: viewModel)
         case .enterpriseHub:
-            EnterpriseHubSheetView()
+            EnterpriseHubSheetView(viewModel: viewModel)
         case .arcadeGames:
             ArcadeGamesSheetView(viewModel: viewModel)
         case .trainingConsent:

@@ -499,7 +499,7 @@ public actor SignedRequestTransport {
         guard http.statusCode >= 200 && http.statusCode < 300 else {
             throw SignedTransportError.refused(
                 status: http.statusCode,
-                code: SignedRequestProfile.errorCode(from: data),
+                code: SignedRequestProfile.errorCode(from: data) ?? SignedRequestProfile.enterpriseErrorCode(from: data),
                 retryAfterSeconds: SignedRequestProfile.retryAfterSeconds(
                     http.value(forHTTPHeaderField: "Retry-After"),
                     nowEpochSeconds: now()
