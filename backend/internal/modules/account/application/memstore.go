@@ -528,6 +528,34 @@ func (m *MemStore) FindProviderOwner(_ context.Context, provider, subject string
 	return owner, ok, nil
 }
 
+// ResolveProviderAccount returns the owner of link's subject or creates
+// candidate bound to it, under one lock (P13-T05).
+func (m *MemStore) ResolveProviderAccount(_ context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" || link.AccountID != candidate.ID {
+		return domain.Account{}, false, domain.ErrOIDCWrongAudience
+	}
+	key := subjectKey(link.Provider, link.Subject)
+	if owner, ok := m.bySubject[key]; ok {
+		if m.links[owner][link.Provider].Issuer != link.Issuer {
+			return domain.Account{}, false, domain.ErrOIDCUnknownIssuer
+		}
+		acc, ok := m.accountsByID[owner]
+		if !ok {
+			return domain.Account{}, false, domain.ErrAccountNotFound
+		}
+		return acc, false, nil
+	}
+	if _, taken := m.accountsByID[candidate.ID]; taken {
+		return domain.Account{}, false, domain.ErrKeyCollision
+	}
+	m.accountsByID[candidate.ID] = candidate
+	m.links[candidate.ID] = map[string]domain.ProviderLink{link.Provider: link}
+	m.bySubject[key] = candidate.ID
+	return candidate, true, nil
+}
+
 // CountAddresses counts email bindings of one account.
 func (m *MemStore) CountAddresses(_ context.Context, accountID string) (int, error) {
 	m.mu.Lock()

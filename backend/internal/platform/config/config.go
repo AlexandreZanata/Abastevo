@@ -264,6 +264,9 @@ type Config struct {
 	GitHubRepo       string
 	GitHubToken      string
 	PublicWebOrigins []string
+	// AppleSignIn configures native Sign in with Apple; zero keeps the
+	// native sign-in route answering provider-unavailable.
+	AppleSignIn AppleSignInConfig
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -285,6 +288,7 @@ func (c Config) LogValue() slog.Value {
 		slog.String("github_repo", c.GitHubRepo),
 		slog.Bool("github_token_configured", c.GitHubToken != ""),
 		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
+		slog.Bool("apple_native_login_configured", c.AppleSignIn.NativeLoginConfigured()),
 		slog.Any("r2", c.R2.r2LogValue()),
 		slog.Any("payments", c.Payments.logValue()),
 		slog.Any("store_billing", c.StoreBilling.logValue()),
@@ -712,6 +716,11 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	cfg.GitHubRepo = githubRepo
 	cfg.GitHubToken = githubToken
 	cfg.PublicWebOrigins = publicOrigins
+	apple, err := loadApple(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.AppleSignIn = apple
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {

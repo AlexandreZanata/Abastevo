@@ -16,9 +16,35 @@ BUC-A01 signup/login, A02 link/unlink and recovery, A03 logout/revoke, A04 right
 
 The iOS client opens a session only with credentials issued by the account API.
 The provider-link endpoint requires an existing live account session and does
-not issue one. Native Apple access remains unavailable until the backend
-accepts the configured Apple client audience and completes the appropriate
-account flow. Older iOS previews' locally generated Apple sessions are refused.
+not issue one. Older iOS previews' locally generated Apple sessions are refused.
+
+Native Sign in with Apple (`POST /v1/accounts/providers/login`, P13-T05) is
+the only provider route that issues a session:
+
+- The app generates a random raw nonce, puts its lowercase hex SHA-256 in the
+  `ASAuthorizationAppleIDRequest` nonce (Apple copies it verbatim into the
+  identity token's `nonce` claim) and sends the identity token plus the RAW
+  nonce. The server hashes the raw nonce before comparing, so a captured
+  token alone never signs in, and consumes the claim once in the shared
+  nonce ledger (only the hash is stored).
+- The expected audience is `ANPFUEL_APPLE_NATIVE_AUDIENCE` (the bundle ID),
+  never a request field and never the link audience `anpfuel-backend`, so
+  link tokens and sign-in tokens are not interchangeable. Unset answers 503
+  `account.provider-unavailable`. Google stays link-only (503).
+- Issuer plus subject is the only lookup key. A linked subject signs in to
+  its account; an unknown subject creates one FREE account whose only login
+  method is that link (it cannot be unlinked). Suspended accounts refuse
+  with `account.account-suspended`; deletion drops the link, so a later
+  sign-in mints a new account without carryover. Parallel first sign-ins
+  converge on one account. Token email is stored like a linked one
+  (display/relay only, never a merge key). The token and the raw nonce are
+  never stored or logged.
+- The response is the email-code consume shape (`account`, `session`,
+  `created`). Refusals: 400 `account.bad-body` (shape, token over 4096
+  bytes, nonce outside 16–128 visible ASCII characters), 401
+  `account.oidc-*` (issuer, audience, signature, expiry, nonce mismatch or
+  reuse), 403/410 account status, 429 session budget, 503 provider
+  unavailable or JWKS outage.
 
 For account deletion, the iOS client requires a deletion receipt with
 `status: deleted` and `erasure_requested: true` before it confirms the request
@@ -42,6 +68,8 @@ never to make a failing test pass. Executable mirror:
   `https://appleid.apple.com`; exact audience match; mandatory single-use
   nonce; 120s clock skew; JWKS cache 1h; outage/rotation refuses closed,
   never a weaker fallback. Apple relay accepted; equal-email merge refused.
+  Native sign-in: raw nonce 16–128 visible ASCII characters hashed with
+  SHA-256 before comparison; identity token at most 4096 bytes.
 - Proof boundary: social writes require active account + live session +
   fresh device-key proof together; public reads stay anonymous.
 - Inventory/retention: account row, provider links, code verifiers (purged

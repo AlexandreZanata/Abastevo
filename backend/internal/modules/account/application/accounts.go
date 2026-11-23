@@ -64,6 +64,13 @@ type Store interface {
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
 	FindProviderOwner(ctx context.Context, provider, subject string) (string, bool, error)
+	// ResolveProviderAccount returns the account owning link's
+	// provider subject or, when none does, creates candidate bound to
+	// link in one transaction (P13-T05 native sign-in). Concurrent
+	// first sign-ins for one subject converge on exactly one account;
+	// only the creator observes created=true. The returned account
+	// carries its stored status for the caller's usability check.
+	ResolveProviderAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error)
 	CreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential) error
 	FindKeyCredentialByUsername(ctx context.Context, usernameHash string) (domain.KeyCredential, bool, error)
 	FindKeyCredentialByLookup(ctx context.Context, lookup string) (domain.KeyCredential, bool, error)
@@ -112,7 +119,12 @@ type Service struct {
 	MailEnabled bool
 	Store       Store
 	Verifier    domain.ProviderVerifier
-	KeyProver   domain.KeyProver
+	// NativeAudiences maps a native sign-in provider to the
+	// server-configured client audience its identity tokens carry
+	// (Apple: the app bundle ID). A missing or empty entry refuses
+	// native sign-in closed with ErrProviderLoginUnavailable.
+	NativeAudiences map[string]string
+	KeyProver       domain.KeyProver
 	// RequestErasure enqueues owned scope cleanup for the captured
 	// contributor IDs plus account-social erasure after revocation
 	// (SEC04-B). Nil refuses deletion closed: unwired deletion would

@@ -8445,6 +8445,73 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/providers/login:
+    post:
+      summary: Sign in with a native Apple identity token.
+      operationId: loginWithProvider
+      tags: [accounts]
+      security: []
+      description: >
+        Native Sign in with Apple (P13-T05, B-BR-A01/A03). The server
+        verifies the identity token signature against Apple's JWKS, the
+        issuer, expiry and the server-configured native audience (the app
+        bundle ID, never a request field), then compares the token nonce
+        claim with the lowercase hex SHA-256 of the raw nonce sent here
+        and consumes it once. An existing link of the verified subject
+        signs in to its account; an unknown subject creates one FREE
+        account. Equal email strings never select or merge an account.
+        Deployments without a configured native audience answer 503
+        account.provider-unavailable. The response matches the email-code
+        consume.
+      requestBody:
+        required: true
+        description: Provider identity token plus the raw single-use nonce.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [provider, id_token, nonce]
+              properties:
+                provider:
+                  type: string
+                  enum: [apple, google]
+                  description: Only apple offers native sign-in; google answers 503 until its native flow is specified.
+                  example: apple
+                id_token:
+                  type: string
+                  maxLength: 4096
+                  description: Apple identity token (compact JWS); never stored or logged.
+                  example: eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiIwMDEyMzQifQ.c2ln
+                nonce:
+                  type: string
+                  minLength: 16
+                  maxLength: 128
+                  pattern: '^[\x21-\x7E]+$'
+                  description: Raw nonce whose SHA-256 hex the app placed in the Apple request.
+                  example: 3f9c1d2e7a6b4c58
+      responses:
+        '200':
+          description: Authenticated session with bearer tokens shown once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/accounts/providers/link:
     post:
       summary: Link a verified Google/Apple subject to the caller's account.

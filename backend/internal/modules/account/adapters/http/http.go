@@ -43,6 +43,7 @@ type Service interface {
 	ValidateAccess(ctx context.Context, familyID, accessToken string) (string, error)
 	RevokeAll(ctx context.Context, accountID string) error
 	LinkProvider(ctx context.Context, accountID, provider, rawToken, audience, nonce string) (domain.ProviderLink, error)
+	LoginWithProvider(ctx context.Context, req application.ProviderLogin) (application.AuthResult, error)
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
 	DeleteAccount(ctx context.Context, accountID string) (application.DeletionReceipt, error)
@@ -67,6 +68,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/accounts/keys/login", h.loginWithKey)
 	r.Post("/v1/accounts/sessions/refresh", h.refresh)
 	r.Post("/v1/accounts/sessions/revoke", h.revoke)
+	r.Post("/v1/accounts/providers/login", h.loginWithProvider)
 	r.Post("/v1/accounts/providers/link", h.linkProvider)
 	r.Post("/v1/accounts/providers/unlink", h.unlinkProvider)
 	r.Post("/v1/accounts/providers/list", h.listProviders)
@@ -169,6 +171,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "erasure-wiring-missing", "billing-exit-wiring-missing":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
+	case "provider-unavailable":
+		status, code, msg = http.StatusServiceUnavailable, "account.provider-unavailable", "provider sign-in unavailable"
+	case "provider-proof-malformed":
+		status, code, msg = http.StatusBadRequest, "account.bad-body", "malformed account request"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	}
@@ -385,6 +391,38 @@ func (h Handler) linkProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, r, http.StatusOK, map[string]any{"provider_link": providerLinkJSONOf(link)})
+}
+
+// loginWithProvider exchanges a native provider identity token (Apple)
+// for a FREE account session (P13-T05). Unauthenticated by design: the
+// verified token is the proof. The expected audience is the
+// server-configured native client audience, never a request field;
+// unconfigured deployments answer 503 account.provider-unavailable.
+// The response shape is identical to the email-code consume.
+func (h Handler) loginWithProvider(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		Provider string `json:"provider"`
+		IDToken  string `json:"id_token"`
+		Nonce    string `json:"nonce"`
+	}
+	if err := read(r, &dto); err != nil || !validProvider(dto.Provider) || dto.IDToken == "" || dto.Nonce == "" {
+		bad(w, r)
+		return
+	}
+	got, err := h.Service.LoginWithProvider(r.Context(), application.ProviderLogin{
+		Provider: dto.Provider,
+		IDToken:  dto.IDToken,
+		Nonce:    dto.Nonce,
+	})
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{
+		"account": accountJSON{AccountID: got.Account.ID, Alias: got.Account.Alias, Status: got.Account.Status},
+		"session": sessionJSONOf(got.Session),
+		"created": got.Created,
+	})
 }
 
 // unlinkProvider removes one provider binding from the session-owned

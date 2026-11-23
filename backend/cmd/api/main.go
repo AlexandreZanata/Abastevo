@@ -515,12 +515,16 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		MailEnabled: mailEnabled,
 		Store:       accountStore,
 		Verifier:    accountVerifier,
-		KeyProver:   accountKeys,
-		CodeGen:     accountdomain.GenerateCode,
-		TokenGen:    accountdomain.GenerateToken,
-		AliasGen:    accountdomain.GenerateAlias,
-		KeyGen:      accountdomain.GenerateAccountKey,
-		IDGen:       newUUID,
+		// Native Sign in with Apple (P13-T05): the identity token's
+		// audience is the configured app client, never the frozen link
+		// audience; unset keeps the login route provider-unavailable.
+		NativeAudiences: map[string]string{"apple": cfg.AppleSignIn.NativeAudience},
+		KeyProver:       accountKeys,
+		CodeGen:         accountdomain.GenerateCode,
+		TokenGen:        accountdomain.GenerateToken,
+		AliasGen:        accountdomain.GenerateAlias,
+		KeyGen:          accountdomain.GenerateAccountKey,
+		IDGen:           newUUID,
 	}
 	accountService.RequestBillingExit = billingExit.RequestAccountExit
 	// PAY-20: proof-gated owner commands verify one live session per
