@@ -106,7 +106,7 @@ impossible.
 
 ## Google Play purchases
 
-Contract: `docs/product/payments/store-billing.md` (B-BR-STORE-01..10,
+Contract: [store billing](../product/payments/store-billing.md) (B-BR-STORE-01..10,
 BUC-STORE-01/02/04). Code: `PremiumViewModel` (app), the store use cases in
 `application/.../usecase/premium/StoreBillingUseCases.kt`,
 `PlayBillingGateway` and `StorePurchaseHttpClient` (data).
@@ -151,7 +151,7 @@ BUC-STORE-01/02/04). Code: `PremiumViewModel` (app), the store use cases in
 ## Dependency review: Google Play Billing Library
 
 AGENTS rule 11 review for the store billing contract
-(`docs/product/payments/store-billing.md`, B-BR-STORE-01).
+([store billing](../product/payments/store-billing.md), B-BR-STORE-01).
 
 - **Need:** Android sells Premium only through Google Play Billing. The Play
   Billing Library is the supported client for Play subscriptions; there is no
