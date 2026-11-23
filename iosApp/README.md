@@ -25,3 +25,12 @@ xcodebuild test -project AnpFuel.xcodeproj -scheme AnpFuel \
 ```
 
 Acceptance requires the matching Android journeys, staging API checks, and a physical iPhone and iPad run for Keychain, permissions, camera, VoiceOver, Dynamic Type and location. The simulator suite covers native compilation and XCTest, including the Go identity vectors from `contracts/testdata/identity` verified with CryptoKit. It cannot certify code signing, Sign in with Apple, App Store distribution, private media uploads, or device behavior.
+
+## Testing on a Mac
+
+1. Install Xcode 26.4.1 or later with the iOS 26.4 simulator runtime, then open `iosApp/AnpFuel.xcodeproj` and pick the `AnpFuel` scheme.
+2. Simulator: choose an iPhone 17 or iPad simulator and press Run. The app starts on the `abastevo.com.br` origin; Settings → network environment switches origins only while no account is signed in.
+3. Device: in the `AnpFuel` target, Signing & Capabilities, select your team. Sign in with Apple and associated domains need a paid Apple Developer team; with a personal team, remove those two capabilities locally (do not commit the change). Keep the bundle ID `com.anpfuel.app` for App Store Connect products.
+4. Tests: `⌘U` in Xcode, or the `xcodebuild test` command above. CI runs the same command on every push to this branch.
+5. Premium purchases need the App Store channel configured on the server you use (see [store billing integration](../docs/backend/payments/store-billing-integration.md)) and a Sandbox Apple Account signed in on the device (Settings → App Store → Sandbox Account; recent iOS versions also list it under Settings → Developer). Without a server `app_store` offer the Premium sheet shows status only. An Xcode `.storekit` file is not useful end to end: the server refuses locally signed transactions.
+6. Things only a device proves: Keychain persistence across reinstall, camera evidence capture, location prompts, Sign in with Apple, notifications, VoiceOver and Dynamic Type, and Apple Maps offline navigation.
