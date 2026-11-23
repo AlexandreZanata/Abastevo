@@ -140,7 +140,8 @@ final class LedgerModelsTests: XCTestCase {
 
     func testCanonicalIdsAndNameBasedOperationIds() {
         XCTAssertTrue(LedgerIds.isCanonical(recordId))
-        XCTAssertFalse(LedgerIds.isCanonical(recordId.uppercased()))
+        XCTAssertTrue(LedgerIds.isCanonical("a0000000-0000-4000-8000-00000000000b"))
+        XCTAssertFalse(LedgerIds.isCanonical("A0000000-0000-4000-8000-00000000000B"), "uppercase hex is not canonical")
         XCTAssertFalse(LedgerIds.isCanonical("00000000-0000-0000-0000-000000000000"))
         XCTAssertFalse(LedgerIds.isCanonical("a1"))
         XCTAssertTrue(LedgerIds.isCanonical(LedgerIds.newId()))
