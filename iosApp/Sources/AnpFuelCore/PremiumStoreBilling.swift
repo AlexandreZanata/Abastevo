@@ -84,10 +84,20 @@ public enum PremiumPurchaseKind: String, Sendable {
     case restore
 }
 
-/// Adds the owner's device-key signature to a purchase command. The signed
-/// request transport of the identity module implements it.
-public protocol PremiumRequestSigner {
-    func signedHeaders(method: String, path: String, body: Data) async throws -> [String: String]
+/// Sends a purchase command signed by the device key bound to the account
+/// and returns the success body. `SignedRequestTransport` implements it.
+public protocol PremiumRequestSigner: Sendable {
+    func premiumSignedPost(path: String, body: Data) async throws -> Data
+}
+
+extension SignedRequestTransport: PremiumRequestSigner {
+    public func premiumSignedPost(path: String, body: Data) async throws -> Data {
+        do {
+            return try await signedRequest(method: "POST", path: path, body: body).body
+        } catch let error as SignedTransportError {
+            throw PremiumStoreBilling.error(signedTransport: error)
+        }
+    }
 }
 
 /// What the Premium screen may offer for the App Store (B-BR-STORE-04/10).
@@ -139,6 +149,22 @@ public enum PremiumStoreBilling {
         }
     }
 
+    /// Maps a signed transport failure: refusals keep their HTTP meaning,
+    /// a missing session or device identity needs a new sign-in, and
+    /// network failures stay retryable.
+    public static func error(signedTransport error: SignedTransportError) -> PremiumApiError {
+        switch error {
+        case .refused(let status, let code, _):
+            return Self.error(httpStatus: status, code: code)
+        case .sessionRequired, .identityUnavailable, .signingUnavailable:
+            return .authRequired
+        case .invalidRequest:
+            return .invalid
+        case .originUnavailable, .offline, .oversizedResponse, .invalidResponse:
+            return .unavailable
+        }
+    }
+
     /// Maps an HTTP status and the server error code to a client error.
     public static func error(httpStatus: Int, code: String?) -> PremiumApiError {
         switch httpStatus {
@@ -182,7 +208,7 @@ extension AbastevoHttpClient {
             withJSONObject: ["family_id": familyId, "access_token": accessToken],
             options: [.sortedKeys]
         )
-        let data = try await premiumPost(path: PremiumStoreBilling.statusPath, body: body, headers: [:])
+        let data = try await premiumPost(path: PremiumStoreBilling.statusPath, body: body)
         do {
             return try PremiumStoreBilling.decoder().decode(PremiumStatusWire.self, from: data)
         } catch {
@@ -207,13 +233,14 @@ extension AbastevoHttpClient {
             operationId: operationId,
             originalTransactionId: originalTransactionId
         )
-        let headers: [String: String]
+        let data: Data
         do {
-            headers = try await signer.signedHeaders(method: "POST", path: path, body: body)
+            data = try await signer.premiumSignedPost(path: path, body: body)
+        } catch let error as PremiumApiError {
+            throw error
         } catch {
-            throw PremiumApiError.authRequired
+            throw PremiumApiError.unavailable
         }
-        let data = try await premiumPost(path: path, body: body, headers: headers)
         do {
             return try PremiumStoreBilling.decoder().decode(PremiumReceiptWire.self, from: data)
         } catch {
@@ -221,16 +248,13 @@ extension AbastevoHttpClient {
         }
     }
 
-    private func premiumPost(path: String, body: Data, headers: [String: String]) async throws -> Data {
+    private func premiumPost(path: String, body: Data) async throws -> Data {
         guard let url = environment.join(path) else { throw PremiumApiError.invalid }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        for (name, value) in headers {
-            request.setValue(value, forHTTPHeaderField: name)
-        }
         let exchange: (Data, URLResponse)
         do {
             exchange = try await session.data(for: request)

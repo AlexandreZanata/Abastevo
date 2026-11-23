@@ -84,6 +84,10 @@ public final class IdentityCoordinator: ObservableObject {
         return (transport, client)
     }
 
+    /// The signed transport of the current origin, for other owner-signed
+    /// commands such as Premium purchase verification.
+    public var signedTransport: SignedRequestTransport { transport }
+
     /// Loads the queue, observes app activation and resumes pending writes.
     public func start() {
         outboxItems = outboxStore.load()

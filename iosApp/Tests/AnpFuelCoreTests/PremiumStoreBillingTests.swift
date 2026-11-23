@@ -87,6 +87,14 @@ final class PremiumStoreBillingTests: XCTestCase {
         XCTAssertEqual(PremiumStoreBilling.error(httpStatus: 503, code: "subscription.unavailable"), .unavailable)
     }
 
+    func testSignedTransportFailuresKeepRetryOrSignInMeaning() {
+        XCTAssertEqual(PremiumStoreBilling.error(signedTransport: .refused(status: 403, code: "subscription.proof-denied", retryAfterSeconds: nil)), .denied)
+        XCTAssertEqual(PremiumStoreBilling.error(signedTransport: .refused(status: 503, code: nil, retryAfterSeconds: nil)), .unavailable)
+        XCTAssertEqual(PremiumStoreBilling.error(signedTransport: .sessionRequired), .authRequired)
+        XCTAssertEqual(PremiumStoreBilling.error(signedTransport: .identityUnavailable), .authRequired)
+        XCTAssertEqual(PremiumStoreBilling.error(signedTransport: .offline), .unavailable)
+    }
+
     func testPurchaseBodyIsTheSignedAppStoreCommand() throws {
         let body = try PremiumStoreBilling.purchaseBody(
             familyId: "11111111-1111-4111-8111-111111111111",

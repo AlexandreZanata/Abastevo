@@ -890,10 +890,11 @@ public final class AppStateViewModel: ObservableObject {
         store.save(snapshot)
     }
 
-    /// The device-key signer bound to the signed-in account, or nil while the
-    /// device has no bound contributor key.
+    /// The signed transport for the signed-in account; it registers and binds
+    /// the device key on first use.
     func premiumRequestSigner() -> PremiumRequestSigner? {
-        return nil
+        guard currentAccountIdOrNil != nil else { return nil }
+        return identity.signedTransport
     }
 }
 
