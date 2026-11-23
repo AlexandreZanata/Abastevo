@@ -31,3 +31,18 @@ CREATE TABLE account_provider_revocations (
 );
 CREATE INDEX account_provider_revocations_due_idx
     ON account_provider_revocations (next_attempt_at, id);
+-- Deletion queues sealed grants in the deleting transaction itself, the
+-- same way subscription_erase_deleted_owner purges purchase tokens, so no
+-- deletion path (or older application code) can skip the revocation.
+CREATE FUNCTION account_queue_provider_revocations() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO account_provider_revocations (id, provider, sealed_token, requested_at, next_attempt_at)
+    SELECT g.id, g.provider, g.sealed_token, clock_timestamp(), clock_timestamp()
+    FROM account_provider_grants g WHERE g.account_id = NEW.id
+    ON CONFLICT (id) DO NOTHING;
+    DELETE FROM account_provider_grants WHERE account_id = NEW.id;
+    RETURN NEW;
+END $$;
+CREATE TRIGGER account_provider_grants_erasure AFTER UPDATE OF status ON accounts
+FOR EACH ROW WHEN (NEW.status = 'deleted' AND OLD.status IS DISTINCT FROM NEW.status)
+EXECUTE FUNCTION account_queue_provider_revocations();

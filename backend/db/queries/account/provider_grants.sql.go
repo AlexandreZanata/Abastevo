@@ -49,15 +49,6 @@ func (q *Queries) ClaimGrantRevocation(ctx context.Context, arg ClaimGrantRevoca
 	return i, err
 }
 
-const deleteAccountGrants = `-- name: DeleteAccountGrants :exec
-DELETE FROM account_provider_grants WHERE account_id = $1
-`
-
-func (q *Queries) DeleteAccountGrants(ctx context.Context, accountID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteAccountGrants, accountID)
-	return err
-}
-
 const deleteGrantRevocation = `-- name: DeleteGrantRevocation :execrows
 DELETE FROM account_provider_revocations WHERE id = $1 AND lease_nonce = $2
 `
@@ -110,27 +101,6 @@ func (q *Queries) LockAccountForGrant(ctx context.Context, id pgtype.UUID) (stri
 	var status string
 	err := row.Scan(&status)
 	return status, err
-}
-
-const queueAccountGrantRevocations = `-- name: QueueAccountGrantRevocations :execrows
-INSERT INTO account_provider_revocations (id, provider, sealed_token, requested_at, next_attempt_at)
-SELECT g.id, g.provider, g.sealed_token, $1, $1
-FROM account_provider_grants g
-WHERE g.account_id = $2
-ON CONFLICT (id) DO NOTHING
-`
-
-type QueueAccountGrantRevocationsParams struct {
-	At        pgtype.Timestamptz `json:"at"`
-	AccountID pgtype.UUID        `json:"account_id"`
-}
-
-func (q *Queries) QueueAccountGrantRevocations(ctx context.Context, arg QueueAccountGrantRevocationsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, queueAccountGrantRevocations, arg.At, arg.AccountID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }
 
 const retryGrantRevocation = `-- name: RetryGrantRevocation :execrows

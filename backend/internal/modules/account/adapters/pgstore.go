@@ -1059,14 +1059,9 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 	if err := q.DeleteAccountBindings(ctx, id); err != nil {
 		return nil, err
 	}
-	// P13-T05: sealed provider grants move to the revocation queue in
-	// the same transaction; the live grant rows go with the account.
-	if _, err := q.QueueAccountGrantRevocations(ctx, account.QueueAccountGrantRevocationsParams{AccountID: id, At: stamp(nowUnix)}); err != nil {
-		return nil, err
-	}
-	if err := q.DeleteAccountGrants(ctx, id); err != nil {
-		return nil, err
-	}
+	// P13-T05: the account_provider_grants_erasure trigger (000301) moved
+	// the sealed provider grants to the revocation queue when the status
+	// became deleted, inside this same transaction.
 	if err := tx.Commit(ctx); err != nil {
 		return nil, enterpriseRefusal(err)
 	}

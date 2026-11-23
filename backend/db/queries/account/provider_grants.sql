@@ -15,16 +15,6 @@ INSERT INTO account_provider_revocations (id, provider, sealed_token, requested_
 VALUES (@id, @provider, @sealed_token, @at, @at)
 ON CONFLICT (id) DO NOTHING;
 
--- name: QueueAccountGrantRevocations :execrows
-INSERT INTO account_provider_revocations (id, provider, sealed_token, requested_at, next_attempt_at)
-SELECT g.id, g.provider, g.sealed_token, @at, @at
-FROM account_provider_grants g
-WHERE g.account_id = @account_id
-ON CONFLICT (id) DO NOTHING;
-
--- name: DeleteAccountGrants :exec
-DELETE FROM account_provider_grants WHERE account_id = @account_id;
-
 -- name: ClaimGrantRevocation :one
 WITH candidate AS (
  SELECT r.id FROM account_provider_revocations r
