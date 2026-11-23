@@ -13,12 +13,12 @@ bash scripts/check-mobile.sh --static-only
 python3 -m unittest -v scripts.tests.test_ios_app_integrity
 ```
 
-Run the native build and XCTest on macOS with Xcode 26.4.1 and the iOS 26.4 simulator runtime. The GitHub iOS workflow uses the same Xcode command and bundles the shared Android municipality catalog and EE-23 fixture from their repository paths.
+Run the native build and XCTest on macOS with Xcode 26.4.1 and the iOS 26.4.1 simulator runtime. The GitHub iOS workflow uses the same Xcode command and bundles the shared Android municipality catalog and EE-23 fixture from their repository paths.
 
 ```sh
 cd iosApp
 xcodebuild test -project AnpFuel.xcodeproj -scheme AnpFuel \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4.1' \
   CODE_SIGNING_ALLOWED=NO
 ```
 

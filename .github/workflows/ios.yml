@@ -43,5 +43,5 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild test -project AnpFuel.xcodeproj -scheme AnpFuel \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4' \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4.1' \
             CODE_SIGNING_ALLOWED=NO
