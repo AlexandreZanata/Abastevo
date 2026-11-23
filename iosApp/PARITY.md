@@ -50,3 +50,10 @@ Android references are `VehicleAdmissionRule`, `BatteryCapacity`, `LedgerDraft`,
 ## B-BR-IOS-DRIVER / BUC-IOS-DRIVER — Manual local shifts
 
 A new local shift requires the user's selection of a registered vehicle, a valid initial odometer reading, and no other active shift. Closing the selected shift records the actual completion timestamp and validates the final odometer, exact centavo amounts within the Android `DriverMoney` bound, and the manually declared duration. Malformed inputs leave the shift open for correction. This iOS flow stores manual local records. GPS, work accounting, and synchronization require their own integration and acceptance tests.
+
+## B-BR-IOS-PREMIUM / BUC-STORE-01..04 — App Store Premium
+
+- The [store billing contract](../docs/product/payments/store-billing.md) applies. The Premium sheet reads `POST /v1/premium/status`, shows the App Store products listed in its `app_store` offer with StoreKit's localized price and period, and purchases with the offer's `account_binding` as `appAccountToken`.
+- A verified transaction is sent to `/v1/premium/purchases/verify` (or `/restore`) with `provider: app_store` and its `originalTransactionId`, signed by the device key bound to the account. The app finishes the transaction only after the server accepts or definitively refuses it; unavailable, quota, retry and session failures keep it unfinished for the `Transaction.updates` and `Transaction.unfinished` retries.
+- Premium active from any source (web, Google Play, admin) hides the purchase button. Restore calls `AppStore.sync()` only from the explicit button. The sheet offers subscription management, renewal disclosures and the Terms and Privacy links.
+- Acceptance still needs an App Store Connect subscription group and products, a sandbox tester run (purchase, Ask to Buy pending, renewal, refund, restore on a second device, another account refused) and a review build against the production server with the sandbox fallback on.

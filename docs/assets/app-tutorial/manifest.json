@@ -1362,6 +1362,7 @@
             "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumManagementScreen.kt"
           ],
           "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumComponents.kt",
             "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumManagementScreen.kt",
             "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumScreen.kt"
           ],
