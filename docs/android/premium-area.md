@@ -101,3 +101,44 @@ impossible.
   leave and re-enter within 60s to confirm the verified preview is reused. On
   Profile, confirm the full loading skeleton and no mount animation; confirm the
   login step crossfade still works.
+
+## Dependency review: Google Play Billing Library
+
+AGENTS rule 11 review for the store billing contract
+(`docs/product/payments/store-billing.md`, B-BR-STORE-01).
+
+- **Need:** Android sells Premium only through Google Play Billing. The Play
+  Billing Library is the supported client for Play subscriptions; there is no
+  web checkout in the app.
+- **Artifact:** `com.android.billingclient:billing:9.1.0`, the latest stable
+  release on Google Maven when added, pinned in `gradle/libs.versions.toml`
+  and used only by `:data` (`PlayBillingGateway`). No dynamic versions.
+  `billing-ktx` is not used: since 8.1.0 it depends on `kotlin-stdlib` 2.2.10,
+  which the project's Kotlin 2.0.21 compiler cannot read. The gateway wraps
+  the three callbacks it needs with `suspendCancellableCoroutine` instead.
+- **Transitives (POM):** `androidx.activity` 1.2.3, `androidx.core` 1.15.0,
+  `play-services-base` 18.5.0, `-basement` 18.9.0 and `-tasks` 18.2.0 are
+  floors the app already meets. New: `play-services-location` 19.0.0 (its
+  manifest declares no permission) and `com.google.android.datatransport`
+  `transport-api` 3.0.0, `transport-backend-cct` 3.1.8 and
+  `transport-runtime` 3.1.8, which raise the 2.x versions ML Kit pulled.
+  Check OCR on a device after the first build with them.
+- **License:** the POM declares the Android Software Development Kit License
+  (`https://developer.android.com/studio/terms.html`), proprietary Google
+  terms rather than an open-source license. The AAR carries
+  `third_party_licenses.txt` for its own dependencies. Listed in
+  `THIRD_PARTY_NOTICES.md`.
+- **Security and privacy:** published by Google on Google Maven and fetched
+  over HTTPS. The merged manifest gains `com.android.vending.BILLING`,
+  `<queries>` for the Play billing service and its test companion, and two
+  non-exported proxy activities. `INTERNET` and `ACCESS_NETWORK_STATE` were
+  already declared; no location permission is added. The library talks to
+  the Play Store app over IPC; Play may log library usage through the
+  datatransport stack, as ML Kit already does. The app gives Play only the
+  server-derived account binding (`obfuscatedAccountId`, 64 hexadecimal
+  characters; no account ID or e-mail). Purchase tokens go only to the
+  signed backend route and are never logged, stored or printed. The app
+  never acknowledges or consumes a purchase. Library minSdk 23 is below the
+  app's 26; consumer R8 rules ship in the AAR.
+- **Build:** the artifacts are not in the offline Gradle cache; the first
+  build after this change downloads them.

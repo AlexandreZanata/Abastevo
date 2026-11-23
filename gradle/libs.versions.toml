@@ -22,6 +22,8 @@ kxml2 = "2.3.0"
 datastore = "1.1.1"
 # Reviewed in docs/android/ocr-live-framing.md (Apache-2.0; libyuv BSD-3-Clause).
 camerax = "1.4.2"
+# Reviewed in docs/android/premium-area.md (Android SDK License; Java artifact, not billing-ktx).
+playBilling = "9.1.0"
 compileSdk = "36"
 minSdk = "26"
 targetSdk = "36"
@@ -49,6 +51,7 @@ camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "
 camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+play-billing = { group = "com.android.billingclient", name = "billing", version.ref = "playBilling" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
