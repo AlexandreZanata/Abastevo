@@ -264,7 +264,7 @@ public struct AccountManagementSheetView: View {
                                 Text(user.displayAlias)
                                 Spacer()
                                 Button("Desbloquear") {
-                                    viewModel.unblockUser(user.id)
+                                    viewModel.unblockUser(userId: user.id)
                                 }
                                 .font(.caption)
                             }
