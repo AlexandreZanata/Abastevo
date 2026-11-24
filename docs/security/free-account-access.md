@@ -35,9 +35,9 @@ BUC-A01 signup/login, A02 link/unlink and recovery, A03 logout/revoke, A04 right
   oficial. A word is a run of letters and marks, so "Suporte Abastevo" and
   "Abastevo1" are refused while "Administradora" is allowed. These bounds
   reduce impersonation of the service and accidental publication of contact
-  details. The Android client runs the same rule before it requests a
-  sign-up code or saves a name; the server stays authoritative. Both sides
-  test against `contracts/testdata/account/public-names-v1.tsv`. The chosen
+  details. The Android and iOS clients run the same rule before they request
+  a sign-up code or save a name; the server stays authoritative. The server
+  and both clients test against `contracts/testdata/account/public-names-v1.tsv`. The chosen
   name appears on comments and as the default editable author name on forum
   topics. Public reads fall back to the alias for older accounts and keep
   their existing deletion and suspension behavior.

@@ -8,8 +8,9 @@ import Security
 /// Sign in with Apple receives the SHA-256 lowercase hex of a random raw
 /// nonce in `ASAuthorizationAppleIDRequest.nonce`; the app then sends the raw
 /// nonce with the identity token and the optional authorization code. The
-/// reply has the shape of `/v1/accounts/email/consume`. No name or e-mail
-/// scope is requested. Zero postfix unwrap operators anywhere in this file.
+/// reply carries the account, one session and whether the login created the
+/// account. No name or e-mail scope is requested. Zero postfix unwrap
+/// operators anywhere in this file.
 public enum AccountProviderLogin {
     public static let path = "/v1/accounts/providers/login"
     public static let unavailableVerdict = "provider-unavailable"

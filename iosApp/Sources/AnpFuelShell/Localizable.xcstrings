@@ -7108,6 +7108,114 @@
       },
       "comment": "Android resource: action_retry"
     },
+    "android.auth_add_recovery_email": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add recovery email"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar e-mail de recuperação"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir correo de recuperación"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungsadresse hinzufügen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter un e-mail de récupération"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復旧用メールを追加"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить почту для восстановления"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加恢复用电子邮箱"
+          }
+        }
+      },
+      "comment": "Android resource: auth_add_recovery_email"
+    },
+    "android.auth_change_email": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change email"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterar e-mail"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar correo"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-Mail-Adresse ändern"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changer l’e-mail"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メールアドレスを変更"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить адрес почты"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改电子邮箱"
+          }
+        }
+      },
+      "comment": "Android resource: auth_change_email"
+    },
     "android.auth_code_label": {
       "extractionState": "manual",
       "localizations": {
@@ -7162,6 +7270,60 @@
       },
       "comment": "Android resource: auth_code_label"
     },
+    "android.auth_create_account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create account"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Criar conta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear cuenta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto erstellen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer un compte"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アカウントを作成"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать аккаунт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建账户"
+          }
+        }
+      },
+      "comment": "Android resource: auth_create_account"
+    },
     "android.auth_delete_title": {
       "extractionState": "manual",
       "localizations": {
@@ -7215,6 +7377,330 @@
         }
       },
       "comment": "Android resource: auth_delete_title"
+    },
+    "android.auth_edit_name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit public name"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar nome público"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar nombre público"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffentlichen Namen bearbeiten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le nom public"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公開名を編集"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить публичное имя"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑公开名称"
+          }
+        }
+      },
+      "comment": "Android resource: auth_edit_name"
+    },
+    "android.auth_email_check_inbox": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check your email for the 6-digit code."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procure no seu e-mail o código de 6 dígitos."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca en tu correo el código de 6 dígitos."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe dein Postfach auf den sechsstelligen Code."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherchez le code à 6 chiffres dans votre messagerie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メールに届いた6桁のコードを確認してください。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найдите шестизначный код в письме."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请查看邮件中的 6 位验证码。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_email_check_inbox"
+    },
+    "android.auth_email_helper": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your email is private and used to verify and recover your account."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu e-mail é privado e serve para verificar e recuperar sua conta."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu correo es privado y se usa para verificar y recuperar tu cuenta."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine E-Mail-Adresse bleibt privat und dient zur Bestätigung und Wiederherstellung deines Kontos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre e-mail reste privé et sert à vérifier et à récupérer votre compte."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メールアドレスは非公開で、アカウントの確認と復旧に使用します。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваш адрес скрыт и используется для подтверждения и восстановления аккаунта."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电子邮箱不会公开，仅用于验证和恢复账户。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_email_helper"
+    },
+    "android.auth_email_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-mail"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correo electrónico"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-Mail"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse e-mail"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メールアドレス"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Электронная почта"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电子邮箱"
+          }
+        }
+      },
+      "comment": "Android resource: auth_email_label"
+    },
+    "android.auth_email_verification_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify your email"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifique seu e-mail"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifica tu correo"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-Mail-Adresse bestätigen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez votre e-mail"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メールアドレスを確認"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подтвердите адрес почты"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证电子邮箱"
+          }
+        }
+      },
+      "comment": "Android resource: auth_email_verification_title"
+    },
+    "android.auth_error_address_linked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This email is attached to an account. Sign in with your key or recover it."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este e-mail já está vinculado a uma conta. Entre com sua chave ou recupere-a."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este correo ya está vinculado a una cuenta. Entra con tu clave o recupérala."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese E-Mail-Adresse ist bereits mit einem Konto verknüpft. Melde dich mit deinem Schlüssel an oder stelle ihn wieder her."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet e-mail est déjà associé à un compte. Connectez-vous avec votre clé ou récupérez-la."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このメールアドレスは既にアカウントに登録されています。キーでログインするか、キーを復旧してください。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот адрес уже привязан к аккаунту. Войдите с ключом или восстановите его."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此电子邮箱已关联到账户。请使用密钥登录或恢复密钥。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_error_address_linked"
     },
     "android.auth_error_code": {
       "extractionState": "manual",
@@ -7377,6 +7863,60 @@
         }
       },
       "comment": "Android resource: auth_error_expired"
+    },
+    "android.auth_error_fresh_login": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in again before making this change."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre novamente antes de fazer essa alteração."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a iniciar sesión antes de hacer este cambio."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melde dich vor dieser Änderung erneut an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnectez-vous avant de faire ce changement."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更する前に再度ログインしてください。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите снова, чтобы внести это изменение."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请重新登录后再进行此更改。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_error_fresh_login"
     },
     "android.auth_error_input": {
       "extractionState": "manual",
@@ -7648,6 +8188,114 @@
       },
       "comment": "Android resource: auth_error_provider"
     },
+    "android.auth_error_public_name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use 2–40 characters, with at least two letters and no more than four digits. Choose a non-reserved name."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use de 2 a 40 caracteres, com ao menos duas letras e até quatro dígitos. Escolha um nome que não seja reservado."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa de 2 a 40 caracteres, al menos dos letras y como máximo cuatro dígitos. Elige un nombre no reservado."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwende 2–40 Zeichen mit mindestens zwei Buchstaben und höchstens vier Ziffern. Wähle einen nicht reservierten Namen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisez de 2 à 40 caractères, dont au moins deux lettres et au plus quatre chiffres. Choisissez un nom non réservé."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2〜40文字で、文字を2つ以上、数字を4つ以下にしてください。予約されていない名前を選んでください。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите 2–40 символов, минимум две буквы и не более четырёх цифр. Выберите незарезервированное имя."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入 2 至 40 个字符，至少包含两个字母，最多包含四个数字。请选择非保留名称。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_error_public_name"
+    },
+    "android.auth_error_recovery_no_account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No account uses this recovery email."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma conta usa este e-mail de recuperação."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna cuenta usa este correo de recuperación."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Konto nutzt diese Wiederherstellungsadresse."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun compte n’utilise cet e-mail de récupération."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この復旧用メールを使うアカウントはありません。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни один аккаунт не использует этот адрес для восстановления."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有账户使用此恢复用电子邮箱。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_error_recovery_no_account"
+    },
     "android.auth_error_secure_storage": {
       "extractionState": "manual",
       "localizations": {
@@ -7864,59 +8512,167 @@
       },
       "comment": "Android resource: auth_error_unknown"
     },
-    "android.auth_error_username_taken": {
+    "android.auth_key_issued_title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Username taken, pick another"
+            "value": "Your account is ready"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nome em uso, escolha outro"
+            "value": "Sua conta está pronta"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nombre de usuario ocupado. Elige otro."
+            "value": "Tu cuenta está lista"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzername vergeben. Bitte einen anderen wählen."
+            "value": "Dein Konto ist bereit"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nom déjà utilisé. Choisissez-en un autre."
+            "value": "Votre compte est prêt"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このユーザー名は使用されています。別の名前を選んでください。"
+            "value": "アカウントの準備ができました"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Имя пользователя занято. Выберите другое."
+            "value": "Ваш аккаунт готов"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用户名已被使用，请选择其他名称。"
+            "value": "账户已准备好"
           }
         }
       },
-      "comment": "Android resource: auth_error_username_taken"
+      "comment": "Android resource: auth_key_issued_title"
+    },
+    "android.auth_key_issued_warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save your key for another device. If you lose it, you can recover it by email."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarde sua chave para acessar em outro aparelho. Se perdê-la, você pode recuperá-la por e-mail."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarda tu clave para usarla en otro dispositivo. Si la pierdes, puedes recuperarla por correo."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewahre deinen Schlüssel für ein anderes Gerät auf. Bei Verlust kannst du ihn per E-Mail wiederherstellen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gardez votre clé pour un autre appareil. En cas de perte, vous pouvez la récupérer par e-mail."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別の端末で使うためにキーを保存してください。紛失してもメールで復旧できます。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохраните ключ для другого устройства. В случае потери его можно восстановить по почте."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请保存密钥，以便在其他设备上使用。丢失后可通过电子邮箱恢复。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_key_issued_warning"
+    },
+    "android.auth_key_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account key"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave da conta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave de la cuenta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontoschlüssel"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé du compte"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アカウントキー"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ аккаунта"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账户密钥"
+          }
+        }
+      },
+      "comment": "Android resource: auth_key_label"
     },
     "android.auth_key_login": {
       "extractionState": "manual",
@@ -7972,59 +8728,761 @@
       },
       "comment": "Android resource: auth_key_login"
     },
-    "android.auth_logged_in": {
+    "android.auth_legacy_key_issued_warning": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Signed in"
+            "value": "Save your key to access this account on another device. You can also export it later from Profile."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conectado"
+            "value": "Salve sua chave para acessar esta conta em outro aparelho. Você também poderá exportá-la depois pelo Perfil."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sesión iniciada"
+            "value": "Guarda tu clave para acceder a esta cuenta en otro dispositivo. También puedes exportarla después desde Perfil."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Angemeldet"
+            "value": "Speichere deinen Schlüssel für den Zugriff auf einem anderen Gerät. Du kannst ihn später auch im Profil exportieren."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connecté"
+            "value": "Enregistrez votre clé pour accéder à ce compte sur un autre appareil. Vous pourrez aussi l’exporter depuis le profil."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ログイン済み"
+            "value": "別の端末でログインするためにキーを保存してください。後でプロフィールからもエクスポートできます。"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вход выполнен"
+            "value": "Сохраните ключ для входа на другом устройстве. Позже его можно экспортировать из профиля."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已登录"
+            "value": "保存密钥以便在其他设备登录。以后也可从个人资料导出。"
           }
         }
       },
-      "comment": "Android resource: auth_logged_in"
+      "comment": "Android resource: auth_legacy_key_issued_warning"
+    },
+    "android.auth_lost_key": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I lost my key"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perdi minha chave"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perdí mi clave"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich habe meinen Schlüssel verloren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "J’ai perdu ma clé"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーを紛失した"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Я потерял ключ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我丢失了密钥"
+          }
+        }
+      },
+      "comment": "Android resource: auth_lost_key"
+    },
+    "android.auth_name_helper": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your name is public on the forum and in comments."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu nome aparece publicamente no fórum e nos comentários."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu nombre es público en el foro y en los comentarios."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein Name ist im Forum und in Kommentaren öffentlich sichtbar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre nom est public sur le forum et dans les commentaires."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前はフォーラムとコメントで公開されます。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваше имя видно на форуме и в комментариях."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的名称会在论坛和评论中公开显示。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_name_helper"
+    },
+    "android.auth_new_key_copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your previous key stopped working. Other devices were signed out."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua chave anterior deixou de funcionar. Os outros aparelhos foram desconectados."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu clave anterior dejó de funcionar. Se cerró la sesión en los demás dispositivos."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein alter Schlüssel ist ungültig. Andere Geräte wurden abgemeldet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre ancienne clé est désactivée. Les autres appareils ont été déconnectés."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前のキーは無効になりました。他の端末はログアウトしました。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Старый ключ больше не действует. Сеансы на других устройствах завершены."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旧密钥已失效，其他设备已退出登录。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_new_key_copy"
+    },
+    "android.auth_new_key_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your new account key"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua nova chave de conta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu nueva clave de cuenta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein neuer Kontoschlüssel"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre nouvelle clé de compte"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいアカウントキー"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваш новый ключ аккаунта"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的新账户密钥"
+          }
+        }
+      },
+      "comment": "Android resource: auth_new_key_title"
+    },
+    "android.auth_protect_copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a public name and a recovery email so you can get back in if you lose your key."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicione um nome público e um e-mail de recuperação para entrar se perder sua chave."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade un nombre público y un correo de recuperación para volver a entrar si pierdes tu clave."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füge einen öffentlichen Namen und eine Wiederherstellungsadresse hinzu, um auch nach einem Schlüsselverlust wieder Zugriff zu erhalten."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez un nom public et un e-mail de récupération pour retrouver votre accès si vous perdez votre clé."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公開名と復旧用メールを追加すると、キーを紛失してもアカウントに戻れます。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавьте публичное имя и почту для восстановления на случай потери ключа."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加公开名称和恢复用电子邮箱，以便在密钥丢失后恢复访问。"
+          }
+        }
+      },
+      "comment": "Android resource: auth_protect_copy"
+    },
+    "android.auth_public_name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Public name"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome público"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre público"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffentlicher Name"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom public"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公開名"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Публичное имя"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公开名称"
+          }
+        }
+      },
+      "comment": "Android resource: auth_public_name"
+    },
+    "android.auth_reauthenticate_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in again to confirm"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre novamente para confirmar"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a iniciar sesión para confirmar"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zur Bestätigung erneut anmelden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnectez-vous pour confirmer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認のため再度ログイン"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите снова для подтверждения"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请重新登录以确认"
+          }
+        }
+      },
+      "comment": "Android resource: auth_reauthenticate_title"
+    },
+    "android.auth_recovery_email_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery email"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-mail de recuperação"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correo de recuperación"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungsadresse"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-mail de récupération"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復旧用メールアドレス"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почта для восстановления"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复用电子邮箱"
+          }
+        }
+      },
+      "comment": "Android resource: auth_recovery_email_title"
+    },
+    "android.auth_resend_after": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend in %1$lld s"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reenviar em %1$lld s"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reenviar en %1$lld s"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut senden in %1$lld s"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renvoyer dans %1$lld s"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 秒後に再送信"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повтор через %1$lld с"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 秒后可重新发送"
+          }
+        }
+      },
+      "comment": "Android resource: auth_resend_after"
+    },
+    "android.auth_resend_code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reenviar código"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reenviar código"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code erneut senden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renvoyer le code"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードを再送信"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправить код повторно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新发送验证码"
+          }
+        }
+      },
+      "comment": "Android resource: auth_resend_code"
+    },
+    "android.auth_save_name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save name"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar nome"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar nombre"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen speichern"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer le nom"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前を保存"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить имя"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存名称"
+          }
+        }
+      },
+      "comment": "Android resource: auth_save_name"
+    },
+    "android.auth_saved_enter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue to abastevo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar para o abastevo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar a abastevo"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiter zu abastevo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuer vers abastevo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevoへ進む"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейти в abastevo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "继续使用abastevo"
+          }
+        }
+      },
+      "comment": "Android resource: auth_saved_enter"
+    },
+    "android.auth_signup_heading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your free account"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua conta gratuita"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu cuenta gratuita"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein kostenloses Konto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre compte gratuit"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無料のアカウント"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваш бесплатный аккаунт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的免费账户"
+          }
+        }
+      },
+      "comment": "Android resource: auth_signup_heading"
     },
     "android.auth_title": {
       "extractionState": "manual",
@@ -8079,6 +9537,60 @@
         }
       },
       "comment": "Android resource: auth_title"
+    },
+    "android.auth_verify_code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar código"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar código"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code prüfen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier le code"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードを確認"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверить код"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证"
+          }
+        }
+      },
+      "comment": "Android resource: auth_verify_code"
     },
     "android.blocked_users_empty_title": {
       "extractionState": "manual",
@@ -37526,6 +39038,60 @@
       },
       "comment": "Android resource: privacy_training_unavailable"
     },
+    "android.profile_account_section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compte"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アカウント"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аккаунт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账户"
+          }
+        }
+      },
+      "comment": "Android resource: profile_account_section"
+    },
     "android.profile_action_sign_in": {
       "extractionState": "manual",
       "localizations": {
@@ -56368,59 +57934,6 @@
         }
       }
     },
-    "auth.account.created": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Free account created. You’re signed in."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conta gratuita criada e conectada."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cuenta gratuita creada. Ya has iniciado sesión."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kostenloses Konto erstellt. Du bist angemeldet."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Compte gratuit créé. Vous êtes connecté."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "無料アカウントを作成し、サインインしました。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бесплатный аккаунт создан. Вы вошли в систему."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "免费账号已创建，您已登录。"
-          }
-        }
-      }
-    },
     "auth.account.shortLabel": {
       "extractionState": "manual",
       "localizations": {
@@ -56523,59 +58036,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "已退出登录并清除私密数据。"
-          }
-        }
-      }
-    },
-    "auth.alias_hint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alias (3 to 20 letters or digits)"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apelido (3 a 20 letras/números)"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alias (de 3 a 20 letras o números)"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alias (3 bis 20 Buchstaben oder Ziffern)"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pseudo (3 à 20 lettres ou chiffres)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "表示名（3〜20文字の英数字）"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Псевдоним (от 3 до 20 букв или цифр)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "昵称（3 到 20 个字母或数字）"
           }
         }
       }
@@ -57057,59 +58517,6 @@
         }
       }
     },
-    "auth.create_with_key": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Create a new account with a key"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gerar nova conta com chave"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Crear una cuenta nueva con clave"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Neues Konto mit Schlüssel erstellen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Créer un nouveau compte avec une clé"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キー付きの新規アカウントを作成"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Создать новую учётную запись с ключом"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用密钥创建新账号"
-          }
-        }
-      }
-    },
     "auth.delete.accepted": {
       "extractionState": "manual",
       "localizations": {
@@ -57269,323 +58676,113 @@
         }
       }
     },
-    "auth.email.codeRequested": {
+    "auth.error.email_login_retired": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "If the email address is valid, we sent a 6-digit code."
+            "value": "Email code sign-in has ended. Sign in with Apple or with your account key."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se o e-mail for válido, enviamos um código de 6 dígitos."
+            "value": "O acesso com código por e-mail foi encerrado. Entre com a Apple ou com sua chave de conta."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Si el correo es válido, enviamos un código de 6 dígitos."
+            "value": "El acceso con código por correo ha terminado. Inicia sesión con Apple o con tu clave de cuenta."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wenn die E-Mail-Adresse gültig ist, haben wir einen 6-stelligen Code gesendet."
+            "value": "Die Anmeldung per E-Mail-Code wurde eingestellt. Melde dich mit Apple oder deinem Kontoschlüssel an."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Si l’adresse e-mail est valide, nous avons envoyé un code à 6 chiffres."
+            "value": "La connexion par code e-mail a pris fin. Connectez-vous avec Apple ou avec votre clé de compte."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "メールアドレスが有効であれば、6 桁のコードを送信しました。"
+            "value": "メールコードによるログインは終了しました。Apple またはアカウントキーでログインしてください。"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Если адрес электронной почты действителен, мы отправили шестизначный код."
+            "value": "Вход по коду из письма больше не поддерживается. Войдите через Apple или с ключом аккаунта."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "如果电子邮件地址有效，我们已发送 6 位验证码。"
+            "value": "电子邮件验证码登录已停止。请使用 Apple 或账户密钥登录。"
           }
         }
-      }
+      },
+      "comment": "Shown when the retired passwordless email login answers 410 account.email-login-retired."
     },
-    "auth.email.connect": {
+    "auth.error.throttled": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connect to request a code by email."
+            "value": "Too many attempts. Try again later."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conecte-se para solicitar código por e-mail."
+            "value": "Muitas tentativas. Tente novamente mais tarde."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conéctate para solicitar un código por correo."
+            "value": "Demasiados intentos. Inténtalo de nuevo más tarde."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stelle eine Verbindung her, um einen Code per E-Mail anzufordern."
+            "value": "Zu viele Versuche. Versuche es später erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connectez-vous pour demander un code par e-mail."
+            "value": "Trop de tentatives. Réessayez plus tard."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "メールでコードを受け取るにはインターネットに接続してください。"
+            "value": "試行回数が多すぎます。後でもう一度お試しください。"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Подключитесь к интернету, чтобы запросить код по электронной почте."
+            "value": "Слишком много попыток. Повторите позже."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请联网后通过电子邮件申请验证码。"
+            "value": "尝试次数过多。请稍后重试。"
           }
         }
-      }
-    },
-    "auth.email_code": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Email and six-digit code"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "E-mail + Código de 6 dígitos"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Correo y código de seis dígitos"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "E-Mail und sechsstelliger Code"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "E-mail et code à six chiffres"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "メールアドレスと6桁のコード"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Почта и шестизначный код"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "电子邮件和六位数验证码"
-          }
-        }
-      }
-    },
-    "auth.email_example": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "seu@email.com"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "tu@ejemplo.com"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "du@beispiel.de"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "vous@exemple.fr"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
-          }
-        }
-      }
-    },
-    "auth.key.connect": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connect to create your account and receive a key."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conecte-se para criar sua conta e receber a chave."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conéctate para crear tu cuenta y recibir una clave."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stelle eine Verbindung her, um dein Konto zu erstellen und einen Schlüssel zu erhalten."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connectez-vous pour créer votre compte et recevoir une clé."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "アカウントを作成してキーを受け取るにはインターネットに接続してください。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Подключитесь к интернету, чтобы создать аккаунт и получить ключ."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "请联网后创建账号并接收账号密钥。"
-          }
-        }
-      }
-    },
-    "auth.key.created": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your key is ready. Save it before continuing."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chave emitida. Guarde-a antes de prosseguir."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu clave está lista. Guárdala antes de continuar."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dein Schlüssel ist bereit. Speichere ihn, bevor du fortfährst."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre clé est prête. Enregistrez-la avant de continuer."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キーが発行されました。続行する前に保存してください。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ваш ключ готов. Сохраните его перед продолжением."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "密钥已生成，请保存后再继续。"
-          }
-        }
-      }
+      },
+      "comment": "Account API budget refusals (429 admission-exhausted or session-budget-exhausted)."
     },
     "auth.key.restored": {
       "extractionState": "manual",
@@ -57636,165 +58833,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "已使用密钥恢复访问。"
-          }
-        }
-      }
-    },
-    "auth.key_save_now": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unique key (save it now): %1$@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chave única (salve agora): %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Clave única (guárdala ahora): %1$@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Einmaliger Schlüssel (jetzt speichern): %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Clé unique (enregistrez-la maintenant) : %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "一意のキー（今すぐ保存）：%1$@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Уникальный ключ (сохраните его сейчас): %1$@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "唯一密钥（请立即保存）：%1$@"
-          }
-        }
-      }
-    },
-    "auth.key_sign_in_hint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Or sign in with an existing key"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ou entrar com chave existente"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O inicia sesión con una clave existente"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Oder mit einem vorhandenen Schlüssel anmelden"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ou connectez-vous avec une clé existante"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "既存のキーでサインインすることもできます"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Или войдите с имеющимся ключом"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "或使用现有密钥登录"
-          }
-        }
-      }
-    },
-    "auth.recovery_account": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anonymous Account with Recovery Key"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conta Anônima com Chave de Recuperação"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cuenta anónima con clave de recuperación"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anonymes Konto mit Wiederherstellungsschlüssel"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Compte anonyme avec clé de récupération"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "リカバリキーを使う匿名アカウント"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Анонимная учётная запись с ключом восстановления"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用恢复密钥的匿名账号"
           }
         }
       }
@@ -57901,59 +58939,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "状态"
-          }
-        }
-      }
-    },
-    "auth.verify_code": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verify code and sign in"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Validar código e entrar"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verificar código e iniciar sesión"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Code prüfen und anmelden"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vérifier le code et se connecter"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "コードを確認してサインイン"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Проверить код и войти"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "验证并登录"
           }
         }
       }
