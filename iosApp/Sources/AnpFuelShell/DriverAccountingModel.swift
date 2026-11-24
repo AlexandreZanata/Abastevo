@@ -132,9 +132,25 @@ final class DriverAccountingModel: ObservableObject {
             try await host.communityGateway.registerDriverVehicle(vehicle, scope: requestScope)
             guard self.requestScope == requestScope, !Task.isCancelled else { return }
             notice = String(localized: "driver.sync.vehicle_registered")
+            resumeAfterEnrollment(vehicleId: vehicle.id)
         } catch {
             guard self.requestScope == requestScope, !Task.isCancelled else { return }
             notice = Self.vehicleRefusal(error)
+        }
+    }
+
+    /// Entries for this vehicle that waited on the server's 403 retry once the vehicle is enrolled.
+    private func resumeAfterEnrollment(vehicleId: String) {
+        guard let partition else { return }
+        do {
+            let resumed = try outbox.resumeAfterVehicleEnrollment(
+                vehicleId: vehicleId, in: partition, nowMillis: LedgerCoordinator.nowMillis()
+            )
+            guard resumed > 0 else { return }
+            refresh()
+            dispatch()
+        } catch {
+            notice = String(localized: "driver.sync.storage")
         }
     }
 
@@ -215,6 +231,12 @@ final class DriverAccountingModel: ObservableObject {
             if status == 403 { return String(localized: "ledger.refusal.capability") }
             if status == 401 { return String(localized: "ledger.refusal.sign_in_again") }
             if status == 409 { return String(localized: "driver.sync.conflict") }
+        }
+        if (error as? CommunityWriteError) == CommunityWriteError.driverVehicleTankPrecision {
+            return String(
+                localized: "driver.sync.vehicle_tank_precision",
+                defaultValue: "Cloud vehicles store the tank capacity in steps of 10 mL (0.01 L). Edit the vehicle’s tank capacity in the garage, then register it again."
+            )
         }
         if (error as? CommunityWriteError) == .invalid("cloud.invalid") {
             return String(localized: "driver.sync.vehicle_invalid")

@@ -365,10 +365,10 @@ public struct DriverHubSheetView: View {
                                 Text(String(localized: "driver.balance_unavailable")).font(.headline)
                             }
                             if let metres = s.distanceMetres {
-                                let distance = LedgerFormat.kilometres(metres)
                                 if s.distanceBasis == .gpsEstimate {
-                                    Text(String(localized: "driver.gps_distance_value", defaultValue: "GPS estimate · \(distance)"))
+                                    Text(DriverGpsEstimateText.label(metres: metres, incomplete: s.isGpsEstimateIncomplete))
                                 } else {
+                                    let distance = LedgerFormat.kilometres(metres)
                                     Text(String(localized: "driver.odometer_distance_value", defaultValue: "Odometer · \(distance)"))
                                 }
                             }

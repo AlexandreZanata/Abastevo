@@ -1,5 +1,11 @@
 import Foundation
 
+public extension CommunityWriteError {
+    /// The cloud vehicles dataset keeps the tank capacity in 10 mL steps. The local value is refused
+    /// before any request and never rounded.
+    static let driverVehicleTankPrecision = CommunityWriteError.invalid("cloud.tank-precision")
+}
+
 /// Enrollment for the selected local vehicle required by the driver command owner check.
 public extension CommunityWriteClient {
     func registerDriverVehicle(
@@ -116,8 +122,9 @@ enum DriverCloudVehicleWire {
         }
 
         let tank = vehicle.propulsion == .electric ? 0 : vehicle.tankCapacityMilliLiters
-        if vehicle.propulsion.supportsFuel && (!(10...200_000).contains(tank) || tank % 10 != 0) {
-            throw CommunityWriteError.invalid("cloud.invalid")
+        if vehicle.propulsion.supportsFuel {
+            guard (10...200_000).contains(tank) else { throw CommunityWriteError.invalid("cloud.invalid") }
+            guard tank % 10 == 0 else { throw CommunityWriteError.driverVehicleTankPrecision }
         }
         let propulsion: String
         switch vehicle.propulsion {

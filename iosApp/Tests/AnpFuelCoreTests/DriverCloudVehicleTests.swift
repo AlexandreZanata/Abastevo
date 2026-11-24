@@ -60,4 +60,45 @@ final class DriverCloudVehicleTests: XCTestCase {
         XCTAssertEqual(fields["dataset"] as? String, "vehicles")
         XCTAssertNil(fields["payload"])
     }
+
+    func testTankCapacityOutsideTenMillilitreStepsIsRefusedBeforeAnyRequest() async throws {
+        let id = "00000000-0000-4000-8000-000000000003"
+        let precise = VehicleRecord(id: id, name: "Fixture", propulsion: .flex, primaryFuel: .gasolineRegular,
+                                    tankCapacityMilliLiters: 45_005)
+        XCTAssertThrowsError(try DriverCloudVehicleWire.payload(precise)) {
+            XCTAssertEqual($0 as? CommunityWriteError, CommunityWriteError.driverVehicleTankPrecision)
+        }
+        let plugIn = VehicleRecord(id: id, name: "Fixture", propulsion: .plugInHybrid, primaryFuel: .gasolineRegular,
+                                   tankCapacityMilliLiters: 40_001, batteryCapacityWh: 12_000)
+        XCTAssertThrowsError(try DriverCloudVehicleWire.payload(plugIn)) {
+            XCTAssertEqual($0 as? CommunityWriteError, CommunityWriteError.driverVehicleTankPrecision)
+        }
+        let tiny = VehicleRecord(id: id, name: "Fixture", propulsion: .flex, primaryFuel: .gasolineRegular,
+                                 tankCapacityMilliLiters: 5)
+        XCTAssertThrowsError(try DriverCloudVehicleWire.payload(tiny)) {
+            XCTAssertEqual($0 as? CommunityWriteError, .invalid("cloud.invalid"))
+        }
+        let stepped = VehicleRecord(id: id, name: "Fixture", propulsion: .flex, primaryFuel: .gasolineRegular,
+                                    tankCapacityMilliLiters: 45_010)
+        XCTAssertEqual(try DriverCloudVehicleWire.payload(stepped)["capacity_milli"] as? Int64, 45_010)
+
+        let live = PortableAuth.Session(familyId: family, accountId: account, accessToken: "fixture-cloud-access",
+                                        refreshToken: "fixture-cloud-refresh", accessExpiresAt: 2_000_000_000,
+                                        absoluteExpiresAt: 2_100_000_000)
+        let sessions = StaticSessions(session: live)
+        let exchange = ScriptedExchange { _ in .init(500, "{}") }
+        let transport = SignedRequestTransport(origin: origin, signer: try IdentityVectors.signer(),
+                                               identityStore: IosDeviceIdentityKeychainStore(useMemoryOnly: true),
+                                               exchange: exchange, sessions: sessions)
+        let client = CommunityWriteClient(transport: transport, exchange: exchange, sessions: sessions, photoBytes: { _ in nil })
+        let scope = try XCTUnwrap(AccountDataExportScope(origin: origin, ownerScope: try XCTUnwrap(transport.ownerScope()),
+                                                          sessionFamilyId: family))
+        do {
+            try await client.registerDriverVehicle(precise, scope: scope)
+            XCTFail("a tank capacity outside 10 mL steps must not reach the server")
+        } catch {
+            XCTAssertEqual(error as? CommunityWriteError, CommunityWriteError.driverVehicleTankPrecision)
+        }
+        XCTAssertTrue(exchange.requests.isEmpty)
+    }
 }

@@ -349,10 +349,10 @@ public final class AppStateViewModel: ObservableObject {
             return
         }
         driverAccounting.purge()
-        purgeDriverGps()
+        purgeDriverGps(previousOrigin: snapshot.apiEnvironment.origin)
         navigation.stop()
         navigationDestination = nil
-        purgeVehiclePreferences()
+        purgeVehiclePreferences(previousOrigin: snapshot.apiEnvironment.origin)
         trainingConsent.purgeProtectedState(keepPendingRevocations: true)
         qualityPublicCache.purge()
         qualityReportJournal.purge()
@@ -1140,13 +1140,21 @@ public final class AppStateViewModel: ObservableObject {
         }
     }
 
-    func purgeVehiclePreferences() {
+    /// Logout and account deletion purge the departing owner's photos and preferences at this
+    /// origin; the device's guest keeps its own. An origin switch passes the previous origin and
+    /// purges every owner's scope there.
+    func purgeVehiclePreferences(previousOrigin: String? = nil) {
+        let departing = vehicleEditorContext.scope
         vehicleOwnerGeneration = UUID()
         for vehicle in snapshot.vehicles {
             anpSurvey.cancelVehiclePriceDrop(vehicleId: vehicle.id)
         }
         do {
-            try vehicleDetails.purge()
+            if let previousOrigin {
+                try vehicleDetails.purge(origin: previousOrigin)
+            } else {
+                try vehicleDetails.purge(scope: departing)
+            }
         } catch {
             bannerMessage = VehicleEditorError.storageUnavailable.message
         }
@@ -1187,9 +1195,15 @@ public final class AppStateViewModel: ObservableObject {
         }
     }
 
-    func purgeDriverGps() {
+    /// Logout and account deletion purge the departing owner's GPS checkpoints at this origin; the
+    /// guest's stay. An origin switch passes the previous origin and purges every owner's there.
+    func purgeDriverGps(previousOrigin: String? = nil) {
         do {
-            try driverGPS.purge()
+            if let previousOrigin {
+                try driverGPS.purge(origin: previousOrigin)
+            } else {
+                try driverGPS.purge(scope: driverGpsScope)
+            }
         } catch {
             bannerMessage = String(localized: "driver.gps_storage_unavailable")
         }
@@ -1227,7 +1241,7 @@ public final class AppStateViewModel: ObservableObject {
         let current = snapshot.driverShifts[index]
         let gpsContext = driverGpsContext(shiftId: shiftId)
         let odometer: Int64?
-        let gpsMetres: Int64?
+        let gpsEstimate: DriverGpsShiftEstimate?
         switch distanceBasis {
         case .odometer:
             guard let endOdometerKm, endOdometerKm >= current.startOdometerKm,
@@ -1235,13 +1249,13 @@ public final class AppStateViewModel: ObservableObject {
                 return .failure(AppValidationError(String(localized: "driver.shift.invalidEndOdometer")))
             }
             odometer = endOdometerKm
-            gpsMetres = nil
+            gpsEstimate = nil
         case .gpsEstimate:
-            guard let gpsContext, let recorded = try? driverGPS.finalMetres(gpsContext) else {
+            guard let gpsContext, let recorded = try? driverGPS.finalEstimate(gpsContext) else {
                 return .failure(AppValidationError(String(localized: "driver.gps_distance_required")))
             }
             odometer = nil
-            gpsMetres = recorded
+            gpsEstimate = recorded
         }
         guard [grossCentavos, fuelCentavos].allSatisfy({ (0...PortableMoney.maxRecordCentavos).contains($0) }), minutes > 0 else {
             return .failure(AppValidationError(String(localized: "driver.shift.invalidTotals")))
@@ -1252,8 +1266,8 @@ public final class AppStateViewModel: ObservableObject {
             endedAtLabel: Date().ISO8601Format(), startOdometerKm: current.startOdometerKm, endOdometerKm: odometer,
             grossEarningsCentavos: grossCentavos, fuelCostCentavos: fuelCentavos,
             otherExpenseCentavos: current.otherExpenseCentavos, activeMinutes: minutes, isActive: false,
-            gpsDistanceMetres: gpsMetres, ownerAccountId: scope.accountId, ownerApiOrigin: scope.origin,
-            capturedTimezone: current.capturedTimezone
+            gpsDistanceMetres: gpsEstimate?.metres, ownerAccountId: scope.accountId, ownerApiOrigin: scope.origin,
+            capturedTimezone: current.capturedTimezone, gpsDistanceIncomplete: gpsEstimate?.incomplete
         )
         let result = saveDriverShiftSnapshot(next)
         if case .success = result {

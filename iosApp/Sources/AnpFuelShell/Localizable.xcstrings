@@ -61244,6 +61244,59 @@
         }
       }
     },
+    "driver.gps_distance_incomplete_value": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS estimate (incomplete) · %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimativa por GPS (incompleta) · %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimación por GPS (incompleta) · %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS-Schätzung (unvollständig) · %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimation GPS (incomplète) · %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS 推定（不完全） · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оценка по GPS (неполная) · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS 估算（不完整） · %@"
+          }
+        }
+      }
+    },
     "driver.gps_distance_required": {
       "extractionState": "manual",
       "localizations": {
@@ -66067,6 +66120,59 @@
         }
       }
     },
+    "driver.sync.capability_or_vehicle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium isn’t active, or this vehicle isn’t registered in your cloud vehicles. Registering the vehicle retries its entries. After activating Premium, resume the queue."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Premium não está ativo ou este veículo não está cadastrado nos seus veículos em nuvem. Cadastrar o veículo reenvia os registros dele. Depois de ativar o Premium, retome a fila."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium no está activo o este vehículo no está registrado en tus vehículos en la nube. Registrar el vehículo reintenta sus registros. Después de activar Premium, reanuda la cola."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium ist nicht aktiv oder dieses Fahrzeug ist nicht in deinen Cloud-Fahrzeugen registriert. Wenn du das Fahrzeug registrierst, werden seine Einträge erneut gesendet. Setze die Warteschlange fort, nachdem du Premium aktiviert hast."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium n’est pas actif ou ce véhicule n’est pas inscrit dans vos véhicules cloud. Inscrire le véhicule relance ses entrées. Après avoir activé Premium, reprenez la file d’attente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium が有効でないか、この車両がクラウド車両に登録されていません。車両を登録すると、その記録が再送信されます。Premium を有効にした後は、待機中の同期を再開してください。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium не активен, или этот автомобиль не зарегистрирован в ваших облачных автомобилях. Регистрация автомобиля повторит отправку его записей. После активации Premium возобновите очередь."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium 未生效，或此车辆未登记在你的云端车辆中。登记车辆后会重试其记录。激活 Premium 后，请恢复队列。"
+          }
+        }
+      }
+    },
     "driver.sync.conflict": {
       "extractionState": "manual",
       "localizations": {
@@ -67918,6 +68024,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "服务器已验证所选车辆。"
+          }
+        }
+      }
+    },
+    "driver.sync.vehicle_tank_precision": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloud vehicles store the tank capacity in steps of 10 mL (0.01 L). Edit the vehicle’s tank capacity in the garage, then register it again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os veículos em nuvem guardam a capacidade do tanque em passos de 10 mL (0,01 L). Ajuste a capacidade do tanque na garagem e cadastre o veículo de novo."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los vehículos en la nube guardan la capacidad del tanque en pasos de 10 mL (0,01 L). Ajusta la capacidad del tanque en el garaje y vuelve a registrar el vehículo."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloud-Fahrzeuge speichern die Tankkapazität in Schritten von 10 ml (0,01 l). Passe die Tankkapazität in der Garage an und registriere das Fahrzeug erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les véhicules cloud enregistrent la capacité du réservoir par pas de 10 mL (0,01 L). Modifiez la capacité du réservoir dans le garage, puis inscrivez à nouveau le véhicule."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クラウド車両はタンク容量を 10 mL（0.01 L）単位で保存します。ガレージでタンク容量を修正してから、車両を再登録してください。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Облачные автомобили хранят объём бака с шагом 10 мл (0,01 л). Измените объём бака в гараже и зарегистрируйте автомобиль снова."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "云端车辆以 10 mL（0.01 L）为单位保存油箱容量。请在车库中修改油箱容量，然后重新登记车辆。"
           }
         }
       }

@@ -38,20 +38,40 @@ public struct VehicleEditorDraft: Equatable, Sendable {
     public var stationCNPJ: String?
     public var priceDropAlertEnabled: Bool
 
+    /// A new vehicle starts with empty capacities, as on Android: only typed values are saved.
     public init(existing: VehicleRecord? = nil, preference: VehiclePricePreference? = nil) {
         name = existing?.name ?? ""
         propulsion = existing?.propulsion ?? .flex
         fuel = existing?.primaryFuel ?? .gasolineRegular
         tankLiters = existing.flatMap {
             $0.propulsion.supportsFuel ? LedgerUnits.formatScaled($0.tankCapacityMilliLiters, fractionDigits: 3) : nil
-        } ?? "50"
+        } ?? ""
         batteryKwh = existing.flatMap {
             $0.propulsion.supportsElectric ? LedgerUnits.formatScaled($0.batteryCapacityWh, fractionDigits: 3) : nil
-        } ?? "52"
+        } ?? ""
         connector = existing?.chargeConnector
         stationCNPJ = preference?.stationCNPJ
         priceMode = stationCNPJ == nil ? .cheapest : .specific
         priceDropAlertEnabled = preference?.priceDropAlertEnabled ?? false
+    }
+
+    /// Android `VehicleViewModel.onPropulsionSelected`: a propulsion change clears the inputs the
+    /// new propulsion cannot use, so a capacity the person did not type for it is never saved.
+    public mutating func selectPropulsion(_ next: Propulsion) {
+        guard next != propulsion else { return }
+        switch next {
+        case .electric:
+            tankLiters = ""
+            priceMode = .cheapest
+            stationCNPJ = nil
+            priceDropAlertEnabled = false
+        case .plugInHybrid:
+            break
+        case .combustion, .flex, .hybrid:
+            batteryKwh = ""
+            connector = nil
+        }
+        propulsion = next
     }
 
     public func build(existing: VehicleRecord?) throws -> (vehicle: VehicleRecord, preference: VehiclePricePreference) {
@@ -116,6 +136,55 @@ private func vehicleStorageDigest(_ value: String) -> String {
     SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
 }
 
+/// Each owner/origin folder of a local store carries a digest of its origin, so an origin switch
+/// can remove every owner's folder for that origin without keeping the origin or owner in clear.
+enum LocalScopeOriginTag {
+    static let fileName = "origin-tag"
+    private static let maximumBytes = 128
+
+    static func value(for origin: String) -> Data {
+        Data(vehicleStorageDigest("local-scope-origin-v1\u{0}" + origin).utf8)
+    }
+
+    /// Writes the tag once per folder. The caller owns the folder and its backup exclusion.
+    static func write(origin: String, in folder: URL) throws {
+        let file = folder.appendingPathComponent(fileName)
+        let expected = value(for: origin)
+        if FileManager.default.fileExists(atPath: file.path), (try? Data(contentsOf: file)) == expected { return }
+        #if os(iOS)
+        try expected.write(to: file, options: [.atomic, .completeFileProtection])
+        #else
+        try expected.write(to: file, options: .atomic)
+        #endif
+    }
+
+    /// Removes each child folder of `root` tagged with `origin`, then the listed folders, which
+    /// covers folders written before tagging existed when their owner is known.
+    static func purge(origin: String, in root: URL, alsoRemoving known: [URL]) throws {
+        let manager = FileManager.default
+        if manager.fileExists(atPath: root.path) {
+            let expected = value(for: origin)
+            let children = try manager.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey])
+            for child in children {
+                let tag = child.appendingPathComponent(fileName)
+                guard (try? child.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true,
+                      let size = try? tag.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= maximumBytes,
+                      (try? Data(contentsOf: tag)) == expected else { continue }
+                try remove(child)
+            }
+        }
+        for folder in known { try remove(folder) }
+    }
+
+    private static func remove(_ url: URL) throws {
+        do {
+            try FileManager.default.removeItem(at: url)
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            return
+        }
+    }
+}
+
 public struct VehicleLocalPhoto: Equatable, Sendable {
     public static let inputLimit = 16 * 1024 * 1024
     public static let maximumSide = 1024
@@ -178,7 +247,7 @@ public final class VehicleDetailsStore: @unchecked Sendable {
         case .remove: details.jpeg = nil
         case .replace(let sanitized): details.jpeg = sanitized.jpeg
         }
-        try writeUnlocked(details, to: file)
+        try writeUnlocked(details, to: file, origin: scope.origin)
     }
 
     public func restore(id: String, scope: VehicleLocalScope, details: VehicleLocalDetails) throws {
@@ -188,7 +257,7 @@ public final class VehicleDetailsStore: @unchecked Sendable {
         if details == VehicleLocalDetails() {
             try removeUnlocked(file)
         } else {
-            try writeUnlocked(details, to: file)
+            try writeUnlocked(details, to: file, origin: scope.origin)
         }
     }
 
@@ -203,7 +272,7 @@ public final class VehicleDetailsStore: @unchecked Sendable {
             return false
         }
         details.lastNotifiedWeek = week
-        try writeUnlocked(details, to: file)
+        try writeUnlocked(details, to: file, origin: scope.origin)
         return true
     }
 
@@ -221,15 +290,34 @@ public final class VehicleDetailsStore: @unchecked Sendable {
         }
     }
 
-    public func purge() throws {
+    /// Removes one owner's photos and preferences at one origin (logout or account deletion).
+    /// Other owners, including the device's guest, keep theirs.
+    public func purge(scope: VehicleLocalScope) throws {
         lock.lock()
         defer { lock.unlock() }
-        try removeUnlocked(directory)
+        try removeUnlocked(scopeDirectory(scope))
+    }
+
+    /// Removes every owner's photos and preferences at one origin, the guest's included (origin switch).
+    public func purge(origin: String) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        do {
+            try LocalScopeOriginTag.purge(
+                origin: origin, in: directory,
+                alsoRemoving: [scopeDirectory(VehicleLocalScope(accountId: nil, origin: origin))]
+            )
+        } catch {
+            throw VehicleEditorError.storageUnavailable
+        }
+    }
+
+    private func scopeDirectory(_ scope: VehicleLocalScope) -> URL {
+        directory.appendingPathComponent(scope.storageKey, isDirectory: true)
     }
 
     private func path(_ id: String, scope: VehicleLocalScope) -> URL {
-        directory.appendingPathComponent(scope.storageKey, isDirectory: true)
-            .appendingPathComponent(vehicleStorageDigest(id) + ".json")
+        scopeDirectory(scope).appendingPathComponent(vehicleStorageDigest(id) + ".json")
     }
 
     private func readUnlocked(_ file: URL) throws -> VehicleLocalDetails {
@@ -252,13 +340,14 @@ public final class VehicleDetailsStore: @unchecked Sendable {
         }
     }
 
-    private func writeUnlocked(_ details: VehicleLocalDetails, to file: URL) throws {
+    private func writeUnlocked(_ details: VehicleLocalDetails, to file: URL, origin: String) throws {
         do {
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
             var options = URLResourceValues()
             options.isExcludedFromBackup = true
             var root = directory
             try root.setResourceValues(options)
+            try LocalScopeOriginTag.write(origin: origin, in: file.deletingLastPathComponent())
             let data = try JSONEncoder().encode(details)
             #if os(iOS)
             try data.write(to: file, options: [.atomic, .completeFileProtection])

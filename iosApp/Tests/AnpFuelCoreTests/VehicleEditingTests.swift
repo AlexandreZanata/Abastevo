@@ -109,8 +109,91 @@ final class VehicleEditingTests: XCTestCase {
         try restarted.remove(id: "id")
         XCTAssertEqual(try store.load(id: "id", scope: account), VehicleLocalDetails())
         try store.save(id: "next", scope: account, preference: preference, photo: .replace(image))
-        try store.purge()
+        try store.purge(scope: account)
         XCTAssertEqual(try restarted.load(id: "next", scope: account), VehicleLocalDetails())
+    }
+
+    func testLogoutPurgesOnlyTheDepartingScopeAndAnOriginSwitchEveryOwnerThere() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = VehicleDetailsStore(directory: dir)
+        let image = try VehicleLocalPhoto(sanitizing: syntheticPhoto())
+        let preference = VehiclePricePreference(priceDropAlertEnabled: true)
+        let guest = VehicleLocalScope(accountId: nil, origin: account.origin)
+        let other = VehicleLocalScope(accountId: "account-b", origin: account.origin)
+        let elsewhere = VehicleLocalScope(accountId: account.accountId, origin: "https://other.example")
+        let guestElsewhere = VehicleLocalScope(accountId: nil, origin: "https://other.example")
+        for owner in [account, guest, other, elsewhere, guestElsewhere] {
+            try store.save(id: "vehicle", scope: owner, preference: preference, photo: .replace(image))
+        }
+
+        try store.purge(scope: account)
+        XCTAssertEqual(try store.load(id: "vehicle", scope: account), VehicleLocalDetails())
+        for kept in [guest, other, elsewhere, guestElsewhere] {
+            XCTAssertEqual(try store.load(id: "vehicle", scope: kept).jpeg, image.jpeg)
+        }
+
+        try store.purge(origin: account.origin)
+        XCTAssertEqual(try store.load(id: "vehicle", scope: guest), VehicleLocalDetails())
+        XCTAssertEqual(try store.load(id: "vehicle", scope: other), VehicleLocalDetails())
+        XCTAssertEqual(try store.load(id: "vehicle", scope: elsewhere).jpeg, image.jpeg)
+        XCTAssertTrue(try store.load(id: "vehicle", scope: guestElsewhere).preference.priceDropAlertEnabled)
+
+        try store.remove(id: "vehicle")
+        XCTAssertEqual(try store.load(id: "vehicle", scope: elsewhere), VehicleLocalDetails())
+        XCTAssertEqual(try store.load(id: "vehicle", scope: guestElsewhere), VehicleLocalDetails())
+    }
+
+    func testNewVehicleStartsEmptyAndPropulsionChangeClearsInputsItCannotUse() throws {
+        var draft = VehicleEditorDraft()
+        XCTAssertEqual(draft.tankLiters, "")
+        XCTAssertEqual(draft.batteryKwh, "")
+        draft.name = "Example"
+        XCTAssertThrowsError(try draft.build(existing: nil)) {
+            XCTAssertEqual($0 as? VehicleEditorError, .invalidTank)
+        }
+        draft.tankLiters = "50"
+        draft.priceMode = .specific
+        draft.stationCNPJ = station
+        draft.priceDropAlertEnabled = true
+
+        draft.selectPropulsion(.electric)
+        XCTAssertEqual(draft.propulsion, .electric)
+        XCTAssertEqual(draft.tankLiters, "")
+        XCTAssertEqual(draft.priceMode, .cheapest)
+        XCTAssertNil(draft.stationCNPJ)
+        XCTAssertFalse(draft.priceDropAlertEnabled)
+        XCTAssertThrowsError(try draft.build(existing: nil)) {
+            XCTAssertEqual($0 as? VehicleEditorError, .invalidBattery)
+        }
+
+        draft.batteryKwh = "60"
+        draft.connector = .type2
+        draft.selectPropulsion(.plugInHybrid)
+        XCTAssertEqual(draft.batteryKwh, "60")
+        XCTAssertEqual(draft.connector, .type2)
+        XCTAssertThrowsError(try draft.build(existing: nil)) {
+            XCTAssertEqual($0 as? VehicleEditorError, .invalidTank)
+        }
+
+        draft.tankLiters = "40"
+        draft.selectPropulsion(.combustion)
+        XCTAssertEqual(draft.batteryKwh, "")
+        XCTAssertNil(draft.connector)
+        XCTAssertEqual(draft.tankLiters, "40")
+        draft.selectPropulsion(.combustion)
+        XCTAssertEqual(draft.tankLiters, "40")
+        XCTAssertEqual(try draft.build(existing: nil).vehicle.tankCapacityMilliLiters, 40_000)
+
+        let combustion = VehicleRecord(
+            id: "vehicle-ice", name: "ICE", propulsion: .combustion, primaryFuel: .gasolineRegular, tankCapacityMilliLiters: 45_000
+        )
+        XCTAssertEqual(VehicleEditorDraft(existing: combustion).batteryKwh, "")
+        let electric = VehicleRecord(
+            id: "vehicle-bev", name: "BEV", propulsion: .electric, primaryFuel: .gasolineRegular,
+            tankCapacityMilliLiters: 0, batteryCapacityWh: 64_000
+        )
+        XCTAssertEqual(VehicleEditorDraft(existing: electric).tankLiters, "")
     }
 
     func testSpecificStationAndCheapestFallbackCompareExactFuelOncePerVehicleAndWeek() throws {
@@ -119,6 +202,7 @@ final class VehicleEditingTests: XCTestCase {
         let store = VehicleDetailsStore(directory: dir)
         var draft = VehicleEditorDraft()
         draft.name = "Vehicle"
+        draft.tankLiters = "50"
         draft.priceDropAlertEnabled = true
         draft.priceMode = .specific
         draft.stationCNPJ = station

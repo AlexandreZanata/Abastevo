@@ -1134,8 +1134,13 @@ public struct DriverShiftRecord: Codable, Equatable, Identifiable, Sendable {
     public let ownerAccountId: String?
     public let ownerApiOrigin: String?
     public let capturedTimezone: String?
+    /// Kept with a GPS estimate: a stop and restart or a dropped gap left part of the shift uncovered.
+    public let gpsDistanceIncomplete: Bool?
 
     public var distanceBasis: DriverShiftDistanceBasis { gpsDistanceMetres == nil ? .odometer : .gpsEstimate }
+
+    /// Shifts saved before the marker existed count as incomplete.
+    public var isGpsEstimateIncomplete: Bool { gpsDistanceMetres != nil && (gpsDistanceIncomplete ?? true) }
 
     public var distanceMetres: Int64? {
         let bound = DriverGpsAccumulator.maximumDistanceMetres
@@ -1176,7 +1181,8 @@ public struct DriverShiftRecord: Codable, Equatable, Identifiable, Sendable {
         gpsDistanceMetres: Int64? = nil,
         ownerAccountId: String? = nil,
         ownerApiOrigin: String? = nil,
-        capturedTimezone: String? = nil
+        capturedTimezone: String? = nil,
+        gpsDistanceIncomplete: Bool? = nil
     ) {
         self.id = id
         self.vehicleId = vehicleId
@@ -1193,6 +1199,7 @@ public struct DriverShiftRecord: Codable, Equatable, Identifiable, Sendable {
         self.ownerAccountId = ownerAccountId
         self.ownerApiOrigin = ownerApiOrigin
         self.capturedTimezone = capturedTimezone
+        self.gpsDistanceIncomplete = gpsDistanceMetres == nil ? nil : gpsDistanceIncomplete
     }
 }
 

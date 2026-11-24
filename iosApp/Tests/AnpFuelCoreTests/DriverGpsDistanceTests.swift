@@ -22,15 +22,25 @@ final class DriverGpsDistanceTests: XCTestCase {
         XCTAssertEqual(gps.append(accuracyMetres: 5, sampledAt: 9, receivedAt: 9, simulated: false, segmentMetres: 47.8), .segment)
         XCTAssertEqual(gps.append(accuracyMetres: 5, sampledAt: 10, receivedAt: 10, simulated: false, segmentMetres: 32.8), .segment)
         XCTAssertEqual(gps.distanceMetres, 80)
-        XCTAssertTrue(gps.hasGap)
+        // Refused fixes between accepted ones drop no distance.
+        XCTAssertFalse(gps.hasGap)
     }
 
     func testLongGapAndProviderLossRestartAnchorWithoutFillingMissingMetres() {
         var gps = DriverGpsAccumulator()
+        gps.resetAnchor()
+        XCTAssertFalse(gps.hasGap)
         XCTAssertEqual(gps.append(accuracyMetres: 5, sampledAt: 1, receivedAt: 1, simulated: false, segmentMetres: nil), .anchor)
         XCTAssertEqual(gps.append(accuracyMetres: 5, sampledAt: 2, receivedAt: 2, simulated: false, segmentMetres: 10), .segment)
+        XCTAssertFalse(gps.hasGap)
         XCTAssertEqual(gps.append(accuracyMetres: 5, sampledAt: 20, receivedAt: 20, simulated: false, segmentMetres: 140), .anchor)
         XCTAssertEqual(gps.distanceMetres, 10)
+        XCTAssertTrue(gps.hasGap)
+
+        var lost = DriverGpsAccumulator()
+        XCTAssertEqual(lost.append(accuracyMetres: 5, sampledAt: 1, receivedAt: 1, simulated: false, segmentMetres: nil), .anchor)
+        lost.resetAnchor()
+        XCTAssertTrue(lost.hasGap)
         gps.resetAnchor()
         XCTAssertEqual(gps.append(accuracyMetres: 5, sampledAt: 19, receivedAt: 21, simulated: false, segmentMetres: nil), .rejected)
         XCTAssertEqual(gps.append(accuracyMetres: 5, sampledAt: 21, receivedAt: 21, simulated: false, segmentMetres: nil), .anchor)
@@ -51,8 +61,8 @@ final class DriverGpsDistanceTests: XCTestCase {
         let checkpoint = try XCTUnwrap(try restarted.load(scope: scope, shiftId: "shift"))
         XCTAssertEqual(checkpoint.recordingId, started)
         XCTAssertFalse(checkpoint.stopped)
-        XCTAssertTrue(checkpoint.hasGap)
         XCTAssertNil(checkpoint.acknowledgedMetres)
+        XCTAssertNil(checkpoint.shiftEstimate)
         XCTAssertNil(try restarted.load(scope: scope, shiftId: "different"))
         XCTAssertNil(try restarted.load(scope: DriverGpsScope(accountId: nil, origin: scope.origin), shiftId: "shift"))
         XCTAssertNil(try restarted.load(scope: DriverGpsScope(accountId: "other", origin: scope.origin), shiftId: "shift"))
@@ -64,17 +74,113 @@ final class DriverGpsDistanceTests: XCTestCase {
         XCTAssertThrowsError(try restarted.finish(scope: scope, shiftId: "shift", recordingId: started, metres: -1))
         let stopped = try restarted.finish(scope: scope, shiftId: "shift", recordingId: started, metres: 920)
         XCTAssertEqual(stopped.acknowledgedMetres, 920)
-        XCTAssertTrue(stopped.hasGap)
+        XCTAssertEqual(stopped.shiftEstimate, DriverGpsShiftEstimate(metres: 920, incomplete: false))
         XCTAssertEqual(try restarted.finish(scope: scope, shiftId: "shift", recordingId: started, metres: 999), stopped)
 
         let serialized = try JSONEncoder().encode(stopped)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: serialized) as? [String: Any])
-        XCTAssertEqual(Set(object.keys), ["recordingId", "stopped", "metres"])
+        XCTAssertEqual(Set(object.keys), ["recordingId", "stopped", "metres", "priorRecordings", "gap"])
         try restarted.remove(scope: scope, shiftId: "shift")
         XCTAssertNil(try first.load(scope: scope, shiftId: "shift"))
         try first.begin(scope: scope, shiftId: "next", recordingId: UUID())
-        try first.purge()
+        try first.purge(scope: scope)
         XCTAssertNil(try restarted.load(scope: scope, shiftId: "next"))
+    }
+
+    func testRestartKeepsStoppedMetresAndMarksTheShiftEstimateIncomplete() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = DriverGpsCheckpointStore(directory: directory)
+        let morning = UUID()
+        try store.begin(scope: scope, shiftId: "shift", recordingId: morning)
+        let first = try store.finish(scope: scope, shiftId: "shift", recordingId: morning, metres: 1_000)
+        XCTAssertEqual(first.shiftEstimate, DriverGpsShiftEstimate(metres: 1_000, incomplete: false))
+
+        let afternoon = UUID()
+        let restarted = try store.begin(scope: scope, shiftId: "shift", recordingId: afternoon)
+        XCTAssertEqual(restarted.priorMetres, 1_000)
+        XCTAssertEqual(restarted.priorRecordings, 1)
+        XCTAssertNil(restarted.acknowledgedMetres)
+        XCTAssertEqual(try store.begin(scope: scope, shiftId: "shift", recordingId: afternoon), restarted)
+        let reopened = DriverGpsCheckpointStore(directory: directory)
+        XCTAssertEqual(try reopened.load(scope: scope, shiftId: "shift"), restarted)
+        let second = try reopened.finish(scope: scope, shiftId: "shift", recordingId: afternoon, metres: 500)
+        XCTAssertEqual(second.shiftEstimate, DriverGpsShiftEstimate(metres: 1_500, incomplete: true))
+
+        // An interrupted recording adds nothing; the stopped metres before it survive.
+        try reopened.begin(scope: scope, shiftId: "shift", recordingId: UUID())
+        let evening = UUID()
+        let afterInterruption = try reopened.begin(scope: scope, shiftId: "shift", recordingId: evening)
+        XCTAssertEqual(afterInterruption.priorMetres, 1_500)
+        XCTAssertEqual(afterInterruption.priorRecordings, 3)
+        XCTAssertEqual(afterInterruption.gap, true)
+        let withoutFix = try reopened.finish(scope: scope, shiftId: "shift", recordingId: evening, metres: nil)
+        XCTAssertEqual(withoutFix.shiftEstimate, DriverGpsShiftEstimate(metres: 1_500, incomplete: true))
+
+        // A single recording with a dropped gap is incomplete; one without fixes has no estimate.
+        let gapped = UUID()
+        try store.begin(scope: scope, shiftId: "gapped", recordingId: gapped)
+        let dropped = try store.finish(scope: scope, shiftId: "gapped", recordingId: gapped, metres: 300, droppedGap: true)
+        XCTAssertEqual(dropped.shiftEstimate, DriverGpsShiftEstimate(metres: 300, incomplete: true))
+        let empty = UUID()
+        try store.begin(scope: scope, shiftId: "empty", recordingId: empty)
+        XCTAssertNil(try store.finish(scope: scope, shiftId: "empty", recordingId: empty, metres: nil).shiftEstimate)
+
+        XCTAssertNil(DriverGpsCheckpoint.combined(DriverGpsAccumulator.maximumDistanceMetres, 1))
+        XCTAssertNil(DriverGpsCheckpoint.combined(nil, nil))
+        XCTAssertEqual(DriverGpsCheckpoint.combined(nil, 7), 7)
+    }
+
+    func testFilesWithoutCoverageFieldsStillDecodeAsIncompleteEstimates() throws {
+        let id = UUID()
+        let legacy = Data(#"{"recordingId":"\#(id.uuidString)","stopped":true,"metres":700}"#.utf8)
+        let checkpoint = try JSONDecoder().decode(DriverGpsCheckpoint.self, from: legacy)
+        XCTAssertEqual(checkpoint.shiftEstimate, DriverGpsShiftEstimate(metres: 700, incomplete: true))
+
+        let estimated = DriverShiftRecord(
+            vehicleId: "vehicle", startedAtLabel: "", startOdometerKm: 90, isActive: false, gpsDistanceMetres: 700,
+            ownerAccountId: scope.accountId, ownerApiOrigin: scope.origin, gpsDistanceIncomplete: false
+        )
+        XCTAssertFalse(estimated.isGpsEstimateIncomplete)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(estimated)) as? [String: Any])
+        XCTAssertEqual(object["gpsDistanceIncomplete"] as? Bool, false)
+        object["gpsDistanceIncomplete"] = nil
+        let older = try JSONDecoder().decode(DriverShiftRecord.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertEqual(older.gpsDistanceMetres, 700)
+        XCTAssertTrue(older.isGpsEstimateIncomplete)
+        let odometer = DriverShiftRecord(
+            vehicleId: "vehicle", startedAtLabel: "", startOdometerKm: 90, endOdometerKm: 91, isActive: false,
+            gpsDistanceIncomplete: true
+        )
+        XCTAssertNil(odometer.gpsDistanceIncomplete)
+        XCTAssertFalse(odometer.isGpsEstimateIncomplete)
+    }
+
+    func testLogoutPurgesOnlyTheDepartingScopeAndAnOriginSwitchEveryOwnerThere() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = DriverGpsCheckpointStore(directory: directory)
+        let guest = DriverGpsScope(accountId: nil, origin: scope.origin)
+        let other = DriverGpsScope(accountId: "other-owner", origin: scope.origin)
+        let elsewhere = DriverGpsScope(accountId: scope.accountId, origin: "https://other.example")
+        let guestElsewhere = DriverGpsScope(accountId: nil, origin: "https://other.example")
+        for owner in [scope, guest, other, elsewhere, guestElsewhere] {
+            try store.begin(scope: owner, shiftId: "shift", recordingId: UUID())
+        }
+
+        try store.purge(scope: scope)
+        XCTAssertNil(try store.load(scope: scope, shiftId: "shift"))
+        for kept in [guest, other, elsewhere, guestElsewhere] {
+            XCTAssertNotNil(try store.load(scope: kept, shiftId: "shift"))
+        }
+
+        try store.purge(origin: scope.origin)
+        XCTAssertNil(try store.load(scope: guest, shiftId: "shift"))
+        XCTAssertNil(try store.load(scope: other, shiftId: "shift"))
+        XCTAssertNotNil(try store.load(scope: elsewhere, shiftId: "shift"))
+        XCTAssertNotNil(try store.load(scope: guestElsewhere, shiftId: "shift"))
+        try store.purge(origin: "https://never-used.example")
+        XCTAssertNotNil(try store.load(scope: elsewhere, shiftId: "shift"))
     }
 
     func testRecordedDistanceSourcesRemainDistinctAndLegacyShiftsAreGuestOnly() throws {

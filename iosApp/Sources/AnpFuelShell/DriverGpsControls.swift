@@ -52,13 +52,14 @@ struct DriverGpsControls: View {
             }
         case .interrupted:
             Text(String(localized: "driver.gps_interrupted"))
-        case .stopped(let metres):
+        case .stopped(let metres, let incomplete):
             if let metres {
-                let distance = LedgerFormat.kilometres(metres)
-                Text(String(localized: "driver.gps_distance_value", defaultValue: "GPS estimate · \(distance)"))
-                Text(String(localized: "driver.gps_incomplete"))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text(DriverGpsEstimateText.label(metres: metres, incomplete: incomplete))
+                if incomplete {
+                    Text(String(localized: "driver.gps_incomplete"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 Text(String(localized: "driver.gps_distance_required"))
             }
@@ -69,5 +70,16 @@ struct DriverGpsControls: View {
         case .storageUnavailable:
             Text(String(localized: "driver.gps_storage_unavailable"))
         }
+    }
+}
+
+/// One label for a shift's GPS estimate, live or finished. An incomplete estimate says so.
+enum DriverGpsEstimateText {
+    static func label(metres: Int64, incomplete: Bool) -> String {
+        let distance = LedgerFormat.kilometres(metres)
+        if incomplete {
+            return String(localized: "driver.gps_distance_incomplete_value", defaultValue: "GPS estimate (incomplete) · \(distance)")
+        }
+        return String(localized: "driver.gps_distance_value", defaultValue: "GPS estimate · \(distance)")
     }
 }

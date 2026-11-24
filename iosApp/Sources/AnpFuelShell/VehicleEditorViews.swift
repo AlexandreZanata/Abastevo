@@ -48,7 +48,7 @@ struct VehicleEditorView: View {
             if loaded {
                 Section {
                     TextField(String(localized: "android.vehicle_name_hint"), text: $draft.name)
-                    Picker(String(localized: "android.vehicle_propulsion_label"), selection: $draft.propulsion) {
+                    Picker(String(localized: "android.vehicle_propulsion_label"), selection: propulsionSelection) {
                         ForEach(Propulsion.allCases) { propulsion in
                             Text(propulsion.localizedLabel).tag(propulsion)
                         }
@@ -83,6 +83,11 @@ struct VehicleEditorView: View {
         .onChange(of: viewModel.vehicleEditorContext) { _, _ in
             dismiss()
         }
+    }
+
+    /// A propulsion change clears the inputs it cannot use, as Android's editor does.
+    private var propulsionSelection: Binding<Propulsion> {
+        Binding(get: { draft.propulsion }, set: { draft.selectPropulsion($0) })
     }
 
     @ViewBuilder

@@ -227,9 +227,41 @@ final class DriverAccountingTests: XCTestCase {
         try XCTUnwrap(DriverOutboxScope(accountId: account ?? self.account, origin: origin ?? self.origin))
     }
 
-    private func command(net: Int64 = 36_000, epoch: Int64 = 0) throws -> DriverAccountingCommand {
+    func testVehicleEnrollmentResumesOnlyThatVehiclesRefusedEntries() throws {
+        try directory { url in
+            let outbox = DriverAccountingOutbox(directory: url)
+            let owner = try scope()
+            let otherVehicle = "33333333-3333-4333-8333-333333333333"
+            let refused = try command()
+            let foreign = try command(record: "44444444-4444-4444-8444-444444444444", vehicle: otherVehicle)
+            let signedOut = try command(net: 10, record: "55555555-5555-4555-8555-555555555555")
+            for intent in [refused, foreign, signedOut] { _ = try outbox.enqueue(intent, in: owner, nowMillis: 0) }
+            let outcomes: [String: DriverOutboxOutcome] = [
+                refused.id: .waiting(.capabilityRequired), foreign.id: .waiting(.capabilityRequired),
+                signedOut.id: .waiting(.signInRequired),
+            ]
+            for _ in 0..<3 {
+                let claim = try XCTUnwrap(outbox.claim(in: owner, nowMillis: 1))
+                try outbox.settle(claim, outcome: try XCTUnwrap(outcomes[claim.command.id]), nowMillis: 2)
+            }
+            XCTAssertNil(try outbox.claim(in: owner, nowMillis: 10))
+            XCTAssertThrowsError(try outbox.resumeAfterVehicleEnrollment(vehicleId: "vehicle", in: owner, nowMillis: 10))
+            XCTAssertEqual(try outbox.resumeAfterVehicleEnrollment(vehicleId: vehicleId, in: try scope(account: outsider), nowMillis: 10), 0)
+
+            XCTAssertEqual(try outbox.resumeAfterVehicleEnrollment(vehicleId: vehicleId, in: owner, nowMillis: 10), 1)
+            let retry = try XCTUnwrap(outbox.claim(in: owner, nowMillis: 10))
+            XCTAssertEqual(retry.command.id, refused.id)
+            XCTAssertEqual(retry.command.canonicalPayload, refused.canonicalPayload)
+            XCTAssertNil(try outbox.claim(in: owner, nowMillis: 10))
+            XCTAssertEqual(try outbox.resumeAfterVehicleEnrollment(vehicleId: vehicleId, in: owner, nowMillis: 11), 0)
+        }
+    }
+
+    private func command(
+        net: Int64 = 36_000, epoch: Int64 = 0, record: String? = nil, vehicle: String? = nil
+    ) throws -> DriverAccountingCommand {
         let shift = DriverShiftRecord(
-            id: recordId, vehicleId: vehicleId,
+            id: record ?? recordId, vehicleId: vehicle ?? vehicleId,
             startedAtLabel: "2026-11-24T10:00:00Z", endedAtLabel: "2026-11-24T12:00:00Z",
             startOdometerKm: 1_000, endOdometerKm: 1_080, grossEarningsCentavos: 44_000,
             fuelCostCentavos: 8_000, activeMinutes: 100, isActive: false

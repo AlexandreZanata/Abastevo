@@ -11,7 +11,7 @@ final class DriverGpsCoordinator {
         case requestingPermission
         case recording(metres: Int64?, weakSignal: Bool)
         case interrupted
-        case stopped(metres: Int64?)
+        case stopped(metres: Int64?, incomplete: Bool)
         case permissionDenied
         case unavailable
         case storageUnavailable
@@ -28,8 +28,12 @@ final class DriverGpsCoordinator {
         let context: Context
         let startedAt: Date
         let isCurrent: () -> Bool
+        /// Stopped metres of this shift's earlier recordings.
+        var priorMetres: Int64?
         var accumulator = DriverGpsAccumulator()
         var lastFix: CLLocation?
+
+        var shiftMetres: Int64? { DriverGpsCheckpoint.combined(priorMetres, accumulator.distanceMetres) }
     }
 
     private(set) var phase: Phase = .idle
@@ -49,7 +53,7 @@ final class DriverGpsCoordinator {
     }
 
     var stoppedMetres: Int64? {
-        if case .stopped(let result) = phase { return result }
+        if case .stopped(let result, _) = phase { return result }
         return nil
     }
 
@@ -63,7 +67,9 @@ final class DriverGpsCoordinator {
         }
         do {
             if let checkpoint = try store.load(scope: context.scope, shiftId: context.shiftId) {
-                phase = checkpoint.stopped ? .stopped(metres: checkpoint.acknowledgedMetres) : .interrupted
+                phase = checkpoint.stopped
+                    ? .stopped(metres: checkpoint.acknowledgedMetres, incomplete: checkpoint.isIncomplete)
+                    : .interrupted
             } else {
                 phase = .idle
             }
@@ -74,10 +80,11 @@ final class DriverGpsCoordinator {
 
     func start(_ context: Context, isCurrent: @escaping () -> Bool) {
         guard recording == nil, isCurrent() else { return }
-        let run = Recording(context: context, startedAt: Date(), isCurrent: isCurrent)
+        var run = Recording(context: context, startedAt: Date(), isCurrent: isCurrent)
         shiftId = context.shiftId
         do {
-            try store.begin(scope: context.scope, shiftId: context.shiftId, recordingId: run.id)
+            // A restart keeps the earlier stopped metres and marks the shift's estimate incomplete.
+            run.priorMetres = try store.begin(scope: context.scope, shiftId: context.shiftId, recordingId: run.id).priorMetres
         } catch {
             phase = .storageUnavailable
             return
@@ -100,9 +107,9 @@ final class DriverGpsCoordinator {
         do {
             let checkpoint = try store.finish(
                 scope: run.context.scope, shiftId: run.context.shiftId, recordingId: run.id,
-                metres: run.accumulator.distanceMetres
+                metres: run.accumulator.distanceMetres, droppedGap: run.accumulator.hasGap
             )
-            phase = .stopped(metres: checkpoint.acknowledgedMetres)
+            phase = .stopped(metres: checkpoint.acknowledgedMetres, incomplete: checkpoint.isIncomplete)
         } catch {
             phase = .storageUnavailable
         }
@@ -112,9 +119,10 @@ final class DriverGpsCoordinator {
         if let recording, !recording.isCurrent() { interrupt() }
     }
 
-    func finalMetres(_ context: Context) throws -> Int64? {
+    /// The shift's stopped recordings summed, with the incomplete marker the shift record keeps.
+    func finalEstimate(_ context: Context) throws -> DriverGpsShiftEstimate? {
         guard recording == nil else { return nil }
-        return try store.load(scope: context.scope, shiftId: context.shiftId)?.acknowledgedMetres
+        return try store.load(scope: context.scope, shiftId: context.shiftId)?.shiftEstimate
     }
 
     func completed(scope: DriverGpsScope, shiftId: String) throws {
@@ -126,11 +134,20 @@ final class DriverGpsCoordinator {
         try store.remove(scope: scope, shiftId: shiftId)
     }
 
-    func purge() throws {
+    /// Logout or account deletion: stops collection and removes only the departing owner's checkpoints.
+    func purge(scope: DriverGpsScope) throws {
         detach()
         phase = .idle
         shiftId = nil
-        try store.purge()
+        try store.purge(scope: scope)
+    }
+
+    /// Origin switch: stops collection and removes every owner's checkpoints at the previous origin.
+    func purge(origin: String) throws {
+        detach()
+        phase = .idle
+        shiftId = nil
+        try store.purge(origin: origin)
     }
 
     private func interrupt() {
@@ -153,7 +170,7 @@ final class DriverGpsCoordinator {
         case .requestingPermission:
             phase = .requestingPermission
         case .active:
-            phase = .recording(metres: nil, weakSignal: false)
+            phase = .recording(metres: run.shiftMetres, weakSignal: false)
         case .permissionDenied:
             detach()
             phase = .permissionDenied
@@ -163,7 +180,7 @@ final class DriverGpsCoordinator {
         case .weakSignal:
             recording?.accumulator.resetAnchor()
             recording?.lastFix = nil
-            phase = .recording(metres: run.accumulator.distanceMetres, weakSignal: true)
+            phase = .recording(metres: run.shiftMetres, weakSignal: true)
         case .fix(let fix):
             receiveFix(fix)
         }
@@ -180,6 +197,6 @@ final class DriverGpsCoordinator {
             current.lastFix = fix
             recording = current
         }
-        phase = .recording(metres: current.accumulator.distanceMetres, weakSignal: result == .rejected)
+        phase = .recording(metres: current.shiftMetres, weakSignal: result == .rejected)
     }
 }

@@ -224,6 +224,27 @@ public final class DriverAccountingOutbox: @unchecked Sendable {
         }
     }
 
+    /// After the vehicle's cloud enrollment succeeds, earnings for that vehicle parked by the
+    /// server's 403 (Premium inactive or vehicle not enrolled) retry with their original IDs.
+    /// Returns how many entries resumed. Other waits and parked conflicts stay as they are.
+    @discardableResult
+    public func resumeAfterVehicleEnrollment(vehicleId: String, in scope: DriverOutboxScope, nowMillis: Int64) throws -> Int {
+        guard nowMillis >= 0, nowMillis < Int64.max, DriverAccountingWire.validID(vehicleId) else {
+            throw DriverAccountingError.invalidCommand
+        }
+        return try update(scope) { state in
+            var resumed = 0
+            for index in state.entries.indices where state.entries[index].state == .pending
+                && state.entries[index].nextEligibleMillis == Int64.max
+                && state.entries[index].issue == .capabilityRequired
+                && state.entries[index].command.vehicleId == vehicleId {
+                state.entries[index].nextEligibleMillis = nowMillis
+                resumed += 1
+            }
+            return resumed
+        }
+    }
+
     public func discardConflict(operationId: String, in scope: DriverOutboxScope) throws {
         try update(scope) { state in
             state.entries.removeAll { $0.id == operationId && $0.state == .conflict }

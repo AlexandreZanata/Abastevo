@@ -195,7 +195,12 @@ struct DriverAccountingView: View {
         case .timeout, .unavailable, .invalidReceipt: return String(localized: "driver.sync.unavailable")
         case .rateLimited: return String(localized: "ledger.server.rate_limit")
         case .signInRequired: return String(localized: "ledger.refusal.sign_in_again")
-        case .capabilityRequired: return String(localized: "ledger.refusal.capability")
+        case .capabilityRequired:
+            // The server returns the same 403 for both causes, so the message names both.
+            return String(
+                localized: "driver.sync.capability_or_vehicle",
+                defaultValue: "Premium isn’t active, or this vehicle isn’t registered in your cloud vehicles. Registering the vehicle retries its entries. After activating Premium, resume the queue."
+            )
         case .disabled: return String(localized: "driver.sync.disabled")
         case .conflict: return String(localized: "driver.sync.conflict_reason")
         case .invalid: return String(localized: "driver.sync.rejected")

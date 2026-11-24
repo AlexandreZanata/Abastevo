@@ -505,10 +505,19 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("data.write(to: file, options: [.atomic, .completeFileProtection])", vehicle)
 
         state = (IOS_ROOT / "Sources/AnpFuelShell/AppStateViewModel.swift").read_text(encoding="utf-8")
-        for function in ("setApiEnvironment", "logout", "finishAccountDeletion"):
+        # Logout and account deletion purge the departing owner; an origin switch every owner there.
+        for function, call in (
+            ("setApiEnvironment", "purgeVehiclePreferences(previousOrigin: snapshot.apiEnvironment.origin)"),
+            ("logout", "purgeVehiclePreferences()"),
+            ("finishAccountDeletion", "purgeVehiclePreferences()"),
+        ):
             start = state.index(f"func {function}(")
             end = state.index("\n    }", start)
-            self.assertIn("purgeVehiclePreferences()", state[start:end], function)
+            self.assertIn(call, state[start:end], function)
+        start = state.index("func purgeVehiclePreferences(")
+        end = state.index("\n    }", start)
+        self.assertIn("vehicleDetails.purge(scope: departing)", state[start:end])
+        self.assertNotIn("vehicleDetails.purge()", state)
         start = state.index("func removeVehicles(")
         end = state.index("\n    }", start)
         self.assertIn("vehicleDetails.remove(id: id)", state[start:end])
@@ -533,10 +542,18 @@ class IosAppIntegrityTests(unittest.TestCase):
         state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
         self.assertIn("NavigationCoordinator(location: continuousLocation)", state)
         self.assertIn("DriverGpsCoordinator(location: continuousLocation)", state)
-        for function in ("setApiEnvironment", "logout", "finishAccountDeletion"):
+        # Logout and account deletion purge the departing owner; an origin switch every owner there.
+        for function, call in (
+            ("setApiEnvironment", "purgeDriverGps(previousOrigin: snapshot.apiEnvironment.origin)"),
+            ("logout", "purgeDriverGps()"),
+            ("finishAccountDeletion", "purgeDriverGps()"),
+        ):
             start = state.index(f"func {function}(")
             end = state.index("\n    }", start)
-            self.assertIn("purgeDriverGps()", state[start:end], function)
+            self.assertIn(call, state[start:end], function)
+        start = state.index("func purgeDriverGps(")
+        end = state.index("\n    }", start)
+        self.assertIn("driverGPS.purge(scope: driverGpsScope)", state[start:end])
 
         gps = (shell / "DriverGpsCoordinator.swift").read_text(encoding="utf-8")
         self.assertLess(gps.index("store.begin("), gps.index("location.start(consumer: .driver)"))
