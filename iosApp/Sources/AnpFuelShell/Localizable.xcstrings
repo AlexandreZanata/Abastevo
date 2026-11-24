@@ -11542,7 +11542,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Turnos, ganhos, custos e resultados privados"
+            "value": "Shifts, earnings, costs and private results"
           }
         },
         "pt-BR": {
@@ -11596,7 +11596,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Central do motorista"
+            "value": "Driver hub"
           }
         },
         "pt-BR": {
@@ -36265,19 +36265,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys."
+            "value": "Puede solicitar acceso, corrección, revocación o eliminación sin aceptar el entrenamiento. Escriba a ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brasil, a la atención de Privacidade — Abastevo. Nunca incluya contraseñas ni claves privadas."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys."
+            "value": "Sie können Auskunft, Berichtigung, Widerruf oder Löschung verlangen, ohne dem Training zuzustimmen. Schreiben Sie an ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brasilien, zu Händen von Privacidade — Abastevo. Geben Sie niemals Passwörter oder private Schlüssel an."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys."
+            "value": "Vous pouvez demander l’accès, la rectification, la révocation ou la suppression sans accepter l’entraînement. Écrivez à ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brésil, à l’attention de Privacidade — Abastevo. N’incluez jamais de mots de passe ni de clés privées."
           }
         },
         "ja": {
@@ -36289,13 +36289,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys."
+            "value": "Вы можете запросить доступ, исправление, отзыв согласия или удаление, не соглашаясь на обучение. Напишите по адресу: ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Бразилия, с пометкой «Privacidade — Abastevo». Никогда не указывайте пароли или закрытые ключи."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys."
+            "value": "您无需同意训练即可申请访问、更正、撤回或删除。请致信 ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, 巴西，收件人：Privacidade — Abastevo。切勿包含密码或私钥。"
           }
         }
       },
@@ -104498,49 +104498,49 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abastevo iOS · Version 3.1.18 (build 30118)"
+            "value": "Abastevo iOS · Version %1$@ (build %2$@)"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "abastevo iOS · Versão 3.1.18 (build 30118)"
+            "value": "abastevo iOS · Versão %1$@ (build %2$@)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abastevo iOS · Versión 3.1.18 (compilación 30118)"
+            "value": "Abastevo iOS · Versión %1$@ (compilación %2$@)"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abastevo iOS · Version 3.1.18 (Build 30118)"
+            "value": "Abastevo iOS · Version %1$@ (Build %2$@)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abastevo iOS · Version 3.1.18 (build 30118)"
+            "value": "Abastevo iOS · Version %1$@ (build %2$@)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abastevo iOS · バージョン 3.1.18（ビルド 30118）"
+            "value": "Abastevo iOS · バージョン %1$@（ビルド %2$@）"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abastevo iOS · Версия 3.1.18 (сборка 30118)"
+            "value": "Abastevo iOS · Версия %1$@ (сборка %2$@)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abastevo iOS · 版本 3.1.18（构建 30118）"
+            "value": "Abastevo iOS · 版本 %1$@（构建 %2$@）"
           }
         }
       }

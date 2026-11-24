@@ -596,6 +596,11 @@ public struct SettingsSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
 
+    /// Reads the shipped version from Info.plist so the label never drifts from the build.
+    private func bundleValue(_ key: String) -> String {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "—"
+    }
+
     public var body: some View {
         NavigationStack {
             Form {
@@ -628,7 +633,7 @@ public struct SettingsSheetView: View {
                 }
 
                 Section(String(localized: "settings.ios_version")) {
-                    Text(String(localized: "settings.build_version"))
+                    Text(String(localized: "settings.build_version", defaultValue: "Abastevo iOS · Version \(bundleValue("CFBundleShortVersionString")) (build \(bundleValue("CFBundleVersion")))"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
