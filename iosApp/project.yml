@@ -144,6 +144,22 @@ targets:
         buildPhase: resources
       - path: ../contracts/testdata/quality/enforcement-source-record-valid.json
         buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-grant-stale-terms-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-grant-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-revoke-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-status-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-grant-stale-terms.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-grant-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-status-granted.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-status-off.json
+        buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources
     dependencies:

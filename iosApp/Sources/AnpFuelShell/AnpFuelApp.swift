@@ -40,9 +40,18 @@ public struct AbastevoRootView: View {
             sheetDestination(sheet)
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { viewModel.anpSurvey.automaticSyncIfDue() }
+            if phase == .active {
+                viewModel.configureTrainingConsent()
+                viewModel.trainingConsent.foregrounded()
+                viewModel.anpSurvey.automaticSyncIfDue()
+            } else {
+                viewModel.trainingConsent.backgrounded()
+            }
         }
-        .task { viewModel.anpSurvey.automaticSyncIfDue() }
+        .task {
+            if scenePhase == .active { viewModel.trainingConsent.foregrounded() }
+            viewModel.anpSurvey.automaticSyncIfDue()
+        }
     }
 
     private var mainFourTabShell: some View {
@@ -127,7 +136,7 @@ public struct AbastevoRootView: View {
         case .arcadeGames:
             ArcadeGamesSheetView(viewModel: viewModel)
         case .trainingConsent:
-            TrainingConsentSheetView()
+            TrainingConsentSheetView(model: viewModel.trainingConsent, onSignIn: { viewModel.activeSheet = .auth })
         case .settings:
             SettingsSheetView(viewModel: viewModel)
         case .help:

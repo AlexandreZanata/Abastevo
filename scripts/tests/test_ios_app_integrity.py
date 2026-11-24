@@ -557,11 +557,20 @@ class IosAppIntegrityTests(unittest.TestCase):
         http_text = (IOS_ROOT / "Sources/AnpFuelCore/AbastevoBackendClient.swift").read_text(encoding="utf-8")
         self.assertIn("https://abastevo.com.br", http_text)
         self.assertIn("/v1/community/feed", http_text)
-        profile = (IOS_ROOT / "Sources/AnpFuelShell/ProfileTabViews.swift").read_text(encoding="utf-8")
-        consent = profile.split("public struct TrainingConsentSheetView", 1)[1].split("public struct SettingsSheetView", 1)[0]
-        self.assertIn("TrainingTermsContract.verifiedDigestMatches()", consent)
-        self.assertNotIn("grantTrainingConsent", consent)
-        self.assertNotIn("revokeTrainingConsentImmediately", consent)
+        canonical_text = models_text.split('public static let fullTextPtBr = """\n', 1)[1].split('\n"""', 1)[0]
+        self.assertEqual(canonical_text.encode("utf-8") + b"\n", backend_terms)
+        self.assertIn('Data((fullTextPtBr + "\\n").utf8)', models_text)
+
+        views = (IOS_ROOT / "Sources/AnpFuelShell/TrainingConsentViews.swift").read_text(encoding="utf-8")
+        self.assertIn("TrainingTermsContract.verifiedDigestMatches()", views)
+        self.assertIn("android.privacy_training_unavailable", views)
+        self.assertIn("android.privacy_rights_body", views)
+        consent_wire = (IOS_ROOT / "Sources/AnpFuelCore/TrainingConsent.swift").read_text(encoding="utf-8")
+        self.assertIn('statusPath = "/v1/privacy/training-consent"', consent_wire)
+        self.assertIn("signedOwnerGet(", consent_wire)
+        self.assertIn("requiresDeviceProof: true", consent_wire)
+        for source in IOS_ROOT.glob("Sources/**/*Photo*.swift"):
+            self.assertNotIn("TrainingConsent", source.read_text(encoding="utf-8"), source.name)
 
         energy_fixture = json.loads((ROOT / "contracts/testdata/premium/energy-v1.json").read_text(encoding="utf-8"))
         self.assertEqual(energy_fixture["cases"][0]["expected_wh_per_km"], "800/3")

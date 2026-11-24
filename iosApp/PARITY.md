@@ -77,10 +77,15 @@ Android references: `ChargingDiscoveryRepository`, `ChargingExploreViewModel`, `
 
 Not on iOS: missions, fuelings and fueling authorization notices, trip pause/resume/cancel and events, the return checklist and checklist photos, review-result polling, managed unlock and the encrypted vault generations of Android. Android keeps sealed work after logout; iOS purges it. The XCTest suite replays the canonical, operation, ACK, reference-feed and attachment-session vectors. Acceptance needs a staging run for invitation, selection, enrollment, assets, each command, a refused command, offline retry, receipt upload, LOCK/ERASE and logout purge on a physical iPhone.
 
-## B-BR-IOS-02 / BUC-IOS-02 — Origin and training consent
+## B-BR-IOS-02 / BUC-IOS-02 — Account export, origin and training consent
 
 - Switching origin requires a signed-out client with no retained account key. A session or recovery key issued for one origin must never be forwarded to a different origin.
-- The training screen can show the current terms. Grant, status and revocation require the authenticated owner and observable server receipt under the existing privacy contract. The iOS release keeps data collection off and shows account consent management as unavailable until the signed transport and durable revocation are verified.
+- The server export is a single private JSON document built from current owner reads. Each section records its data, availability and coverage limitations. Walk all supported cursors until completion and keep previously admitted pages if a later page fails. Report capped, device-specific, lookup-only and unavailable sections explicitly. Do not export credentials or use a record identifier to change owners. Bind the export to account, session family and origin until the user shares it. The separate local JSON export stays available.
+- Android has no server account export. iOS reads cloud datasets and devices, Premium history and private ledger records, contributor observations, accessible forum receipts, station claim and suggestion history, the current training preference and blocked accounts. Some owner services expose only exact identifiers, fixed limits or the current device contributor. These limitations must appear in the export manifest.
+- Training preference uses the same device proof as Android, under a live account and exact origin. The reviewed Portuguese terms are hash-bound. A grant requires reading and confirming the current terms and a matching revision receipt. Revocation saves a protected, scope-bound intent before sending an idempotent command. Local pending status does not claim deletion, and retry reuses the same id and revision unless the server has definitively refused the revision. Logout, account deletion and origin switch invalidate receipts, clear the pending journal and fence in-flight reads.
+- The terms endpoint reports that training collection is disabled. The Android per-photo training row has no production caller, and the photo proof transport signs ordinary evidence uploads separately from training preference. iOS keeps training collection and sample uploads off.
+
+Android references: `TrainingConsentHttpClient`, `TrainingConsentViewModel`, `TrainingConsentHostViewModel`, `TrainingConsentRevocationWorker` and `PhotoProofTransport`. Verify grant, stale terms, offline revocation, retry, account and origin switching, and each export section against staging before claiming acceptance.
 
 ## B-BR-IOS-01 / BUC-IOS-01 — Driving routes and offline maps
 

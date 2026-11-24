@@ -510,6 +510,30 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         self.nowMillis = nowMillis
     }
 
+    func ownerSession(
+        expectedScope: String, expectedFamilyId: String? = nil
+    ) async throws -> PortableAuth.Session {
+        guard expectedScope.hasPrefix("account:") else { throw CommunityWriteError.signInRequired }
+        try transport.requireOwnerScope(expectedScope)
+        guard let session = await sessions.liveSession(),
+              expectedScope.hasPrefix("account:\(session.accountId):"),
+              expectedFamilyId == nil || session.familyId == expectedFamilyId else {
+            throw CommunityWriteError.signInRequired
+        }
+        try transport.requireOwnerScope(expectedScope)
+        return session
+    }
+
+    func signedOwnerGet(
+        path: String, expectedScope: String, query: String = "", expectedFamilyId: String? = nil
+    ) async throws -> SignedHttpResponse {
+        let session = try await ownerSession(expectedScope: expectedScope, expectedFamilyId: expectedFamilyId)
+        return try await transport.signedRequest(
+            method: "GET", path: path, query: query, body: nil, expectedOwnerScope: expectedScope,
+            expectedSessionFamilyId: session.familyId
+        )
+    }
+
     func ownerPost(
         path: String,
         expectedScope: String,
@@ -518,12 +542,7 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         requiresSameSessionFamily: Bool = false,
         buildBody: (PortableAuth.Session) -> Data?
     ) async throws -> SignedHttpResponse {
-        guard expectedScope.hasPrefix("account:") else { throw CommunityWriteError.signInRequired }
-        try transport.requireOwnerScope(expectedScope)
-        guard let session = await sessions.liveSession(), expectedScope.hasPrefix("account:\(session.accountId):") else {
-            throw CommunityWriteError.signInRequired
-        }
-        try transport.requireOwnerScope(expectedScope)
+        let session = try await ownerSession(expectedScope: expectedScope)
         guard let body = buildBody(session) else { throw CommunityWriteError.invalid("community.invalid-request") }
         if requiresDeviceProof {
             return try await transport.signedRequest(

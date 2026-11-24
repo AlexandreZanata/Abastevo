@@ -240,23 +240,13 @@ public struct AuthSheetView: View {
 public struct AccountManagementSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
-    @State private var exportedJson: String?
     @State private var confirmDelete = false
 
     public var body: some View {
         NavigationStack {
             List {
                 if let alias = viewModel.signedInAlias {
-                    Section(String(localized: "account.connected_identity")) {
-                        Text(alias)
-                        Button(String(localized: "account.local_export")) {
-                            exportedJson = viewModel.exportMyDataJson()
-                        }
-                        if let json = exportedJson {
-                            Text(String(json.prefix(500)) + (json.count > 500 ? "..." : ""))
-                                .font(.caption2.monospaced())
-                        }
-                    }
+                    AccountExportSection(viewModel: viewModel, alias: alias)
                 }
 
                 CommunityBlockedUsersSection(model: viewModel.communitySafety) {
@@ -546,35 +536,6 @@ public struct ArcadeGamesSheetView: View {
                     }
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "android.feed_close")) { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct TrainingConsentSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    public var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Text(String(localized: "privacy.ocr_unavailable"))
-                }
-                if TrainingTermsContract.verifiedDigestMatches() {
-                    Section(String(localized: "privacy.consent_document")) {
-                        Text(String(localized: "android.privacy_terms_language"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(verbatim: TrainingTermsContract.fullTextPtBr)
-                            .font(.footnote)
-                    }
-                }
-            }
-            .navigationTitle(String(localized: "privacy.ocr_training"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "android.feed_close")) { dismiss() }

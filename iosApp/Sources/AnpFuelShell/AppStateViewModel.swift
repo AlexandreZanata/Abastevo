@@ -27,7 +27,12 @@ public final class AppStateViewModel: ObservableObject {
         didSet { if oldValue != feedSortOrder { reloadCityData() } }
     }
     @Published public var isOfflineSimulation: Bool = false {
-        didSet { if oldValue != isOfflineSimulation { reloadCityData() } }
+        didSet {
+            if oldValue != isOfflineSimulation {
+                configureTrainingConsent()
+                reloadCityData()
+            }
+        }
     }
     @Published public var isSyncing: Bool = false
     @Published public var bannerMessage: String?
@@ -87,7 +92,23 @@ public final class AppStateViewModel: ObservableObject {
     /// Device contributor identity and signed community writes (outbox, receipts, owner history).
     public let identity: IdentityCoordinator
     public let communitySafety = CommunitySafetyViewModel()
+    public let trainingConsent = TrainingConsentModel()
     public var communityGateway: CommunityWriteClient { identity.communityGateway }
+    var accountDataExportScope: AccountDataExportScope? {
+        guard !isOfflineSimulation, snapshot.apiEnvironment != .preview, !isAuthWorking else { return nil }
+        let session: PortableAuth.Session
+        switch authFlow.rehydrate() {
+        case .active(let owner), .needsRefresh(let owner): session = owner
+        case .loggedOut, .pendingKeyAccount: return nil
+        }
+        guard session.accountId == currentAccountIdOrNil,
+              let scope = communityGateway.transport.ownerScope(),
+              scope.hasPrefix("account:\(session.accountId):") else { return nil }
+        return AccountDataExportScope(
+            origin: snapshot.apiEnvironment.origin, ownerScope: scope, sessionFamilyId: session.familyId
+        )
+    }
+
     let qualityPublicCache = QualityPublicCache()
     let qualityReportJournal = QualityReportJournal()
     var qualityReadClient: AbastevoHttpClient { httpClient }
@@ -297,12 +318,14 @@ public final class AppStateViewModel: ObservableObject {
 
     public func setApiEnvironment(_ env: ApiEnvironment) {
         guard env != snapshot.apiEnvironment, canSwitchApiEnvironment else { return }
+        trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
         snapshot.apiEnvironment = env
         httpClient.environment = env
         identity.updateEnvironment(env)
         configureCommunitySafety()
+        configureTrainingConsent()
         enterprise.purgeOwnedData()
         persist()
         evCatalog.originChanged()
@@ -518,6 +541,15 @@ public final class AppStateViewModel: ObservableObject {
             self.signedInAlias = nil
         }
         configureCommunitySafety()
+        configureTrainingConsent()
+    }
+
+    public func configureTrainingConsent() {
+        let client = communityGateway
+        let session = isAuthWorking ? nil : authFlow.currentSession()
+        let ownerScope = session?.accountId == currentAccountIdOrNil && session != nil ? client.transport.ownerScope() : nil
+        trainingConsent.configure(client: client, origin: snapshot.apiEnvironment.origin,
+                                  ownerScope: ownerScope, familyId: session?.familyId, offline: isOfflineSimulation)
     }
 
     private func configureCommunitySafety() {
@@ -699,16 +731,19 @@ public final class AppStateViewModel: ObservableObject {
         apply: @escaping (AppStateViewModel, T) -> Void
     ) {
         isAuthWorking = true
+        configureTrainingConsent()
         Task { [weak self] in
             let result = await AuthBlockingWork.run(work)
             guard let self else { return }
             self.isAuthWorking = false
             apply(self, result)
+            self.configureTrainingConsent()
         }
     }
 
     public func logout() {
         let ownerId = currentAccountIdOrNil
+        trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
         communitySafety.clear()
@@ -742,6 +777,7 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     private func finishAccountDeletion(ownerId: String) {
+        trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
         communitySafety.clear()
