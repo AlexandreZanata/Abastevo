@@ -250,7 +250,7 @@ func (s *PGStore) TryCreateKeyFamily(ctx context.Context, fam domain.SessionFami
 	if err := lockFamilyAdmission(ctx, tx, fam.AccountID); err != nil {
 		return domain.Account{}, err
 	}
-	row, err := q.LockNamedAccount(ctx, id)
+	row, err := q.LockKeyAccount(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Account{}, domain.ErrKeyInvalid
 	}
@@ -279,7 +279,10 @@ func (s *PGStore) TryCreateKeyFamily(ctx context.Context, fam domain.SessionFami
 	if err := tx.Commit(ctx); err != nil {
 		return domain.Account{}, err
 	}
-	return toNamedAccount(row), nil
+	return domain.Account{
+		ID: uuidString(row.ID), Alias: row.Alias, Status: row.Status,
+		CreatedAt: unix(row.CreatedAt), DisplayName: row.DisplayName,
+	}, nil
 }
 
 func lockProfileAccess(ctx context.Context, q *account.Queries, proof domain.SessionProof, fresh bool) (account.Account, error) {

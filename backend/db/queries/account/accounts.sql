@@ -260,6 +260,13 @@ SELECT account_id, username_hash, key_lookup, key_salt, key_hash, created_at
 FROM account_key_credentials
 WHERE username_hash = @username_hash;
 
+-- Prior schemas do not have display_name. Reading the optional value from
+-- the row preserves key login on both sides of migration 000302.
+-- name: LockKeyAccount :one
+SELECT a.id, a.alias, a.status, a.created_at,
+       COALESCE(to_jsonb(a)->>'display_name', '')::text AS display_name
+FROM accounts a WHERE a.id = @id FOR UPDATE;
+
 -- name: FindKeyCredentialByLookup :one
 SELECT account_id, username_hash, key_lookup, key_salt, key_hash, created_at
 FROM account_key_credentials

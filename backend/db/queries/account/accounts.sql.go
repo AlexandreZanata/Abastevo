@@ -972,6 +972,35 @@ func (q *Queries) LockFamily(ctx context.Context, id pgtype.UUID) (AccountSessio
 	return i, err
 }
 
+const lockKeyAccount = `-- name: LockKeyAccount :one
+SELECT a.id, a.alias, a.status, a.created_at,
+       COALESCE(to_jsonb(a)->>'display_name', '')::text AS display_name
+FROM accounts a WHERE a.id = $1 FOR UPDATE
+`
+
+type LockKeyAccountRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	Alias       string             `json:"alias"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	DisplayName string             `json:"display_name"`
+}
+
+// Prior schemas do not have display_name. Reading the optional value from
+// the row preserves key login on both sides of migration 000302.
+func (q *Queries) LockKeyAccount(ctx context.Context, id pgtype.UUID) (LockKeyAccountRow, error) {
+	row := q.db.QueryRow(ctx, lockKeyAccount, id)
+	var i LockKeyAccountRow
+	err := row.Scan(
+		&i.ID,
+		&i.Alias,
+		&i.Status,
+		&i.CreatedAt,
+		&i.DisplayName,
+	)
+	return i, err
+}
+
 const lockLatestCode = `-- name: LockLatestCode :one
 SELECT id, address_hash, salt, hash, issued_at, attempts, consumed_at
 FROM account_email_codes
