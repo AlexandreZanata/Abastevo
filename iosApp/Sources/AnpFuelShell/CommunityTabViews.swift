@@ -582,10 +582,13 @@ public struct ForumFeedSheetView: View {
     @State private var categoryScope: ForumScreenScope?
     @State private var searchText = ""
     @State private var searchQuery = ""
+    @State private var filters = ForumFeedFilters()
+    @State private var showFilters = false
 
     private struct Query: Hashable {
         let scope: ForumScreenScope
         let category: String?
+        let filters: ForumFeedFilters
     }
 
     public init(viewModel: AppStateViewModel) {
@@ -594,7 +597,7 @@ public struct ForumFeedSheetView: View {
     }
 
     private var query: Query {
-        Query(scope: viewModel.forumScreenScope, category: selectedCategory)
+        Query(scope: viewModel.forumScreenScope, category: selectedCategory, filters: filters)
     }
 
     private var visiblePosts: [ForumPublicPost] {
@@ -616,12 +619,26 @@ public struct ForumFeedSheetView: View {
                             Text(category.name).tag(Optional(category.code))
                         }
                     }
+                    HStack {
+                        Button {
+                            showFilters = true
+                        } label: {
+                            Label(
+                                String(localized: "android.map_filters"),
+                                systemImage: filters.narrowsFeed
+                                    ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+                            )
+                        }
+                        if filters.narrowsFeed {
+                            Spacer()
+                            Button(String(localized: "android.occurrence_clear")) { filters = ForumFeedFilters() }
+                        }
+                    }
+                    .buttonStyle(.borderless)
                     if feed.items.isEmpty && isRefreshing {
                         ProgressView()
                     } else if visiblePosts.isEmpty && issue == nil {
-                        Text(searchQuery.isEmpty
-                             ? String(localized: "android.forum_feed_empty_hint")
-                             : String(localized: "forum.search.no_matches"))
+                        Text(emptyFeedText)
                             .foregroundStyle(.secondary)
                     }
                     ForEach(visiblePosts) { post in
@@ -699,6 +716,11 @@ public struct ForumFeedSheetView: View {
             .sheet(isPresented: $showNewDraft) {
                 ForumNewTopicSheetView(viewModel: viewModel, categories: categories)
             }
+            .sheet(isPresented: $showFilters) {
+                ForumFeedFilterSheet(current: filters, city: viewModel.selectedMunicipality) { applied in
+                    filters = applied
+                }
+            }
             .task(id: query.scope) {
                 let scope = query.scope
                 if categoryScope != scope {
@@ -761,7 +783,8 @@ public struct ForumFeedSheetView: View {
             }
         }
         do {
-            let filters = ForumFeedFilters(category: request.category)
+            var filters = request.filters
+            filters.category = request.category
             let page = try await viewModel.socialReadClient().fetchForumFeed(filters: filters, cursor: cursor)
             guard !Task.isCancelled, generation == token, query == request else { return }
             let refs = topicReferences(page.items)
@@ -799,6 +822,17 @@ public struct ForumFeedSheetView: View {
         hidden.formUnion(checked)
     }
 
+    private var emptyFeedText: String {
+        if !searchQuery.isEmpty { return String(localized: "forum.search.no_matches") }
+        if filters.narrowsFeed {
+            return String(
+                localized: "android.forum_feed_empty_filtered_hint",
+                defaultValue: "No publications match these filters. Try changing or clearing them."
+            )
+        }
+        return String(localized: "android.forum_feed_empty_hint")
+    }
+
     private func topicReferences(_ posts: [ForumPublicPost]) -> [CommunitySafetyReference] {
         posts.filter { $0.kind == .topic }.map { ForumDiscussionModel.postReference($0.id) }
     }
@@ -815,11 +849,14 @@ public struct ForumFeedSheetView: View {
 
 @MainActor
 public struct ForumPostDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
     @ObservedObject private var safety: CommunitySafetyViewModel
     @StateObject private var discussion: ForumDiscussionModel
     @State private var editing: ForumPublicComment?
     @State private var removing: ForumPublicComment?
+    @State private var editingTopic: ForumOwnerTopic?
+    @State private var removingTopic = false
     let post: ForumPublicPost
 
     public init(viewModel: AppStateViewModel, post: ForumPublicPost) {
@@ -873,7 +910,12 @@ public struct ForumPostDetailView: View {
         .task(id: viewModel.forumScreenScope) {
             editing = nil
             removing = nil
+            editingTopic = nil
+            removingTopic = false
             await discussion.open(viewModel, reset: true)
+        }
+        .onChange(of: discussion.topicRemoved) { _, removed in
+            if removed { dismiss() }
         }
         .task(id: safety.revision) {
             await discussion.refilter(viewModel)
@@ -887,6 +929,23 @@ public struct ForumPostDetailView: View {
         .onDisappear { discussion.closeScreen() }
         .sheet(item: $editing) { comment in
             ForumEditCommentSheet(viewModel: viewModel, discussion: discussion, comment: comment)
+        }
+        .sheet(item: $editingTopic) { topic in
+            ForumTopicEditSheet(viewModel: viewModel, discussion: discussion, topic: topic)
+        }
+        .alert(
+            String(localized: "android.forum_delete_topic_dialog_title", defaultValue: "Delete topic?"),
+            isPresented: $removingTopic
+        ) {
+            Button(String(localized: "android.forum_delete_confirm"), role: .destructive) {
+                Task { _ = await discussion.removeTopic(host: viewModel) }
+            }
+            Button(String(localized: "android.action_cancel"), role: .cancel) {}
+        } message: {
+            Text(String(
+                localized: "android.forum_delete_topic_dialog_message",
+                defaultValue: "Are you sure you want to delete this topic? This action cannot be undone."
+            ))
         }
         .alert(
             String(localized: "android.forum_delete_dialog_title"),
@@ -919,7 +978,18 @@ public struct ForumPostDetailView: View {
                     Link(source.name, destination: url)
                 }
                 reactionBar(to: .post(post.id), counts: detail.reactionCounts)
-                if post.kind == .topic && !discussion.ownsTopic {
+                if post.kind == .topic, let owned = discussion.ownTopic {
+                    HStack(spacing: 16) {
+                        Button(String(localized: "android.forum_edit_topic", defaultValue: "Edit topic")) {
+                            editingTopic = owned
+                        }
+                        Button(String(localized: "android.forum_delete_topic", defaultValue: "Delete topic"), role: .destructive) {
+                            removingTopic = true
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(discussion.isWriting || discussion.pendingNeedsReview || discussion.pending != nil)
+                } else if post.kind == .topic && !discussion.ownsTopic {
                     CommunitySafetyActions(
                         model: safety, reference: ForumDiscussionModel.postReference(post.id),
                         onSignIn: { viewModel.activeSheet = .auth }

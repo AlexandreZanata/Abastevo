@@ -426,6 +426,11 @@ public final class IdentityCoordinator: ObservableObject {
             return String(localized: "identity.outbox_refused", defaultValue: "Refused by the server · \(codeLabel(item.lastCode))")
         case .expired:
             return String(localized: "identity.outbox_expired", defaultValue: "Expired · \(codeLabel(item.lastCode))")
+        case .unconfirmed:
+            return String(
+                localized: "identity.outbox_unconfirmed",
+                defaultValue: "This might have reached the server. Reload the comments and send it again only if it is missing."
+            )
         }
     }
 

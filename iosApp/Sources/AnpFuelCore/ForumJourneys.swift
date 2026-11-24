@@ -6,12 +6,81 @@ public enum ForumReplySort: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
 }
 
-public struct ForumFeedFilters: Equatable, Sendable {
+/// Forum subject fuels (backend `forum/domain/topics.go`, Android `SubmitForumTopicUseCase.VALID_FUELS`).
+/// These are forum codes, not the price wire codes of `FuelProduct`.
+public enum ForumFuelProduct: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case gasolineRegular = "GASOLINE_REGULAR"
+    case gasolinePremium = "GASOLINE_PREMIUM"
+    case ethanol = "ETHANOL"
+    case dieselS10 = "DIESEL_S10"
+    case dieselS500 = "DIESEL_S500"
+    case glp = "GLP"
+    case gnv = "GNV"
+
+    public var id: String { rawValue }
+
+    /// The matching price product, used only for its localized name.
+    public var fuel: FuelProduct {
+        switch self {
+        case .gasolineRegular: return .gasolineRegular
+        case .gasolinePremium: return .gasolinePremium
+        case .ethanol: return .ethanol
+        case .dieselS10: return .dieselS10
+        case .dieselS500: return .dieselS500
+        case .glp: return .lpgP13
+        case .gnv: return .cng
+        }
+    }
+}
+
+public enum ForumFilterIssue: Error, Equatable, Sendable {
+    case state
+    case municipality
+    case station
+}
+
+/// Region rules shared by feed filters and topic writes (backend `ValidateTopicRegion`, Android `validateRegion`).
+public enum ForumRegionRules {
+    public static let statePrefixes: [String: Int] = [
+        "RO": 11, "AC": 12, "AM": 13, "RR": 14, "PA": 15, "AP": 16, "TO": 17,
+        "MA": 21, "PI": 22, "CE": 23, "RN": 24, "PB": 25, "PE": 26, "AL": 27, "SE": 28, "BA": 29,
+        "MG": 31, "ES": 32, "RJ": 33, "SP": 35,
+        "PR": 41, "SC": 42, "RS": 43,
+        "MS": 50, "MT": 51, "GO": 52, "DF": 53,
+    ]
+
+    public static var states: [String] { statePrefixes.keys.sorted() }
+
+    public static func issue(uf: String?, municipalityIbge: Int?) -> ForumFilterIssue? {
+        var prefix: Int?
+        if let uf {
+            guard let known = statePrefixes[uf] else { return .state }
+            prefix = known
+        }
+        if let municipalityIbge {
+            guard (1_000_000...9_999_999).contains(municipalityIbge) else { return .municipality }
+            if let prefix, municipalityIbge / 100_000 != prefix { return .municipality }
+        }
+        return nil
+    }
+
+    /// Seven ASCII digits, or nil for an empty field.
+    public static func municipality(_ text: String) throws -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard trimmed.utf8.count == 7, trimmed.utf8.allSatisfy({ (48...57).contains($0) }), let code = Int(trimmed) else {
+            throw ForumFilterIssue.municipality
+        }
+        return code
+    }
+}
+
+public struct ForumFeedFilters: Hashable, Sendable {
     public var category: String?
     public var kind: ForumPublicPost.Kind?
     public var uf: String?
     public var municipalityIbge: Int?
-    public var fuelProduct: FuelProduct?
+    public var fuelProduct: ForumFuelProduct?
     public var stationId: String?
 
     public init(
@@ -19,7 +88,7 @@ public struct ForumFeedFilters: Equatable, Sendable {
         kind: ForumPublicPost.Kind? = nil,
         uf: String? = nil,
         municipalityIbge: Int? = nil,
-        fuelProduct: FuelProduct? = nil,
+        fuelProduct: ForumFuelProduct? = nil,
         stationId: String? = nil
     ) {
         self.category = category
@@ -30,7 +99,40 @@ public struct ForumFeedFilters: Equatable, Sendable {
         self.stationId = stationId
     }
 
+    /// Android `ForumFilterDialog.applyFilters`: optional seven-digit IBGE code inside the chosen state
+    /// and an optional station UUID, sent in lowercase.
+    public static func parse(
+        category: String?, kind: ForumPublicPost.Kind?, uf: String?, municipality: String,
+        fuelProduct: ForumFuelProduct?, station: String
+    ) -> Result<ForumFeedFilters, ForumFilterIssue> {
+        let code: Int?
+        do {
+            code = try ForumRegionRules.municipality(municipality)
+        } catch {
+            return .failure(.municipality)
+        }
+        let trimmedStation = station.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filters = ForumFeedFilters(
+            category: category, kind: kind, uf: uf, municipalityIbge: code, fuelProduct: fuelProduct,
+            stationId: trimmedStation.isEmpty ? nil : trimmedStation.lowercased()
+        )
+        if let issue = filters.issue { return .failure(issue) }
+        return .success(filters)
+    }
+
+    /// Kind, region, fuel and station narrow the feed beyond its category.
+    public var narrowsFeed: Bool {
+        kind != nil || uf != nil || municipalityIbge != nil || fuelProduct != nil || stationId != nil
+    }
+
+    public var issue: ForumFilterIssue? {
+        if let regionIssue = ForumRegionRules.issue(uf: uf, municipalityIbge: municipalityIbge) { return regionIssue }
+        if let stationId, !CommunityWire.isUuid(stationId) { return .station }
+        return nil
+    }
+
     public func query(limit: Int, cursor: String?) throws -> [URLQueryItem] {
+        guard issue == nil else { throw HttpClientError.invalidRequest }
         var query = try ForumReadWire.pageQuery(limit: limit, cursor: cursor)
         if let category { query.append(URLQueryItem(name: "category", value: category)) }
         if let kind { query.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
@@ -38,11 +140,8 @@ public struct ForumFeedFilters: Equatable, Sendable {
         if let municipalityIbge {
             query.append(URLQueryItem(name: "municipality_ibge", value: String(municipalityIbge)))
         }
-        if let fuelProduct { query.append(URLQueryItem(name: "fuel_product", value: fuelProduct.wireCode)) }
-        if let stationId {
-            guard CommunityWire.isUuid(stationId) else { throw HttpClientError.invalidRequest }
-            query.append(URLQueryItem(name: "station_id", value: stationId))
-        }
+        if let fuelProduct { query.append(URLQueryItem(name: "fuel_product", value: fuelProduct.rawValue)) }
+        if let stationId { query.append(URLQueryItem(name: "station_id", value: stationId.lowercased())) }
         return query
     }
 }
@@ -220,26 +319,73 @@ public struct ForumOwnReactions: Decodable, Sendable {
     public let comments: [Comment]
 }
 
+/// Editable topic fields (backend `EditTopicRequest`). The public alias is fixed at creation.
+public struct ForumTopicDraft: Equatable, Sendable {
+    public var category: String
+    public var title: String
+    public var bodyText: String
+    public var regionUf: String?
+    public var regionMunicipalityIbge: Int?
+    public var fuelProduct: ForumFuelProduct?
+    public var stationId: String?
+
+    public init(
+        category: String, title: String, bodyText: String, regionUf: String? = nil,
+        regionMunicipalityIbge: Int? = nil, fuelProduct: ForumFuelProduct? = nil, stationId: String? = nil
+    ) {
+        self.category = category
+        self.title = title
+        self.bodyText = bodyText
+        self.regionUf = regionUf
+        self.regionMunicipalityIbge = regionMunicipalityIbge
+        self.fuelProduct = fuelProduct
+        self.stationId = stationId
+    }
+
+    public var isValid: Bool {
+        !category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && CommunityWire.isValidTopic(title: title, body: bodyText)
+            && ForumRegionRules.issue(uf: regionUf, municipalityIbge: regionMunicipalityIbge) == nil
+            && (stationId.map(CommunityWire.isUuid) ?? true)
+    }
+}
+
+/// The owner's private projection of an authored topic (`/v1/forum/owner/read` with `topic_id`).
+public struct ForumOwnerTopic: Equatable, Identifiable, Sendable {
+    public let receipt: ForumWriteReceipt
+    public let draft: ForumTopicDraft
+
+    public var id: String { receipt.id }
+
+    public init(receipt: ForumWriteReceipt, draft: ForumTopicDraft) {
+        self.receipt = receipt
+        self.draft = draft
+    }
+}
+
 public enum ForumCommand: Equatable, Sendable {
     case editComment(commentId: String, revision: Int64, text: String)
     case removeComment(commentId: String, revision: Int64)
     case reaction(target: ForumReactionTarget, reaction: ForumReaction)
+    case editTopic(topicId: String, revision: Int64, draft: ForumTopicDraft)
+    case removeTopic(topicId: String, revision: Int64)
 
     var target: ForumReactionTarget {
         switch self {
         case .editComment(let id, _, _), .removeComment(let id, _): return .comment(id)
+        case .editTopic(let id, _, _), .removeTopic(let id, _): return .post(id)
         case .reaction(let target, _): return target
         }
     }
 
     var path: String {
-        let suffix: String
         switch self {
-        case .editComment: suffix = "edit"
-        case .removeComment: suffix = "remove"
-        case .reaction: suffix = "reaction"
+        case .editComment: return "/v1/forum/comments/" + target.id + "/edit"
+        case .removeComment: return "/v1/forum/comments/" + target.id + "/remove"
+        case .editTopic: return "/v1/forum/topics/" + target.id + "/edit"
+        case .removeTopic: return "/v1/forum/topics/" + target.id + "/remove"
+        case .reaction: return "/v1/forum/" + target.segment + "/" + target.id + "/reaction"
         }
-        return "/v1/forum/" + target.segment + "/" + target.id + "/" + suffix
     }
 
     func body(session: PortableAuth.Session, operationId: String) -> Data? {
@@ -256,9 +402,19 @@ public enum ForumCommand: Equatable, Sendable {
                   !normalized.unicodeScalars.contains("\u{0}") else { return nil }
             body["expected_revision"] = NSNumber(value: revision)
             body["body_text"] = normalized
-        case .removeComment(_, let revision):
+        case .removeComment(_, let revision), .removeTopic(_, let revision):
             guard revision >= 1 else { return nil }
             body["expected_revision"] = NSNumber(value: revision)
+        case .editTopic(_, let revision, let draft):
+            guard revision >= 1, draft.isValid else { return nil }
+            body["expected_revision"] = NSNumber(value: revision)
+            body["category"] = draft.category.trimmingCharacters(in: .whitespacesAndNewlines)
+            body["title"] = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            body["body_text"] = draft.bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let uf = draft.regionUf { body["region_uf"] = uf }
+            if let code = draft.regionMunicipalityIbge { body["region_municipality_ibge"] = NSNumber(value: code) }
+            if let fuel = draft.fuelProduct { body["fuel_product"] = fuel.rawValue }
+            if let station = draft.stationId { body["station_id"] = station.lowercased() }
         case .reaction(_, let reaction):
             body["reaction"] = reaction.rawValue
         }
@@ -269,6 +425,7 @@ public enum ForumCommand: Equatable, Sendable {
 public enum ForumCommandResult: Sendable {
     case comment(ForumWriteReceipt)
     case reaction(ForumReactionReceipt)
+    case topic(ForumWriteReceipt)
 }
 
 /// A screen-local operation ID survives uncertain results until the user retries or leaves the scope.
@@ -327,6 +484,16 @@ extension CommunityWriteClient {
                 throw CommunityWriteError.invalidReceipt
             }
             return .comment(receipt)
+        case .editTopic(_, let revision, _), .removeTopic(_, let revision):
+            guard let receipt = CommunityWire.decodeForumReceipt(response.body, wrapper: "topic"),
+                  receipt.id.caseInsensitiveCompare(command.target.id) == .orderedSame,
+                  receipt.revision > revision else {
+                throw CommunityWriteError.invalidReceipt
+            }
+            if case .removeTopic = command, receipt.publicationState != "REMOVED" {
+                throw CommunityWriteError.invalidReceipt
+            }
+            return .topic(receipt)
         case .reaction(let target, let reaction):
             guard let receipt = try? AbastevoHttpClient.publicDecoder().decode(ForumReactionReceipt.self, from: response.body),
                   receipt.targetId.caseInsensitiveCompare(target.id) == .orderedSame,
@@ -351,6 +518,63 @@ extension CommunityWriteClient {
             throw CommunityWriteError.invalidReceipt
         }
         return receipt
+    }
+
+    /// The editable fields of an owned topic. Android `ForumTopicFormViewModel.loadTopic`.
+    public func forumOwnTopicDetail(topicId: String, expectedScope: String) async throws -> ForumOwnerTopic {
+        guard CommunityWire.isUuid(topicId) else { throw CommunityWriteError.invalid("forum.bad-request") }
+        let response = try await ownerPost(
+            path: "/v1/forum/owner/read", expectedScope: expectedScope, requiresDeviceProof: true
+        ) { session in
+            DeviceIdentityWire.encode([
+                "family_id": session.familyId, "access_token": session.accessToken, "topic_id": topicId,
+            ])
+        }
+        return try Self.decodeForumOwnerTopic(response.body, topicId: topicId)
+    }
+
+    static func decodeForumOwnerTopic(_ data: Data, topicId: String) throws -> ForumOwnerTopic {
+        struct Envelope: Decodable {
+            struct Region: Decodable {
+                let uf: String?
+                let municipalityIbge: Int?
+            }
+            struct Topic: Decodable {
+                let id: String
+                let kind: String
+                let category: String
+                let title: String
+                let bodyText: String
+                let region: Region?
+                let fuelProduct: String?
+                let stationId: String?
+            }
+            let topic: Topic
+        }
+        guard let receipt = CommunityWire.decodeForumReceipt(data, wrapper: "topic"),
+              receipt.id.caseInsensitiveCompare(topicId) == .orderedSame,
+              let topic = try? AbastevoHttpClient.publicDecoder().decode(Envelope.self, from: data).topic,
+              topic.kind == ForumPublicPost.Kind.topic.rawValue else {
+            throw CommunityWriteError.invalidReceipt
+        }
+        let uf = topic.region?.uf.flatMap { $0.isEmpty ? nil : $0 }
+        let fuel: ForumFuelProduct?
+        if let raw = topic.fuelProduct, !raw.isEmpty {
+            guard let known = ForumFuelProduct(rawValue: raw) else { throw CommunityWriteError.invalidReceipt }
+            fuel = known
+        } else {
+            fuel = nil
+        }
+        let draft = ForumTopicDraft(
+            category: topic.category, title: topic.title, bodyText: topic.bodyText, regionUf: uf,
+            regionMunicipalityIbge: topic.region?.municipalityIbge, fuelProduct: fuel,
+            stationId: topic.stationId.flatMap { $0.isEmpty ? nil : $0.lowercased() }
+        )
+        guard ForumRegionRules.issue(uf: draft.regionUf, municipalityIbge: draft.regionMunicipalityIbge) == nil,
+              draft.stationId.map(CommunityWire.isUuid) ?? true else {
+            throw CommunityWriteError.invalidReceipt
+        }
+        return ForumOwnerTopic(receipt: receipt, draft: draft)
     }
 
     public func forumOwnCommentIds(postId: String, expectedScope: String) async throws -> Set<String> {

@@ -194,4 +194,62 @@ final class StationFeedbackJourneyTests: XCTestCase {
         reopened.purge()
         XCTAssertTrue(store.load().isEmpty)
     }
+
+    func testStationCommentCreateSeparatesUnsentFailuresFromUncertainDelivery() async throws {
+        let item = CommunityOutboxItem(
+            id: operationId, kind: .stationComment, ownerScope: "account:fixture:fp:abcdef", origin: origin, createdAtMillis: 0,
+            text: CommunityTextDraft(text: "Fixture comment", stationId: stationId, product: fuel)
+        )
+        let cases: [(URLError, Bool)] = [
+            (URLError(.timedOut), true),
+            (URLError(.networkConnectionLost), true),
+            (URLError(.badServerResponse), true),
+            (URLError(.notConnectedToInternet), false),
+            (URLError(.cannotConnectToHost), false),
+            (URLError(.dnsLookupFailed), false),
+        ]
+        for (failure, uncertain) in cases {
+            let sessions = StaticSessions(session: session)
+            let exchange = FailingFeedbackExchange(failure)
+            let transport = SignedRequestTransport(
+                origin: origin, signer: try IdentityVectors.signer(),
+                identityStore: IosDeviceIdentityKeychainStore(useMemoryOnly: true), exchange: exchange, sessions: sessions
+            )
+            let client = CommunityWriteClient(transport: transport, exchange: exchange, sessions: sessions, photoBytes: { _ in nil })
+            do {
+                _ = try await client.submitStationComment(item)
+                XCTFail("Expected a transport failure for \(failure.code)")
+            } catch {
+                if uncertain {
+                    XCTAssertTrue(error is SignedDeliveryUncertain, "\(failure.code)")
+                    XCTAssertTrue(CommunityOutbox.createOutcomeIsUnknown(error))
+                } else {
+                    XCTAssertEqual(error as? SignedTransportError, .offline, "\(failure.code)")
+                    XCTAssertFalse(CommunityOutbox.createOutcomeIsUnknown(error))
+                }
+            }
+            XCTAssertEqual(exchange.sends, 1)
+        }
+        XCTAssertFalse(SignedRequestProfile.provesRequestNotSent(SignedTransportError.offline))
+    }
+}
+
+/// Fails every exchange with one URL loading error.
+private final class FailingFeedbackExchange: SignedHttpExchange, @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    private let failure: URLError
+
+    init(_ failure: URLError) {
+        self.failure = failure
+    }
+
+    var sends: Int {
+        lock.withLock { count }
+    }
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        lock.withLock { count += 1 }
+        throw failure
+    }
 }

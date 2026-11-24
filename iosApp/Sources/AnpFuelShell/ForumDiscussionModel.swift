@@ -35,6 +35,8 @@ final class ForumDiscussionModel: ObservableObject {
     @Published private(set) var submittedCommentIds: Set<String> = []
     @Published private(set) var ownCommentIds: Set<String> = []
     @Published private(set) var ownsTopic = false
+    @Published private(set) var ownTopic: ForumOwnerTopic?
+    @Published private(set) var topicRemoved = false
     @Published private(set) var ownReactionsKnown = false
     @Published private(set) var actionNotice: String?
     @Published private(set) var isWriting = false
@@ -82,6 +84,8 @@ final class ForumDiscussionModel: ObservableObject {
             submittedCommentIds = []
             ownCommentIds = []
             ownsTopic = false
+            ownTopic = nil
+            topicRemoved = false
             ownReactionsKnown = false
             actionNotice = nil
             isWriting = false
@@ -129,6 +133,7 @@ final class ForumDiscussionModel: ObservableObject {
                 expanded = []
                 ownCommentIds = []
                 ownsTopic = false
+                ownTopic = nil
                 ownReactionsKnown = false
                 replyingTo = nil
                 pending = nil
@@ -269,13 +274,14 @@ final class ForumDiscussionModel: ObservableObject {
         let isTopic = post.kind == .topic
         async let ownComments = try? client.forumOwnCommentIds(postId: postId, expectedScope: owner)
         async let ownReactions = try? client.forumOwnReactions(postId: postId, expectedScope: owner)
-        async let ownTopic: ForumWriteReceipt? = isTopic
-            ? (try? client.forumOwnTopic(topicId: postId, expectedScope: owner))
+        async let ownTopicRead: ForumOwnerTopic? = isTopic
+            ? (try? client.forumOwnTopicDetail(topicId: postId, expectedScope: owner))
             : nil
-        let (ids, reactions, topic) = await (ownComments, ownReactions, ownTopic)
+        let (ids, reactions, topic) = await (ownComments, ownReactions, ownTopicRead)
         guard current(host, scope: scope, token: token), client.transport.ownerScope() == owner else { return }
         ownCommentIds = ids ?? []
         ownsTopic = topic != nil
+        if !isWriting, pending == nil { ownTopic = topic }
         if let reactions, !isWriting, pending == nil {
             ownReactionsKnown = true
             selectedReactions = [.post(post.id): reactions.postReaction]
@@ -316,6 +322,19 @@ final class ForumDiscussionModel: ObservableObject {
         guard owns(comment), revisionIsCurrent(comment) else { return }
         let intent = ForumCommand.removeComment(commentId: comment.id, revision: comment.revision)
         _ = await submit(intent, host: host)
+    }
+
+    /// Android `ForumTopicFormViewModel.submit` in edit mode: the owner revision guards the change.
+    func editTopic(_ draft: ForumTopicDraft, host: AppStateViewModel) async -> Bool {
+        guard post.kind == .topic, let owned = ownTopic, draft.isValid else { return false }
+        let intent = ForumCommand.editTopic(topicId: post.id, revision: owned.receipt.revision, draft: draft)
+        return await submit(intent, host: host)
+    }
+
+    /// Android `ForumTopicFormViewModel.executeRemove` with `RemoveForumTopicUseCase`.
+    func removeTopic(host: AppStateViewModel) async -> Bool {
+        guard post.kind == .topic, let owned = ownTopic else { return false }
+        return await submit(.removeTopic(topicId: post.id, revision: owned.receipt.revision), host: host)
     }
 
     func retry(_ host: AppStateViewModel) async {
@@ -376,14 +395,38 @@ final class ForumDiscussionModel: ObservableObject {
             pending = nil
             switch result {
             case .comment(let receipt):
-                removeFromView(id: receipt.id)
                 if receipt.publicationState == "PENDING_REVIEW" {
                     actionNotice = String(localized: "android.forum_comment_pending_receipt")
+                }
+                if case .editComment = intent {
+                    // Android reloads after an edit. The public list returns the comment again once it is published.
+                    removeFromView(id: receipt.id, remember: false)
+                    isWriting = false
+                    await loadComments(host, reset: true)
+                } else {
+                    removeFromView(id: receipt.id, remember: true)
                 }
             case .reaction(let receipt):
                 if case .reaction(let target, _) = intent {
                     selectedReactions[target] = receipt.reaction
                     savedCounts[target] = receipt.counts
+                }
+            case .topic(let receipt):
+                switch intent {
+                case .editTopic(_, _, let draft):
+                    ownTopic = ForumOwnerTopic(receipt: receipt, draft: draft)
+                    if receipt.publicationState == "PENDING_REVIEW" {
+                        actionNotice = String(
+                            localized: "android.forum_topic_pending_receipt",
+                            defaultValue: "Topic submitted for review. It will be visible once approved by moderation."
+                        )
+                    }
+                case .removeTopic:
+                    ownTopic = nil
+                    ownsTopic = false
+                    topicRemoved = true
+                case .editComment, .removeComment, .reaction:
+                    break
                 }
             }
             return true
@@ -421,6 +464,7 @@ final class ForumDiscussionModel: ObservableObject {
         visibilityGeneration = UUID()
         ownCommentIds = []
         ownsTopic = false
+        ownTopic = nil
         ownReactionsKnown = false
         selectedReactions = [:]
         savedCounts = [:]
@@ -452,14 +496,19 @@ final class ForumDiscussionModel: ObservableObject {
         return nil
     }
 
-    private func removeFromView(id: String) {
+    /// `remember` keeps a removed comment out of later pages; an edited comment may come back once published.
+    private func removeFromView(id: String, remember: Bool) {
         comments.content.remove(id)
         replies[id] = nil
         expanded.remove(id)
         for parent in Array(replies.keys) {
             replies[parent]?.content.remove(id)
         }
-        submittedCommentIds.insert(id.lowercased())
+        if remember {
+            submittedCommentIds.insert(id.lowercased())
+        } else {
+            submittedCommentIds.remove(id.lowercased())
+        }
         if replyingTo?.id == id { replyingTo = nil }
     }
 

@@ -298,4 +298,217 @@ final class ForumJourneysTests: XCTestCase {
         store.purge()
         XCTAssertTrue(CommunityOutboxStore(directory: home).load().isEmpty)
     }
+
+    func testFeedFiltersFollowAndroidDialogAndForumFuelCodes() throws {
+        let station = "D6C74C23-63DB-4C24-A2E5-408CB23BAD26"
+        let all = ForumFeedFilters(
+            category: "FUELS", kind: .topic, uf: "SP", municipalityIbge: 3_550_308,
+            fuelProduct: .gasolinePremium, stationId: station
+        )
+        XCTAssertEqual(try all.query(limit: 20, cursor: nil), [
+            URLQueryItem(name: "limit", value: "20"), URLQueryItem(name: "category", value: "FUELS"),
+            URLQueryItem(name: "kind", value: "TOPIC"), URLQueryItem(name: "uf", value: "SP"),
+            URLQueryItem(name: "municipality_ibge", value: "3550308"),
+            URLQueryItem(name: "fuel_product", value: "GASOLINE_PREMIUM"),
+            URLQueryItem(name: "station_id", value: station.lowercased()),
+        ])
+        XCTAssertEqual(ForumFuelProduct.allCases.map(\.rawValue),
+                       ["GASOLINE_REGULAR", "GASOLINE_PREMIUM", "ETHANOL", "DIESEL_S10", "DIESEL_S500", "GLP", "GNV"])
+        XCTAssertEqual(ForumFuelProduct.gnv.fuel, .cng)
+        XCTAssertEqual(ForumFuelProduct.glp.fuel, .lpgP13)
+        XCTAssertEqual(ForumPublicPost.Kind.allCases.map(\.rawValue), ["EDITORIAL", "NEWS", "TOPIC", "BULLETIN"])
+        XCTAssertTrue(all.narrowsFeed)
+        XCTAssertFalse(ForumFeedFilters(category: "FUELS").narrowsFeed)
+        XCTAssertEqual(ForumRegionRules.states.count, 27)
+
+        XCTAssertEqual(
+            ForumFeedFilters.parse(category: nil, kind: nil, uf: "SP", municipality: " 3550308 ", fuelProduct: .gnv, station: " \(station) "),
+            .success(ForumFeedFilters(uf: "SP", municipalityIbge: 3_550_308, fuelProduct: .gnv, stationId: station.lowercased()))
+        )
+        XCTAssertEqual(
+            ForumFeedFilters.parse(category: nil, kind: .news, uf: nil, municipality: "", fuelProduct: nil, station: ""),
+            .success(ForumFeedFilters(kind: .news))
+        )
+        let refusals: [(String?, String, String, ForumFilterIssue)] = [
+            ("SP", "3304557", "", .municipality),
+            (nil, "123", "", .municipality),
+            (nil, "0123456", "", .municipality),
+            (nil, "35503a8", "", .municipality),
+            ("XX", "", "", .state),
+            (nil, "", "not-a-station", .station),
+        ]
+        for (uf, municipality, station, issue) in refusals {
+            XCTAssertEqual(
+                ForumFeedFilters.parse(category: nil, kind: nil, uf: uf, municipality: municipality, fuelProduct: nil, station: station),
+                .failure(issue), "\(municipality) \(station)"
+            )
+        }
+        XCTAssertThrowsError(try ForumFeedFilters(uf: "SP", municipalityIbge: 3_304_557).query(limit: 20, cursor: nil))
+        XCTAssertNoThrow(try ForumFeedFilters(municipalityIbge: 3_304_557).query(limit: 20, cursor: nil))
+    }
+
+    func testTopicEditAndRemoveMatchSharedVectorsAndRefuseInvalidDrafts() throws {
+        let topicId = parentId
+        let expectedEdit = try object(fixture("forum-edit-topic-valid"))
+        let category = try XCTUnwrap(expectedEdit["category"] as? String)
+        let title = try XCTUnwrap(expectedEdit["title"] as? String)
+        let body = try XCTUnwrap(expectedEdit["body_text"] as? String)
+        let draft = ForumTopicDraft(category: category, title: "  " + title + "  ", bodyText: body + "\n")
+        let edit = ForumCommand.editTopic(topicId: topicId, revision: 1, draft: draft)
+        XCTAssertEqual(edit.path, "/v1/forum/topics/\(topicId)/edit")
+        XCTAssertEqual(try object(edit.body(session: session, operationId: operationId)), expectedEdit)
+
+        let remove = ForumCommand.removeTopic(topicId: topicId, revision: 1)
+        XCTAssertEqual(remove.path, "/v1/forum/topics/\(topicId)/remove")
+        XCTAssertEqual(try object(remove.body(session: session, operationId: operationId)),
+                       try object(fixture("forum-remove-topic-valid")))
+
+        let rejected = try object(fixture("forum-edit-topic-invalid"))
+        let zero = try XCTUnwrap(rejected["expected_revision"] as? Int64)
+        XCTAssertNil(ForumCommand.editTopic(topicId: topicId, revision: zero, draft: draft).body(session: session, operationId: operationId))
+        XCTAssertNil(ForumCommand.removeTopic(topicId: topicId, revision: 0).body(session: session, operationId: operationId))
+        XCTAssertNil(ForumCommand.removeTopic(topicId: "not-a-topic", revision: 1).body(session: session, operationId: operationId))
+
+        let station = "D6C74C23-63DB-4C24-A2E5-408CB23BAD26"
+        let located = ForumTopicDraft(
+            category: "FUELS", title: "Title", bodyText: "Body", regionUf: "SP", regionMunicipalityIbge: 3_509_502,
+            fuelProduct: .ethanol, stationId: station
+        )
+        let sent = try object(ForumCommand.editTopic(topicId: topicId, revision: 4, draft: located)
+            .body(session: session, operationId: operationId))
+        XCTAssertEqual(sent["region_uf"] as? String, "SP")
+        XCTAssertEqual(sent["region_municipality_ibge"] as? Int, 3_509_502)
+        XCTAssertEqual(sent["fuel_product"] as? String, "ETHANOL")
+        XCTAssertEqual(sent["station_id"] as? String, station.lowercased())
+        XCTAssertEqual(sent["expected_revision"] as? Int, 4)
+        XCTAssertNil(sent["public_alias"])
+
+        let invalidDrafts = [
+            ForumTopicDraft(category: "", title: "Title", bodyText: "Body"),
+            ForumTopicDraft(category: "FUELS", title: "   ", bodyText: "Body"),
+            ForumTopicDraft(category: "FUELS", title: String(repeating: "t", count: 121), bodyText: "Body"),
+            ForumTopicDraft(category: "FUELS", title: "Title", bodyText: String(repeating: "b", count: 4_001)),
+            ForumTopicDraft(category: "FUELS", title: "Title", bodyText: "Body", regionUf: "SP", regionMunicipalityIbge: 3_304_557),
+            ForumTopicDraft(category: "FUELS", title: "Title", bodyText: "Body", regionUf: "XX"),
+            ForumTopicDraft(category: "FUELS", title: "Title", bodyText: "Body", stationId: "station"),
+        ]
+        for invalid in invalidDrafts {
+            XCTAssertFalse(invalid.isValid)
+            XCTAssertNil(ForumCommand.editTopic(topicId: topicId, revision: 1, draft: invalid)
+                .body(session: session, operationId: operationId))
+        }
+    }
+
+    func testOwnerTopicReadKeepsEditableFieldsAndRefusesUnknownValues() throws {
+        let response = try fixture("forum-owner-topic-response-valid")
+        let topicId = "33333333-3333-4333-8333-333333333333"
+        let owned = try CommunityWriteClient.decodeForumOwnerTopic(response, topicId: topicId)
+        XCTAssertEqual(owned.receipt.revision, 1)
+        XCTAssertEqual(owned.draft.category, "FUELS")
+        XCTAssertEqual(owned.draft.regionUf, "SP")
+        XCTAssertEqual(owned.draft.regionMunicipalityIbge, 3_509_502)
+        XCTAssertEqual(owned.draft.fuelProduct, .ethanol)
+        XCTAssertNil(owned.draft.stationId)
+        XCTAssertTrue(owned.draft.isValid)
+        XCTAssertThrowsError(try CommunityWriteClient.decodeForumOwnerTopic(response, topicId: postId))
+
+        var document = try XCTUnwrap(JSONSerialization.jsonObject(with: response) as? [String: Any])
+        var topic = try XCTUnwrap(document["topic"] as? [String: Any])
+        topic["fuel_product"] = "DIESEL"
+        document["topic"] = topic
+        XCTAssertThrowsError(try CommunityWriteClient.decodeForumOwnerTopic(
+            JSONSerialization.data(withJSONObject: document), topicId: topicId
+        ))
+    }
+
+    func testTopicCommandsUseSignedRoutesAndValidateReceipts() async throws {
+        let topicId = "33333333-3333-4333-8333-333333333333"
+        let replies = TopicReplies()
+        let sessions = StaticSessions(session: session)
+        let exchange = ScriptedExchange { request in
+            FakeIdentityBackend.reply(request) { _ in replies.next() }
+        }
+        let transport = SignedRequestTransport(
+            origin: "https://abastevo.com.br", signer: try IdentityVectors.signer(),
+            identityStore: IosDeviceIdentityKeychainStore(useMemoryOnly: true),
+            exchange: exchange, sessions: sessions, nowEpochSeconds: { 1_763_892_000 }
+        )
+        let client = CommunityWriteClient(transport: transport, exchange: exchange, sessions: sessions, photoBytes: { _ in nil })
+        let scope = try XCTUnwrap(transport.ownerScope())
+        let draft = ForumTopicDraft(category: "FUELS", title: "Title", bodyText: "Body")
+        func receipt(_ revision: Int, _ state: String) -> ScriptedExchange.Reply {
+            .init(200, """
+                {"id":"\(topicId)","kind":"TOPIC","category":"FUELS","title":"Title","body_text":"Body","revision":\(revision),"publication_state":"\(state)","visibility":"VISIBLE","created_at":"2026-11-06T12:00:00Z","updated_at":"2026-11-06T12:00:00Z","replayed":false}
+                """)
+        }
+
+        replies.set(receipt(2, "PENDING_REVIEW"))
+        let edited = try await client.submitForumCommand(
+            ForumPendingCommand(intent: .editTopic(topicId: topicId, revision: 1, draft: draft), operationId: operationId),
+            expectedScope: scope
+        )
+        guard case .topic(let editReceipt) = edited else { return XCTFail("Expected a topic receipt") }
+        XCTAssertEqual(editReceipt.revision, 2)
+
+        replies.set(receipt(2, "REMOVED"))
+        let removed = try await client.submitForumCommand(
+            ForumPendingCommand(intent: .removeTopic(topicId: topicId, revision: 1), operationId: operationId),
+            expectedScope: scope
+        )
+        guard case .topic(let removeReceipt) = removed else { return XCTFail("Expected a topic receipt") }
+        XCTAssertEqual(removeReceipt.publicationState, "REMOVED")
+
+        for (reply, intent) in [
+            (receipt(1, "PENDING_REVIEW"), ForumCommand.editTopic(topicId: topicId, revision: 1, draft: draft)),
+            (receipt(2, "PENDING_REVIEW"), ForumCommand.removeTopic(topicId: topicId, revision: 1)),
+        ] {
+            replies.set(reply)
+            var pending = ForumPendingCommand(intent: intent, operationId: operationId)
+            do {
+                _ = try await client.submitForumCommand(pending, expectedScope: scope)
+                XCTFail("Expected an invalid receipt")
+            } catch {
+                XCTAssertEqual(error as? CommunityWriteError, .invalidReceipt)
+                XCTAssertTrue(pending.retainAfterFailure(error, now: Date()))
+            }
+        }
+
+        replies.set(.init(409, #"{"error":{"code":"forum.revision-mismatch"}}"#))
+        var conflicted = ForumPendingCommand(intent: .editTopic(topicId: topicId, revision: 1, draft: draft), operationId: operationId)
+        do {
+            _ = try await client.submitForumCommand(conflicted, expectedScope: scope)
+            XCTFail("Expected a conflict")
+        } catch {
+            guard case .refused(409, _, _)? = error as? SignedTransportError else { return XCTFail("Expected 409") }
+            XCTAssertFalse(conflicted.retainAfterFailure(error, now: Date()))
+        }
+
+        let topicRequests = exchange.requests.filter { $0.url?.path.hasPrefix("/v1/forum/topics/") == true }
+        XCTAssertEqual(topicRequests.map { $0.url?.path }, [
+            "/v1/forum/topics/\(topicId)/edit", "/v1/forum/topics/\(topicId)/remove",
+            "/v1/forum/topics/\(topicId)/edit", "/v1/forum/topics/\(topicId)/remove",
+            "/v1/forum/topics/\(topicId)/edit",
+        ])
+        for request in topicRequests {
+            XCTAssertNotNil(request.value(forHTTPHeaderField: "Signature"))
+            let body = FakeIdentityBackend.json(request)
+            XCTAssertEqual(body["operation_id"] as? String, operationId)
+            XCTAssertEqual(body["expected_revision"] as? Int, 1)
+            XCTAssertEqual(body["family_id"] as? String, session.familyId)
+        }
+    }
+}
+
+/// One scripted reply for every forum topic request.
+private final class TopicReplies: @unchecked Sendable {
+    private let lock = NSLock()
+    private var reply = ScriptedExchange.Reply(500, "{}")
+
+    func set(_ next: ScriptedExchange.Reply) {
+        lock.withLock { reply = next }
+    }
+
+    func next() -> ScriptedExchange.Reply {
+        lock.withLock { reply }
+    }
 }

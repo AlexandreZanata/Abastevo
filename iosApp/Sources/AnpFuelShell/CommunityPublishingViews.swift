@@ -74,6 +74,11 @@ public struct CommunityOutboxRow: View {
                         viewModel.identity.retryNow(item.id)
                     }
                 }
+                if item.status == .unconfirmed {
+                    Button(String(localized: "identity.outbox_send_again", defaultValue: "Send again")) {
+                        viewModel.identity.retryNow(item.id)
+                    }
+                }
                 if item.status == .draft && viewModel.currentAccountIdOrNil == nil {
                     Button(String(localized: "community.sign_in_publish")) {
                         viewModel.activeSheet = .auth
@@ -119,7 +124,7 @@ public struct CommunityOutboxRow: View {
             return AbastevoTheme.accentLight
         case .refused, .expired:
             return AbastevoTheme.errorRed
-        case .draft, .pending:
+        case .draft, .pending, .unconfirmed:
             return Color.secondary
         }
     }

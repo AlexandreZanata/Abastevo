@@ -72,6 +72,10 @@ targets:
         buildPhase: resources
       - path: ../contracts/testdata/api/forum-edit-comment-valid.json
         buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-topic-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-topic-valid.json
+        buildPhase: resources
       - path: ../contracts/testdata/api/forum-feed-response-valid.json
         buildPhase: resources
       - path: ../contracts/testdata/api/forum-owner-topic-response-valid.json
@@ -79,6 +83,8 @@ targets:
       - path: ../contracts/testdata/api/forum-post-summary-valid.json
         buildPhase: resources
       - path: ../contracts/testdata/api/forum-remove-comment-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-remove-topic-valid.json
         buildPhase: resources
       - path: ../contracts/testdata/api/forum-replies-response-valid.json
         buildPhase: resources

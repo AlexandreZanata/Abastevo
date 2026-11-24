@@ -510,6 +510,11 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         self.nowMillis = nowMillis
     }
 
+    /// The current session after a refresh attempt. Nil means no account is stored or the refresh failed.
+    func refreshedSession() async -> PortableAuth.Session? {
+        await sessions.liveSession()
+    }
+
     func ownerSession(
         expectedScope: String, expectedFamilyId: String? = nil
     ) async throws -> PortableAuth.Session {
@@ -726,7 +731,10 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         ) else {
             throw CommunityWriteError.invalid("feedback.text-invalid")
         }
-        let response = try await transport.plainPost(path: CommunityWire.stationCommentsPath, body: body)
+        // The feedback create carries no operation id, so a connection lost after sending must not look offline.
+        let response = try await transport.plainPost(
+            path: CommunityWire.stationCommentsPath, body: body, reportsUncertainDelivery: true
+        )
         guard let receipt = CommunityWire.decodeStationCommentReceipt(response.body) else {
             throw CommunityWriteError.invalidReceipt
         }

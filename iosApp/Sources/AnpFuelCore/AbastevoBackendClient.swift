@@ -22,7 +22,7 @@ public struct ForumPublicCategory: Decodable, Identifiable, Sendable {
 }
 
 public struct ForumPublicPost: Decodable, Identifiable, Sendable {
-    public enum Kind: String, Decodable, Equatable, Sendable {
+    public enum Kind: String, CaseIterable, Decodable, Equatable, Sendable {
         case editorial = "EDITORIAL"
         case news = "NEWS"
         case topic = "TOPIC"

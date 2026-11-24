@@ -23,6 +23,22 @@ public enum SignedRequestProfile {
     public static let jsonContentType = "application/json"
     public static let proofLifetimeSeconds: Int64 = 120
 
+    /// True when the exchange failed before any request bytes could reach the server:
+    /// no network, no route, name or TLS failure. Timeouts and dropped connections are not proof.
+    public static func provesRequestNotSent(_ error: Error) -> Bool {
+        guard let failure = error as? URLError else { return false }
+        switch failure.code {
+        case .notConnectedToInternet, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed,
+             .internationalRoamingOff, .dataNotAllowed, .callIsActive, .badURL, .unsupportedURL,
+             .appTransportSecurityRequiresSecureConnection, .secureConnectionFailed,
+             .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateNotYetValid,
+             .serverCertificateHasUnknownRoot, .clientCertificateRejected, .clientCertificateRequired:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Host plus explicit port, matching Android `URI.rawAuthority`.
     public static func authority(origin: String) -> String? {
         let trimmed = origin.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -181,6 +197,12 @@ public enum SignedTransportError: Error, Equatable, Sendable {
     case oversizedResponse
     case invalidResponse
     case refused(status: Int, code: String?, retryAfterSeconds: Int64?)
+}
+
+/// The request may have reached the server: the connection failed after it was handed to the network.
+/// Only callers that cannot replay a create safely opt in; everyone else receives `.offline`.
+public struct SignedDeliveryUncertain: Error, Equatable, Sendable {
+    public init() {}
 }
 
 public struct SignedHttpResponse: Equatable, Sendable {
@@ -408,9 +430,11 @@ public actor SignedRequestTransport {
     }
 
     /// Unsigned JSON POST for session-only routes (station comments and votes).
+    /// `reportsUncertainDelivery` turns a connection failure that does not prove the request stayed
+    /// local into `SignedDeliveryUncertain` instead of `.offline`.
     public func plainPost(
         path: String, body: Data, idempotencyKey: String? = nil, expectedOwnerScope: String? = nil,
-        expectedSessionFamilyId: String? = nil
+        expectedSessionFamilyId: String? = nil, reportsUncertainDelivery: Bool = false
     ) async throws -> SignedHttpResponse {
         guard SignedRequestProfile.isSignablePath(path) else { throw SignedTransportError.invalidRequest }
         if let key = idempotencyKey, key.isEmpty || key.count > 128 {
@@ -421,7 +445,10 @@ public actor SignedRequestTransport {
         let headers = idempotencyKey.map { [SignedRequestProfile.headerIdempotencyKey: $0] } ?? [:]
         let response: SignedHttpResponse
         do {
-            response = try await send(method: "POST", path: path, query: "", body: body, headers: headers)
+            response = try await send(
+                method: "POST", path: path, query: "", body: body, headers: headers,
+                reportsUncertainDelivery: reportsUncertainDelivery
+            )
         } catch {
             try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
             throw error
@@ -522,7 +549,8 @@ public actor SignedRequestTransport {
         path: String,
         query: String,
         body: Data?,
-        headers: [String: String]
+        headers: [String: String],
+        reportsUncertainDelivery: Bool = false
     ) async throws -> SignedHttpResponse {
         var text = origin + path
         if !query.isEmpty {
@@ -546,6 +574,9 @@ public actor SignedRequestTransport {
         } catch let error as SignedTransportError {
             throw error
         } catch {
+            if reportsUncertainDelivery, !SignedRequestProfile.provesRequestNotSent(error) {
+                throw SignedDeliveryUncertain()
+            }
             throw SignedTransportError.offline
         }
         let (data, http) = result

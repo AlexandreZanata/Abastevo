@@ -38,11 +38,12 @@ public final class QualityReportJournal: @unchecked Sendable {
         try lock.withLock { try read(scope: scope, tick: millis(now))?.command }
     }
 
+    /// Every pending command offers an explicit retry (Android `QualityReportsViewModel.retry`).
+    /// Only a server delay, backoff or a live lease postpones it.
     public func retryAvailableAt(scope: QualityReportScope, now: Date = Date()) throws -> Date? {
         try lock.withLock {
-            guard let item = try read(scope: scope, tick: millis(now)), item.attempts < PortableOutbox.maxDispatchAttempts,
-                  item.eligibleAt < item.expiresAt else { return nil }
-            let at = max(item.eligibleAt, item.claimUntil ?? 0)
+            guard let item = try read(scope: scope, tick: millis(now)) else { return nil }
+            let at = max(Self.eligibleAt(item), item.claimUntil ?? 0)
             return Date(timeIntervalSince1970: TimeInterval(at) / 1_000)
         }
     }
@@ -64,8 +65,8 @@ public final class QualityReportJournal: @unchecked Sendable {
     func claim(scope: QualityReportScope, now: Date) throws -> Claim? {
         try lock.withLock {
             let tick = try millis(now)
-            guard var item = try read(scope: scope, tick: tick), item.attempts < PortableOutbox.maxDispatchAttempts,
-                  item.eligibleAt <= tick, (item.claimUntil ?? 0) <= tick else { return nil }
+            guard var item = try read(scope: scope, tick: tick),
+                  Self.eligibleAt(item) <= tick, (item.claimUntil ?? 0) <= tick else { return nil }
             let claim = UUID()
             item.claimId = claim
             item.claimUntil = min(tick + Self.claimMillis, item.expiresAt)
@@ -86,14 +87,15 @@ public final class QualityReportJournal: @unchecked Sendable {
             case .none, .invalid?, .conflict?, .notFound?:
                 try FileManager.default.removeItem(at: path(scope))
             case .authRequired?, .ownerChanged?:
-                item.eligibleAt = Int64.max
+                // Keep the frozen command and its id. Only the same account and session family can retry it.
+                item.eligibleAt = tick
                 item.claimId = nil
                 item.claimUntil = nil
                 try save(item, scope: scope)
             case .quota(let seconds)?, .unavailable(let seconds)?:
                 let failed = PortableOutbox.markFailed(
                     command: OutboxCommand(commandId: item.command.commandId, kind: "quality-report", payload: "",
-                                           attempts: item.attempts - 1),
+                                           attempts: min(max(0, item.attempts - 1), PortableOutbox.maxDispatchAttempts - 1)),
                     tickMillis: tick
                 )
                 let hint = max(0, min(seconds ?? 0, PortableOutbox.maxDelayTicks / 1_000)) * 1_000
@@ -135,6 +137,11 @@ public final class QualityReportJournal: @unchecked Sendable {
         guard transportMatches(client, scope: scope) else { throw QualityReportError.ownerChanged }
         try finish(claim, scope: scope, refusal: nil, now: Date())
         return receipt
+    }
+
+    /// Records parked by an earlier build carry no automatic eligibility; an explicit retry may claim them.
+    private static func eligibleAt(_ item: Record) -> Int64 {
+        item.eligibleAt >= item.expiresAt ? item.createdAt : item.eligibleAt
     }
 
     private func transportMatches(_ client: CommunityWriteClient, scope: QualityReportScope) -> Bool {

@@ -8,6 +8,8 @@ import Foundation
 /// sign-in, `pending` waits for a server receipt, `accepted` carries the
 /// receipt id, `refused` carries the server code, and `expired` covers a
 /// lapsed photo window or the 25-attempt cap from `PortableOutbox`.
+/// `unconfirmed` holds a create the server cannot deduplicate whose outcome is
+/// unknown: it is never resent automatically, only after the user reloads and asks.
 /// Zero postfix unwrap operators anywhere in this file.
 public enum CommunityWriteKind: String, Codable, CaseIterable, Sendable {
     case priceObservation = "PRICE_OBSERVATION"
@@ -28,11 +30,12 @@ public enum CommunityItemStatus: String, Codable, Sendable {
     case accepted = "ACCEPTED"
     case refused = "REFUSED"
     case expired = "EXPIRED"
+    case unconfirmed = "UNCONFIRMED"
 
     public var isTerminal: Bool {
         switch self {
         case .accepted, .refused, .expired: return true
-        case .draft, .pending: return false
+        case .draft, .pending, .unconfirmed: return false
         }
     }
 }
@@ -225,6 +228,7 @@ public enum CommunityOutbox {
     public static let ownerChangedCode = "community.owner-or-origin-changed"
     public static let signInRequiredCode = "community.sign-in-required"
     public static let attemptsExhaustedCode = "outbox.attempts-exhausted"
+    public static let outcomeUnknownCode = "community.outcome-unknown"
 
     public static func ownedStationCommentIds(
         _ items: [CommunityOutboxItem], ownerScope: String, origin: String, stationId: String, fuel: FuelProduct
@@ -343,14 +347,45 @@ public enum CommunityOutbox {
         }
     }
 
-    /// Manual retry of an open item; terminal items stay as they are.
+    /// Manual retry of an open item; terminal items stay as they are. An unconfirmed create is
+    /// sent again only through this explicit action.
     public static func retryNow(_ items: [CommunityOutboxItem], id: String) -> [CommunityOutboxItem] {
         return items.map { item in
-            guard item.id == id, item.status == .pending else { return item }
+            guard item.id == id, item.status == .pending || item.status == .unconfirmed else { return item }
             var next = item
+            next.status = .pending
             next.nextEligibleMillis = 0
+            if item.status == .unconfirmed { next.lastCode = nil }
             return next
         }
+    }
+
+    /// Station comment creates carry no operation id the feedback API could deduplicate. These
+    /// failures may follow an applied create: a connection lost after sending, an unreadable or
+    /// malformed 2xx reply, or a server error after the request arrived.
+    public static func createOutcomeIsUnknown(_ error: Error) -> Bool {
+        if error is SignedDeliveryUncertain { return true }
+        if let write = error as? CommunityWriteError { return write == .invalidReceipt }
+        guard let transport = error as? SignedTransportError else { return false }
+        switch transport {
+        case .oversizedResponse, .invalidResponse:
+            return true
+        case .refused(let status, _, _):
+            return status >= 500
+        case .invalidRequest, .originUnavailable, .identityUnavailable, .signingUnavailable,
+             .sessionRequired, .offline:
+            return false
+        }
+    }
+
+    /// Parks a create whose outcome is unknown until the user reloads and explicitly sends it again.
+    public static func awaitReload(_ item: CommunityOutboxItem) -> CommunityOutboxItem {
+        var next = item
+        next.status = .unconfirmed
+        next.attempts = min(item.attempts + 1, PortableOutbox.maxDispatchAttempts)
+        next.lastCode = outcomeUnknownCode
+        next.nextEligibleMillis = 0
+        return next
     }
 
     public static func classify(_ error: Error, nowMillis: Int64) -> CommunityFailureDisposition {
@@ -473,6 +508,9 @@ public enum CommunityOutboxDispatcher {
             }
             return CommunityOutbox.accept(current, receipt: receipt)
         } catch {
+            if item.kind == .stationComment, CommunityOutbox.createOutcomeIsUnknown(error) {
+                return CommunityOutbox.awaitReload(current)
+            }
             let now = clock()
             return CommunityOutbox.apply(CommunityOutbox.classify(error, nowMillis: now), to: current, nowMillis: now)
         }

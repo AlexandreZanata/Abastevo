@@ -295,6 +295,10 @@
 		A20BB05ED8E550644C7B49C2 /* fueling-submit-v1.psv in Resources */ = {isa = PBXBuildFile; fileRef = 6EB37CD6FCBF1195F1E489D3 /* fueling-submit-v1.psv */; };
 		43E4B0E0C9A7875B9DCA8677 /* trip-operations-v3.psv in Resources */ = {isa = PBXBuildFile; fileRef = F4269D95317B05ABACEDBD3D /* trip-operations-v3.psv */; };
 		13888AFFEC4B2A9966B091ED /* EnterpriseFuelingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29B10C3596C50FA5937F83C /* EnterpriseFuelingTests.swift */; };
+		14FA322E860983A5CD849686 /* ForumFilterAndTopicViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026424CE864F508912DE0646 /* ForumFilterAndTopicViews.swift */; };
+		30093909C89C8E57DB9DB998 /* forum-edit-topic-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */; };
+		F4C2CF46825CAF4BE4B6D99C /* forum-edit-topic-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */; };
+		BBBAB5AB081AD226EEF03B9E /* forum-remove-topic-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -619,6 +623,10 @@
 		6EB37CD6FCBF1195F1E489D3 /* fueling-submit-v1.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "fueling-submit-v1.psv"; path = "../contracts/testdata/enterprise/fueling/fueling-submit-v1.psv"; sourceTree = SOURCE_ROOT; };
 		F4269D95317B05ABACEDBD3D /* trip-operations-v3.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "trip-operations-v3.psv"; path = "../contracts/testdata/enterprise/trip/trip-operations-v3.psv"; sourceTree = SOURCE_ROOT; };
 		B29B10C3596C50FA5937F83C /* EnterpriseFuelingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseFuelingTests.swift; sourceTree = "<group>"; };
+		026424CE864F508912DE0646 /* ForumFilterAndTopicViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForumFilterAndTopicViews.swift; sourceTree = "<group>"; };
+		BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-topic-invalid.json"; path = "../contracts/testdata/api/forum-edit-topic-invalid.json"; sourceTree = SOURCE_ROOT; };
+		AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-topic-valid.json"; path = "../contracts/testdata/api/forum-edit-topic-valid.json"; sourceTree = SOURCE_ROOT; };
+		8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-remove-topic-valid.json"; path = "../contracts/testdata/api/forum-remove-topic-valid.json"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -800,6 +808,7 @@
 			6D1B9CDA1501FADA5FEF64B6,
 			5CE5E987F334435A4D79A51A,
 			C8F92329030440009A7A4406,
+			026424CE864F508912DE0646,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -944,6 +953,9 @@
 			6EB37CD6FCBF1195F1E489D3 /* fueling-submit-v1.psv */,
 			F4269D95317B05ABACEDBD3D /* trip-operations-v3.psv */,
 			B29B10C3596C50FA5937F83C,
+			BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */,
+			AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */,
+			8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -1098,6 +1110,9 @@
 			795768D9EA04CD44A052D034 /* run-v1.psv in Resources */,
 			A20BB05ED8E550644C7B49C2 /* fueling-submit-v1.psv in Resources */,
 			43E4B0E0C9A7875B9DCA8677 /* trip-operations-v3.psv in Resources */,
+			30093909C89C8E57DB9DB998 /* forum-edit-topic-invalid.json in Resources */,
+			F4C2CF46825CAF4BE4B6D99C /* forum-edit-topic-valid.json in Resources */,
+			BBBAB5AB081AD226EEF03B9E /* forum-remove-topic-valid.json in Resources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		81B4DC0F6E7E97037B63B86E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 			1228440DDBCFF603473E79E6 /* Assets.xcassets in Resources */,
@@ -1255,6 +1270,7 @@
 			CFF2580DC4C1B22DBF77E439,
 			7953FC11606CEF9545C50E77,
 			D8C04150CDB1046105A4EBDD,
+			14FA322E860983A5CD849686,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,

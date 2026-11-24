@@ -35,7 +35,7 @@ These additions document intended presentation. Existing feedback/media/consensu
 
 The Community feed pages within the selected city and fuel and shows the publication state and recency returned by the server. Confirmation and dispute use the canonical observation reference, its decision sequence and device proof. The helpfulness sheet allows a helpful or unhelpful vote and removal, with a public tally and a private selection. Station ratings use one to five stars. An empty rating set has no mean.
 
-Signed-in owners can edit and remove their verified station comments. Edits use the current revision and one level of replies is available. The forum opens its own paged feed, threads and reactions. Location remains optional for browsing and price contributions select a station explicitly. [Community safety](safety.md) covers reporting and blocking.
+Signed-in owners can edit and remove their verified station comments. Edits use the current revision and one level of replies is available. Station comment creation has no server operation id. A comment or reply whose creation may have reached the server is never resent automatically: it waits until the user reloads the comments and explicitly sends it again. The forum opens its own paged feed, threads and reactions. Location remains optional for browsing and price contributions select a station explicitly. [Community safety](safety.md) covers reporting and blocking.
 
 ## Screens and states
 

@@ -46,7 +46,7 @@ final class QualityReportsTests: XCTestCase {
     }
 
     private func signedClient(
-        _ sessions: StaticSessions = StaticSessions(session: QualityReportsTests.session()),
+        _ sessions: SignedSessionSource = StaticSessions(session: QualityReportsTests.session()),
         respond: @escaping @Sendable (URLRequest) -> ScriptedExchange.Reply
     ) throws -> (CommunityWriteClient, ScriptedExchange, QualityReportScope) {
         let exchange = ScriptedExchange { request in FakeIdentityBackend.reply(request, fallback: respond) }
@@ -217,5 +217,129 @@ final class QualityReportsTests: XCTestCase {
         try reopened.freeze(frozen, scope: scope, now: now)
         XCTAssertThrowsError(try reopened.finish(beforePurge, scope: scope, refusal: nil, now: now))
         XCTAssertEqual(try reopened.pending(scope: scope, now: now), frozen)
+    }
+
+    func testRefreshOutcomeSeparatesRetryableFailureFromSignOutAndOwnerChange() async throws {
+        let cases: [(QualityTestSessions.Refresh, QualityReportError)] = [
+            (.fails, .unavailable(retryAfterSeconds: nil)),
+            (.signsOut, .authRequired),
+            (.otherFamily, .ownerChanged),
+        ]
+        for (refresh, expected) in cases {
+            let sessions = QualityTestSessions(session: Self.session(), otherFamily: Self.session(family: Self.alternateFamily))
+            let (client, exchange, scope) = try signedClient(sessions) { _ in .init(500, "{}") }
+            sessions.set(refresh)
+            do {
+                _ = try await client.executeQualityReport(command(), scope: scope)
+                XCTFail("Expected a refusal for \(refresh)")
+            } catch {
+                XCTAssertEqual(error as? QualityReportError, expected, "\(refresh)")
+            }
+            XCTAssertTrue(exchange.requests.filter { $0.url?.path == "/v1/quality/reports/commands" }.isEmpty)
+        }
+    }
+
+    func testRefreshFailureKeepsFrozenCommandAndSameIdRetrySucceeds() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = QualityTestSessions(session: Self.session(), otherFamily: Self.session(family: Self.alternateFamily))
+        let (client, exchange, scope) = try signedClient(sessions) { request in
+            let body = FakeIdentityBackend.json(request)
+            let revision = (body["expected_revision"] as? Int ?? 0) + 1
+            return .init(200, "{\"report_id\":\"\(Self.reportId)\",\"revision\":\(revision),\"status\":\"PENDING_REVIEW\"}")
+        }
+        let journal = QualityReportJournal(directory: directory, testKey: SymmetricKey(size: .bits256))
+        let frozen = command()
+        let start = Date()
+        try journal.freeze(frozen, scope: scope, now: start)
+        sessions.set(.fails)
+        do {
+            _ = try await journal.dispatch(scope: scope, client: client, now: start)
+            XCTFail("Expected a retryable refusal")
+        } catch {
+            XCTAssertEqual(error as? QualityReportError, .unavailable(retryAfterSeconds: nil))
+        }
+        XCTAssertEqual(try journal.pending(scope: scope), frozen)
+        let retryAt = try XCTUnwrap(journal.retryAvailableAt(scope: scope))
+        XCTAssertLessThanOrEqual(retryAt.timeIntervalSince(start), 3_601)
+        XCTAssertTrue(exchange.requests.filter { $0.url?.path == "/v1/quality/reports/commands" }.isEmpty)
+
+        sessions.set(.live)
+        // Millisecond records round-trip through Date; step past the boundary like a later tap would.
+        let receipt = try await journal.dispatch(scope: scope, client: client, now: max(retryAt, start).addingTimeInterval(0.01))
+        XCTAssertEqual(receipt?.reportId, Self.reportId)
+        XCTAssertNil(try journal.pending(scope: scope))
+        let sent = exchange.requests.filter { $0.url?.path == "/v1/quality/reports/commands" }
+        XCTAssertEqual(sent.count, 1)
+        XCTAssertEqual(sent.first?.value(forHTTPHeaderField: "Idempotency-Key"), Self.commandId)
+        XCTAssertEqual(FakeIdentityBackend.json(try XCTUnwrap(sent.first))["command_id"] as? String, Self.commandId)
+    }
+
+    func testParkedCommandAlwaysOffersExplicitRetryWithItsIds() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = QualityReportJournal(directory: directory, testKey: SymmetricKey(size: .bits256))
+        let scope = try XCTUnwrap(QualityReportScope(origin: Self.origin, ownerScope: "account:fixture:fp", familyId: Self.family))
+        let frozen = command()
+        try journal.freeze(frozen, scope: scope, now: now)
+        for refusal in [QualityReportError.authRequired, .ownerChanged] {
+            let claim = try XCTUnwrap(journal.claim(scope: scope, now: now))
+            XCTAssertEqual(claim.command, frozen)
+            XCTAssertEqual(try journal.retryAvailableAt(scope: scope, now: now), now.addingTimeInterval(120))
+            try journal.finish(claim, scope: scope, refusal: refusal, now: now)
+            XCTAssertEqual(try journal.pending(scope: scope, now: now), frozen)
+            XCTAssertEqual(try journal.retryAvailableAt(scope: scope, now: now), now)
+        }
+        var clock = now
+        for _ in 0..<(PortableOutbox.maxDispatchAttempts + 5) {
+            let available = try XCTUnwrap(journal.retryAvailableAt(scope: scope, now: clock))
+            clock = max(clock, available).addingTimeInterval(0.01)
+            let claim = try XCTUnwrap(journal.claim(scope: scope, now: clock))
+            XCTAssertEqual(claim.command.commandId, Self.commandId)
+            XCTAssertEqual(claim.command.reportId, Self.reportId)
+            try journal.finish(claim, scope: scope, refusal: .unavailable(retryAfterSeconds: nil), now: clock)
+        }
+        let last = try XCTUnwrap(journal.retryAvailableAt(scope: scope, now: clock))
+        XCTAssertLessThanOrEqual(last.timeIntervalSince(clock), TimeInterval(PortableOutbox.maxDelayTicks) / 1_000)
+        XCTAssertNotNil(try journal.claim(scope: scope, now: max(clock, last).addingTimeInterval(0.01)))
+    }
+}
+
+/// Session source whose refresh can fail while the account stays stored, sign out, or switch family.
+private final class QualityTestSessions: SignedSessionSource, @unchecked Sendable {
+    enum Refresh: Sendable {
+        case live, fails, signsOut, otherFamily
+    }
+
+    private let lock = NSLock()
+    private let session: PortableAuth.Session
+    private let otherFamily: PortableAuth.Session
+    private var refresh = Refresh.live
+    private var signedOut = false
+
+    init(session: PortableAuth.Session, otherFamily: PortableAuth.Session) {
+        self.session = session
+        self.otherFamily = otherFamily
+    }
+
+    func set(_ next: Refresh) {
+        lock.withLock { refresh = next }
+    }
+
+    func currentAccountId() -> String? {
+        lock.withLock { signedOut ? nil : session.accountId }
+    }
+
+    func liveSession() async -> PortableAuth.Session? {
+        lock.withLock {
+            switch refresh {
+            case .live: return session
+            case .fails: return nil
+            case .signsOut:
+                signedOut = true
+                return nil
+            case .otherFamily: return otherFamily
+            }
+        }
     }
 }

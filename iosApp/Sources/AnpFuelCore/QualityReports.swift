@@ -269,14 +269,17 @@ public extension CommunityWriteClient {
             return result.body
         } catch let error as CommunityWriteError {
             switch error {
-            case .signInRequired: throw QualityReportError.authRequired
+            case .signInRequired:
+                let refusal = await sessionRefusal(scope)
+                throw refusal
             case .invalid: throw QualityReportError.ownerChanged
             default: throw QualityReportError.unavailable(retryAfterSeconds: nil)
             }
         } catch let error as SignedTransportError {
             switch error {
             case .sessionRequired:
-                throw transport.ownerScope() == scope.ownerScope ? QualityReportError.authRequired : QualityReportError.ownerChanged
+                let refusal = await sessionRefusal(scope)
+                throw refusal
             case .refused(let status, _, let delay):
                 switch status {
                 case 400: throw QualityReportError.invalid
@@ -289,5 +292,17 @@ public extension CommunityWriteClient {
             default: throw QualityReportError.unavailable(retryAfterSeconds: nil)
             }
         }
+    }
+
+    /// Android `QualityReportHttpClient.session`: when the refresh fails but the same account key and
+    /// session family are still stored, the command stays retryable. A sign-out or another owner is not.
+    private func sessionRefusal(_ scope: QualityReportScope) async -> QualityReportError {
+        guard transport.origin == scope.origin, let current = transport.ownerScope(),
+              current.hasPrefix("account:") else {
+            return .authRequired
+        }
+        guard current == scope.ownerScope else { return .ownerChanged }
+        guard let session = await refreshedSession() else { return .unavailable(retryAfterSeconds: nil) }
+        return scope.matches(session) ? .unavailable(retryAfterSeconds: nil) : .ownerChanged
     }
 }
