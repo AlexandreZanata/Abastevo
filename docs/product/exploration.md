@@ -185,7 +185,11 @@ shipping resources. Technical schema names stay out of the normal product flow.
 
 All official/price exploration remains free and independent of registration,
 GPS and Premium. Private vehicle/ledger/report/cloud journeys stay under PRM
-and registration v2. D proof/receipts/business portal and iOS remain deferred.
+and registration v2. D proof, receipts and the business portal remain deferred.
+
+## Native iOS official records
+
+The Explore entry opens paged ANP enforcement documents and their associated establishments. PMQC assay and sample evidence opens from the verified station dossier. Enforcement filters are limited to the admitted source capabilities, including published document dates and supported geography, segment and subject selections. The view keeps the revision and document coverage attached to the results. Associations with a current company carry an explicit location limitation. Empty results, an unavailable source and saved stale data have distinct states. These public journeys are available without registration or a location permission.
 
 ## Implementation acceptance still owed
 

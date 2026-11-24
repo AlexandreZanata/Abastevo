@@ -23,3 +23,11 @@ scoped correction; quality, session-race, Android policy, field and battery acce
 - BUC-DRV-03: denial, disabled provider, duplicate start, repeated stop,
   persistence failure and owner switch must not create a complete estimate or
   leave an intentionally retained listener. Manual shifts remain independent.
+
+## iOS session lifecycle
+
+A running shift can acquire the iOS location provider only after the driver enables GPS for that shift and approves When In Use permission. The provider displays the background location indicator while the opted-in lease is active. It shares the provider with in-app navigation without sharing stored data. Permission loss, shift pause, end, recovery, logout, account deletion and origin switch stop the driver's lease. Reopening the app shows its protected incomplete checkpoint and requires a new explicit start.
+
+The current in-memory samples are used only to derive metres. The app persists metres, the observation window and its coverage and quality state in the account/origin scope. A denied permission, gap, rejected fix or interrupted run cannot become complete coverage. GPS coordinates and traces are absent from persistence and the Abastevo wire.
+
+Physical-device acceptance includes permission loss while backgrounded, lock screen, navigation combined with a driving shift, force termination and restart, battery impact and owner switching.

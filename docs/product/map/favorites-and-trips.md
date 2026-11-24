@@ -57,3 +57,9 @@ BUC-MAP25: save a station -> restart -> appears only for its owner -> logout/oth
 account/guest isolation -> export GPX/KML -> malicious file refused with no row -> import
 valid file once (second time no-op) -> delete -> same file cannot resurrect without
 confirmation -> record a short track with explicit start/stop -> export it.
+
+## Native iOS saved places and GPX
+
+The native iOS client stores private saved places and imported routes or tracks within the current account or guest and API origin. The app purges the departing protected scope on logout, account deletion or an origin switch. Imports are local and atomic, converge on the canonical content identifier, and require explicit restoration of a previously deleted record.
+
+The exporter writes GPX 1.1. The GPX reader accepts UTF-8 within 5 MiB, 64 levels and 200,000 elements and refuses DTDs, external entities, unsafe processing instructions, unknown formats and coordinates or point counts beyond the existing bounds. The caller previews an import and chooses whether to share an export that can disclose private locations. Device acceptance covers Files import and sharing, restart and owner isolation. GPX exports contain saved places and imported routes or tracks.

@@ -55,6 +55,24 @@ A trip from 184 320 000 m to 184 610 000 m records 290 000 m of meter evidence. 
 | SCR-TRIP-02 | PANEL | Inspect and review | Scoped reviewer | Timeline, current revision and linked evidence | No self-approval, stale conflict and five shared states |
 | SCR-TRIP-03 | PANEL | Plan and hand over work | Scoped planner | Missions, assignments and reasons | Current asset scope and permission, history retained |
 
+### iOS driver lifecycle
+
+The mission inbox reads `POST /v1/orgs/{org_id}/missions/mine/list` through the company
+account session. It retains up to 100 entries for the verified employee. An accept or
+decline produces a signed `trip.mission.respond` operation. Starting an accepted mission
+binds its ID and the allowed asset to the trip. The app queues the start, pause, resume,
+cancel and finish in the existing company outbox. Cancellation requires a reason. Changes
+retain the trip identity and the revision sequence. A dependent command waits for its
+predecessor's `ACCEPTED` receipt. Pending, held-for-review and refused commands remain
+visible.
+
+The return checklist reads the applicable template for the trip asset and keeps its answers
+in the company partition. Required items, notes and acknowledgement are validated before the
+app queues `check.run.complete`. A finished trip may link the run once the queue receives an
+accepted result. An answer requiring a photo keeps the checklist draft since the current run
+contract cannot carry that evidence. Tracking stays off and the trip carries no recorded
+position or run clock. See the [iOS acceptance matrix](../../../iosApp/PARITY.md).
+
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
 [EP06](../backlog/ep06-trips.md) supplies the detailed tasks and phases. VAL-01, VAL-07 and VAL-26 in [validation](../testing.md) prove the first cut, concurrency and amendment. Immediate SQL races, replay, revoked authority and scope cases are required. Field and device acceptance remains separate from source integration.

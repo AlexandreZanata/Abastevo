@@ -2,7 +2,7 @@
 
 Module code `OFFL`. This file is the module specification for offline behaviour and the transversal offline matrix for the whole suite.
 
-Evidence. The repository already has a private command protocol for one account's data: stable operation identifiers, expected revisions, durable acknowledgements, conflict responses and anti-resurrection fences ([PREMIUM_CLOUD_PROTOCOL](../backend/premium/cloud-protocol.md), `IMPLEMENTED` on the server; the Android side has separate queues per feature, `PARTIAL`). That protocol states "No tenant/fleet ownership". This module is `PROPOSED`: it reuses the protocol's identifiers, acknowledgement and replay rules, and changes what an organization needs changed. The differences are listed in §3.
+Evidence. The repository already has a private command protocol for one account's data: stable operation identifiers, expected revisions, durable acknowledgements, conflict responses and anti-resurrection fences ([PREMIUM_CLOUD_PROTOCOL](../backend/premium/cloud-protocol.md), `IMPLEMENTED` on the server; the Android side has separate queues per feature, `PARTIAL`). That protocol states "No tenant/fleet ownership". The company protocol reuses those identifier, acknowledgement and replay rules with company-specific ownership and proofs. See §3 for the contract and §10.5 for the supported iOS flows.
 
 ## 1. Purpose
 
@@ -344,6 +344,31 @@ around every operation. Offline protected reads require actual custody rather
 than a fresh online catalog selection. See B-BR-EMP-123..130, EDR-082..086 and
 status evidence for actual
 implementation/acceptance state; this contract is not a PASS claim.
+
+### 10.5 iOS company outbox
+
+The iOS secure store holds the queue, mission projection, trip state and checklist drafts
+under an account, API origin and organization. The selected membership and device enrollment
+constrain mission and checklist use. Selecting another company stops delivery for the previous
+company and leaves its records in their original partition. On iOS, logout, account deletion
+and origin switch purge the company store.
+
+The existing signed operation endpoint delivers canonical command bytes, with acknowledgements
+bound to operation ID and digest. Unsent work retains the same operation IDs during retries.
+The device honors a bounded `Retry-After` delay, retry count and manual retry using the existing
+iOS queue. After 25 counted failures the user can explicitly retry. Offline transport
+failures do not spend attempts. A dependent trip command waits for the preceding
+command's `ACCEPTED` receipt. A predecessor under review, refused or exhausted
+keeps dependent commands queued and remains visible in the trip queue.
+
+A fueling receipt waits for the owning operation's receipt before opening its signed
+`/v1/orgs/{org_id}/sync/attachments` session. Before using an upload capability and after
+the transfer, the app checks that the same owner, company, membership and device enrollment
+still apply. A failed byte transfer preserves the JPEG and the original declaration for the
+next signed session. A closed refusal of the signed session can settle the receipt. The
+protected file is removed after the delivered or final refusal state is durably recorded. A
+return checklist needing a photo stays in its draft because the run command and attachment
+target contract provide no checklist photo path.
 
 ## 11. Screens
 

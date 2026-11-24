@@ -59,3 +59,9 @@ capability lapse, snapshot erasure, bounded cleanup, HTTP no-store/cursor/auth
 and feature-disabled 404. OpenAPI golden vectors preserve exact units. Real
 provider identity/payment proof, mobile/device acceptance and production
 certification remain later gates.
+
+## iOS accounting and reports
+
+The iOS Driver Hub admits an explicit earnings entry into the signed `/v1/driver/commands` queue. Each retry retains the same operation ID and body, honors bounded backoff, and parks conflicts for owner review. Local manual shifts remain usable without an account. `/v1/driver/earnings` and `/v1/driver/reports/get` are retained signed owner reads. Creating a report uses `/v1/driver/reports/build` only with `professional.report`.
+
+Before submitting an earning, the selected vehicle must exist in the account's cloud vehicles dataset. iOS can enroll that vehicle through the consent, device and command routes. The live driver HTTP API has no command for the local metres aggregate and no owner read for a fresh device's prior erasure epoch. Those limits keep the GPS estimate local and require a parked conflict to be reviewed. Hosted accounting needs staging evidence for consent, enrollment, retry, conflict, retained reads, coverage and owner isolation.

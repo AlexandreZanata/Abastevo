@@ -44,6 +44,10 @@ account-scoped product and is never published.
   overflow, centroid-as-pin, truncated streams and unsupported versions.
   Validation is all-or-nothing; no partial overlay is published.
 
+## Native iOS search and pin admission
+
+Map search requests Abastevo station results within the chosen IBGE municipality. Apple's `MKLocalSearch` runs separately from the station directory, and admitted chargers retain their catalog attribution and pin policy. List-only station records remain searchable. Camera recentering needs a single eligible result or an explicit eligible selection. Search and manual origin selection are available without starting continuous location updates.
+
 ## Mandatory behavior rules
 
 ### B-BR-MAP-01 — Identity and location

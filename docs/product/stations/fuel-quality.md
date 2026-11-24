@@ -129,6 +129,12 @@ Critical SQL/auth/privacy/jobs scenarios use immediate real PostGIS and actual
 affected storage/transport boundaries; pure rules use deterministic RED → GREEN
 → REFACTOR. Runtime completion requires those tests, not this target document.
 
+## Native iOS quality measurements and reports
+
+From a verified station, the quality card shows PMQC assays and sample details for the selected fuel and published revision. Source documents and checksums remain attached to the revision that produced each count. Missing measures and an unavailable quality score are explicit. Saved public quality results show their stale state, and the source's cache policy controls retention and ETag reuse.
+
+The official-record browser has its own enforcement source scope. The account owner can separately submit a private experience or request review of a sample link, view the current report, edit a permitted revision, withdraw it or appeal an eligible outcome. The server records these as personal claims. The app persists one confirmed retryable command in the protected owner, origin and session scope. Session proof and the bound device key authorize private reads and writes. A separate explicit action opens ANP's official contact page.
+
 ## Proposed UI language and limits
 
 UI is localized; the following Portuguese phrases convey the intended meaning:

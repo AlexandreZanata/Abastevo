@@ -37,3 +37,11 @@ Date: 2026-10-26. B-BR-DRV-01/20. Freeze before behavior.
 
 JVM route/state tests and owned-emulator Compose tests must cover the hub,
 states and four-tab/back behavior. The driver mobile/day gates remain later.
+
+## iOS Driver Hub
+
+The personal hub offers signed-out manual shifts and account-scoped hosted accounting. Manual shift recovery works with the local vehicle and exact window. GPS is an explicit option for a running shift. See the [iOS GPS lifecycle](gps-lifecycle.md#ios-session-lifecycle) for stop conditions and evidence.
+
+Hosted earnings require an explicitly selected platform, interval, IANA time zone and exact centavos. The person declares either an inclusive net or every item in the breakdown. An absent value stays absent. The hub can enroll the selected vehicle after vehicle-dataset consent and device verification. It submits the earnings with the original operation ID through the protected signed queue. A conflict parks the immutable entry and prompts review.
+
+Retained earnings and signed report reads continue when paid access lapses. Building a new report requires the server's current `professional.report` capability. See the [revisioned reports contract](reports.md) for coverage and signed route requirements.

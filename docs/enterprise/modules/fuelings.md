@@ -402,6 +402,27 @@ Errors (refuse the request): `PRODUCT_UNIT_MISMATCH` (422), `FUELING_NOT_CANCELL
 
 Shared loading, error, unavailable and forbidden states follow the defaults in [12-ux-app](../ux-app.md) §3 and [13-ux-web](../ux-web.md) §3.
 
+### iOS driver recording
+
+Abastevo Empresas records fuelings from an assigned asset and the verified employee of the
+selected company. The form uses the reviewed product and unit pairs, integer base units,
+centavos, payer and payment method. The driver records a reading for a cached asset meter or
+gives a reason for its absence. Arithmetic and unusual meter changes can raise warnings.
+A place entered by the driver is sent as `NOT_FOUND` with a name. Trip and contracted-supplier
+references remain outside the deployed fueling intake contract.
+
+The app queues `fueling.submit` through `/v1/orgs/{org_id}/sync/operations`. Fueling
+history is that partition's local record and delivery status. An optional receipt is a
+separate `FUELING` attachment. It goes through the signed
+`/v1/orgs/{org_id}/sync/attachments` session, then the capability-only
+`/v1/orgs/{org_id}/documents/{document_id}/content/upload` endpoint. An accepted fueling
+can receive a new receipt without resubmitting its financial facts.
+
+The existing authorization list requires issuer permission and the redemption confirmation
+route requires the station's authority. A driver-owned authorization feed and redemption
+remain unavailable in the iOS view. The [iOS acceptance matrix](../../../iosApp/PARITY.md)
+tracks staging and device evidence for capture, retry and scope switching.
+
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
 Acceptance criteria:

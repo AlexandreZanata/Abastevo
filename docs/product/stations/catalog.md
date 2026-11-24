@@ -1,6 +1,6 @@
 # National station catalog
 
-This document does not describe new runtime behavior.
+The catalog policies below govern source admission. The native iOS section describes how the app consumes the public projections and submits private suggestions.
 
 ## Purpose and vocabulary
 
@@ -22,6 +22,12 @@ The initial public catalog accepts records whose identity/address and authorizat
 - **D10 — Source access:** Fetch only approved HTTPS origins with redirect/DNS/IP validation, deadlines, byte/row/page limits, bounded retries and global quotas. No caller-provided fetch URL or remote request in a public search handler. Disable XML external entities/DTD fetching and formula execution. Credentials stay in operator secrets, not task payloads or logs. A provider timeout leaves the last validated state intact and its freshness visible.
 - **D11 — License and representations:** Record storage/redistribution/attribution rights per source before enabling it. OSM and commercial-provider assertions retain provenance and may require separate storage/views; physical separation alone does not settle license obligations. No copying of a restricted provider into an unrestricted permanent catalog. Partner messages require agreed authority and independent authorization verification.
 - **D12 — Measured freshness:** Distinguish opening-to-source delay, source-publication-to-fetch delay, eligibility-to-catalog delay and human-review age. The proposed 24–48-hour objective begins when a record has sufficient validated evidence for publication; it is not a national inauguration SLA. Define eligibility/exclusions before measurement; report unresolved/quarantined records separately so the objective cannot hide backlog. A photo or membership fee never accelerates trust.
+
+## Native iOS directory and suggestions
+
+The station detail reloads the exact UUID or validated full CNPJ from the current origin. The dossier presents registry provenance, its official ANP survey price and community prices with distinct source states. A source-matched downloaded ANP week provides the dated offline price fallback. Rows without a reviewed location stay in the list and the map limits pins and routing to eligible tiers.
+
+A signed-in user can submit a fuel station proposal with an optional validated CNPJ or suggest a charger by name or public address. A suggestion is private while it awaits review and the app submits the typed address text. The owner's list and status use the intake receipt. Pending proposals can be cancelled through the owner route. A retried proposal preserves the original submission identifier.
 
 ## BUC-D01–D08 and tests first
 

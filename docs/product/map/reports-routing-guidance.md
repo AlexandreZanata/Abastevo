@@ -117,3 +117,9 @@ planning still requires the user to start guidance explicitly.
 BUC-MAP22-STATION-ORIGIN: tap Route and go on a station card with a recent map
 fix -> see the route preview without editing the origin. Verify fused and
 network fallback, expired and inaccurate fixes, and cancellation before a fix.
+
+## Native iOS MapKit guidance
+
+A reviewed pin or eligible Apple place can open a MapKit driving preview with an explicit origin or a requested fresh fix. The app uses the provider's route and maneuver text. After Start, guidance admits finite fixes at up to 50 m accuracy and a monotonic age of up to 15 seconds. Three distinct admitted fixes beyond the greater of 30 m and twice the reported accuracy trigger a reroute. A result received more than 60 seconds after rerouting began is refused and the screen offers recovery. Arrival requires two fixes at 25 m accuracy or better, with both the remaining route distance and the fix-to-endpoint distance at 20 m or less.
+
+When-In-Use authorization starts the active location session with the system indicator. The app can continue that session on the lock screen and ducks audio while speaking through a local app-language voice. Text maneuvers remain available when voice is unavailable. Arrival, explicit stop, permission loss, logout, deletion or origin change release resources. Apple Maps is the explicit driving and offline map handoff. Abastevo regional map packages depend on the Android map engine. Physical-device acceptance covers voice, permission changes, background updates and the Apple Maps handoff.
