@@ -199,8 +199,10 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
                 Text(stringResource(R.string.profile_backup_title), style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.semantics { heading() })
             }
-            Text(stringResource(R.string.profile_backup_username, backup.username),
-                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            if (backup.username.isNotBlank()) {
+                Text(stringResource(R.string.profile_backup_username, backup.username),
+                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
             Text(stringResource(R.string.profile_backup_subtitle), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHighest) {

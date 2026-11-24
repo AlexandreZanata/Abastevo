@@ -6,7 +6,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.ViewModelStore
@@ -71,21 +70,27 @@ class AuthAccountContinuityDeviceTest {
                     AuthRoute(onNavigateBack = { navigated = true }, viewModel = model)
                 }
             }
-            compose.waitUntil(10_000L) { model.uiState.value.step == AuthStep.USERNAME_ENTRY }
-            val username = compose.onNodeWithText(compose.activity.getString(R.string.auth_username_label))
-            username.performScrollTo().performTextInput("testuser")
-            username.performImeAction()
+            compose.waitUntil(10_000L) { model.uiState.value.step == AuthStep.ENTRY }
+            fun field(resource: Int) = compose.onNodeWithText(compose.activity.getString(resource))
+            field(R.string.auth_create_account).performScrollTo().performClick()
+            field(R.string.auth_public_name).performScrollTo().performTextInput("Test Person")
+            field(R.string.auth_email_label).performScrollTo().performTextInput("test@example.invalid")
+            field(R.string.auth_send_code).performScrollTo().performClick()
+            compose.waitUntil(10_000L) { model.uiState.value.step == AuthStep.CODE_SENT }
+            field(R.string.auth_code_label).performScrollTo().performTextInput("012345")
+            field(R.string.auth_verify_code).performScrollTo().performClick()
             compose.waitUntil(10_000L) { model.uiState.value.step == AuthStep.KEY_ISSUED }
             assertNull(model.uiState.value.error)
             assertNotNull(flow.currentSession())
-            assertEquals("testuser", flow.currentKey()?.username)
+            assertEquals("Test Person", flow.currentKey()?.username)
             compose.onNodeWithText(compose.activity.getString(R.string.auth_saved_enter)).performScrollTo().performClick()
             compose.waitUntil(10_000L) { navigated }
             assertEquals(AuthStep.AUTHENTICATED, model.uiState.value.step)
-            assertEquals(1, api.loginCalls)
+            assertEquals(1, api.signupCalls)
+            assertEquals(0, api.loginCalls)
             assertTrue(restoredFlow().rehydrate() is AuthFlow.AuthState.Active)
             compose.onNodeWithText(compose.activity.getString(R.string.auth_logout)).performScrollTo().performClick()
-            compose.waitUntil(10_000L) { model.uiState.value.step == AuthStep.USERNAME_ENTRY }
+            compose.waitUntil(10_000L) { model.uiState.value.step == AuthStep.ENTRY }
             assertNull(flow.currentKey())
             assertNull(flow.currentSession())
             assertEquals(AuthFlow.AuthState.LoggedOut, restoredFlow().rehydrate())
@@ -102,11 +107,24 @@ class AuthAccountContinuityDeviceTest {
 
     private class SyntheticAccountApi : AuthAccountApi {
         var loginCalls = 0
+        var signupCalls = 0
         private val session = PortableAuth.Session("family-test", "account-test", "access-test", "refresh-test", 1000L, 2000L)
-        override fun createKeyAccount(username: String) = AuthApiResult.Ok(AuthFlow.KeyIssued(username, "synthetic-only-key"))
+        override fun createKeyAccount(username: String): AuthApiResult<AuthFlow.KeyIssued> = error("Unexpected legacy signup")
+        override fun requestCode(email: String, purpose: PortableAuth.CodePurpose, locale: String): AuthApiResult<Unit> {
+            assertEquals("test@example.invalid", email)
+            assertEquals(PortableAuth.CodePurpose.SIGNUP, purpose)
+            return AuthApiResult.Ok(Unit)
+        }
+        override fun signUp(name: String, email: String, code: String): AuthApiResult<IssuedAccountKey> {
+            signupCalls++
+            assertEquals("Test Person", name)
+            assertEquals("test@example.invalid", email)
+            assertEquals("012345", code)
+            return AuthApiResult.Ok(IssuedAccountKey(session, name, "synthetic-only-key"))
+        }
         override fun loginWithKey(accountKey: String): AuthApiResult<KeyLogin> {
             loginCalls++
-            return if (accountKey == "synthetic-only-key") AuthApiResult.Ok(KeyLogin(session, "testuser"))
+            return if (accountKey == "synthetic-only-key") AuthApiResult.Ok(KeyLogin(session, "Test Person"))
             else AuthApiResult.Err("key-invalid")
         }
         override fun refresh(familyId: String, refreshToken: String) = AuthApiResult.Ok(session)

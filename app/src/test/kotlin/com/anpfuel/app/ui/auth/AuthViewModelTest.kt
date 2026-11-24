@@ -3,7 +3,11 @@ package com.anpfuel.app.ui.auth
 import app.cash.turbine.test
 import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
-import com.anpfuel.application.portable.ConsumeOk
+import com.anpfuel.application.portable.GoogleLogin
+import com.anpfuel.application.portable.GoogleSignInGateway
+import com.anpfuel.application.portable.GoogleSignInResult
+import com.anpfuel.domain.account.GoogleNonce
+import com.anpfuel.domain.portable.PortableAuth.CodePurpose
 import com.anpfuel.domain.portable.PortableAuth
 import com.anpfuel.data.repository.OwnerLocalErasure
 import io.mockk.coEvery
@@ -21,7 +25,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -44,6 +47,7 @@ class AuthViewModelTest {
         Dispatchers.setMain(dispatcher)
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
         every { authFlow.currentKey() } returns null
+        every { authFlow.profile() } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
         viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         viewModel.ioDispatcher = dispatcher
     }
@@ -53,11 +57,25 @@ class AuthViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private val signupBackup = AuthFlow.KeyBackup("Sample Person", "synthetic-key")
+
+    private fun kotlinx.coroutines.test.TestScope.setupSignUp(result: AuthApiResult<AuthFlow.NewKey>) {
+        advanceUntilIdle()
+        every { authFlow.requestCode("case-01@example.invalid", CodePurpose.SIGNUP, "en") } returns AuthApiResult.Ok(Unit)
+        every { authFlow.signUp(signupBackup.username, "case-01@example.invalid", "482916") } returns result
+        viewModel.beginSignUp()
+        viewModel.onNameChange(signupBackup.username)
+        viewModel.onEmailChange("case-01@example.invalid")
+        viewModel.onRequestCode("en")
+        advanceUntilIdle()
+        viewModel.onCodeChange("482916")
+    }
+
     @Test
-    fun startsLoggedOutAtUsernameEntry() = runTest {
+    fun startsLoggedOutAtEntry() = runTest {
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthStep.ENTRY, state.step)
         assertNull(state.error)
     }
 
@@ -79,27 +97,32 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun deadSessionReturnsToEmailEntry() = runTest {
+    fun deadSessionReturnsToEntry() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(null)
         viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
-        assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
+        assertEquals(AuthStep.ENTRY, viewModel.uiState.value.step)
     }
 
     @Test
-    fun emailLoginNavigatesBack() = runTest {
+    fun recoveryKeyAcknowledgementNavigatesBack() = runTest {
         advanceUntilIdle()
-        every { authFlow.requestEmailCode("case-01@example.invalid") } returns AuthApiResult.Ok(Unit)
-        every { authFlow.consumeEmailCode("case-01@example.invalid", "482916") } returns
-            AuthApiResult.Ok(AuthFlow.Login(session(), created = true))
+        every { authFlow.requestCode("case-01@example.invalid", CodePurpose.RECOVERY, "en") } returns AuthApiResult.Ok(Unit)
+        every { authFlow.recover("case-01@example.invalid", "482916") } returns
+            AuthApiResult.Ok(AuthFlow.NewKey(AuthFlow.KeyBackup("Sample Person", "synthetic-key"), true))
+        every { authFlow.currentSession() } returns session()
+        viewModel.beginRecovery()
         viewModel.onEmailChange("case-01@example.invalid")
-        viewModel.onRequestCode()
+        viewModel.onRequestCode("en")
         advanceUntilIdle()
-        assertEquals(AuthStep.CODE_SENT, viewModel.uiState.value.step)
         viewModel.onCodeChange("482916")
         viewModel.navigation.test {
             viewModel.onConsumeCode()
+            advanceUntilIdle()
+            assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
+            expectNoEvents()
+            viewModel.onLoginWithKey()
             advanceUntilIdle()
             assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
             assertEquals(AuthNavigation.NavigateBack, awaitItem())
@@ -109,11 +132,12 @@ class AuthViewModelTest {
     @Test
     fun wrongCodeKeepsCodeEntryWithMessage() = runTest {
         advanceUntilIdle()
-        every { authFlow.requestEmailCode(any()) } returns AuthApiResult.Ok(Unit)
-        every { authFlow.consumeEmailCode(any(), any()) } returns
+        every { authFlow.requestCode(any(), CodePurpose.RECOVERY, "en") } returns AuthApiResult.Ok(Unit)
+        every { authFlow.recover(any(), any()) } returns
             AuthApiResult.Err(PortableAuth.Verdict.CODE_UNKNOWN)
+        viewModel.beginRecovery()
         viewModel.onEmailChange("case-01@example.invalid")
-        viewModel.onRequestCode()
+        viewModel.onRequestCode("en")
         advanceUntilIdle()
         viewModel.onCodeChange("000000")
         viewModel.onConsumeCode()
@@ -126,11 +150,12 @@ class AuthViewModelTest {
     @Test
     fun suspendedMapsToSuspendedMessage() = runTest {
         advanceUntilIdle()
-        every { authFlow.requestEmailCode(any()) } returns AuthApiResult.Ok(Unit)
-        every { authFlow.consumeEmailCode(any(), any()) } returns
+        every { authFlow.requestCode(any(), CodePurpose.RECOVERY, "en") } returns AuthApiResult.Ok(Unit)
+        every { authFlow.recover(any(), any()) } returns
             AuthApiResult.Err(PortableAuth.Verdict.ACCOUNT_SUSPENDED)
+        viewModel.beginRecovery()
         viewModel.onEmailChange("case-01@example.invalid")
-        viewModel.onRequestCode()
+        viewModel.onRequestCode("en")
         advanceUntilIdle()
         viewModel.onCodeChange("482916")
         viewModel.onConsumeCode()
@@ -139,40 +164,40 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun providerAttemptAndCompletion() = runTest {
+    fun credentialManagerUsesHashedNonceAndApiReceivesTheBoundRawNonce() = runTest {
         advanceUntilIdle()
-        val attempt = PortableAuth.LoginAttempt("google", "n-1", "s-1")
-        every { authFlow.beginProviderLogin("google") } returns AuthApiResult.Ok(attempt)
-        every {
-            authFlow.completeProviderLogin(any(), any(), any())
-        } returns AuthApiResult.Ok(Unit)
-        every { authFlow.currentSession() } returns session()
-        viewModel.onProviderClick("google")
-        advanceUntilIdle()
-        assertEquals(AuthStep.PROVIDER_PENDING, viewModel.uiState.value.step)
-        viewModel.onProviderCallback("google", "tok", "n-1", "s-1")
+        var claim = ""
+        every { authFlow.loginWithGoogle("synthetic-id-token", any()) } answers {
+            assertEquals(claim, GoogleNonce.claimFor(secondArg<String>()))
+            AuthApiResult.Ok(GoogleLogin(session(), created = false, profileComplete = true))
+        }
+        viewModel.onGoogle(GoogleSignInGateway {
+            claim = it
+            GoogleSignInResult.Selected("synthetic-id-token", null)
+        })
         advanceUntilIdle()
         assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
-        assertTrue(viewModel.uiState.value.error == null)
+        assertNull(viewModel.uiState.value.error)
     }
 
     @Test
-    fun callbackWithoutAttemptIsIgnored() = runTest {
+    fun unavailableProviderCredentialDoesNotSendAnApiRequest() = runTest {
         advanceUntilIdle()
-        viewModel.onProviderCallback("google", "tok", "n-1", "s-1")
+        viewModel.onGoogle(GoogleSignInGateway { GoogleSignInResult.Unavailable })
         advanceUntilIdle()
-        assertEquals(AuthUiError.InvalidInput, viewModel.uiState.value.error)
-        verify(exactly = 0) { authFlow.completeProviderLogin(any(), any(), any()) }
+        assertEquals(AuthStep.ENTRY, viewModel.uiState.value.step)
+        assertEquals(AuthUiError.GoogleUnavailable, viewModel.uiState.value.error)
+        verify(exactly = 0) { authFlow.loginWithGoogle(any(), any()) }
     }
 
     @Test
-    fun logoutReturnsToEmailEntry() = runTest {
+    fun logoutReturnsToEntry() = runTest {
         advanceUntilIdle()
         every { authFlow.logout() } returns AuthApiResult.Ok(Unit)
         viewModel.onLogout()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthStep.ENTRY, state.step)
         assertEquals("", state.email)
     }
 
@@ -184,7 +209,7 @@ class AuthViewModelTest {
         viewModel.onLogout()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthStep.ENTRY, state.step)
         assertNull(state.error)
     }
 
@@ -208,18 +233,18 @@ class AuthViewModelTest {
         viewModel.onLogout()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthStep.ENTRY, state.step)
         assertEquals(AuthUiError.SecureStorage, state.error)
     }
 
     @Test
-    fun deleteAccountReturnsToEmailEntryWithNotice() = runTest {
+    fun deleteAccountReturnsToEntryWithNotice() = runTest {
         advanceUntilIdle()
         every { authFlow.deleteAccount() } returns AuthApiResult.Ok(Unit)
         viewModel.onDeleteAccount()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthStep.ENTRY, state.step)
         assertEquals(AuthUiError.Deleted, state.error)
         verify(exactly = 1) { authFlow.deleteAccount() }
     }
@@ -232,7 +257,7 @@ class AuthViewModelTest {
         viewModel.onDeleteAccount()
         advanceUntilIdle()
         assertEquals(AuthUiError.Suspended, viewModel.uiState.value.error)
-        assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
+        assertEquals(AuthStep.ENTRY, viewModel.uiState.value.step)
         assertNull(viewModel.uiState.value.keyBackup)
     }
 
@@ -249,33 +274,31 @@ class AuthViewModelTest {
         assertEquals(AuthUiError.Offline, AuthViewModel.mapError(PortableAuth.UNAVAILABLE))
         assertEquals(AuthUiError.Unknown, AuthViewModel.mapError("something-new"))
         assertEquals(AuthUiError.WrongKey, AuthViewModel.mapError("key-invalid"))
-        assertEquals(AuthUiError.UsernameTaken, AuthViewModel.mapError("username-taken"))
+        assertEquals(AuthUiError.InvalidName, AuthViewModel.mapError("name-invalid"))
+        assertEquals(AuthUiError.AddressLinked, AuthViewModel.mapError("address-linked"))
+        assertEquals(AuthUiError.RecoveryNoAccount, AuthViewModel.mapError("recovery-no-account"))
+        assertEquals(AuthUiError.ProviderEmailInUse, AuthViewModel.mapError("provider-email-in-use"))
+        assertEquals(AuthUiError.ReauthenticationRequired, AuthViewModel.mapError("reauthentication-required"))
+        assertEquals(AuthUiError.EmailLoginRetired, AuthViewModel.mapError("email-login-retired"))
     }
 
     @Test
-    fun keySignupSignsInAndKeepsBackupStepVisible() = runTest {
-        advanceUntilIdle()
-        every { authFlow.createKeyAccount("ana123") } returns
-            AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
-        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Ok(AuthFlow.Login(session(), true))
-        viewModel.onUsernameChange("Ana123")
-        viewModel.onCreateAccount()
+    fun signupSignsInAndKeepsBackupStepVisible() = runTest {
+        setupSignUp(AuthApiResult.Ok(AuthFlow.NewKey(signupBackup, true)))
+        viewModel.onConsumeCode()
         advanceUntilIdle()
         val state = viewModel.uiState.value
         assertEquals(AuthStep.KEY_ISSUED, state.step)
-        assertEquals("ana123", state.issuedUsername)
-        assertEquals("key-for-ana123", state.issuedKey)
-        verify(exactly = 1) { authFlow.loginWithKey("key-for-ana123") }
+        assertEquals(signupBackup.username, state.issuedUsername)
+        assertEquals(signupBackup.accountKey, state.issuedKey)
+        verify(exactly = 0) { authFlow.loginWithKey(any()) }
     }
 
     @Test
-    fun continueAfterAutomaticSignupLoginDoesNotIssueAnotherSession() = runTest {
-        advanceUntilIdle()
-        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
-        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Ok(AuthFlow.Login(session(), true))
+    fun continueAfterSignupDoesNotIssueAnotherSession() = runTest {
+        setupSignUp(AuthApiResult.Ok(AuthFlow.NewKey(signupBackup, true)))
         every { authFlow.currentSession() } returns session()
-        viewModel.onUsernameChange("ana123")
-        viewModel.onCreateAccount()
+        viewModel.onConsumeCode()
         advanceUntilIdle()
         viewModel.navigation.test {
             viewModel.onLoginWithKey()
@@ -284,41 +307,37 @@ class AuthViewModelTest {
             assertEquals("", viewModel.uiState.value.issuedKey)
             assertEquals(AuthNavigation.NavigateBack, awaitItem())
         }
-        verify(exactly = 1) { authFlow.loginWithKey("key-for-ana123") }
+        verify(exactly = 0) { authFlow.loginWithKey(any()) }
     }
 
     @Test
     fun signupStorageFailureKeepsRecoveryKeyAndDoesNotNavigate() = runTest {
-        advanceUntilIdle()
-        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
-        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE)
+        setupSignUp(AuthApiResult.Ok(AuthFlow.NewKey(signupBackup, false)))
+        every { authFlow.loginWithKey(signupBackup.accountKey) } returns AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE)
         every { authFlow.currentSession() } returns null
-        viewModel.onUsernameChange("ana123")
         viewModel.navigation.test {
-            viewModel.onCreateAccount()
+            viewModel.onConsumeCode()
             advanceUntilIdle()
             assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
             assertEquals(AuthUiError.SecureStorage, viewModel.uiState.value.error)
-            assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+            assertEquals(signupBackup.accountKey, viewModel.uiState.value.issuedKey)
             expectNoEvents()
             viewModel.onLoginWithKey()
             advanceUntilIdle()
             assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
-            assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+            assertEquals(signupBackup.accountKey, viewModel.uiState.value.issuedKey)
             expectNoEvents()
         }
     }
 
     @Test
-    fun takenUsernameMapsError() = runTest {
-        advanceUntilIdle()
-        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Err("username-taken")
-        viewModel.onUsernameChange("ana123")
-        viewModel.onCreateAccount()
+    fun linkedRecoveryEmailKeepsSignupCodeStepWithError() = runTest {
+        setupSignUp(AuthApiResult.Err("address-linked"))
+        viewModel.onConsumeCode()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
-        assertEquals(AuthUiError.UsernameTaken, state.error)
+        assertEquals(AuthStep.CODE_SENT, state.step)
+        assertEquals(AuthUiError.AddressLinked, state.error)
     }
 
     @Test
@@ -365,21 +384,19 @@ class AuthViewModelTest {
 
     @Test
     fun signupLoginOutageKeepsIssuedKeyForRetry() = runTest {
-        advanceUntilIdle()
-        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
-        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+        setupSignUp(AuthApiResult.Ok(AuthFlow.NewKey(signupBackup, false)))
+        every { authFlow.loginWithKey(signupBackup.accountKey) } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
         every { authFlow.currentSession() } returns null
-        viewModel.onUsernameChange("ana123")
-        viewModel.onCreateAccount()
-        viewModel.onCreateAccount()
+        viewModel.onConsumeCode()
+        viewModel.onConsumeCode()
         advanceUntilIdle()
         assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
-        assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+        assertEquals(signupBackup.accountKey, viewModel.uiState.value.issuedKey)
         viewModel.onLoginWithKey()
         advanceUntilIdle()
         assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
-        assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
-        verify(exactly = 1) { authFlow.createKeyAccount(any()) }
+        assertEquals(signupBackup.accountKey, viewModel.uiState.value.issuedKey)
+        verify(exactly = 1) { authFlow.signUp(any(), any(), any()) }
     }
 
     @Test
@@ -390,7 +407,7 @@ class AuthViewModelTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
         viewModel.refreshAccount()
         advanceUntilIdle()
-        assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
+        assertEquals(AuthStep.ENTRY, viewModel.uiState.value.step)
         assertNull(viewModel.uiState.value.keyBackup)
     }
 

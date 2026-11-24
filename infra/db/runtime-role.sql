@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000301. Relations: 436 granted, 6 without access.
+-- Schema version: 000302. Relations: 437 granted, 6 without access.
 -- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000301' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000301 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000302' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000302 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -74,11 +74,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.account_email_codes TO :"ru
 GRANT SELECT, INSERT, UPDATE ON TABLE public.account_erasure_intents TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.account_erasure_requests TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.account_key_admission_events TO :"runtime_role";
-GRANT SELECT, INSERT, DELETE ON TABLE public.account_key_credentials TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.account_key_credentials TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.account_oidc_nonces TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.account_provider_grants TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.account_provider_links TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.account_provider_revocations TO :"runtime_role";
+GRANT SELECT, INSERT, DELETE ON TABLE public.account_recovery_audit TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.account_session_families TO :"runtime_role";
 GRANT SELECT, INSERT, DELETE ON TABLE public.account_session_refresh_history TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.accounts TO :"runtime_role";

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -381,8 +382,9 @@ func run() error {
 	qualityReportStore := &qualityadapters.ReportStore{Pool: raw, Now: time.Now}
 	forumStore := forumadapters.NewStore(pool.Underlying())
 	safetyStore := safetyadapters.NewStore(pool.Underlying())
+	accountStore := accountadapters.NewPGStore(raw)
 	accountRecovery := accountapp.ErasureRecovery{
-		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
+		Store: accountStore, NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {
 			qualityDone, qualityErr := qualityReportStore.EraseAccountBatch(ctx, id)
 			if qualityErr != nil {
@@ -436,7 +438,7 @@ func run() error {
 		accountGrantRevoker = appleClient
 	}
 	accountGrantRevocations := accountapp.GrantRevocations{
-		Store: accountadapters.NewPGStore(pool.Underlying()), Revoker: accountGrantRevoker, NewNonce: jobs.NewUUIDv4, Now: time.Now,
+		Store: accountStore, Revoker: accountGrantRevoker, NewNonce: jobs.NewUUIDv4, Now: time.Now,
 	}
 	// retentionPurges runs every inventory category bounded
 	// oldest-first (P07-T05): expired challenges, idempotency windows
@@ -883,7 +885,38 @@ func run() error {
 			_, _, err = modStore.OpenCaseTx(ctx, tx, c)
 			return err
 		}},
-		"account-erasure-reconcile":     accountjobs.Erasure{Reconcile: accountRecovery.Reconcile},
+		"account-erasure-reconcile": accountjobs.Erasure{
+			Reconcile: accountRecovery.Reconcile,
+			PurgeEmailCodes: func(ctx context.Context) error {
+				now := time.Now()
+				count, err := accountStore.PurgeExpiredCodes(ctx, now.Unix()-accountdomain.CodeTTLSeconds-accountdomain.CodePurgeGraceSeconds)
+				logger.Info(ctx, "retention.sweep", "account email code retention",
+					slog.String("generated_at", now.UTC().Format(time.RFC3339)),
+					slog.Int("account-email-codes/purged", count),
+					slog.Bool("account-email-codes/failed", err != nil))
+				if err != nil {
+					return errors.New("worker: account email code purge failed")
+				}
+				return nil
+			},
+			PurgeRecoveryAudit: func(ctx context.Context) error {
+				now := time.Now()
+				count, oldest, err := accountStore.PurgeRecoveryAudit(ctx, now, privacyapp.RetentionBatch)
+				overdue := ""
+				if !oldest.IsZero() {
+					overdue = oldest.UTC().Format(time.RFC3339)
+				}
+				logger.Info(ctx, "retention.sweep", "account recovery audit retention",
+					slog.String("generated_at", now.UTC().Format(time.RFC3339)),
+					slog.Int64("account-recovery-audit/purged", count),
+					slog.String("account-recovery-audit/oldest_overdue", overdue),
+					slog.Bool("account-recovery-audit/failed", err != nil))
+				if err != nil {
+					return errors.New("worker: account recovery audit purge failed")
+				}
+				return nil
+			},
+		},
 		accountjobs.GrantRevocationKind: accountjobs.GrantRevocation{Reconcile: accountGrantRevocations.Reconcile},
 		"privacy-erasure": privacyjobs.Erasure{
 			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {

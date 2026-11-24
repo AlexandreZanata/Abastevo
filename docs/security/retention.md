@@ -12,6 +12,7 @@ periods.
 |---|---|---|---|
 | `evidence-sweep-hourly` | `evidence-sweep` | Hourly | Every app-owned copy 24 h from first receipt (P15-T04; case extensions no longer extend photo bytes), orphan/stuck sessions, 90 d hash purge |
 | `privacy-retention-daily` | `privacy-retention` | Daily | Challenges, idempotency windows, closed moderation cases (12 mo), expired export bytes, ledger horizon (35 d), observation-age metric |
+| `account-erasure-every-minute` | `account-erasure-reconcile` | Every minute | Resumes account deletion and purges expired email code verifiers (24 h after expiry) and recovery audit rows (180 d) in separate oldest-first batches |
 | `account-provider-revoke-every-minute` | `account-provider-revoke` | Every minute | Revokes deleted accounts' sealed Sign in with Apple refresh tokens at Apple (≤20 per run); each row is deleted on acceptance or 30 days after deletion even if Apple never accepts (backoff 1 min doubling to 1 h) |
 
 All enqueue through the durable job queue with dedupe keys; poison
@@ -43,6 +44,12 @@ retention sweep generated_at=... challenges/purged=12 challenges/oldest_overdue=
   shrinks across runs means the purge is not keeping up: investigate
   the category before widening batches.
 
+The account job reports `account-email-codes/purged`,
+`account-recovery-audit/purged` and `account-recovery-audit/oldest_overdue`.
+The audit timestamp describes the oldest row still overdue after the batch.
+A consistently full code-verifier batch indicates a backlog. Logs carry
+counts, timestamps and failure flags without account or address identifiers.
+
 ## Per-category behavior
 
 - Challenges/idempotency: strictly-expired rows only (`expires_at`
@@ -57,6 +64,14 @@ retention sweep generated_at=... challenges/purged=12 challenges/oldest_overdue=
   clock jump denies use without deleting otherwise unexpired credentials.
   Account/family deletion also cascades. Login prunes that account's invalid
   rows before enforcing its separate ten-company-session limit.
+- Account email code verifiers: purge up to 500 per minute after the
+  10-minute verification lifetime and 24-hour purge grace.
+- Account recovery audit: purge up to 500 rows per minute, oldest first,
+  after 180 days. A row stores only an ID, account ID, action and timestamp.
+  Account deletion clears the name and recovery address in its transaction.
+  The recovery audit ages out at its own cutoff. At the maximum configured
+  email issuance rate of 2,000 codes per hour, minute batches have capacity
+  for 30,000 audit rows per hour.
 - Moderation closed cases: only `RESOLVED`/`REJECTED` older than 12
   months; audit rows delete before their cases each batch; open and
   triaged cases are never touched.
@@ -77,5 +92,7 @@ retention sweep generated_at=... challenges/purged=12 challenges/oldest_overdue=
 
 A failing category fails its job after all categories ran, so one
 stuck category cannot hide the others' metrics; completed categories
-converge and the next tick resumes. Never reduce thresholds, add
-skips or suppress errors to green a sweep: fix the cause and rerun.
+converge and the next tick resumes. The account job attempts erasure and
+both retention batches independently and reports a failure after all three
+operations return. Never reduce thresholds, add skips or suppress errors to
+green a sweep: fix the cause and rerun.

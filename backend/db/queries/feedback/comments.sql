@@ -28,7 +28,7 @@ SET deleted_at = @now
 WHERE id = @id AND account_id = @account_id AND deleted_at IS NULL;
 
 -- name: GetCommentView :one
-SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
+SELECT c.id, c.account_id, COALESCE(a.display_name, a.alias)::text AS alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
     c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
@@ -43,7 +43,7 @@ UPDATE feedback_comments SET visibility = 'flagged'
 WHERE id = @id AND visibility = 'visible' AND deleted_at IS NULL;
 
 -- name: ListTopLevel :many
-SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
+SELECT c.id, c.account_id, COALESCE(a.display_name, a.alias)::text AS alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
     c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
@@ -55,7 +55,7 @@ ORDER BY c.created_at, c.id
 LIMIT @page_limit;
 
 -- name: ListReplies :many
-SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
+SELECT c.id, c.account_id, COALESCE(a.display_name, a.alias)::text AS alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
     c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c

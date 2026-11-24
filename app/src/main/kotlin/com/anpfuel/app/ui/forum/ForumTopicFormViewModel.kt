@@ -3,6 +3,8 @@ package com.anpfuel.app.ui.forum
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anpfuel.application.portable.AuthApiResult
+import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.forum.EditForumTopicUseCase
 import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
@@ -16,12 +18,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class ForumTopicValidationError {
     TITLE_EMPTY,
@@ -66,6 +70,7 @@ class ForumTopicFormViewModel @Inject constructor(
     private val getOwnerTopic: GetOwnerTopicUseCase,
     private val sessionStore: AuthSessionStore? = null,
     savedStateHandle: SavedStateHandle,
+    private val authFlow: AuthFlow? = null,
 ) : ViewModel() {
 
     private val topicIdArg: String? = savedStateHandle.get<String>("topicId")?.trim()?.takeIf { it.isNotEmpty() }
@@ -82,6 +87,8 @@ class ForumTopicFormViewModel @Inject constructor(
     )
     val state: StateFlow<ForumTopicFormUiState> = _state.asStateFlow()
 
+    private var publicAliasEdited = false
+    private var prefillJob: Job? = null
     private var loadJob: Job? = null
     private var submitJob: Job? = null
     private var removeJob: Job? = null
@@ -89,6 +96,21 @@ class ForumTopicFormViewModel @Inject constructor(
     init {
         if (topicIdArg != null) {
             loadTopic(topicIdArg)
+        } else {
+            prefillPublicAlias(lastKnownAccountId)
+        }
+    }
+
+    private fun prefillPublicAlias(accountId: String?) {
+        prefillJob?.cancel()
+        if (topicIdArg != null || accountId == null || authFlow == null || publicAliasEdited) return
+        prefillJob = viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { authFlow.profile() }
+            if (result is AuthApiResult.Ok && !publicAliasEdited && lastKnownAccountId == accountId &&
+                result.value.accountId == accountId
+            ) {
+                _state.update { it.copy(publicAlias = result.value.publicName) }
+            }
         }
     }
 
@@ -119,11 +141,19 @@ class ForumTopicFormViewModel @Inject constructor(
                     validationError = null,
                 )
             }
+            publicAliasEdited = false
             lastKnownAccountId = currentAccountId
+            prefillPublicAlias(currentAccountId)
             currentOperationId = UUID.randomUUID().toString()
         } else if (lastKnownAccountId != currentAccountId) {
             lastKnownAccountId = currentAccountId
-            _state.update { it.copy(isAuthenticated = isAuthed) }
+            _state.update {
+                it.copy(
+                    isAuthenticated = isAuthed,
+                    publicAlias = if (currentAccountId == null && !publicAliasEdited && !it.isEditMode) "" else it.publicAlias,
+                )
+            }
+            prefillPublicAlias(currentAccountId)
         } else if (wasAuthed != isAuthed) {
             _state.update { it.copy(isAuthenticated = isAuthed) }
         }
@@ -211,6 +241,7 @@ class ForumTopicFormViewModel @Inject constructor(
     }
 
     fun updatePublicAlias(alias: String) {
+        publicAliasEdited = true
         _state.update { it.copy(publicAlias = alias, isDirty = true) }
     }
 

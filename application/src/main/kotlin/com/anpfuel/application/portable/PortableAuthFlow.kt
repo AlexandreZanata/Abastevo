@@ -1,22 +1,11 @@
 package com.anpfuel.application.portable
 
+import com.anpfuel.domain.account.PublicName
 import com.anpfuel.domain.portable.PortableAuth
 
 /**
- * Portable FREE-account login flows shared by Android and iPhone (P13-T05A).
- *
- * Pure Kotlin with zero `java.*`/Android imports so this file moves unchanged
- * into a future `commonMain` source set. The flows orchestrate the frozen
- * backend contract (P13-T01…T04: email codes, rotating sessions, OIDC
- * links, suspension/deletion verdicts); the server always enforces, the
- * client only hints, binds nonces and persists sessions. Tests inject
- * deterministic fakes; no real clock, randomness, storage or I/O lives here.
- *
- * Login methods: email access-code signup/login plus Google/Apple links
- * onto the email-created account (the backend links verified provider
- * subjects; equal emails never merge). Native provider SDKs and secure
- * storage arrive behind [AuthPorts]; device evidence stays deferred to
- * the release horizon per owner decision.
+ * Orchestrates free account access and secure local custody. The account API
+ * enforces the email proofs, provider identity and session restrictions.
  */
 class AuthFlow(private val ports: AuthPorts) {
 
@@ -41,7 +30,7 @@ class AuthFlow(private val ports: AuthPorts) {
         val accountKey: String,
     )
 
-    /** Stored key backup: username plus the only login secret. */
+    /** The encrypted backup label retains the historical username field. */
     data class KeyBackup(
         val username: String,
         val accountKey: String,
@@ -60,6 +49,110 @@ class AuthFlow(private val ports: AuthPorts) {
         if (!isEmailHint(email)) return AuthApiResult.Err(CLIENT_INVALID)
         return ports.api.requestCode(email.trim())
     }
+
+    fun requestCode(email: String, purpose: PortableAuth.CodePurpose, locale: String): AuthApiResult<Unit> {
+        if (!isEmailHint(email)) return AuthApiResult.Err(CLIENT_INVALID)
+        return ports.api.requestCode(email.trim(), purpose, locale)
+    }
+
+    fun signUp(name: String, email: String, code: String): AuthApiResult<NewKey> =
+        issueKey(email, code) { address ->
+            if (!PublicName.isValid(name)) AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID)
+            else ports.api.signUp(name, address, code)
+        }
+
+    fun recover(email: String, code: String): AuthApiResult<NewKey> =
+        issueKey(email, code) { address -> ports.api.recover(address, code) }
+
+    /** Retain the only display of a new key even if durable storage fails. */
+    data class NewKey(val backup: KeyBackup, val sessionSaved: Boolean)
+
+    private fun issueKey(
+        email: String,
+        code: String,
+        request: (String) -> AuthApiResult<IssuedAccountKey>,
+    ): AuthApiResult<NewKey> = ports.lock.withLock {
+        if (!isEmailHint(email) || !PortableAuth.isCodeShape(code)) {
+            return@withLock AuthApiResult.Err(CLIENT_INVALID)
+        }
+        when (val result = request(email.trim())) {
+            is AuthApiResult.Err -> result
+            is AuthApiResult.Ok -> {
+                val issued = result.value
+                val backup = KeyBackup(issued.publicName, issued.accountKey)
+                val saved = saveKey(backup)
+                if (!saved) {
+                    // Recovery has invalidated the preceding key. Keeping it
+                    // would misrepresent which backup the device can use.
+                    try { ports.keys.clearKey() } catch (_: Exception) { }
+                }
+                val sessionSaved = saved && persistSession(issued.session)
+                if (!sessionSaved) {
+                    try { ports.store.clear() } catch (_: Exception) { }
+                }
+                AuthApiResult.Ok(NewKey(backup, sessionSaved))
+            }
+        }
+    }
+
+    fun loginWithGoogle(
+        idToken: String,
+        rawNonce: String,
+        expectedAccountId: String? = null,
+    ): AuthApiResult<GoogleLogin> = ports.lock.withLock {
+        if (!validGoogleProof(idToken, rawNonce)) return@withLock AuthApiResult.Err(CLIENT_INVALID)
+        val previous = ports.store.load()
+        if (expectedAccountId != null && previous?.accountId != expectedAccountId) {
+            return@withLock AuthApiResult.Err(CLIENT_INVALID)
+        }
+        when (val result = ports.api.loginWithGoogle(idToken, rawNonce)) {
+            is AuthApiResult.Err -> result
+            is AuthApiResult.Ok -> {
+                val session = result.value.session
+                if (expectedAccountId != null && expectedAccountId != session.accountId) {
+                    return@withLock AuthApiResult.Err(CLIENT_INVALID)
+                }
+                if (previous?.accountId != session.accountId && ports.keys.loadKey() != null) {
+                    try {
+                        ports.keys.clearKey()
+                    } catch (_: Exception) {
+                        return@withLock AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
+                    }
+                }
+                if (persistSession(session)) result else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
+            }
+        }
+    }
+
+    fun profile(): AuthApiResult<PortableAuth.Profile> = withSession(ports.api::profile)
+
+    fun updateName(name: String): AuthApiResult<PortableAuth.Profile> {
+        if (!PublicName.isValid(name)) return AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID)
+        return withSession { ports.api.updateName(it, name) }
+    }
+
+    fun setRecoveryEmail(email: String, code: String): AuthApiResult<PortableAuth.Profile> {
+        if (!isEmailHint(email) || !PortableAuth.isCodeShape(code)) return AuthApiResult.Err(CLIENT_INVALID)
+        return withSession { ports.api.setRecoveryEmail(it, email.trim(), code) }
+    }
+
+    fun linkGoogle(idToken: String, rawNonce: String): AuthApiResult<Unit> {
+        if (!validGoogleProof(idToken, rawNonce)) return AuthApiResult.Err(CLIENT_INVALID)
+        return withSession { ports.api.linkGoogle(it, idToken, rawNonce) }
+    }
+
+    private fun validGoogleProof(idToken: String, rawNonce: String): Boolean =
+        idToken.isNotBlank() && idToken.length <= 4096 &&
+            rawNonce.length in 16..128 && rawNonce.all { it in '!'..'~' }
+
+    private fun <T> withSession(request: (PortableAuth.Session) -> AuthApiResult<T>): AuthApiResult<T> =
+        ports.lock.withLock {
+            when (val session = refreshSession()) {
+                is AuthApiResult.Err -> session
+                is AuthApiResult.Ok -> session.value?.let(request)
+                    ?: AuthApiResult.Err(PortableAuth.Verdict.SESSION_EXPIRED)
+            }
+        }
 
     /**
      * Redeems one code for a session and persists it. Wrong codes share
@@ -113,21 +206,20 @@ class AuthFlow(private val ports: AuthPorts) {
      * backup together; unknown and wrong keys share the server
      * `key-invalid` refusal.
      */
-    fun loginWithKey(rawKey: String): AuthApiResult<Login> = ports.lock.withLock {
-        if (rawKey.isBlank()) return@withLock AuthApiResult.Err(CLIENT_INVALID)
+    fun loginWithKey(rawKey: String, expectedAccountId: String? = null): AuthApiResult<Login> = ports.lock.withLock {
+        if (rawKey.isBlank() || (expectedAccountId != null && ports.store.load()?.accountId != expectedAccountId)) {
+            return@withLock AuthApiResult.Err(CLIENT_INVALID)
+        }
         return@withLock when (val res = ports.api.loginWithKey(rawKey.trim())) {
             is AuthApiResult.Err -> res
             is AuthApiResult.Ok -> {
+                if (expectedAccountId != null && res.value.session.accountId != expectedAccountId) {
+                    return@withLock AuthApiResult.Err(CLIENT_INVALID)
+                }
                 val backup = KeyBackup(res.value.username, rawKey.trim())
                 val previousBackup = ports.keys.loadKey()
                 val previousSession = ports.store.load()
-                val savedKey = try {
-                    ports.keys.saveKey(backup)
-                    ports.keys.loadKey() == backup
-                } catch (_: Exception) {
-                    false
-                }
-                if (!savedKey || !persistSession(res.value.session)) {
+                if (!saveKey(backup) || !persistSession(res.value.session)) {
                     // Preserve a previously issued recovery key on write failure.
                     try {
                         if (previousBackup != null) ports.keys.saveKey(previousBackup)
@@ -197,6 +289,13 @@ class AuthFlow(private val ports: AuthPorts) {
                 }
             }
         }
+    }
+
+    private fun saveKey(backup: KeyBackup): Boolean = try {
+        ports.keys.saveKey(backup)
+        ports.keys.loadKey() == backup
+    } catch (_: Exception) {
+        false
     }
 
     private fun persistSession(session: PortableAuth.Session): Boolean {
@@ -332,6 +431,7 @@ class AuthFlow(private val ports: AuthPorts) {
     private val spentNonces: MutableSet<String> = mutableSetOf()
 
     private fun isEmailHint(address: String): Boolean {
+        if (address.any { it.isISOControl() }) return false
         val trimmed = address.trim()
         if (trimmed.isEmpty() || trimmed.length > 254) return false
         val at = trimmed.indexOf('@')
@@ -377,6 +477,22 @@ fun interface AuthWallClock {
 /** Server contract surface used by the flows; verdicts pass through verbatim. */
 interface AuthAccountApi {
     fun requestCode(email: String): AuthApiResult<Unit>
+    fun requestCode(email: String, purpose: PortableAuth.CodePurpose, locale: String): AuthApiResult<Unit> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+    fun signUp(name: String, email: String, code: String): AuthApiResult<IssuedAccountKey> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+    fun recover(email: String, code: String): AuthApiResult<IssuedAccountKey> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+    fun loginWithGoogle(idToken: String, rawNonce: String): AuthApiResult<GoogleLogin> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+    fun profile(session: PortableAuth.Session): AuthApiResult<PortableAuth.Profile> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+    fun updateName(session: PortableAuth.Session, name: String): AuthApiResult<PortableAuth.Profile> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+    fun setRecoveryEmail(session: PortableAuth.Session, email: String, code: String): AuthApiResult<PortableAuth.Profile> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+    fun linkGoogle(session: PortableAuth.Session, idToken: String, rawNonce: String): AuthApiResult<Unit> =
+        AuthApiResult.Err(PortableAuth.UNAVAILABLE)
     fun consumeCode(email: String, code: String): AuthApiResult<ConsumeOk>
     fun createKeyAccount(username: String): AuthApiResult<AuthFlow.KeyIssued>
     fun loginWithKey(accountKey: String): AuthApiResult<KeyLogin>
@@ -390,6 +506,18 @@ interface AuthAccountApi {
     ): AuthApiResult<Unit>
     fun deleteAccount(session: PortableAuth.Session): AuthApiResult<Unit>
 }
+
+data class IssuedAccountKey(
+    val session: PortableAuth.Session,
+    val publicName: String,
+    val accountKey: String,
+)
+
+data class GoogleLogin(
+    val session: PortableAuth.Session,
+    val created: Boolean,
+    val profileComplete: Boolean,
+)
 
 /** Redeemed login: the session plus whether signup created the account. */
 data class ConsumeOk(

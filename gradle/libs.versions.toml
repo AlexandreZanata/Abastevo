@@ -24,6 +24,9 @@ datastore = "1.1.1"
 camerax = "1.4.2"
 # Reviewed in docs/android/premium-area.md (Android SDK License; Java artifact, not billing-ktx).
 playBilling = "9.1.0"
+# Reviewed in docs/android/sign-in.md.
+credentials = "1.6.0"
+googleId = "1.2.1"
 compileSdk = "36"
 minSdk = "26"
 targetSdk = "36"
@@ -52,6 +55,9 @@ camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.r
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 play-billing = { group = "com.android.billingclient", name = "billing", version.ref = "playBilling" }
+credentials-core = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+credentials-play-services = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+google-identity = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleId" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

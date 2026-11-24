@@ -248,3 +248,59 @@ func TestPGBusinessAttributionAuthorChecked(t *testing.T) {
 		t.Fatalf("view = %+v", view)
 	}
 }
+
+func TestPGCommentPublicNameProjectionAndDeletion(t *testing.T) {
+	svc, pool, station, owner, replier := commentSetupPool(t)
+	ctx := context.Background()
+	const publicName = "Synthetic Author"
+	if _, err := pool.Exec(ctx, "UPDATE accounts SET display_name = $1 WHERE id = $2", publicName, owner); err != nil {
+		t.Fatal(err)
+	}
+	var legacyAlias string
+	if err := pool.QueryRow(ctx, "SELECT alias FROM accounts WHERE id = $1", replier).Scan(&legacyAlias); err != nil {
+		t.Fatal(err)
+	}
+	comment, err := svc.SubmitComment(ctx, owner, station, "GASOLINE_REGULAR", "Test topic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Reply(ctx, replier, station, "GASOLINE_REGULAR", comment.ID, "Test reply"); err != nil {
+		t.Fatal(err)
+	}
+	checkProjection := func(want string) {
+		t.Helper()
+		view, err := svc.ViewComment(ctx, comment.ID)
+		if err != nil || view.Alias != want {
+			t.Errorf("single comment author = %q, %v; want %q", view.Alias, err, want)
+		}
+		page, err := svc.ListComments(ctx, station, "GASOLINE_REGULAR", "", 10)
+		if err != nil || len(page.Items) != 1 || page.Items[0].Alias != want {
+			t.Errorf("paged comment author = %+v, %v; want %q", page.Items, err, want)
+		}
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback(ctx)
+		store := svc.Store.(*PGStore)
+		id, name, ok, err := store.SafetyCommentAuthorTx(ctx, tx, comment.ID)
+		if err != nil || !ok || id != owner || name != want {
+			t.Errorf("safety author = %q, %q, %v, %v; want %q", id, name, ok, err, want)
+		}
+	}
+	checkProjection(publicName)
+	replies, err := svc.ListReplies(ctx, comment.ID, "", 10)
+	if err != nil || len(replies.Items) != 1 || replies.Items[0].Alias != legacyAlias {
+		t.Errorf("legacy reply author = %+v, %v; want %q", replies.Items, err, legacyAlias)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE accounts SET status = 'deleted' WHERE id = $1", owner); err != nil {
+		t.Fatal(err)
+	}
+	var nameCleared bool
+	var ownerAlias string
+	err = pool.QueryRow(ctx, "SELECT display_name IS NULL, alias FROM accounts WHERE id = $1", owner).Scan(&nameCleared, &ownerAlias)
+	if err != nil || !nameCleared {
+		t.Fatalf("display_name retained after deletion: %v", err)
+	}
+	checkProjection(ownerAlias)
+}

@@ -9,16 +9,18 @@ import (
 )
 
 type Account struct {
-	ID        pgtype.UUID        `json:"id"`
-	Alias     string             `json:"alias"`
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID          pgtype.UUID        `json:"id"`
+	Alias       string             `json:"alias"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	DisplayName pgtype.Text        `json:"display_name"`
 }
 
 type AccountAddress struct {
 	AddressHash string             `json:"address_hash"`
 	AccountID   pgtype.UUID        `json:"account_id"`
 	LinkedAt    pgtype.Timestamptz `json:"linked_at"`
+	EmailHint   pgtype.Text        `json:"email_hint"`
 }
 
 type AccountBindingAudit struct {
@@ -108,6 +110,13 @@ type AccountProviderRevocation struct {
 	Attempts      int32              `json:"attempts"`
 	LeaseNonce    pgtype.UUID        `json:"lease_nonce"`
 	LeaseUntil    pgtype.Timestamptz `json:"lease_until"`
+}
+
+type AccountRecoveryAudit struct {
+	ID         pgtype.UUID        `json:"id"`
+	AccountID  pgtype.UUID        `json:"account_id"`
+	Action     string             `json:"action"`
+	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
 }
 
 type AccountSessionFamily struct {

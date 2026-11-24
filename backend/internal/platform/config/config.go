@@ -57,11 +57,6 @@ const (
 	// an unset pair leaves the map distribution routes unmounted.
 	keyMapDistributionDir  = "ANPFUEL_MAP_DIST_DIR"
 	keyMapDistributionKeys = "ANPFUEL_MAP_DIST_PUBLIC_KEYS"
-	// keyMailMode selects code delivery: "off" (default — codes
-	// never issue) or "memory" (bounded local outbox for
-	// development/tests). SMTP lands with deployment
-	// configuration, never silently.
-	keyMailMode = "ANPFUEL_MAIL_MODE"
 	// keyTrainingTermsDigest carries the digest of the currently
 	// published training-terms text that fresh consent grants must
 	// present. Rotating it invalidates old grants until owners
@@ -202,9 +197,10 @@ type Config struct {
 	// grants must present; served to owners on the status read, never
 	// logged as anything but configured/unset.
 	TrainingTermsDigest string
-	// MailMode is "off" or "memory" (see keyMailMode). Production
-	// stays off until delivery is deployed and configured.
-	MailMode string
+	// Production delivery stays off until explicitly configured.
+	MailMode            string
+	MailMaxCodesPerHour int
+	SMTP                SMTPConfig
 	// TrustedProxies is the raw comma-separated CIDR allowlist for
 	// the identity quota resolver (see keyTrustedProxies). Empty
 	// trusts nothing. The value carries network ranges, never
@@ -266,7 +262,8 @@ type Config struct {
 	PublicWebOrigins []string
 	// AppleSignIn configures native Sign in with Apple; zero keeps the
 	// native sign-in route answering provider-unavailable.
-	AppleSignIn AppleSignInConfig
+	AppleSignIn  AppleSignInConfig
+	GoogleSignIn GoogleSignInConfig
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -288,6 +285,8 @@ func (c Config) LogValue() slog.Value {
 		slog.String("github_repo", c.GitHubRepo),
 		slog.Bool("github_token_configured", c.GitHubToken != ""),
 		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
+		slog.String("mail_mode", c.MailMode),
+		slog.Bool("google_native_login_configured", c.GoogleSignIn.NativeAudience != ""),
 		slog.Bool("apple_native_login_configured", c.AppleSignIn.NativeLoginConfigured()),
 		slog.Bool("apple_revocation_configured", c.AppleSignIn.RevocationConfigured()),
 		slog.Any("r2", c.R2.r2LogValue()),
@@ -654,14 +653,9 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	cfg.TrainingTermsDigest = digest
 
-	mode, _ := getenv(keyMailMode)
-	if mode == "" {
-		mode = "off"
+	if err := loadMail(&cfg, getenv); err != nil {
+		return Config{}, err
 	}
-	if mode != "off" && mode != "memory" {
-		return Config{}, fmt.Errorf("%s must be off or memory", keyMailMode)
-	}
-	cfg.MailMode = mode
 
 	proxies, _ := getenv(keyTrustedProxies)
 	if strings.TrimSpace(proxies) != "" {
@@ -722,6 +716,11 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, err
 	}
 	cfg.AppleSignIn = apple
+	google, err := loadGoogle(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.GoogleSignIn = google
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {

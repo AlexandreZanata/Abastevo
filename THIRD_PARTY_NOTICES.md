@@ -26,6 +26,9 @@ sources, dependencies, fonts and other third-party material.
   governed by the [Android Software Development Kit License](https://developer.android.com/studio/terms.html);
   its bundled `third_party_licenses.txt` covers its own dependencies. Review:
   [Premium area](docs/android/premium-area.md#dependency-review-google-play-billing-library).
+- AndroidX Credential Manager and its Play services bridge use Apache 2.0.
+  The Google ID SDK uses the Android Software Development Kit License.
+  Review: [Android sign-in](docs/android/sign-in.md#dependency-review).
 - Kotlin, Android Jetpack, Room, OkHttp and other dependencies retain their own
   license files and notices. The Abastevo visible credit does not replace them.
 

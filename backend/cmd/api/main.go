@@ -319,7 +319,7 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	// Public station profiles (P30-T02). Same composition rule: the
 	// profile handler gets the canonical reader as a closure so
 	// modules never cross-read. Anonymous; no badge without a grant.
-	accountStore := accountadapters.NewPGStore(pool.Underlying())
+	accountStore := accountadapters.NewPGStoreWithCodeLimit(pool.Underlying(), cfg.MailMaxCodesPerHour)
 	// PAY-20: verified payment runtime. Provider clients exist only for
 	// maintenance-ready channels; sales stay off and operator proofs stay
 	// unimplemented, so dependent commands fail closed. Owner proofs are
@@ -469,14 +469,20 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	// fairness; zero disables an operation (no global cap).
 	globalBreaker := identityhttp.NewGlobalBreaker(cfg.GlobalQuotaChallenge, cfg.GlobalQuotaRegister, cfg.GlobalQuotaWrite)
 	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check, TrustedProxies: trustedProxies, GlobalBreaker: globalBreaker}.RegisterRoutes(router)
-	// FREE email accounts (P13-T02C, SEC01-B). Narrow closure wiring like the other
-	// modules: Postgres store, production generators, and delivery
-	// gated by deployment configuration — off by default (codes never
-	// issue, no rows retained), bounded memory outbox only when local
-	// delivery is explicitly configured. SMTP lands with deployment
-	// configuration, never silently.
-	accountMail := accountmail.NewOutbox(unixClock{}, accountmail.DefaultMaxRetained)
-	mailEnabled := cfg.MailMode == "memory"
+	// Production issues codes only with explicitly configured TLS delivery.
+	var accountMail accountdomain.MailSender
+	switch cfg.MailMode {
+	case "memory":
+		accountMail = accountmail.NewOutbox(unixClock{}, accountmail.DefaultMaxRetained)
+	case "smtp":
+		accountMail, err = accountmail.NewSMTP(accountmail.SMTPConfig{
+			Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, TLS: cfg.SMTP.TLS, Username: cfg.SMTP.Username,
+			Password: cfg.SMTP.Password, From: cfg.SMTP.From,
+		})
+		if err != nil {
+			return errors.New("api: account SMTP configuration unavailable")
+		}
+	}
 	// FREE provider verification (P13-T03C). Production JWKS over HTTPS
 	// with the frozen 1h cache plus the DB-backed nonce ledger; stub
 	// issuers stay test-only. Audience stays server-side.
@@ -489,9 +495,11 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 			TTL:    time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
 			Now:    time.Now,
 		},
-		Nonces:   accountadapters.NewPGNonces(pool.Underlying()),
-		Skew:     time.Duration(accountdomain.OIDCClockSkewSeconds) * time.Second,
-		CacheTTL: time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
+		Nonces:                  accountadapters.NewPGNonces(pool.Underlying()),
+		Skew:                    time.Duration(accountdomain.OIDCClockSkewSeconds) * time.Second,
+		CacheTTL:                time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
+		GoogleNativeAudience:    cfg.GoogleSignIn.NativeAudience,
+		GoogleAuthorizedParties: cfg.GoogleSignIn.AuthorizedParties,
 	}
 	// Contributor device-key proofs (P13-T04C) resolve through the
 	// identity-owned key source: one narrow closure, no cross-module
@@ -513,13 +521,15 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		Clock:       unixClock{},
 		Hasher:      accountdomain.SHA256Hasher{},
 		Mail:        accountMail,
-		MailEnabled: mailEnabled,
-		Store:       accountStore,
-		Verifier:    accountVerifier,
-		// Native Sign in with Apple (P13-T05): the identity token's
-		// audience is the configured app client, never the frozen link
-		// audience; unset keeps the login route provider-unavailable.
-		NativeAudiences: map[string]string{"apple": cfg.AppleSignIn.NativeAudience},
+		MailEnabled: accountMail != nil,
+		OnCodeDeliveryFailure: func(ctx context.Context, compensationFailed bool) {
+			logger.Warn(ctx, "account.mail_delivery", "verification code delivery failed", slog.Bool("compensation_failed", compensationFailed))
+		},
+		Store:    accountStore,
+		Verifier: accountVerifier,
+		// Native audiences are deployment-owned. Each remains distinct
+		// from the legacy provider-link audience.
+		NativeAudiences: map[string]string{"apple": cfg.AppleSignIn.NativeAudience, "google": cfg.GoogleSignIn.NativeAudience},
 		KeyProver:       accountKeys,
 		CodeGen:         accountdomain.GenerateCode,
 		TokenGen:        accountdomain.GenerateToken,

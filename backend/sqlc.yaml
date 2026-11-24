@@ -352,6 +352,7 @@ sql:
       - db/migrations/000062_account_admission_events.sql
       - db/migrations/000063_account_erasure_recovery.sql
       - db/migrations/000301_account_provider_grants.sql
+      - db/migrations/000302_account_recovery_profile.sql
     gen:
       go:
         package: account
@@ -376,6 +377,7 @@ sql:
       - db/migrations/000037_profile_claims.sql
       - db/migrations/000039_claim_decisions_grants.sql
       - db/migrations/000040_comment_business_attribution.sql
+      - db/migrations/000302_account_recovery_profile.sql
     gen:
       go:
         package: feedback
@@ -591,6 +593,7 @@ sql:
       - db/migrations/000020_accounts.sql
       - db/migrations/000075_subscription_ownership.sql
       - db/migrations/000140_admin_sessions_audit.sql
+      - db/migrations/000302_account_recovery_profile.sql
     gen:
       go:
         package: admin

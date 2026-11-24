@@ -274,7 +274,8 @@ function renderResults(items: AccountSummary[]): void {
     const row = document.createElement('li');
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = `${item.alias} (${item.status})`;
+    const name = item.display_name ? `${item.display_name} · ${item.alias}` : item.alias;
+    button.textContent = `${name} (${item.status})`;
     button.addEventListener('click', () => {
       if (!isUuid(item.account_id)) {
         setAlert('detail-error', 'Identificador de conta inválido.');
@@ -294,7 +295,9 @@ function renderDetail(detail: AccountDetail): void {
     resetRoleEvents();
   }
   selected = detail;
-  el<HTMLElement>('detail-alias').textContent = detail.alias;
+  el<HTMLElement>('detail-alias').textContent = detail.display_name
+    ? `${detail.display_name} · ${detail.alias}`
+    : detail.alias;
   el<HTMLElement>('detail-status').textContent = detail.status;
   el<HTMLElement>('detail-created').textContent = formatDateTime(detail.created_at);
   el<HTMLElement>('detail-paid').textContent =

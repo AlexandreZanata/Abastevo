@@ -1476,7 +1476,7 @@
         },
         {
           "file": "02-signed-in-profile.png",
-          "caption": "After creating the account (username only, no email or password) Profile shows \"Conectado\".",
+          "caption": "After creating the account (public name and verified email, no password) Profile shows \"Conectado\".",
           "strings": [
             "profile_signed_in_title",
             "premium_entry_title"
@@ -2055,7 +2055,7 @@
     {
       "feature": "account",
       "afterStep": "01-guest-profile.png",
-      "text": "Type a username (3–20 letters and numbers, starting with a letter) and tap \"Criar conta\". The account screens are protected with FLAG_SECURE so the account key never appears in screenshots.",
+      "text": "Tap \"Criar conta\", fill in \"Nome público\" and \"E-mail\", tap \"Enviar código\", then enter the emailed \"Código de 6 dígitos\" and tap \"Verificar código\". The account screens are protected with FLAG_SECURE so the account key never appears in screenshots.",
       "sources": [
         "app/src/main/kotlin/com/anpfuel/app/ui/auth/AuthScreen.kt",
         "app/src/main/kotlin/com/anpfuel/app/ui/auth/AccountKeyCard.kt"

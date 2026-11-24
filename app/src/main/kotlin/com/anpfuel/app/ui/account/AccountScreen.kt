@@ -1,10 +1,12 @@
 package com.anpfuel.app.ui.account
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,7 +15,6 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,11 +35,21 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.anpfuel.app.BuildConfig
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.auth.AccountAuthForm
 import com.anpfuel.app.ui.auth.AccountKeyCard
+import com.anpfuel.app.ui.auth.AuthError
 import com.anpfuel.app.ui.auth.AuthStep
+import com.anpfuel.app.ui.auth.AuthUiState
 import com.anpfuel.app.ui.auth.AuthViewModel
+import com.anpfuel.app.ui.auth.ConfirmAccountDeletion
+import com.anpfuel.app.ui.auth.SecureAccountWindow
+import com.anpfuel.app.ui.auth.editingProfile
+import com.anpfuel.app.ui.auth.formStep
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.ProfileActionRow
@@ -71,10 +82,15 @@ fun AccountScreen(
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
-    val signedIn = authState.step == AuthStep.AUTHENTICATED || authState.step == AuthStep.OFFLINE_ACCOUNT
-    LaunchedEffect(authViewModel, signedIn) {
-        authViewModel.refreshAccount()
-        if (signedIn) authViewModel.loadBackup()
+    val signedIn = authState.formStep in setOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)
+    val editing = authState.editingProfile
+    val canCancelEdit = editing && authState.formStep != AuthStep.CONFIRM_NAME
+    val onBack = if (canCancelEdit) authViewModel::onCancelProfileEdit else onNavigateBack
+    BackHandler(enabled = canCancelEdit, onBack = onBack)
+    SecureAccountWindow()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { authViewModel.refreshAccount() }
+    LaunchedEffect(authState.step, authState.profile) {
+        authViewModel.resumePublicNameConfirmation()
     }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     AnpScaffold(
@@ -82,7 +98,7 @@ fun AccountScreen(
         topBar = {
             AnpTopAppBar(
                 title = { Text(text = stringResource(R.string.account_screen_title)) },
-                onNavigateUp = onNavigateBack,
+                onNavigateUp = onBack,
             )
         },
     ) { innerPadding ->
@@ -90,6 +106,7 @@ fun AccountScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -99,6 +116,10 @@ fun AccountScreen(
                     SkeletonCard(height = 96.dp)
                     SkeletonCard(height = 220.dp)
                 }
+                return@Column
+            }
+            if (editing) {
+                AccountAuthForm(authState, authViewModel, onBack)
                 return@Column
             }
             if (!signedIn) {
@@ -137,6 +158,7 @@ fun AccountScreen(
                         }
                     }
                 }
+                AuthError(authState, authViewModel::onDismissError)
                 return@Column
             }
             PremiumEntryCard(
@@ -171,31 +193,17 @@ fun AccountScreen(
             }
             SignedInAccountContent(
                 state = authState,
-                onLogout = { authViewModel.onLogout(); onNavigateBack() },
+                viewModel = authViewModel,
                 onDelete = { showDeleteConfirm = true },
             )
         }
     }
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text(text = stringResource(R.string.auth_delete_title)) },
-            text = { Text(text = stringResource(R.string.auth_delete_copy)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirm = false
-                        authViewModel.onDeleteAccount()
-                        onNavigateBack()
-                    },
-                ) {
-                    Text(text = stringResource(R.string.auth_delete_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text(text = stringResource(R.string.action_back))
-                }
+        ConfirmAccountDeletion(
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                showDeleteConfirm = false
+                authViewModel.onDeleteAccount()
             },
         )
     }
@@ -203,7 +211,7 @@ fun AccountScreen(
 
 /** Shared by account details and login completion; one source for their UI. */
 @Composable
-internal fun SignedInAccountContent(state: com.anpfuel.app.ui.auth.AuthUiState, onLogout: () -> Unit, onDelete: () -> Unit) {
+internal fun SignedInAccountContent(state: AuthUiState, viewModel: AuthViewModel, onDelete: () -> Unit) {
     Text(
         text = stringResource(R.string.profile_account_section),
         style = MaterialTheme.typography.titleSmall,
@@ -211,6 +219,39 @@ internal fun SignedInAccountContent(state: com.anpfuel.app.ui.auth.AuthUiState, 
         modifier = Modifier.semantics { heading() },
     )
     AccountStatusCard(stringResource(R.string.profile_signed_in_title), stringResource(R.string.profile_signed_in_subtitle))
+    state.profile?.let { profile ->
+        if (state.showProtectionPrompt) {
+            ProfileFieldsCard {
+                Text(stringResource(R.string.auth_protect_title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.auth_protect_copy))
+                if (profile.name == null) {
+                    TextButton(viewModel::beginPublicNameEdit) { Text(stringResource(R.string.auth_edit_name)) }
+                }
+                if (profile.recoveryEmailHint == null) {
+                    TextButton(viewModel::beginRecoveryEmailChange) { Text(stringResource(R.string.auth_add_recovery_email)) }
+                }
+                TextButton(viewModel::dismissProtectionPrompt) { Text(stringResource(R.string.auth_protect_dismiss)) }
+            }
+        }
+        ProfileFieldsCard {
+            Text(stringResource(R.string.auth_public_name), style = MaterialTheme.typography.titleMedium)
+            Text(profile.publicName)
+            TextButton(viewModel::beginPublicNameEdit) { Text(stringResource(R.string.auth_edit_name)) }
+            HorizontalDivider()
+            Text(stringResource(R.string.auth_recovery_email_title), style = MaterialTheme.typography.titleMedium)
+            profile.recoveryEmailHint?.let { Text(it) }
+            TextButton(viewModel::beginRecoveryEmailChange) {
+                Text(stringResource(if (profile.recoveryEmailHint == null) R.string.auth_add_recovery_email else R.string.auth_change_email))
+            }
+            val linked = "google" in profile.providers
+            if (linked || BuildConfig.GOOGLE_SERVER_CLIENT_ID.isNotBlank()) {
+                HorizontalDivider()
+                if (linked) Text(stringResource(R.string.auth_google_linked))
+                else TextButton(viewModel::beginGoogleLink) { Text(stringResource(R.string.auth_google)) }
+            }
+        }
+    }
+    AuthError(state, viewModel::onDismissError)
     state.keyBackup?.let { backup ->
         AccountKeyCard(backup = backup)
     }
@@ -226,7 +267,7 @@ internal fun SignedInAccountContent(state: com.anpfuel.app.ui.auth.AuthUiState, 
             ProfileActionRow(
                 icon = Icons.Default.Logout,
                 title = stringResource(R.string.auth_logout),
-                onClick = onLogout,
+                onClick = viewModel::onLogout,
             )
             HorizontalDivider()
             ProfileActionRow(
@@ -236,6 +277,21 @@ internal fun SignedInAccountContent(state: com.anpfuel.app.ui.auth.AuthUiState, 
                 destructive = true,
                 onClick = onDelete,
             )
+        }
+    }
+}
+
+@Composable
+private fun ProfileFieldsCard(content: @Composable () -> Unit) {
+    val fill = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = fill),
+        border = AnpContainerDefaults.borderStroke(fill),
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            content()
         }
     }
 }

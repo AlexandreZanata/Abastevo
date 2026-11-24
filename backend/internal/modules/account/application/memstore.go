@@ -19,6 +19,7 @@ type MemStore struct {
 	accounts      map[string]domain.Account
 	accountIDs    map[string]string
 	accountsByID  map[string]domain.Account
+	recoveryHints map[string]string
 	families      map[string]*domain.SessionFamily
 	links         map[string]map[string]domain.ProviderLink
 	bySubject     map[string]string
@@ -63,6 +64,7 @@ func NewMemStore() *MemStore {
 		accounts:        map[string]domain.Account{},
 		accountIDs:      map[string]string{},
 		accountsByID:    map[string]domain.Account{},
+		recoveryHints:   map[string]string{},
 		families:        map[string]*domain.SessionFamily{},
 		links:           map[string]map[string]domain.ProviderLink{},
 		bySubject:       map[string]string{},
@@ -238,6 +240,10 @@ func (m *MemStore) TryIssueCode(_ context.Context, rec domain.EmailCode, nowUnix
 func (m *MemStore) TryCreateKeyAccount(_ context.Context, acc domain.Account, cred domain.KeyCredential, nowUnix int64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.createKeyAccountLocked(acc, cred, nowUnix)
+}
+
+func (m *MemStore) createKeyAccountLocked(acc domain.Account, cred domain.KeyCredential, nowUnix int64) error {
 	n := 0
 	live := m.keyAdmissions[:0]
 	for _, admittedAt := range m.keyAdmissions {
@@ -271,6 +277,10 @@ func (m *MemStore) TryCreateKeyAccount(_ context.Context, acc domain.Account, cr
 func (m *MemStore) TryCreateFamily(_ context.Context, fam domain.SessionFamily, nowUnix int64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.admitFamilyLocked(fam, nowUnix)
+}
+
+func (m *MemStore) admitFamilyLocked(fam domain.SessionFamily, nowUnix int64) error {
 	n := 0
 	for _, f := range m.families {
 		if f.AccountID != fam.AccountID {
@@ -323,43 +333,51 @@ func (m *MemStore) LatestCode(_ context.Context, addressHash string) (domain.Ema
 func (m *MemStore) TryConsume(_ context.Context, addressHash, code string, hasher domain.CodeHasher, nowUnix int64) (domain.EmailCode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	idx := m.byAddr[addressHash]
-	if len(idx) == 0 {
-		return domain.EmailCode{}, domain.ErrCodeUnknown
+	return m.consumeCodeLocked(addressHash, code, hasher, nowUnix, true)
+}
+
+func (m *MemStore) consumeCodeLocked(addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (domain.EmailCode, error) {
+	rec, err := m.verifyCodeLocked(addressHash, code, hasher, nowUnix, legacyLockVerdict)
+	if err != nil {
+		return domain.EmailCode{}, err
 	}
+	rec.ConsumedAt = nowUnix
+	return *rec, nil
+}
+
+func (m *MemStore) verifyCodeLocked(addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (*domain.EmailCode, error) {
+	idx := m.byAddr[addressHash]
 	// Match-first: a presented code decides its own row, so same-second
 	// issuance never burns attempts on a sibling row.
-	for _, i := range idx {
-		rec := &m.codes[i]
+	for i := len(idx) - 1; i >= 0; i-- {
+		rec := &m.codes[idx[i]]
 		if !hasher.Equal(rec.Hash, rec.Salt, code) {
 			continue
 		}
 		if rec.ConsumedAt != 0 {
-			return domain.EmailCode{}, domain.ErrCodeConsumed
+			return nil, domain.ErrCodeConsumed
 		}
 		if domain.CodeExpired(rec.IssuedAt, nowUnix) {
-			return domain.EmailCode{}, domain.ErrCodeExpired
+			return nil, domain.ErrCodeExpired
 		}
 		if !domain.AttemptAllowed(rec.Attempts) {
-			return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+			return nil, domain.ErrCodeAttemptsExhausted
 		}
-		rec.ConsumedAt = nowUnix
-		return *rec, nil
+		return rec, nil
 	}
 	// No match: wrong codes stay indistinguishable from unknown addresses.
-	// States surface only on hash match (proof of possession). Attempts burn
-	// on the newest live row when one exists.
+	// States surface only on hash match (proof of possession).
 	for i := len(idx) - 1; i >= 0; i-- {
 		rec := &m.codes[idx[i]]
-		if rec.ConsumedAt == 0 && !domain.CodeExpired(rec.IssuedAt, nowUnix) && domain.AttemptAllowed(rec.Attempts) {
+		if rec.Live(nowUnix) {
 			rec.Attempts++
-			if !domain.AttemptAllowed(rec.Attempts) {
-				return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+			if legacyLockVerdict && !domain.AttemptAllowed(rec.Attempts) {
+				return nil, domain.ErrCodeAttemptsExhausted
 			}
 			break
 		}
 	}
-	return domain.EmailCode{}, domain.ErrCodeUnknown
+	return nil, domain.ErrCodeUnknown
 }
 
 func (m *MemStore) FindAccount(_ context.Context, addressHash string) (domain.Account, bool, error) {
@@ -461,6 +479,10 @@ func subjectKey(provider, subject string) string {
 func (m *MemStore) LinkProvider(_ context.Context, link domain.ProviderLink) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.linkProviderLocked(link)
+}
+
+func (m *MemStore) linkProviderLocked(link domain.ProviderLink) error {
 	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" {
 		return domain.ErrOIDCWrongAudience
 	}
@@ -546,6 +568,19 @@ func (m *MemStore) FindProviderOwner(_ context.Context, provider, subject string
 func (m *MemStore) ResolveProviderAccount(_ context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.resolveProviderAccountLocked(link, candidate, domain.RecoveryAddress{})
+}
+
+func (m *MemStore) ResolveGoogleAccount(_ context.Context, link domain.ProviderLink, candidate domain.Account, recovery domain.RecoveryAddress) (domain.Account, bool, error) {
+	if link.Provider != "google" || link.Issuer != domain.IssuerGoogle {
+		return domain.Account{}, false, domain.ErrOIDCUnknownIssuer
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.resolveProviderAccountLocked(link, candidate, recovery)
+}
+
+func (m *MemStore) resolveProviderAccountLocked(link domain.ProviderLink, candidate domain.Account, recovery domain.RecoveryAddress) (domain.Account, bool, error) {
 	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" || link.AccountID != candidate.ID {
 		return domain.Account{}, false, domain.ErrOIDCWrongAudience
 	}
@@ -562,6 +597,12 @@ func (m *MemStore) ResolveProviderAccount(_ context.Context, link domain.Provide
 	}
 	if _, taken := m.accountsByID[candidate.ID]; taken {
 		return domain.Account{}, false, domain.ErrKeyCollision
+	}
+	if recovery.Hash != "" {
+		if _, bound := m.accounts[recovery.Hash]; bound {
+			return domain.Account{}, false, domain.ErrProviderEmailInUse
+		}
+		m.bindRecoveryAddressLocked(candidate, recovery)
 	}
 	m.accountsByID[candidate.ID] = candidate
 	m.links[candidate.ID] = map[string]domain.ProviderLink{link.Provider: link}
@@ -669,6 +710,10 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		return nil, err
 	}
 	m.revokeAccountLocked(accountID, nowUnix)
+	acc := m.accountsByID[accountID]
+	acc.DisplayName = ""
+	m.accountsByID[accountID] = acc
+	delete(m.recoveryHints, accountID)
 	if _, ok := m.erasureRequests[accountID]; !ok {
 		m.erasureRequests[accountID] = nowUnix
 	}

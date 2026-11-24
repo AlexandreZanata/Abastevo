@@ -1,0 +1,44 @@
+# Public account name vectors shared by the account API and the Android client.
+# Go: account domain NormalizePublicName / ValidPublicName.
+# Kotlin: com.anpfuel.domain.account.PublicName.
+# Columns: kind<TAB>input<TAB>expected. Fields may use the escapes \t, \n,
+# \r, \\, \uXXXX and \UXXXXXXXX. Synthetic names only.
+# kind=normalize: expected is the normalized spelling.
+# kind=valid: expected is true or false.
+normalize	  A\u0301na\u00a0  d'Ávila-Silva.  	Ána d'Ávila-Silva.
+normalize	João   da\u2003Silva	João da Silva
+valid	Ana	true
+valid	João da Silva	true
+valid	É阿	true
+valid	仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁	true
+valid	João-٢٠26	true
+valid	Ймя	true
+valid	Maria d\u2019Ávila	true
+valid	  Ana   Lima  	true
+valid	Administradora Lima	true
+valid	Anapolina	true
+valid	É	false
+valid	仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁仁	false
+valid	É. 1234	false
+valid	João 8٢٢٢٢	false
+valid	João@Silva	false
+valid	João/Silva	false
+valid	João:Silva	false
+valid	João\U0001F7E2	false
+valid	\nJoão Silva	false
+valid	João\tSilva	false
+valid	João\u200dSilva	false
+valid	ABASTEVO	false
+valid	 AdMiN 	false
+valid	Administrador	false
+valid	Moderador	false
+valid	MoDeRaCaO	false
+valid	MoDeRaC\u0327A\u0303O	false
+valid	Suporte	false
+valid	ANP	false
+valid	Oficial	false
+valid	Abastevo Oficial	false
+valid	Suporte Abastevo	false
+valid	Ana Admin	false
+valid	Abastevo1	false
+valid	ANP-Brasil	false

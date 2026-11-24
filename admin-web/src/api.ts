@@ -5,6 +5,7 @@
 export interface AccountSummary {
   account_id: string;
   alias: string;
+  display_name?: string;
   status: string;
   created_at: string;
 }
@@ -31,6 +32,7 @@ export interface PaidSummary {
 export interface AccountDetail {
   account_id: string;
   alias: string;
+  display_name?: string;
   status: string;
   created_at: string;
   grants: GrantView[];

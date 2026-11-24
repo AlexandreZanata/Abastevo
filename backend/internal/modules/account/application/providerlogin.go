@@ -33,23 +33,9 @@ type ProviderLogin struct {
 // authorization code is redeemed best-effort into a sealed, revocable
 // provider grant once the account is known to be usable.
 func (s *Service) LoginWithProvider(ctx context.Context, req ProviderLogin) (AuthResult, error) {
-	if !domain.ValidProvider(req.Provider) {
-		return AuthResult{}, domain.ErrOIDCUnknownIssuer
-	}
-	audience := s.NativeAudiences[req.Provider]
-	if !domain.NativeLoginProvider(req.Provider) || audience == "" || s.Verifier == nil {
-		return AuthResult{}, domain.ErrProviderLoginUnavailable
-	}
-	if !domain.ValidProviderToken(req.IDToken) || !domain.ValidNativeNonce(req.Nonce) ||
-		(req.AuthorizationCode != "" && !domain.ValidAuthorizationCode(req.AuthorizationCode)) {
-		return AuthResult{}, domain.ErrProviderProofMalformed
-	}
-	subject, err := s.Verifier.Verify(ctx, req.Provider, req.IDToken, audience, domain.NativeNonceClaim(req.Nonce))
+	subject, err := s.verifyNativeProvider(ctx, req)
 	if err != nil {
 		return AuthResult{}, err
-	}
-	if subject.Issuer == "" || subject.Subject == "" {
-		return AuthResult{}, domain.ErrOIDCWrongAudience
 	}
 	now := s.Clock.NowUnix()
 	id, err := s.IDGen()
@@ -69,14 +55,25 @@ func (s *Service) LoginWithProvider(ctx context.Context, req ProviderLogin) (Aut
 		Email:     subject.Email,
 		LinkedAt:  now,
 	}
-	acc, created, err := s.Store.ResolveProviderAccount(ctx, link, candidate)
+	var acc domain.Account
+	var created bool
+	if req.Provider == "google" {
+		// Recovery uses the hashed address and masked hint. Keep the
+		// legacy provider email column empty for the native Google flow.
+		link.Email = ""
+		acc, created, err = s.Store.ResolveGoogleAccount(ctx, link, candidate, domain.GoogleRecoveryAddress(subject))
+	} else {
+		acc, created, err = s.Store.ResolveProviderAccount(ctx, link, candidate)
+	}
 	if err != nil {
 		return AuthResult{}, err
 	}
 	if err := accountUsable(acc); err != nil {
 		return AuthResult{}, err
 	}
-	s.captureGrant(ctx, acc.ID, req.Provider, subject.Subject, req.AuthorizationCode, now)
+	if req.Provider == "apple" {
+		s.captureGrant(ctx, acc.ID, req.Provider, subject.Subject, req.AuthorizationCode, now)
+	}
 	sess, err := s.newSession(ctx, acc.ID, now)
 	if err != nil {
 		return AuthResult{}, err
@@ -94,4 +91,48 @@ func (s *Service) LoginWithProvider(ctx context.Context, req ProviderLogin) (Aut
 		return AuthResult{}, err
 	}
 	return AuthResult{Account: acc, Session: sess, Created: created}, nil
+}
+
+func (s *Service) verifyNativeProvider(ctx context.Context, req ProviderLogin) (domain.ProviderSubject, error) {
+	if !domain.ValidProvider(req.Provider) {
+		return domain.ProviderSubject{}, domain.ErrOIDCUnknownIssuer
+	}
+	audience := s.NativeAudiences[req.Provider]
+	if !domain.NativeLoginProvider(req.Provider) || audience == "" || s.Verifier == nil {
+		return domain.ProviderSubject{}, domain.ErrProviderLoginUnavailable
+	}
+	if !domain.ValidProviderToken(req.IDToken) || !domain.ValidNativeNonce(req.Nonce) ||
+		(req.AuthorizationCode != "" && !domain.ValidAuthorizationCode(req.AuthorizationCode)) {
+		return domain.ProviderSubject{}, domain.ErrProviderProofMalformed
+	}
+	subject, err := s.Verifier.Verify(ctx, req.Provider, req.IDToken, audience, domain.NativeNonceClaim(req.Nonce))
+	if err != nil {
+		return domain.ProviderSubject{}, err
+	}
+	if subject.Issuer == "" || subject.Subject == "" {
+		return domain.ProviderSubject{}, domain.ErrOIDCWrongAudience
+	}
+	return subject, nil
+}
+
+// LinkGoogleNative binds a Google proof to an account with a fresh session.
+func (s *Service) LinkGoogleNative(ctx context.Context, familyID, accessToken string, req ProviderLogin) (domain.ProviderLink, error) {
+	if req.Provider != "google" || req.AuthorizationCode != "" {
+		return domain.ProviderLink{}, domain.ErrProviderProofMalformed
+	}
+	proof, err := s.validateSessionProof(ctx, familyID, accessToken, true)
+	if err != nil {
+		return domain.ProviderLink{}, err
+	}
+	subject, err := s.verifyNativeProvider(ctx, req)
+	if err != nil {
+		return domain.ProviderLink{}, err
+	}
+	// Verification can take time. The store checks the session again
+	// under the account and family locks at the time of the write.
+	proof.Now = s.Clock.NowUnix()
+	return s.Store.LinkGoogleWithProof(ctx, proof, domain.ProviderLink{
+		AccountID: proof.AccountID, Provider: req.Provider, Issuer: subject.Issuer,
+		Subject: subject.Subject, LinkedAt: proof.Now,
+	})
 }

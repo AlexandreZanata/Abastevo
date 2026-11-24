@@ -5,20 +5,10 @@ import (
 	"encoding/hex"
 )
 
-// Native provider sign-in (B-BR-A01/A03, P13-T05): a verified provider
-// identity token opens a FREE account session without a prior email
-// or key account. Only Apple is offered natively; its identity token
-// carries the client application's own audience (the app bundle ID),
-// never the frozen link audience, so a token minted for linking can
-// never sign in and the reverse.
-//
-// Nonce binding: Apple copies the request nonce verbatim into the
-// token's nonce claim. The native client generates a random raw nonce,
-// sets the request nonce to NativeNonceClaim(raw) and sends the raw
-// value to the server, which hashes it before comparing. A captured
-// identity token alone therefore never satisfies the server: the raw
-// preimage is required, and the claim is consumed once in the shared
-// nonce ledger.
+// Native provider sign-in opens a free session with a verified identity
+// token whose audience identifies the deployed application. Apple and Google
+// copy the nonce claim into that token. The client sends the high-entropy
+// raw nonce and the server hashes it before comparison and one-time use.
 const (
 	// NativeNonceMinLength/MaxLength bound the raw nonce: at least 16
 	// visible ASCII characters (comfortably above 64 bits from a
@@ -31,9 +21,8 @@ const (
 )
 
 // NativeLoginProvider reports whether provider offers native sign-in.
-// Google stays link-only until its native flow is specified.
 func NativeLoginProvider(provider string) bool {
-	return provider == "apple"
+	return provider == "apple" || provider == "google"
 }
 
 // ValidNativeNonce reports whether raw is a well-formed native nonce:
