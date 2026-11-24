@@ -4,6 +4,8 @@ import com.anpfuel.application.portable.AuthAccountApi
 import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.ConsumeOk
+import com.anpfuel.application.portable.GoogleLogin
+import com.anpfuel.application.portable.IssuedAccountKey
 import com.anpfuel.application.portable.KeyLogin
 import com.anpfuel.domain.portable.PortableAuth
 import java.io.IOException
@@ -46,6 +48,50 @@ class AccountHttpApi(
         }
     }
 
+    override fun requestCode(email: String, purpose: PortableAuth.CodePurpose, locale: String): AuthApiResult<Unit> =
+        postParsed(
+            "/v1/accounts/email/codes",
+            JSONObject().put("email", email).put("purpose", purpose.wire).put("locale", locale),
+        ) { Unit }
+
+    override fun signUp(name: String, email: String, code: String): AuthApiResult<IssuedAccountKey> =
+        postParsed(
+            "/v1/accounts/keys/signup",
+            emailProof(email, code).put("name", name),
+        ) { parseIssuedKey(it, "created") }
+
+    override fun recover(email: String, code: String): AuthApiResult<IssuedAccountKey> =
+        postParsed("/v1/accounts/recovery", emailProof(email, code)) { parseIssuedKey(it, "sessions_revoked") }
+
+    override fun loginWithGoogle(idToken: String, rawNonce: String): AuthApiResult<GoogleLogin> =
+        postParsed("/v1/accounts/providers/login", googleProof(JSONObject(), idToken, rawNonce)) { body ->
+            parseSession(body.getJSONObject("session"))?.let { session ->
+                GoogleLogin(session, body.getBoolean("created"), body.getBoolean("profile_complete"))
+            }
+        }
+
+    override fun profile(session: PortableAuth.Session): AuthApiResult<PortableAuth.Profile> =
+        postParsed("/v1/accounts/profile", sessionProof(session)) { parseProfile(it, session.accountId) }
+
+    override fun updateName(session: PortableAuth.Session, name: String): AuthApiResult<PortableAuth.Profile> =
+        postParsed("/v1/accounts/profile/name", sessionProof(session).put("name", name)) {
+            parseProfile(it, session.accountId)
+        }
+
+    override fun setRecoveryEmail(
+        session: PortableAuth.Session,
+        email: String,
+        code: String,
+    ): AuthApiResult<PortableAuth.Profile> =
+        postParsed("/v1/accounts/recovery-email", sessionProof(session).put("email", email).put("code", code)) {
+            parseProfile(it, session.accountId)
+        }
+
+    override fun linkGoogle(session: PortableAuth.Session, idToken: String, rawNonce: String): AuthApiResult<Unit> =
+        postParsed("/v1/accounts/providers/link-native", googleProof(sessionProof(session), idToken, rawNonce)) { body ->
+            Unit.takeIf { body.getJSONObject("provider_link").getString("provider") == PortableAuth.PROVIDER_GOOGLE }
+        }
+
     override fun consumeCode(email: String, code: String): AuthApiResult<ConsumeOk> {
         val res = post(
             "/v1/accounts/email/consume",
@@ -82,7 +128,9 @@ class AccountHttpApi(
             is HttpResult.Ok -> {
                 val session = res.body.optJSONObject("session")?.let(::parseSession)
                     ?: return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
-                val username = res.body.optJSONObject("account")?.optString("public_alias", "").orEmpty()
+                val account = res.body.optJSONObject("account")
+                val username = account?.optString("public_name", "").orEmpty()
+                    .ifEmpty { account?.optString("public_alias", "").orEmpty() }
                 if (username.isEmpty()) return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
                 AuthApiResult.Ok(KeyLogin(session, username))
             }
@@ -149,6 +197,58 @@ class AccountHttpApi(
             is HttpResult.Err -> AuthApiResult.Err(res.verdict)
         }
     }
+
+    private fun emailProof(email: String, code: String): JSONObject =
+        JSONObject().put("email", email).put("code", code)
+
+    private fun sessionProof(session: PortableAuth.Session): JSONObject =
+        JSONObject().put("family_id", session.familyId).put("access_token", session.accessToken)
+
+    private fun googleProof(body: JSONObject, idToken: String, nonce: String): JSONObject =
+        body.put("provider", PortableAuth.PROVIDER_GOOGLE).put("id_token", idToken).put("nonce", nonce)
+
+    private fun parseIssuedKey(body: JSONObject, flag: String): IssuedAccountKey? {
+        if (!body.getBoolean(flag)) return null
+        val session = parseSession(body.getJSONObject("session")) ?: return null
+        val account = body.getJSONObject("account")
+        if (session.accountId != account.getString("account_id")) return null
+        val publicName = account.getString("public_name")
+        val key = body.getString("account_key")
+        if (publicName.isBlank() || key.isBlank()) return null
+        return IssuedAccountKey(session, publicName, key)
+    }
+
+    private fun parseProfile(body: JSONObject, expectedAccountId: String): PortableAuth.Profile? {
+        val accountId = body.getString("account_id")
+        val publicName = body.getString("public_name")
+        if (accountId != expectedAccountId || publicName.isBlank()) return null
+        val providers = body.getJSONArray("providers")
+        return PortableAuth.Profile(
+            accountId,
+            publicName,
+            body.nullableString("name"),
+            body.getBoolean("profile_complete"),
+            body.nullableString("recovery_email_hint"),
+            body.getBoolean("has_account_key"),
+            (0 until providers.length()).map(providers::getString).toSet(),
+        )
+    }
+
+    private fun JSONObject.nullableString(key: String): String? =
+        if (isNull(key)) null else getString(key)
+
+    private fun <T : Any> postParsed(path: String, payload: JSONObject, decode: (JSONObject) -> T?): AuthApiResult<T> =
+        when (val result = post(path, payload)) {
+            is HttpResult.Err -> AuthApiResult.Err(result.verdict)
+            is HttpResult.Ok -> {
+                val decoded = try {
+                    decode(result.body)
+                } catch (_: org.json.JSONException) {
+                    null
+                }
+                decoded?.let { AuthApiResult.Ok(it) } ?: AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+            }
+        }
 
     private sealed interface HttpResult {
         data class Ok(val body: JSONObject) : HttpResult

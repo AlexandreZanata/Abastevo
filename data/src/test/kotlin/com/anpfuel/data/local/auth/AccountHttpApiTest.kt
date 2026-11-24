@@ -8,6 +8,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.json.JSONObject
 import org.junit.jupiter.api.Test
 
 class AccountHttpApiTest {
@@ -35,6 +36,87 @@ class AccountHttpApiTest {
          "access_expires_at":"1970-01-12T14:01:40Z",
          "absolute_expires_at":"1970-02-19T07:06:40Z"}
     """.trimIndent()
+
+    @Test
+    fun codePurposeAndLocaleAreExplicit() {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("""{"status":"sent"}"""))
+        val response = api.requestCode("test@example.invalid", PortableAuth.CodePurpose.RECOVERY, "pt-BR")
+        assertTrue(response is AuthApiResult.Ok)
+        val request = server.takeRequest()
+        assertEquals("/v1/accounts/email/codes", request.path)
+        val json = JSONObject(request.body.readUtf8())
+        assertEquals("recovery", json.getString("purpose"))
+        assertEquals("pt-BR", json.getString("locale"))
+    }
+
+    @Test
+    fun signupAndRecoveryParseTheNewKeyAndSession() {
+        for (recover in listOf(false, true)) {
+            val resultFlag = if (recover) "sessions_revoked" else "created"
+            server.enqueue(
+                MockResponse().setResponseCode(if (recover) 200 else 201).setBody(
+                    """{"account":{"account_id":"${session().accountId}","public_name":"Test Person"},
+                        "session":${sessionJson()},"account_key":"synthetic-key","$resultFlag":true}""",
+                ),
+            )
+            val email = "test@example.invalid"
+            val result = if (recover) api.recover(email, "012345") else api.signUp("Test Person", email, "012345")
+            check(result is AuthApiResult.Ok)
+            assertEquals("synthetic-key", result.value.accountKey)
+            assertEquals("Test Person", result.value.publicName)
+            assertEquals(session().accountId, result.value.session.accountId)
+            val request = server.takeRequest()
+            assertEquals(if (recover) "/v1/accounts/recovery" else "/v1/accounts/keys/signup", request.path)
+            val json = JSONObject(request.body.readUtf8())
+            assertEquals(!recover, json.has("name"))
+            assertEquals("012345", json.getString("code"))
+        }
+    }
+
+    @Test
+    fun nativeGoogleProofAndProfileUseAccountApiShapes() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session":${sessionJson()},"created":true,"profile_complete":false}""",
+            ),
+        )
+        val google = api.loginWithGoogle("synthetic-token", "synthetic-raw-nonce")
+        check(google is AuthApiResult.Ok)
+        assertEquals(false, google.value.profileComplete)
+        val googleRequest = server.takeRequest()
+        assertEquals("/v1/accounts/providers/login", googleRequest.path)
+        val googleBody = JSONObject(googleRequest.body.readUtf8())
+        assertEquals("google", googleBody.getString("provider"))
+        assertEquals("synthetic-raw-nonce", googleBody.getString("nonce"))
+
+        val session = session()
+        val profile = """{"account_id":"${session.accountId}","public_name":"synthetic-alias","name":null,
+                         "profile_complete":false,"recovery_email_hint":null,"has_account_key":false,
+                         "providers":["google"]}"""
+        for ((route, call) in listOf(
+            "profile" to { api.profile(session) },
+            "profile/name" to { api.updateName(session, "Example Person") },
+            "recovery-email" to { api.setRecoveryEmail(session, "test@example.invalid", "012345") },
+        )) {
+            server.enqueue(MockResponse().setResponseCode(200).setBody(profile))
+            val result = call()
+            check(result is AuthApiResult.Ok)
+            assertEquals(setOf("google"), result.value.providers)
+            assertEquals(null, result.value.name)
+            assertEquals(null, result.value.recoveryEmailHint)
+            val request = server.takeRequest()
+            assertEquals("/v1/accounts/$route", request.path)
+            val payload = JSONObject(request.body.readUtf8())
+            assertEquals(session.familyId, payload.getString("family_id"))
+            assertEquals(session.accessToken, payload.getString("access_token"))
+        }
+
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"provider_link":{"provider":"google"}}"""))
+        assertTrue(api.linkGoogle(session, "synthetic-token", "synthetic-raw-nonce") is AuthApiResult.Ok)
+        val link = server.takeRequest()
+        assertEquals("/v1/accounts/providers/link-native", link.path)
+        assertEquals(session.familyId, JSONObject(link.body.readUtf8()).getString("family_id"))
+    }
 
     @Test
     fun requestCodeAccepts() {
