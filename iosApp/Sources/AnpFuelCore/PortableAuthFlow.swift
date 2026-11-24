@@ -14,6 +14,7 @@ public struct EmptyAuthValue: Equatable {
     public init() {}
 }
 
+/// Session plus whether the login created the account (native provider sign-in).
 public struct AuthConsumeOk: Equatable {
     public let session: PortableAuth.Session
     public let created: Bool
@@ -21,6 +22,30 @@ public struct AuthConsumeOk: Equatable {
     public init(session: PortableAuth.Session, created: Bool) {
         self.session = session
         self.created = created
+    }
+}
+
+/// One-display key issued with a session by verified sign-up or key recovery.
+public struct AuthIssuedKey: Equatable {
+    public let session: PortableAuth.Session
+    public let publicName: String
+    public let accountKey: String
+
+    public init(session: PortableAuth.Session, publicName: String, accountKey: String) {
+        self.session = session
+        self.publicName = publicName
+        self.accountKey = accountKey
+    }
+}
+
+/// The only display of a new key, kept even when durable storage fails (Android `AuthFlow.NewKey`).
+public struct AuthNewKey: Equatable {
+    public let backup: AuthKeyBackup
+    public let sessionSaved: Bool
+
+    public init(backup: AuthKeyBackup, sessionSaved: Bool) {
+        self.backup = backup
+        self.sessionSaved = sessionSaved
     }
 }
 
@@ -92,8 +117,17 @@ public protocol PortableNonceSource {
 }
 
 public protocol AuthAccountApi {
-    func requestCode(email: String) -> AuthApiResult<EmptyAuthValue>
-    func consumeCode(email: String, code: String) -> AuthApiResult<AuthConsumeOk>
+    /// `POST /v1/accounts/email/codes`; every well-formed request gets the same accepted reply.
+    func requestCode(email: String, purpose: PortableAuth.CodePurpose, locale: String) -> AuthApiResult<EmptyAuthValue>
+    /// `POST /v1/accounts/keys/signup`: public name plus a verified recovery e-mail.
+    func signUp(name: String, email: String, code: String) -> AuthApiResult<AuthIssuedKey>
+    /// `POST /v1/accounts/recovery`: replaces the key and revokes the other session families.
+    func recover(email: String, code: String) -> AuthApiResult<AuthIssuedKey>
+    func profile(session: PortableAuth.Session) -> AuthApiResult<PortableAuth.Profile>
+    func updateName(session: PortableAuth.Session, name: String) -> AuthApiResult<PortableAuth.Profile>
+    /// Needs a login family at most 600 seconds old (`reauthentication-required` otherwise).
+    func setRecoveryEmail(session: PortableAuth.Session, email: String, code: String) -> AuthApiResult<PortableAuth.Profile>
+    /// Legacy username sign-up (`POST /v1/accounts/keys`), kept for compatibility; the app no longer offers it.
     func createKeyAccount(username: String) -> AuthApiResult<AuthKeyIssued>
     func loginWithKey(accountKey: String) -> AuthApiResult<AuthKeyLogin>
     func refresh(familyId: String, refreshToken: String) -> AuthApiResult<PortableAuth.Session>
@@ -105,7 +139,7 @@ public protocol AuthAccountApi {
         nonce: String
     ) -> AuthApiResult<EmptyAuthValue>
     func deleteAccount(session: PortableAuth.Session) -> AuthApiResult<EmptyAuthValue>
-    /// `POST /v1/accounts/providers/login`: native provider token plus the raw nonce, same reply as e-mail consume.
+    /// `POST /v1/accounts/providers/login`: native provider token plus the raw nonce; replies with account and session.
     func loginWithProvider(
         provider: String,
         idToken: String,
@@ -167,44 +201,77 @@ public final class AuthFlow: @unchecked Sendable {
         self.ports = ports
     }
 
-    public func requestEmailCode(email: String) -> AuthApiResult<EmptyAuthValue> {
+    /// Requests a six-digit e-mail code. The purpose and locale only select the message copy.
+    public func requestCode(
+        email: String,
+        purpose: PortableAuth.CodePurpose,
+        locale: String
+    ) -> AuthApiResult<EmptyAuthValue> {
         if !isEmailHint(email) { return .err(Self.clientInvalid) }
-        return ports.api.requestCode(email: email.trimmingCharacters(in: .whitespacesAndNewlines))
+        return ports.api.requestCode(
+            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+            purpose: purpose,
+            locale: locale
+        )
     }
 
-    public func consumeEmailCode(email: String, code: String) -> AuthApiResult<AuthLoginOutcome> {
-        return ports.lock.withLock {
-            if ports.keys.loadKey() != nil {
-                return .err(Self.clientInvalid)
+    /// Sign-up checks the public name before any code is requested, so a refused name never spends a code.
+    public func requestSignUpCode(name: String, email: String, locale: String) -> AuthApiResult<EmptyAuthValue> {
+        if !PublicName.isValid(name) { return .err(PortableAuth.Verdict.nameInvalid) }
+        return requestCode(email: email, purpose: .signup, locale: locale)
+    }
+
+    /// Creates a FREE key account with a public name and a verified recovery e-mail, signed in at once.
+    public func signUp(name: String, email: String, code: String) -> AuthApiResult<AuthNewKey> {
+        return issueKey(email: email, code: code) { address in
+            if !PublicName.isValid(name) {
+                return .err(PortableAuth.Verdict.nameInvalid)
             }
-            if !isEmailHint(email) || !PortableAuth.isCodeShape(code) {
-                return .err(Self.clientInvalid)
-            }
-            switch ports.api.consumeCode(
-                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                code: code
-            ) {
-            case .err(let verdict):
-                return .err(verdict)
-            case .ok(let res):
-                if persistSession(res.session) {
-                    return .ok(AuthLoginOutcome(session: res.session, created: res.created))
-                }
-                return .err(Self.secureStorageUnavailable)
-            }
+            return ports.api.signUp(name: PublicName.normalize(name), email: address, code: code)
+        }
+    }
+
+    /// Replaces the key through the verified recovery e-mail. The previous key and other sessions stop working.
+    public func recover(email: String, code: String) -> AuthApiResult<AuthNewKey> {
+        return issueKey(email: email, code: code) { address in
+            ports.api.recover(email: address, code: code)
+        }
+    }
+
+    public func profile() -> AuthApiResult<PortableAuth.Profile> {
+        return withSession { session in ports.api.profile(session: session) }
+    }
+
+    public func updateName(_ name: String) -> AuthApiResult<PortableAuth.Profile> {
+        if !PublicName.isValid(name) { return .err(PortableAuth.Verdict.nameInvalid) }
+        let normalized = PublicName.normalize(name)
+        return withSession { session in ports.api.updateName(session: session, name: normalized) }
+    }
+
+    public func setRecoveryEmail(email: String, code: String) -> AuthApiResult<PortableAuth.Profile> {
+        if !isEmailHint(email) || !PortableAuth.isCodeShape(code) { return .err(Self.clientInvalid) }
+        let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        return withSession { session in
+            ports.api.setRecoveryEmail(session: session, email: address, code: code)
         }
     }
 
     /// Native provider login (Sign in with Apple). The raw nonce spends once client-side; the server
-    /// matches its SHA-256 against the token claim. A retained key account refuses, as e-mail login does.
+    /// matches its SHA-256 against the token claim. A retained key account refuses unless the login
+    /// re-authenticates the stored account (`expectedAccountId`), which can never switch accounts.
     public func loginWithProvider(
         provider: String,
         idToken: String,
         rawNonce: String,
-        authorizationCode: String?
+        authorizationCode: String?,
+        expectedAccountId: String? = nil
     ) -> AuthApiResult<AuthLoginOutcome> {
         return ports.lock.withLock {
-            if ports.keys.loadKey() != nil {
+            if let expected = expectedAccountId {
+                if ports.store.load()?.accountId != expected {
+                    return .err(Self.clientInvalid)
+                }
+            } else if ports.keys.loadKey() != nil {
                 return .err(Self.clientInvalid)
             }
             if !PortableAuth.isProvider(provider) || idToken.isEmpty || idToken.count > Self.maxProofChars ||
@@ -223,6 +290,9 @@ public final class AuthFlow: @unchecked Sendable {
                 return .err(verdict)
             case .ok(let res):
                 spentNonces.insert(rawNonce)
+                if let expected = expectedAccountId, res.session.accountId != expected {
+                    return .err(Self.clientInvalid)
+                }
                 if persistSession(res.session) {
                     return .ok(AuthLoginOutcome(session: res.session, created: res.created))
                 }
@@ -247,16 +317,23 @@ public final class AuthFlow: @unchecked Sendable {
         }
     }
 
-    public func loginWithKey(rawKey: String) -> AuthApiResult<AuthLoginOutcome> {
+    /// Key-only login. With `expectedAccountId` it re-authenticates the stored account and refuses any other.
+    public func loginWithKey(rawKey: String, expectedAccountId: String? = nil) -> AuthApiResult<AuthLoginOutcome> {
         return ports.lock.withLock {
             let trimmedKey = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmedKey.isEmpty {
+                return .err(Self.clientInvalid)
+            }
+            if let expected = expectedAccountId, ports.store.load()?.accountId != expected {
                 return .err(Self.clientInvalid)
             }
             switch ports.api.loginWithKey(accountKey: trimmedKey) {
             case .err(let verdict):
                 return .err(verdict)
             case .ok(let res):
+                if let expected = expectedAccountId, res.session.accountId != expected {
+                    return .err(Self.clientInvalid)
+                }
                 let backup = AuthKeyBackup(username: res.username, accountKey: trimmedKey)
                 let previousBackup = ports.keys.loadKey()
                 let previousSession = ports.store.load()
@@ -438,6 +515,59 @@ public final class AuthFlow: @unchecked Sendable {
                 }
                 return result
             }
+        }
+    }
+
+    private func issueKey(
+        email: String,
+        code: String,
+        request: (String) -> AuthApiResult<AuthIssuedKey>
+    ) -> AuthApiResult<AuthNewKey> {
+        return ports.lock.withLock {
+            if !isEmailHint(email) || !PortableAuth.isCodeShape(code) {
+                return .err(Self.clientInvalid)
+            }
+            switch request(email.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            case .err(let verdict):
+                return .err(verdict)
+            case .ok(let issued):
+                let backup = AuthKeyBackup(username: issued.publicName, accountKey: issued.accountKey)
+                let saved = saveKey(backup)
+                if !saved {
+                    // Recovery has invalidated the preceding key; keeping it would misrepresent the backup.
+                    try? ports.keys.clearKey()
+                }
+                let sessionSaved = saved && persistSession(issued.session)
+                if !sessionSaved {
+                    try? ports.store.clear()
+                }
+                return .ok(AuthNewKey(backup: backup, sessionSaved: sessionSaved))
+            }
+        }
+    }
+
+    private func withSession<T: Equatable>(
+        _ request: (PortableAuth.Session) -> AuthApiResult<T>
+    ) -> AuthApiResult<T> {
+        return ports.lock.withLock {
+            switch refreshSession() {
+            case .err(let verdict):
+                return .err(verdict)
+            case .ok(let maybeSession):
+                guard let session = maybeSession else {
+                    return .err(PortableAuth.Verdict.sessionExpired)
+                }
+                return request(session)
+            }
+        }
+    }
+
+    private func saveKey(_ backup: AuthKeyBackup) -> Bool {
+        do {
+            try ports.keys.saveKey(backup)
+            return ports.keys.loadKey() == backup
+        } catch {
+            return false
         }
     }
 

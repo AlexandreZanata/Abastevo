@@ -1,6 +1,7 @@
-# Public account name vectors shared by the account API and the Android client.
+# Public account name vectors shared by the account API and the Android and iOS clients.
 # Go: account domain NormalizePublicName / ValidPublicName.
 # Kotlin: com.anpfuel.domain.account.PublicName.
+# Swift: AnpFuelCore PublicName.
 # Columns: kind<TAB>input<TAB>expected. Fields may use the escapes \t, \n,
 # \r, \\, \uXXXX and \UXXXXXXXX. Synthetic names only.
 # kind=normalize: expected is the normalized spelling.

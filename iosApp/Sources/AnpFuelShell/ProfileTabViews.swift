@@ -172,50 +172,53 @@ public struct ProfileRootView: View {
     }
 }
 
+/// Signed-out access: Sign in with Apple, the account key, verified sign-up and key recovery.
+/// Passwordless e-mail login has retired; an e-mail code only proves the address in a journey.
 public struct AuthSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
+    @ObservedObject private var access: AccountAccessModel
 
-    @State private var email = ""
-    @State private var code = ""
-    @State private var username = ""
     @State private var accountKeyInput = ""
-    @State private var issuedKey: AuthKeyIssued?
+
+    public init(viewModel: AppStateViewModel) {
+        self.viewModel = viewModel
+        _access = ObservedObject(wrappedValue: viewModel.accountAccess)
+    }
 
     public var body: some View {
+        let shownKey = access.shownKey(host: viewModel)
         NavigationStack {
             Form {
-                AppleSignInSection(viewModel: viewModel)
+                if let issued = shownKey {
+                    IssuedKeySection(issued: issued, isWorking: viewModel.isAuthWorking) {
+                        access.continueAfterIssuedKey { dismiss() }
+                    }
+                    AccountAccessErrorSection(error: access.error)
+                } else {
+                    AppleSignInSection(viewModel: viewModel)
 
-                Section(String(localized: "auth.email_code")) {
-                    TextField(String(localized: "auth.email_example"), text: $email)
-                    Button(String(localized: "auth.send_code")) {
-                        viewModel.requestEmailOtp(email: email)
+                    Section(String(localized: "android.auth_key_login")) {
+                        SecureField(String(localized: "android.auth_key_label"), text: $accountKeyInput)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button(String(localized: "android.auth_key_login")) {
+                            viewModel.loginWithAccountKey(accountKeyInput)
+                        }
+                        .disabled(accountKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    TextField(String(localized: "android.auth_code_label"), text: $code)
-                    Button(String(localized: "auth.verify_code")) {
-                        viewModel.verifyEmailOtp(email: email, code: code)
-                    }
-                }
 
-                Section(String(localized: "auth.recovery_account")) {
-                    TextField(String(localized: "auth.alias_hint"), text: $username)
-                    Button(String(localized: "auth.create_with_key")) {
-                        Task {
-                            issuedKey = await viewModel.createAnonymousKeyAccount(username: username)
+                    Section(String(localized: "android.auth_signup_heading")) {
+                        NavigationLink {
+                            AccountCodeJourneyView(viewModel: viewModel, access: access, journey: .signUp)
+                        } label: {
+                            Text(String(localized: "android.auth_create_account"))
                         }
-                    }
-                    if let issued = issuedKey {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(String(localized: "android.profile_backup_username", defaultValue: "Username: \(issued.username)")).font(.subheadline.bold())
-                            Text(String(localized: "auth.key_save_now", defaultValue: "Unique key (save it now): \(issued.accountKey)"))
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.orange)
+                        NavigationLink {
+                            AccountCodeJourneyView(viewModel: viewModel, access: access, journey: .recovery)
+                        } label: {
+                            Text(String(localized: "android.auth_lost_key"))
                         }
-                    }
-                    TextField(String(localized: "auth.key_sign_in_hint"), text: $accountKeyInput)
-                    Button(String(localized: "android.auth_key_login")) {
-                        viewModel.loginWithAccountKey(accountKeyInput)
                     }
                 }
 
@@ -238,6 +241,8 @@ public struct AuthSheetView: View {
                 }
             }
         }
+        // A new key stays on screen until Continue; a swipe must not hide its only display.
+        .interactiveDismissDisabled(shownKey != nil)
     }
 }
 
@@ -249,6 +254,10 @@ public struct AccountManagementSheetView: View {
     public var body: some View {
         NavigationStack {
             List {
+                if viewModel.currentAccountIdOrNil != nil {
+                    AccountProfileSection(viewModel: viewModel, access: viewModel.accountAccess)
+                }
+
                 if let alias = viewModel.signedInAlias {
                     AccountExportSection(viewModel: viewModel, alias: alias)
                 }
@@ -275,6 +284,9 @@ public struct AccountManagementSheetView: View {
                 }
             }
             .navigationTitle(String(localized: "android.account_screen_title"))
+            .task {
+                viewModel.accountAccess.loadProfile()
+            }
             .alert(String(localized: "android.auth_delete_title"), isPresented: $confirmDelete) {
                 Button(String(localized: "account.request_deletion_action"), role: .destructive) {
                     viewModel.deleteAccountAndPurge()

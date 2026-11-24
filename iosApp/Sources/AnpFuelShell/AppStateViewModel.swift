@@ -93,7 +93,7 @@ public final class AppStateViewModel: ObservableObject {
     private let keychain: IosKeychainSecretStore
     private let proofSigner: IosDeviceProofSigner
     private let httpClient: AbastevoHttpClient
-    private let authFlow: AuthFlow
+    let authFlow: AuthFlow
     private let photoCache: IosTransientPhotoCache
     private let photoFlow: PhotoFlow
     private let locationManager = IosLocationManager()
@@ -147,6 +147,9 @@ public final class AppStateViewModel: ObservableObject {
         session: { [weak self] in self?.authFlow.currentSession() },
         signer: { [weak self] in self?.premiumRequestSigner() }
     )
+
+    /// Verified sign-up, key recovery, public name and recovery e-mail (B-BR-IOS-ID).
+    public lazy var accountAccess: AccountAccessModel = AccountAccessModel(host: self)
 
     /// Vehicle ledger, monthly indicators, admission and private cloud sync (B-BR-IOS-VEHICLE).
     public lazy var ledger: LedgerCoordinator = LedgerCoordinator(
@@ -578,11 +581,12 @@ public final class AppStateViewModel: ObservableObject {
             navigation.stop()
             navigationDestination = nil
         }
+        accountAccess.ownerChanged(to: currentAccountIdOrNil)
         switch state {
-        case .active(let session):
-            self.signedInAlias = authFlow.currentKey()?.username ?? String(localized: "auth.account.shortLabel", defaultValue: "Account \(String(session.accountId.prefix(6)))")
-        case .needsRefresh(let session):
-            self.signedInAlias = authFlow.currentKey()?.username ?? String(localized: "auth.account.shortLabel", defaultValue: "Account \(String(session.accountId.prefix(6)))")
+        case .active(let session), .needsRefresh(let session):
+            self.signedInAlias = accountAccess.publicName(for: session.accountId)
+                ?? authFlow.currentKey()?.username
+                ?? String(localized: "auth.account.shortLabel", defaultValue: "Account \(String(session.accountId.prefix(6)))")
         case .pendingKeyAccount, .loggedOut:
             self.signedInAlias = nil
         }
@@ -624,56 +628,6 @@ public final class AppStateViewModel: ObservableObject {
         }
     }
 
-    public func requestEmailOtp(email: String) {
-        if isOfflineSimulation {
-            authStatusMessage = String(localized: "auth.email.connect")
-            return
-        }
-        let flow = authFlow
-        runAuth({ flow.requestEmailCode(email: email) }) { viewModel, result in
-            switch result {
-            case .ok:
-                viewModel.authStatusMessage = String(localized: "auth.email.codeRequested")
-            case .err(let code):
-                viewModel.authStatusMessage = Self.authErrorMessage(for: code)
-            }
-        }
-    }
-
-    public func verifyEmailOtp(email: String, code: String) {
-        let flow = authFlow
-        runAuth({ flow.consumeEmailCode(email: email, code: code) }) { viewModel, result in
-            switch result {
-            case .ok(let outcome):
-                viewModel.authStatusMessage = outcome.created ? String(localized: "auth.account.created") : String(localized: "android.auth_logged_in")
-                viewModel.completeSignIn()
-            case .err(let verdict):
-                viewModel.authStatusMessage = Self.authErrorMessage(for: verdict)
-            }
-        }
-    }
-
-    public func createAnonymousKeyAccount(username: String) async -> AuthKeyIssued? {
-        guard !isOfflineSimulation else {
-            authStatusMessage = String(localized: "auth.key.connect")
-            return nil
-        }
-        let flow = authFlow
-        isAuthWorking = true
-        driverAccounting.contextChanged()
-        let result = await AuthBlockingWork.run { flow.createKeyAccount(username: username) }
-        isAuthWorking = false
-        switch result {
-        case .ok(let issued):
-            authStatusMessage = String(localized: "auth.key.created")
-            rehydrateAuth()
-            return issued
-        case .err(let verdict):
-            authStatusMessage = Self.authErrorMessage(for: verdict)
-            return nil
-        }
-    }
-
     public func loginWithAccountKey(_ rawKey: String) {
         let flow = authFlow
         runAuth({ flow.loginWithKey(rawKey: rawKey) }) { viewModel, result in
@@ -685,6 +639,13 @@ public final class AppStateViewModel: ObservableObject {
                 viewModel.authStatusMessage = Self.authErrorMessage(for: verdict)
             }
         }
+    }
+
+    /// Hands the pending raw nonce to one Apple reply (sign-in or re-authentication) and forgets it.
+    func takeAppleNonce() -> String? {
+        let raw = pendingAppleNonce
+        pendingAppleNonce = nil
+        return raw
     }
 
     /// Value for `ASAuthorizationAppleIDRequest.nonce`; the raw nonce stays here until the reply arrives.
@@ -729,9 +690,7 @@ public final class AppStateViewModel: ObservableObject {
                 viewModel.authStatusMessage = outcome.created ? String(localized: "auth.apple.accountCreated") : String(localized: "auth.apple.signedIn")
                 viewModel.completeSignIn()
             case .err(let verdict):
-                if verdict == AccountProviderLogin.unavailableVerdict {
-                    viewModel.authStatusMessage = String(localized: "auth.apple.serverUnavailable")
-                } else if verdict == AuthFlow.clientInvalid && hasKeyAccount {
+                if verdict == AuthFlow.clientInvalid && hasKeyAccount {
                     viewModel.authStatusMessage = String(localized: "auth.apple.keyAccountActive")
                 } else {
                     viewModel.authStatusMessage = Self.authErrorMessage(for: verdict)
@@ -747,44 +706,17 @@ public final class AppStateViewModel: ObservableObject {
 
     /// Mirrors Android AuthViewModel; provider refusals share one public message.
     private static func authErrorMessage(for verdict: String) -> String {
-        switch verdict {
-        case AuthFlow.clientInvalid, "username-invalid":
-            return String(localized: "android.auth_error_input")
-        case AuthFlow.secureStorageUnavailable:
-            return String(localized: "android.auth_error_secure_storage")
-        case PortableAuth.Verdict.codeUnknown, PortableAuth.Verdict.codeConsumed:
-            return String(localized: "android.auth_error_code")
-        case "key-invalid":
-            return String(localized: "android.auth_error_key")
-        case "username-taken":
-            return String(localized: "android.auth_error_username_taken")
-        case PortableAuth.Verdict.codeExpired:
-            return String(localized: "android.auth_error_expired")
-        case PortableAuth.Verdict.codeLocked:
-            return String(localized: "android.auth_error_locked")
-        case PortableAuth.Verdict.sessionReuse, PortableAuth.Verdict.sessionRevoked, PortableAuth.Verdict.sessionExpired:
-            return String(localized: "android.auth_error_session")
-        case PortableAuth.Verdict.accountSuspended:
-            return String(localized: "android.auth_error_suspended")
-        case PortableAuth.Verdict.accountDeleted:
-            return String(localized: "android.auth_error_deleted")
-        case PortableAuth.unavailable:
-            return String(localized: "android.auth_error_offline")
-        case let provider where provider.hasPrefix("oidc-") || provider.hasPrefix("link-"):
-            return String(localized: "android.auth_error_provider")
-        default:
-            return String(localized: "android.auth_error_unknown")
-        }
+        AccountAccessCopy.message(for: AccountAccessError(verdict: verdict))
     }
 
     /// After any login: refresh the visible state, then register and bind the device key for owner-signed writes.
-    private func completeSignIn() {
+    func completeSignIn() {
         rehydrateAuth()
         identity.afterSignIn()
     }
 
     /// Runs one blocking `AuthFlow` call off the main actor and applies its result on the main actor.
-    private func runAuth<T>(
+    func runAuth<T>(
         _ work: @escaping @Sendable () -> T,
         apply: @escaping (AppStateViewModel, T) -> Void
     ) {

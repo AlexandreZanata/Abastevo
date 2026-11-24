@@ -39,6 +39,54 @@ public enum PortableAuth {
         public static let sessionInvalid = "session-invalid"
         public static let accountSuspended = "account-suspended"
         public static let accountDeleted = "account-deleted"
+        public static let addressLinked = "address-linked"
+        public static let recoveryNoAccount = "recovery-no-account"
+        public static let providerEmailInUse = "provider-email-in-use"
+        public static let reauthenticationRequired = "reauthentication-required"
+        public static let emailLoginRetired = "email-login-retired"
+        public static let nameInvalid = "name-invalid"
+        public static let emailInvalid = "email-invalid"
+        public static let providerUnavailable = "provider-unavailable"
+        public static let admissionExhausted = "admission-exhausted"
+        public static let sessionBudgetExhausted = "session-budget-exhausted"
+    }
+
+    /// Selects only the e-mail copy; the proof is usable by any verification flow.
+    public enum CodePurpose: String, Equatable, Sendable {
+        case signup
+        case recovery
+        case attach
+
+        public var wire: String { rawValue }
+    }
+
+    /// Private owner profile (`POST /v1/accounts/profile`). The e-mail hint never leaves the owner.
+    public struct Profile: Equatable, Sendable {
+        public let accountId: String
+        public let publicName: String
+        public let name: String?
+        public let profileComplete: Bool
+        public let recoveryEmailHint: String?
+        public let hasAccountKey: Bool
+        public let providers: Set<String>
+
+        public init(
+            accountId: String,
+            publicName: String,
+            name: String?,
+            profileComplete: Bool,
+            recoveryEmailHint: String?,
+            hasAccountKey: Bool,
+            providers: Set<String>
+        ) {
+            self.accountId = accountId
+            self.publicName = publicName
+            self.name = name
+            self.profileComplete = profileComplete
+            self.recoveryEmailHint = recoveryEmailHint
+            self.hasAccountKey = hasAccountKey
+            self.providers = providers
+        }
     }
 
     public struct Session: Equatable, Codable, Sendable {

@@ -299,6 +299,12 @@
 		30093909C89C8E57DB9DB998 /* forum-edit-topic-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */; };
 		F4C2CF46825CAF4BE4B6D99C /* forum-edit-topic-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */; };
 		BBBAB5AB081AD226EEF03B9E /* forum-remove-topic-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */; };
+		D4411CD1BEEFDBE9033AED88 /* AccountPublicName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2562F8BD804708EA633409F9 /* AccountPublicName.swift */; };
+		51B49FECED801AC755577678 /* PublicNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 819205FEB14069381DC8B2AC /* PublicNameTests.swift */; };
+		FDA65210CEF5CF63BF7B699F /* AccountAccessError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AE079E409F8367D6312DBE /* AccountAccessError.swift */; };
+		B939351EC2B4AB824DA123EA /* AccountAccessModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D74B7B053FDFBDAEFCCB43 /* AccountAccessModel.swift */; };
+		7C4F47C7CC15AFDC941908C3 /* AccountAccessViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 870362E57F694A6D4F2DFF3D /* AccountAccessViews.swift */; };
+		6BB6E9A7273DACA70B149C60 /* AccountAccessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89884CF7AAD86648E1D93CBB /* AccountAccessTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -627,6 +633,12 @@
 		BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-topic-invalid.json"; path = "../contracts/testdata/api/forum-edit-topic-invalid.json"; sourceTree = SOURCE_ROOT; };
 		AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-topic-valid.json"; path = "../contracts/testdata/api/forum-edit-topic-valid.json"; sourceTree = SOURCE_ROOT; };
 		8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-remove-topic-valid.json"; path = "../contracts/testdata/api/forum-remove-topic-valid.json"; sourceTree = SOURCE_ROOT; };
+		2562F8BD804708EA633409F9 /* AccountPublicName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPublicName.swift; sourceTree = "<group>"; };
+		819205FEB14069381DC8B2AC /* PublicNameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicNameTests.swift; sourceTree = "<group>"; };
+		A5AE079E409F8367D6312DBE /* AccountAccessError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountAccessError.swift; sourceTree = "<group>"; };
+		79D74B7B053FDFBDAEFCCB43 /* AccountAccessModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountAccessModel.swift; sourceTree = "<group>"; };
+		870362E57F694A6D4F2DFF3D /* AccountAccessViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountAccessViews.swift; sourceTree = "<group>"; };
+		89884CF7AAD86648E1D93CBB /* AccountAccessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountAccessTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -749,6 +761,8 @@
 			E0CD74FED4BBF6BFFBA4242A,
 			20FA3E0AC2141D2A105337CD,
 			7B8CBAC865B94BE101DEB3FA,
+			2562F8BD804708EA633409F9,
+			A5AE079E409F8367D6312DBE,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -809,6 +823,8 @@
 			5CE5E987F334435A4D79A51A,
 			C8F92329030440009A7A4406,
 			026424CE864F508912DE0646,
+			79D74B7B053FDFBDAEFCCB43,
+			870362E57F694A6D4F2DFF3D,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -956,6 +972,8 @@
 			BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */,
 			AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */,
 			8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */,
+			819205FEB14069381DC8B2AC,
+			89884CF7AAD86648E1D93CBB,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -1212,6 +1230,8 @@
 			E724667014975D5B1C24111D,
 			4577B1AB2B710BEA71982C72,
 			B4776609466A2C861CFB747A,
+			D4411CD1BEEFDBE9033AED88,
+			FDA65210CEF5CF63BF7B699F,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -1271,6 +1291,8 @@
 			7953FC11606CEF9545C50E77,
 			D8C04150CDB1046105A4EBDD,
 			14FA322E860983A5CD849686,
+			B939351EC2B4AB824DA123EA,
+			7C4F47C7CC15AFDC941908C3,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -1338,6 +1360,8 @@
 			6E0DF3E5C52D11E047B1DCE5,
 			32A29F0A341B8D318192C383,
 			13888AFFEC4B2A9966B091ED,
+			51B49FECED801AC755577678,
+			6BB6E9A7273DACA70B149C60,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

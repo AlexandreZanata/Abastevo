@@ -194,6 +194,17 @@ public struct OfficialStationPrice: Identifiable, Sendable {
     public let surveyEnd: String
 }
 
+/// Status and body of one account-bridge reply.
+struct AuthHttpReply {
+    let status: Int
+    let body: Data
+}
+
+/// Synchronous exchange behind the account bridge; nil means no HTTP response arrived.
+protocol AuthHttpExchange {
+    func send(_ request: URLRequest) -> AuthHttpReply?
+}
+
 /// URLSession transport for public reads and the synchronous account bridge used by `AuthFlow`.
 /// The bridge blocks its caller, so the shell runs it through `AuthBlockingWork`, never on the main actor.
 /// Signed device requests live in `SignedRequestTransport`.
@@ -204,6 +215,8 @@ public final class AbastevoHttpClient: AuthAccountApi {
 
     public var environment: ApiEnvironment
     let session: URLSession
+    /// Replaces URLSession for the account bridge in tests; nil sends over `session`.
+    var authExchange: AuthHttpExchange?
 
     public init(environment: ApiEnvironment = .staging) {
         self.environment = environment
@@ -218,26 +231,53 @@ public final class AbastevoHttpClient: AuthAccountApi {
 
     // MARK: - AuthAccountApi (synchronous bridge over URLSession for AuthFlow)
 
-    public func requestCode(email: String) -> AuthApiResult<EmptyAuthValue> {
-        let res = postAuthSync(path: "/v1/accounts/email/codes", body: ["email": email])
+    public func requestCode(
+        email: String,
+        purpose: PortableAuth.CodePurpose,
+        locale: String
+    ) -> AuthApiResult<EmptyAuthValue> {
+        let res = postAuthSync(
+            path: "/v1/accounts/email/codes",
+            body: ["email": email, "purpose": purpose.wire, "locale": locale]
+        )
         switch res {
         case .ok: return .ok(EmptyAuthValue())
         case .err(let verdict): return .err(verdict)
         }
     }
 
-    public func consumeCode(email: String, code: String) -> AuthApiResult<AuthConsumeOk> {
-        let res = postAuthSync(path: "/v1/accounts/email/consume", body: ["email": email, "code": code])
-        switch res {
-        case .err(let verdict): return .err(verdict)
-        case .ok(let json):
-            guard let sessionDict = json["session"] as? [String: Any],
-                  let parsed = parseSession(sessionDict) else {
-                return .err(PortableAuth.unavailable)
-            }
-            let created = json["created"] as? Bool ?? false
-            return .ok(AuthConsumeOk(session: parsed, created: created))
-        }
+    public func signUp(name: String, email: String, code: String) -> AuthApiResult<AuthIssuedKey> {
+        let res = postAuthSync(path: "/v1/accounts/keys/signup", body: ["name": name, "email": email, "code": code])
+        return issuedKey(res, flag: "created")
+    }
+
+    public func recover(email: String, code: String) -> AuthApiResult<AuthIssuedKey> {
+        let res = postAuthSync(path: "/v1/accounts/recovery", body: ["email": email, "code": code])
+        return issuedKey(res, flag: "sessions_revoked")
+    }
+
+    public func profile(session: PortableAuth.Session) -> AuthApiResult<PortableAuth.Profile> {
+        let res = postAuthSync(path: "/v1/accounts/profile", body: sessionProof(session))
+        return profileResult(res, accountId: session.accountId)
+    }
+
+    public func updateName(session: PortableAuth.Session, name: String) -> AuthApiResult<PortableAuth.Profile> {
+        var body = sessionProof(session)
+        body["name"] = name
+        let res = postAuthSync(path: "/v1/accounts/profile/name", body: body)
+        return profileResult(res, accountId: session.accountId)
+    }
+
+    public func setRecoveryEmail(
+        session: PortableAuth.Session,
+        email: String,
+        code: String
+    ) -> AuthApiResult<PortableAuth.Profile> {
+        var body = sessionProof(session)
+        body["email"] = email
+        body["code"] = code
+        let res = postAuthSync(path: "/v1/accounts/recovery-email", body: body)
+        return profileResult(res, accountId: session.accountId)
     }
 
     public func createKeyAccount(username: String) -> AuthApiResult<AuthKeyIssued> {
@@ -261,9 +301,12 @@ public final class AbastevoHttpClient: AuthAccountApi {
         case .ok(let json):
             guard let sessionDict = json["session"] as? [String: Any],
                   let parsed = parseSession(sessionDict),
-                  let accountDict = json["account"] as? [String: Any],
-                  let username = accountDict["public_alias"] as? String,
-                  !username.isEmpty else {
+                  let accountDict = json["account"] as? [String: Any] else {
+                return .err(PortableAuth.unavailable)
+            }
+            let publicName = accountDict["public_name"] as? String ?? ""
+            let username = publicName.isEmpty ? accountDict["public_alias"] as? String ?? "" : publicName
+            guard !username.isEmpty else {
                 return .err(PortableAuth.unavailable)
             }
             return .ok(AuthKeyLogin(session: parsed, username: username))
@@ -514,18 +557,18 @@ public final class AbastevoHttpClient: AuthAccountApi {
 
     private final class AuthHttpResponse: @unchecked Sendable {
         private let lock = NSLock()
-        private var result: AuthHttpResult = .err(PortableAuth.unavailable)
+        private var reply: AuthHttpReply?
 
-        func store(_ result: AuthHttpResult) {
+        func store(_ reply: AuthHttpReply) {
             lock.lock()
             defer { lock.unlock() }
-            self.result = result
+            self.reply = reply
         }
 
-        func load() -> AuthHttpResult {
+        func load() -> AuthHttpReply? {
             lock.lock()
             defer { lock.unlock() }
-            return result
+            return reply
         }
     }
 
@@ -540,38 +583,120 @@ public final class AbastevoHttpClient: AuthAccountApi {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        let received: AuthHttpReply?
+        if let exchange = authExchange {
+            received = exchange.send(request)
+        } else {
+            received = sendOverSession(request)
+        }
+        guard let reply = received, reply.body.count <= Self.maxResponseBytes else {
+            return .err(PortableAuth.unavailable)
+        }
+        if reply.status < 200 || reply.status >= 300 {
+            let code = parseErrorCode(reply.body) ?? ""
+            let verdict = code.hasPrefix("account.") ? String(code.dropFirst("account.".count)) : PortableAuth.unavailable
+            return .err(verdict)
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any] else {
+            return .err(PortableAuth.unavailable)
+        }
+        return .ok(json)
+    }
+
+    private func sendOverSession(_ request: URLRequest) -> AuthHttpReply? {
         let semaphore = DispatchSemaphore(value: 0)
         let authResponse = AuthHttpResponse()
 
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
+        let task = session.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
-            if error != nil {
-                authResponse.store(.err(PortableAuth.unavailable))
+            guard error == nil, let data = data, let http = response as? HTTPURLResponse else {
                 return
             }
-            guard let data = data, data.count <= Self.maxResponseBytes,
-                  let http = response as? HTTPURLResponse else {
-                authResponse.store(.err(PortableAuth.unavailable))
-                return
-            }
-            if http.statusCode < 200 || http.statusCode >= 300 {
-                let code = self?.parseErrorCode(data) ?? ""
-                let verdict = code.hasPrefix("account.") ? String(code.dropFirst("account.".count)) : PortableAuth.unavailable
-                authResponse.store(.err(verdict))
-                return
-            }
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                authResponse.store(.err(PortableAuth.unavailable))
-                return
-            }
-            authResponse.store(.ok(json))
+            authResponse.store(AuthHttpReply(status: http.statusCode, body: data))
         }
         task.resume()
         guard semaphore.wait(timeout: .now() + Self.requestTimeout + 1.0) == .success else {
             task.cancel()
-            return .err(PortableAuth.unavailable)
+            return nil
         }
         return authResponse.load()
+    }
+
+    private func sessionProof(_ session: PortableAuth.Session) -> [String: Any] {
+        return ["family_id": session.familyId, "access_token": session.accessToken]
+    }
+
+    private func issuedKey(_ res: AuthHttpResult, flag: String) -> AuthApiResult<AuthIssuedKey> {
+        switch res {
+        case .err(let verdict):
+            return .err(verdict)
+        case .ok(let json):
+            guard json[flag] as? Bool == true,
+                  let sessionDict = json["session"] as? [String: Any],
+                  let parsed = parseSession(sessionDict),
+                  let account = json["account"] as? [String: Any],
+                  account["account_id"] as? String == parsed.accountId,
+                  let publicName = account["public_name"] as? String,
+                  let key = json["account_key"] as? String,
+                  !publicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !key.isEmpty else {
+                return .err(PortableAuth.unavailable)
+            }
+            return .ok(AuthIssuedKey(session: parsed, publicName: publicName, accountKey: key))
+        }
+    }
+
+    private func profileResult(_ res: AuthHttpResult, accountId: String) -> AuthApiResult<PortableAuth.Profile> {
+        switch res {
+        case .err(let verdict):
+            return .err(verdict)
+        case .ok(let json):
+            guard let profile = Self.parseProfile(json, accountId: accountId) else {
+                return .err(PortableAuth.unavailable)
+            }
+            return .ok(profile)
+        }
+    }
+
+    /// The reply must name the session owner; the recovery hint and the name may be null.
+    static func parseProfile(_ json: [String: Any], accountId: String) -> PortableAuth.Profile? {
+        guard json["account_id"] as? String == accountId,
+              let publicName = json["public_name"] as? String,
+              !publicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let complete = json["profile_complete"] as? Bool,
+              let hasKey = json["has_account_key"] as? Bool,
+              let name = nullableString(json["name"]),
+              let hint = nullableString(json["recovery_email_hint"]) else {
+            return nil
+        }
+        let providers: Set<String>
+        if let list = json["providers"] as? [String] {
+            providers = Set(list)
+        } else if json["providers"] == nil || json["providers"] is NSNull {
+            providers = []
+        } else {
+            return nil
+        }
+        return PortableAuth.Profile(
+            accountId: accountId,
+            publicName: publicName,
+            name: name,
+            profileComplete: complete,
+            recoveryEmailHint: hint,
+            hasAccountKey: hasKey,
+            providers: providers
+        )
+    }
+
+    /// `.some(nil)` for JSON null or an absent field, nil for any value that is not a string.
+    private static func nullableString(_ value: Any?) -> String?? {
+        guard let present = value, !(present is NSNull) else {
+            return .some(nil)
+        }
+        guard let text = present as? String else {
+            return nil
+        }
+        return .some(text)
     }
 
     private func parseErrorCode(_ data: Data) -> String? {

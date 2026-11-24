@@ -22,18 +22,28 @@ final class PortableAuthFlowTests: XCTestCase {
         var deleteResult: AuthApiResult<EmptyAuthValue> = .ok(EmptyAuthValue())
         var deletedSessions: [PortableAuth.Session] = []
 
-        func requestCode(email: String) -> AuthApiResult<EmptyAuthValue> { .ok(EmptyAuthValue()) }
+        func requestCode(email: String, purpose: PortableAuth.CodePurpose, locale: String) -> AuthApiResult<EmptyAuthValue> {
+            .ok(EmptyAuthValue())
+        }
 
-        func consumeCode(email: String, code: String) -> AuthApiResult<AuthConsumeOk> {
-            let s = PortableAuth.Session(
-                familyId: "fam-1",
-                accountId: "acc-1",
-                accessToken: "at-1",
-                refreshToken: "rt-1",
-                accessExpiresAt: 1_700_000_900,
-                absoluteExpiresAt: 1_702_592_000
-            )
-            return .ok(AuthConsumeOk(session: s, created: true))
+        func signUp(name: String, email: String, code: String) -> AuthApiResult<AuthIssuedKey> {
+            .err(PortableAuth.unavailable)
+        }
+
+        func recover(email: String, code: String) -> AuthApiResult<AuthIssuedKey> {
+            .err(PortableAuth.unavailable)
+        }
+
+        func profile(session: PortableAuth.Session) -> AuthApiResult<PortableAuth.Profile> {
+            .err(PortableAuth.unavailable)
+        }
+
+        func updateName(session: PortableAuth.Session, name: String) -> AuthApiResult<PortableAuth.Profile> {
+            .err(PortableAuth.unavailable)
+        }
+
+        func setRecoveryEmail(session: PortableAuth.Session, email: String, code: String) -> AuthApiResult<PortableAuth.Profile> {
+            .err(PortableAuth.unavailable)
         }
 
         func createKeyAccount(username: String) -> AuthApiResult<AuthKeyIssued> {
@@ -95,15 +105,15 @@ final class PortableAuthFlowTests: XCTestCase {
         }
     }
 
-    func testEmailCodeLoginAndLogoutClearsLocalAuth() {
+    func testKeyLoginAndLogoutClearsLocalAuth() {
         let store = IosKeychainSecretStore(useMemoryOnly: true)
         let clock = StubClock()
         let api = StubAuthApi()
         let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: clock, nonces: StubNonce(), api: api))
 
-        let res = flow.consumeEmailCode(email: "ana@example.com", code: "123456")
+        let res = flow.loginWithKey(rawKey: "abv-secret-key")
         if case .ok(let outcome) = res {
-            XCTAssertTrue(outcome.created)
+            XCTAssertFalse(outcome.created)
             XCTAssertEqual(outcome.session.accountId, "acc-1")
         } else {
             XCTFail("Expected login success")
@@ -113,6 +123,7 @@ final class PortableAuthFlowTests: XCTestCase {
         let logout = flow.logout()
         XCTAssertEqual(logout, .ok(EmptyAuthValue()))
         XCTAssertEqual(flow.rehydrate(), .loggedOut)
+        XCTAssertNil(store.loadKey())
     }
 
     func testRevokedRefreshClearsWithoutKeyFallback() {
@@ -255,14 +266,14 @@ final class PortableAuthFlowTests: XCTestCase {
         XCTAssertNil(store.loadKey())
     }
 
-    func testLegacyOfflineKeyDoesNotPreventEmailLogin() throws {
+    func testLegacyOfflineKeyDoesNotPreventAppleLogin() throws {
         let store = IosKeychainSecretStore(useMemoryOnly: true)
         let flow = AuthFlow(ports: AuthPorts(store: store, keys: store, clock: StubClock(), nonces: StubNonce(), api: StubAuthApi()))
         try store.saveKey(AuthKeyBackup(username: "maria", accountKey: "abv-12345678-abc"))
 
         XCTAssertEqual(flow.rehydrate(), .loggedOut)
-        guard case .ok = flow.consumeEmailCode(email: "ana@example.com", code: "123456") else {
-            return XCTFail("Expected email login")
+        guard case .ok = flow.loginWithProvider(provider: "apple", idToken: "t", rawNonce: "n-legacy", authorizationCode: nil) else {
+            return XCTFail("Expected Apple login")
         }
     }
 
