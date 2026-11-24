@@ -172,10 +172,10 @@ class IosAppIntegrityTests(unittest.TestCase):
         continuous = (
             "startUpdatingLocation", "allowsBackgroundLocationUpdates", "showsBackgroundLocationIndicator",
             "startMonitoringSignificantLocationChanges", "CLBackgroundActivitySession",
+            "CLLocationUpdate", "liveUpdates", "CLMonitor",
         )
         allowed = {
             "Sources/AnpFuelShell/ActiveNavigationLocation.swift",
-            "Sources/AnpFuelShell/DriverDistanceLocation.swift",
         }
         for swift in sorted((IOS_ROOT / "Sources").rglob("*.swift")):
             text = swift.read_text(encoding="utf-8")
