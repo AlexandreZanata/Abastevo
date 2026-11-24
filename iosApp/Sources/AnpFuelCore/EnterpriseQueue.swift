@@ -230,23 +230,14 @@ public enum EnterpriseQueue {
             }
             if let finish = trip.finishOperationId { prerequisite[finish] = latest }
         }
-        var dueTimes: [String: Int64] = [:]
-        var schedule: [(item: EnterpriseQueueItem, at: Int64)] = []
-        for item in snapshot.queue {
-            switch item.status {
-            case .accepted:
-                dueTimes[item.id] = 0
-            case .pending:
-                // An absent prior receipt can have been dismissed after acceptance.
-                let predecessorTime = prerequisite[item.id].flatMap { dueTimes[$0] } ?? 0
-                let at = max(item.nextAttemptAtMillis, predecessorTime)
-                dueTimes[item.id] = at
-                if at != Int64.max { schedule.append((item, at)) }
-            case .rejected, .inReview, .exhausted:
-                dueTimes[item.id] = Int64.max
-            }
+        let status = Dictionary(snapshot.queue.map { ($0.id, $0.status) }, uniquingKeysWith: { first, _ in first })
+        return snapshot.queue.compactMap { item in
+            guard item.status == .pending else { return nil }
+            // Accepted receipts may be dismissed. A retained predecessor must be accepted
+            // before the server sees a command that depends on its revision.
+            if let prior = prerequisite[item.id].flatMap({ status[$0] }), prior != .accepted { return nil }
+            return (item, item.nextAttemptAtMillis)
         }
-        return schedule
     }
 
     /// Applies the acknowledgements of one delivered batch.

@@ -143,10 +143,16 @@ final class EnterpriseTripLifecycleTests: XCTestCase {
         snapshot.queue[0].status = .accepted
         snapshot.queue[3].status = .accepted
         XCTAssertEqual(EnterpriseQueue.nextWakeMillis(snapshot), 9000)
-        XCTAssertEqual(EnterpriseQueue.dueBatch(snapshot, nowMillis: 9000).map(\.id), [operation, resume])
+        XCTAssertEqual(EnterpriseQueue.dueBatch(snapshot, nowMillis: 9000).map(\.id), [operation])
+        EnterpriseQueue.applyFailure(ids: [operation], code: "UNAVAILABLE", countsAttempt: true, to: &snapshot,
+                                     nowMillis: 9000, retryAfterMillis: 60_000)
+        XCTAssertEqual(EnterpriseQueue.nextWakeMillis(snapshot), 69_000)
+        XCTAssertTrue(EnterpriseQueue.dueBatch(snapshot, nowMillis: 68_999).isEmpty)
+        snapshot.queue[1].status = .accepted
+        XCTAssertEqual(EnterpriseQueue.dueBatch(snapshot, nowMillis: 69_000).map(\.id), [resume])
         snapshot.queue[1].status = .inReview
         XCTAssertFalse(EnterpriseQueue.canDismiss(snapshot.queue[1], in: snapshot))
-        XCTAssertTrue(EnterpriseQueue.dueBatch(snapshot, nowMillis: 18_000).isEmpty)
+        XCTAssertTrue(EnterpriseQueue.dueBatch(snapshot, nowMillis: 70_000).isEmpty)
         XCTAssertNil(EnterpriseQueue.nextWakeMillis(snapshot))
         EnterpriseQueue.dismiss(id: operation, in: &snapshot)
         XCTAssertNotNil(snapshot.queue.first { $0.id == operation })

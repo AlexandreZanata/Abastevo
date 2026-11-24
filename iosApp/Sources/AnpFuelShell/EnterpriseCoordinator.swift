@@ -1070,8 +1070,10 @@ public final class EnterpriseCoordinator: ObservableObject {
             if batch.isEmpty { break }
             do {
                 let acks = try await sync.deliver(partition: current.partition, operations: batch.map { $0.operation })
+                guard deliveryToken == token, !Task.isCancelled else { return }
                 mutate(current.partition) { EnterpriseQueue.apply(acks, to: &$0, nowMillis: Self.nowMillis()) }
             } catch {
+                guard deliveryToken == token, !Task.isCancelled else { return }
                 let failure = EnterpriseSyncError(errorValue: error)
                 let ids = batch.map { $0.id }
                 switch failure {
