@@ -59,8 +59,7 @@ func ValidPublicName(name string) bool {
 	if size := utf8.RuneCountInString(name); size < 2 || size > 40 {
 		return false
 	}
-	switch strings.ToLower(name) {
-	case "abastevo", "admin", "administrador", "moderador", "moderacao", "moderação", "suporte", "anp", "oficial":
+	if containsReservedWord(name) {
 		return false
 	}
 	letters, digits := 0, 0
@@ -76,6 +75,27 @@ func ValidPublicName(name string) bool {
 		}
 	}
 	return letters >= 2 && digits <= 4
+}
+
+// reservedNameWords cannot appear as a word anywhere in a public name, so
+// "Suporte Abastevo" cannot pose as the service on public author lines.
+var reservedNameWords = map[string]bool{
+	"abastevo": true, "admin": true, "administrador": true, "moderador": true,
+	"moderacao": true, "moderação": true, "suporte": true, "anp": true, "oficial": true,
+}
+
+// containsReservedWord splits the normalized name into runs of letters and
+// marks; digits and punctuation separate words.
+func containsReservedWord(name string) bool {
+	words := strings.FieldsFunc(strings.ToLower(name), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsMark(r)
+	})
+	for _, word := range words {
+		if reservedNameWords[word] {
+			return true
+		}
+	}
+	return false
 }
 
 func (a Account) PublicName() string {
