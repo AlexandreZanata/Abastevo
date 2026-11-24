@@ -15,7 +15,7 @@ import org.json.JSONObject
  * Same AES/GCM envelope discipline as [SessionEnvelope] under a
  * separate preference key and envelope version, so session and key
  * blobs never alias: the key backup survives session rotation and
- * clears on logout/deletion with it. Plaintext holds only the username
+ * clears on logout/deletion with it. Plaintext holds only the public label
  * and the account key; oversized, tampered or foreign blobs refuse to
  * null instead of throwing.
  */
@@ -49,7 +49,7 @@ class KeystoreAccountKey(
 
         internal fun seal(backup: AuthFlow.KeyBackup, key: SecretKey): String? {
             if (backup.username.isEmpty() || backup.accountKey.isEmpty()) return null
-            if (backup.username.length > 64 || backup.accountKey.length > 128) return null
+            if (backup.username.length > 80 || backup.accountKey.length > 128) return null
             val plain = JSONObject()
                 .put("username", backup.username)
                 .put("account_key", backup.accountKey)

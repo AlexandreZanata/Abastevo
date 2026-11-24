@@ -1,5 +1,5 @@
 {
-  "lastmod": "2026-11-22",
+  "lastmod": "2026-11-24",
   "common": {
     "metaLabel": "Tutorial",
     "available": "Disponible",
@@ -39,7 +39,7 @@
       },
       {
         "title": "Comunidad, cuenta y precios",
-        "description": "Crea una cuenta con nombre de usuario, aporta precios y sigue tus envíos."
+        "description": "Crea una cuenta con nombre público y correo verificado, aporta precios y sigue tus envíos."
       },
       {
         "title": "Estaciones y ajustes",
@@ -68,7 +68,7 @@
     },
     "TU11": {
       "title": "Crear una cuenta gratuita",
-      "summary": "La pantalla de usuario se verificó. Android bloquea las capturas de esta pantalla."
+      "summary": "La pantalla de registro se verificó. Android bloquea las capturas de esta pantalla."
     },
     "TU12": {
       "title": "Entrar con la clave y guardar un respaldo",
@@ -493,7 +493,7 @@
     "TU13": {
       "slug": "cuenta-privacidad-y-eliminacion",
       "title": "Cuenta, privacidad y eliminación",
-      "description": "Acepta los términos de Abastevo, crea una cuenta gratuita solo con nombre de usuario, revisa la privacidad y consulta cómo eliminar tu cuenta.",
+      "description": "Acepta los términos de Abastevo, crea una cuenta gratuita con nombre público y correo de recuperación, revisa la privacidad y consulta cómo eliminar tu cuenta.",
       "summary": "8 pasos, 2 descritos sin captura, sobre términos, cuenta gratuita, privacidad y eliminación.",
       "related": {
         "/privacidade/": "Política de privacidad",
@@ -521,14 +521,14 @@
           "title": "Iniciar sesión o crear cuenta gratuita",
           "instruction": "La consulta de precios funciona sin cuenta. En “Perfil”, el “Modo invitado” ofrece “Entrar o crear una cuenta gratuita” para calificar, comentar y votar.",
           "expected": "El botón abre “Cuenta gratuita”.",
-          "recovery": "Si ya tienes una cuenta, toca “Ya tengo una clave” y usa la que guardaste.",
+          "recovery": "Si ya tienes una cuenta, toca “Entrar con la clave”. Si perdiste la clave, toca “Perdí mi clave” para recibir un código en tu correo de recuperación y obtener una clave nueva.",
           "visual": "Perfil de invitado con botón de cuenta, panel del conductor, relatos privados y tema oscuro desactivado."
         },
         "tu13-s4": {
           "title": "Crear cuenta",
-          "instruction": "Escribe un “Nombre de usuario” de 3 a 20 letras y números que empiece por una letra y toca “Crear cuenta”. No necesitas correo ni contraseña.",
+          "instruction": "Toca “Crear cuenta”, completa “Nombre público” y “Correo electrónico” y toca “Enviar código”. Escribe el código de 6 dígitos que llegó a tu correo y toca “Verificar código”. Tu nombre aparece en el foro y en los comentarios; el correo es privado y solo sirve para verificar y recuperar la cuenta. No hay contraseña.",
           "expected": "“Tu cuenta está lista” muestra la clave. Guárdala para entrar a la cuenta desde otro dispositivo.",
-          "recovery": "Si el nombre está ocupado, elige otro. Puedes exportar la clave más adelante en “Perfil”.",
+          "recovery": "Si el nombre es rechazado, usa de 2 a 40 caracteres, con al menos dos letras y sin palabras reservadas como “Abastevo” o “Suporte”. Si pierdes la clave, toca “Perdí mi clave” con el mismo correo.",
           "visual": "Las pantallas de cuenta están protegidas para que la clave nunca aparezca en una captura."
         },
         "tu13-s5": {

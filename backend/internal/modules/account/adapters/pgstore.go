@@ -19,12 +19,21 @@ import (
 
 // PGStore implements application.Store on a pgx pool.
 type PGStore struct {
-	pool *pgxpool.Pool
+	pool            *pgxpool.Pool
+	maxCodesPerHour int
 }
 
 // NewPGStore wires the owned generated queries to a pool.
 func NewPGStore(pool *pgxpool.Pool) *PGStore {
-	return &PGStore{pool: pool}
+	return NewPGStoreWithCodeLimit(pool, domain.MaxAggregateCodesPerHour)
+}
+
+// NewPGStoreWithCodeLimit uses the deployment's validated provider mail quota.
+func NewPGStoreWithCodeLimit(pool *pgxpool.Pool, maxCodesPerHour int) *PGStore {
+	if maxCodesPerHour < domain.MinAggregateCodesPerHour || maxCodesPerHour > domain.MaxConfiguredAggregateCodesPerHour {
+		maxCodesPerHour = domain.MaxAggregateCodesPerHour
+	}
+	return &PGStore{pool: pool, maxCodesPerHour: maxCodesPerHour}
 }
 
 func mustUUID(text string) (pgtype.UUID, error) {
@@ -224,7 +233,7 @@ func (s *PGStore) TryIssueCode(ctx context.Context, rec domain.EmailCode, nowUni
 	}
 	if n, err := q.CountAllCodesSince(ctx, stamp(nowUnix-3600)); err != nil {
 		return false, err
-	} else if int(n) >= domain.MaxAggregateCodesPerHour {
+	} else if int(n) >= s.maxCodesPerHour {
 		return false, nil
 	}
 	if latest, err := q.LatestCode(ctx, rec.AddressHash); err == nil {
@@ -260,17 +269,9 @@ func (s *PGStore) TryCreateKeyAccount(ctx context.Context, acc domain.Account, c
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(810002)`); err != nil {
-		return err
-	}
 	q := account.New(tx)
-	if _, err := q.PruneKeyAccountAdmissions(ctx, nowUnix-3600); err != nil {
+	if err := admitKeyAccount(ctx, tx, q, nowUnix); err != nil {
 		return err
-	}
-	if n, err := q.CountKeyAccountsSince(ctx, nowUnix-3600); err != nil {
-		return err
-	} else if int(n) >= domain.MaxKeyAccountsPerHour {
-		return domain.ErrAggregateExhausted
 	}
 	if err := q.InsertAccount(ctx, account.InsertAccountParams{
 		ID: id, Alias: acc.Alias, Status: acc.Status, CreatedAt: stamp(acc.CreatedAt),
@@ -306,23 +307,14 @@ func (s *PGStore) TryCreateFamily(ctx context.Context, fam domain.SessionFamily,
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('families:' || $1))`, fam.AccountID); err != nil {
-		return err
-	}
 	q := account.New(tx)
-	liveSince := nowUnix - int64(domain.RefreshAbsoluteLifetimeDays)*24*3600
-	if n, err := q.CountLiveFamiliesByAccount(ctx, account.CountLiveFamiliesByAccountParams{
-		AccountID: accountID, LiveSince: stamp(liveSince),
-	}); err != nil {
+	if err := lockFamilyAdmission(ctx, tx, fam.AccountID); err != nil {
 		return err
-	} else if int(n) >= domain.MaxLiveSessionsPerAccount {
-		return domain.ErrSessionBudgetExhausted
 	}
-	if err := q.InsertFamily(ctx, account.InsertFamilyParams{
-		ID: id, AccountID: accountID, RefreshSalt: fam.RefreshSalt, RefreshHash: fam.RefreshHash,
-		AccessSalt: fam.AccessSalt, AccessHash: fam.AccessHash,
-		AccessExpires: stamp(fam.AccessExpires), IssuedAt: stamp(fam.IssuedAt),
-	}); err != nil {
+	if err := checkFamilyBudget(ctx, q, accountID, nowUnix); err != nil {
+		return err
+	}
+	if err := insertSessionFamily(ctx, q, id, accountID, fam); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -351,12 +343,27 @@ func (s *PGStore) TryConsume(ctx context.Context, addressHash, code string, hash
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := account.New(tx)
-	rows, err := q.LockAddressCodes(ctx, addressHash)
+	rec, err := consumeAddressCode(ctx, q, addressHash, code, hasher, nowUnix, true)
+	return rec, commitCodeVerdict(ctx, tx, err)
+}
+
+func consumeAddressCode(ctx context.Context, q *account.Queries, addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (domain.EmailCode, error) {
+	row, err := verifyAddressCode(ctx, q, addressHash, code, hasher, nowUnix, legacyLockVerdict)
 	if err != nil {
 		return domain.EmailCode{}, err
 	}
-	if len(rows) == 0 {
-		return domain.EmailCode{}, domain.ErrCodeUnknown
+	if err := q.ConsumeCode(ctx, account.ConsumeCodeParams{Now: stamp(nowUnix), ID: row.ID}); err != nil {
+		return domain.EmailCode{}, err
+	}
+	rec := toCode(row)
+	rec.ConsumedAt = nowUnix
+	return rec, nil
+}
+
+func verifyAddressCode(ctx context.Context, q *account.Queries, addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (account.AccountEmailCode, error) {
+	rows, err := q.LockAddressCodes(ctx, addressHash)
+	if err != nil {
+		return account.AccountEmailCode{}, err
 	}
 	for _, row := range rows {
 		if !hasher.Equal(row.Hash, row.Salt, code) {
@@ -364,46 +371,33 @@ func (s *PGStore) TryConsume(ctx context.Context, addressHash, code string, hash
 		}
 		rec := toCode(row)
 		if rec.ConsumedAt != 0 {
-			return domain.EmailCode{}, domain.ErrCodeConsumed
+			return account.AccountEmailCode{}, domain.ErrCodeConsumed
 		}
 		if domain.CodeExpired(rec.IssuedAt, nowUnix) {
-			return domain.EmailCode{}, domain.ErrCodeExpired
+			return account.AccountEmailCode{}, domain.ErrCodeExpired
 		}
 		if !domain.AttemptAllowed(rec.Attempts) {
-			return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+			return account.AccountEmailCode{}, domain.ErrCodeAttemptsExhausted
 		}
-		if err := q.ConsumeCode(ctx, account.ConsumeCodeParams{Now: stamp(nowUnix), ID: row.ID}); err != nil {
-			return domain.EmailCode{}, err
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return domain.EmailCode{}, err
-		}
-		rec.ConsumedAt = nowUnix
-		return rec, nil
+		return row, nil
 	}
 	// No match: wrong codes stay indistinguishable from unknown addresses.
 	// States surface only on hash match (proof of possession). Attempts burn
 	// on the newest live row when one exists.
 	for _, row := range rows {
 		rec := toCode(row)
-		if rec.ConsumedAt != 0 || domain.CodeExpired(rec.IssuedAt, nowUnix) || !domain.AttemptAllowed(rec.Attempts) {
+		if !rec.Live(nowUnix) {
 			continue
 		}
 		if err := q.BumpCodeAttempts(ctx, row.ID); err != nil {
-			return domain.EmailCode{}, err
+			return account.AccountEmailCode{}, err
 		}
-		if !domain.AttemptAllowed(rec.Attempts + 1) {
-			if err := tx.Commit(ctx); err != nil {
-				return domain.EmailCode{}, err
-			}
-			return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+		if legacyLockVerdict && !domain.AttemptAllowed(rec.Attempts+1) {
+			return account.AccountEmailCode{}, domain.ErrCodeAttemptsExhausted
 		}
 		break
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return domain.EmailCode{}, err
-	}
-	return domain.EmailCode{}, domain.ErrCodeUnknown
+	return account.AccountEmailCode{}, domain.ErrCodeUnknown
 }
 
 func (s *PGStore) FindAccount(ctx context.Context, addressHash string) (domain.Account, bool, error) {
@@ -802,6 +796,17 @@ func (s *PGStore) FindProviderOwner(ctx context.Context, provider, subject strin
 // session-authenticated link of the same subject (which does not take
 // this lock) rolls back the candidate and re-resolves once.
 func (s *PGStore) ResolveProviderAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error) {
+	return s.resolveProviderAccount(ctx, link, candidate, nil)
+}
+
+func (s *PGStore) ResolveGoogleAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account, recovery domain.RecoveryAddress) (domain.Account, bool, error) {
+	if link.Provider != "google" || link.Issuer != domain.IssuerGoogle {
+		return domain.Account{}, false, domain.ErrOIDCUnknownIssuer
+	}
+	return s.resolveProviderAccount(ctx, link, candidate, &recovery)
+}
+
+func (s *PGStore) resolveProviderAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account, recovery *domain.RecoveryAddress) (domain.Account, bool, error) {
 	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" || link.AccountID != candidate.ID {
 		return domain.Account{}, false, domain.ErrOIDCWrongAudience
 	}
@@ -810,7 +815,7 @@ func (s *PGStore) ResolveProviderAccount(ctx context.Context, link domain.Provid
 		return domain.Account{}, false, err
 	}
 	for attempt := 0; ; attempt++ {
-		acc, created, err := s.resolveProviderAccountOnce(ctx, id, link, candidate)
+		acc, created, err := s.resolveProviderAccountOnce(ctx, id, link, candidate, recovery)
 		if isUniqueViolation(err) && attempt == 0 {
 			continue
 		}
@@ -818,13 +823,13 @@ func (s *PGStore) ResolveProviderAccount(ctx context.Context, link domain.Provid
 	}
 }
 
-func (s *PGStore) resolveProviderAccountOnce(ctx context.Context, id pgtype.UUID, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error) {
+func (s *PGStore) resolveProviderAccountOnce(ctx context.Context, id pgtype.UUID, link domain.ProviderLink, candidate domain.Account, recovery *domain.RecoveryAddress) (domain.Account, bool, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return domain.Account{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('provider-login:' || $1 || ':' || $2))`, link.Provider, link.Subject); err != nil {
+	if err := lockProviderSubject(ctx, tx, link.Provider, link.Subject); err != nil {
 		return domain.Account{}, false, err
 	}
 	q := account.New(tx)
@@ -832,6 +837,13 @@ func (s *PGStore) resolveProviderAccountOnce(ctx context.Context, id pgtype.UUID
 	if err == nil {
 		if owner.Issuer != link.Issuer {
 			return domain.Account{}, false, domain.ErrOIDCUnknownIssuer
+		}
+		if recovery != nil {
+			row, err := q.GetNamedAccount(ctx, owner.AccountID)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Account{}, false, domain.ErrAccountNotFound
+			}
+			return toNamedAccount(row), false, err
 		}
 		row, err := q.GetAccountByID(ctx, owner.AccountID)
 		if err != nil {
@@ -844,10 +856,26 @@ func (s *PGStore) resolveProviderAccountOnce(ctx context.Context, id pgtype.UUID
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return domain.Account{}, false, err
 	}
+	if recovery != nil && recovery.Hash != "" {
+		if err := lockRecoveryAddress(ctx, tx, recovery.Hash); err != nil {
+			return domain.Account{}, false, err
+		}
+	}
 	if err := q.InsertAccount(ctx, account.InsertAccountParams{
 		ID: id, Alias: candidate.Alias, Status: candidate.Status, CreatedAt: stamp(candidate.CreatedAt),
 	}); err != nil {
 		return domain.Account{}, false, err
+	}
+	if recovery != nil && recovery.Hash != "" {
+		inserted, err := q.InsertRecoveryAddress(ctx, account.InsertRecoveryAddressParams{
+			AddressHash: recovery.Hash, AccountID: id, LinkedAt: stamp(link.LinkedAt), EmailHint: pgtext(recovery.Hint),
+		})
+		if err != nil {
+			return domain.Account{}, false, err
+		}
+		if inserted == 0 {
+			return domain.Account{}, false, domain.ErrProviderEmailInUse
+		}
 	}
 	if err := q.InsertProviderLink(ctx, account.InsertProviderLinkParams{
 		AccountID: id,

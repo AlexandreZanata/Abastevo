@@ -19,7 +19,7 @@ import (
 func TestSEC01CAggregateMailBoundedOnRealSQL(t *testing.T) {
 	svc, clock, mail := freshService(t)
 	ctx := context.Background()
-	const racers = 40
+	const racers = domain.MaxAggregateCodesPerHour + 20
 	var wg sync.WaitGroup
 	for i := 0; i < racers; i++ {
 		wg.Add(1)

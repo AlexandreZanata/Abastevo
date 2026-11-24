@@ -41,26 +41,12 @@ func (s *Service) CreateKeyAccount(ctx context.Context, username string) (KeyAcc
 	}
 	acc := domain.Account{ID: id, Alias: name, Status: domain.StatusActive, CreatedAt: now}
 	for attempt := 0; attempt < keyCreateAttempts; attempt++ {
-		raw, err := s.KeyGen()
+		canonical, cred, err := s.mintKey(now)
 		if err != nil {
 			return KeyAccount{}, err
 		}
-		canonical, err := domain.CanonicalKey(raw)
-		if err != nil {
-			return KeyAccount{}, err
-		}
-		salt, err := s.Hasher.NewSalt()
-		if err != nil {
-			return KeyAccount{}, err
-		}
-		cred := domain.KeyCredential{
-			AccountID:    id,
-			UsernameHash: usernameHash,
-			KeyLookup:    domain.KeyLookup(canonical),
-			KeySalt:      salt,
-			KeyHash:      s.Hasher.Hash(salt, canonical),
-			CreatedAt:    now,
-		}
+		cred.AccountID = id
+		cred.UsernameHash = usernameHash
 		if err := s.Store.TryCreateKeyAccount(ctx, acc, cred, now); err != nil {
 			if err == domain.ErrKeyCollision {
 				continue
@@ -88,35 +74,41 @@ func (s *Service) LoginWithKey(ctx context.Context, rawKey string) (AuthResult, 
 	if !found {
 		return AuthResult{}, domain.ErrKeyInvalid
 	}
-	acc, found, err := s.Store.GetAccount(ctx, cred.AccountID)
-	if err != nil {
-		return AuthResult{}, err
-	}
-	if !found {
-		return AuthResult{}, domain.ErrKeyInvalid
-	}
-	if err := accountUsable(acc); err != nil {
-		return AuthResult{}, err
-	}
 	if !s.Hasher.Equal(cred.KeyHash, cred.KeySalt, canonical) {
 		return AuthResult{}, domain.ErrKeyInvalid
 	}
-	now := s.Clock.NowUnix()
-	sess, err := s.newSession(ctx, acc.ID, now)
+	familyID, err := s.IDGen()
 	if err != nil {
 		return AuthResult{}, err
 	}
-	// Race guard mirrors code consume: a suspension or deletion
-	// interleaved with issuance must not leave a live session behind.
-	if live, found, err := s.Store.GetAccount(ctx, acc.ID); err != nil {
-		_ = s.Store.RevokeFamily(ctx, sess.FamilyID, now)
-		return AuthResult{}, err
-	} else if !found {
-		_ = s.Store.RevokeFamily(ctx, sess.FamilyID, now)
-		return AuthResult{}, domain.ErrAccountNotFound
-	} else if err := accountUsable(live); err != nil {
-		_ = s.Store.RevokeAccount(ctx, acc.ID, now)
+	fam, session, err := s.mintSession(cred.AccountID, familyID, s.Clock.NowUnix())
+	if err != nil {
 		return AuthResult{}, err
 	}
-	return AuthResult{Account: acc, Session: sess}, nil
+	acc, err := s.Store.TryCreateKeyFamily(ctx, fam, cred)
+	if err != nil {
+		return AuthResult{}, err
+	}
+	return AuthResult{Account: acc, Session: session}, nil
+}
+
+func (s *Service) mintKey(now int64) (string, domain.KeyCredential, error) {
+	raw, err := s.KeyGen()
+	if err != nil {
+		return "", domain.KeyCredential{}, err
+	}
+	canonical, err := domain.CanonicalKey(raw)
+	if err != nil {
+		return "", domain.KeyCredential{}, err
+	}
+	salt, err := s.Hasher.NewSalt()
+	if err != nil {
+		return "", domain.KeyCredential{}, err
+	}
+	return canonical, domain.KeyCredential{
+		KeyLookup: domain.KeyLookup(canonical),
+		KeySalt:   salt,
+		KeyHash:   s.Hasher.Hash(salt, canonical),
+		CreatedAt: now,
+	}, nil
 }

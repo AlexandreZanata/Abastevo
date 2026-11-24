@@ -5,11 +5,14 @@ import (
 	"testing"
 )
 
-func TestNativeLoginOffersAppleOnly(t *testing.T) {
+func TestNativeLoginOffersAppleAndGoogle(t *testing.T) {
 	if !NativeLoginProvider("apple") {
 		t.Fatal("apple must offer native sign-in")
 	}
-	for _, p := range []string{"google", "", "APPLE", "facebook"} {
+	if !NativeLoginProvider("google") {
+		t.Fatal("google must offer native sign-in")
+	}
+	for _, p := range []string{"", "APPLE", "facebook"} {
 		if NativeLoginProvider(p) {
 			t.Fatalf("%q must not offer native sign-in", p)
 		}

@@ -119,7 +119,8 @@ jobs:
           version_name="$(jq -r .version_name "$RUNNER_TEMP/android-version.json")"
           version_code="$(jq -r .version_code "$RUNNER_TEMP/android-version.json")"
           ./gradlew :app:assembleRelease :app:verifyReleaseApkSize --no-daemon --max-workers=1 \
-            -PandroidReleaseVersionName="$version_name" -PandroidReleaseVersionCode="$version_code"
+            -PandroidReleaseVersionName="$version_name" -PandroidReleaseVersionCode="$version_code" \
+            -PgoogleServerClientId="${{ vars.ANPFUEL_GOOGLE_SERVER_CLIENT_ID }}"
       - name: Verify certificate, manifest, native engine, size and license bundle
         if: steps.existing.outputs.existing != 'true'
         run: |

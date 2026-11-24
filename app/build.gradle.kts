@@ -32,6 +32,14 @@ fun hasReleaseSigningConfig(): Boolean {
 }
 
 val automatedVersionName = providers.gradleProperty("androidReleaseVersionName").orNull
+val googleServerClientId = providers.gradleProperty("googleServerClientId")
+    .orElse(providers.environmentVariable("ANPFUEL_GOOGLE_SERVER_CLIENT_ID"))
+    .orElse("")
+    .get()
+    .trim()
+require(googleServerClientId.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it in "-_." }) {
+    "Invalid Google server client ID"
+}
 val automatedVersionCode = providers.gradleProperty("androidReleaseVersionCode").orNull
 // Opt-in physical enterprise validation never installs over an existing app.
 // Its Hilt runner and sources are absent from ordinary instrumentation builds.
@@ -64,6 +72,7 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = automatedVersionCode?.toInt() ?: 4
         versionName = automatedVersionName ?: "3.1.0"
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
         buildConfigField("boolean", "QUALITY_UI_ENABLED",
             providers.gradleProperty("qualityUiEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "OCCURRENCE_UI_ENABLED",
@@ -211,6 +220,10 @@ if (enterpriseDeviceValidation) {
 }
 
 dependencies {
+    implementation(libs.credentials.core)
+    implementation(libs.credentials.play.services)
+    implementation(project(":app:credential-google"))
+
     implementation(project(":domain"))
     implementation(project(":application"))
     implementation(project(":data"))

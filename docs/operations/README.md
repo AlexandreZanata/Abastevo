@@ -41,6 +41,7 @@
 | Static map overlay | [map-static-overlay.md](map-static-overlay.md) |
 | Payments (sales off) | [payments.md](payments.md), [payment-providers-guide.md](payment-providers-guide.md), [premium-billing.md](premium-billing.md) |
 | Abastevo Empresas activation | [enterprise-activation.md](enterprise-activation.md) |
+| Account sign-in | [account-sign-in.md](account-sign-in.md) |
 
 ## Rules
 

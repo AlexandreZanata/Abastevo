@@ -8261,39 +8261,21 @@ paths:
           $ref: '#/components/responses/BadRequest'
   /v1/accounts/email/consume:
     post:
-      summary: Redeem an access code for an account session.
+      summary: Report that passwordless email sign-in has retired.
       operationId: consumeEmailCode
       tags: [accounts]
       security: []
-      description: >
-        Single-use redeem creating the FREE account on first login.
-        Wrong codes and unknown addresses share the code-unknown refusal.
-      requestBody:
-        required: true
-        description: Address plus the six-digit code.
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/EmailCodeConsume'
+      deprecated: true
       responses:
-        '200':
-          description: Authenticated session with bearer tokens shown once.
-          headers:
-            Cache-Control:
-              schema: {type: string, example: 'no-store'}
+        '410':
+          description: Account email sign-in has retired (account.email-login-retired).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+                $ref: '#/components/schemas/ApiError'
   /v1/accounts/keys:
     post:
-      summary: Create an anonymous account with a server-issued key.
+      summary: Create a legacy username account with a server-issued key.
       operationId: createKeyAccount
       tags: [accounts]
       security: []
@@ -8323,6 +8305,252 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/accounts/keys/signup:
+    post:
+      summary: Create a key account with a public name and verified recovery email.
+      operationId: signUpWithVerifiedEmail
+      tags: [accounts]
+      security: []
+      description: >
+        Proof consumes the code once. An already bound proof returns account.address-linked. Invalid input returns account.name-invalid, account.email-invalid or account.bad-body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, email, code]
+              properties:
+                name: {type: string, minLength: 2, maxLength: 40, example: 'Example Author'}
+                email: {type: string, format: email, example: case-01@example.invalid}
+                code: {type: string, pattern: '^[0-9]{6}$', example: '482916'}
+      responses:
+        '201':
+          description: Account operation accepted.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifiedKeySignupResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/accounts/recovery:
+    post:
+      summary: Replace the key and revoke other sessions using a verified recovery email.
+      operationId: recoverAccountKey
+      tags: [accounts]
+      security: []
+      description: >
+        An unbound address with valid proof returns account.recovery-no-account. Suspended accounts refuse before consuming the code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailCodeConsume'
+      responses:
+        '200':
+          description: Account operation accepted.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountRecoveryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/accounts/profile:
+    post:
+      summary: Read the live session owner's private account profile.
+      operationId: getAccountProfile
+      tags: [accounts]
+      security: []
+      description: >
+        The body carries the live family and access token. The email hint is private.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [family_id, access_token]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string, minLength: 1}
+      responses:
+        '200':
+          description: Account operation accepted.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/accounts/profile/name:
+    post:
+      summary: Set the live session owner's public name.
+      operationId: updateAccountPublicName
+      tags: [accounts]
+      security: []
+      description: >
+        Invalid names return account.name-invalid. The public name appears on community author projections.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [family_id, access_token, name]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string, minLength: 1}
+                name: {type: string, minLength: 2, maxLength: 40, example: 'Example Author'}
+      responses:
+        '200':
+          description: Account operation accepted.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/accounts/recovery-email:
+    post:
+      summary: Add or replace the recovery email with a verified address.
+      operationId: setRecoveryEmail
+      tags: [accounts]
+      security: []
+      description: >
+        A login family older than 600 seconds returns account.reauthentication-required. A bound address owned by another account returns account.address-linked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [family_id, access_token, email, code]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string, minLength: 1}
+                email: {type: string, format: email, example: case-01@example.invalid}
+                code: {type: string, pattern: '^[0-9]{6}$', example: '482916'}
+      responses:
+        '200':
+          description: Account operation accepted.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/accounts/providers/link-native:
+    post:
+      summary: Link a verified native Google subject to the session owner.
+      operationId: linkNativeGoogleProvider
+      tags: [accounts]
+      security: []
+      description: >
+        Uses the configured native audience and a raw nonce. A stale login family returns account.reauthentication-required. A subject owned by another account returns account.link-cross-account-refused.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [family_id, access_token, provider, id_token, nonce]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string, minLength: 1}
+                provider: {type: string, enum: [google]}
+                id_token: {type: string, maxLength: 4096, minLength: 1}
+                nonce: {type: string, minLength: 16, maxLength: 128, pattern: '^[\x21-\x7E]+$'}
+      responses:
+        '200':
+          description: Account operation accepted.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NativeProviderLinkResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/accounts/keys/login:
     post:
       summary: Open a session with the account key alone.
@@ -8447,22 +8675,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /v1/accounts/providers/login:
     post:
-      summary: Sign in with a native Apple identity token.
+      summary: Sign in with a native Google or Apple identity token.
       operationId: loginWithProvider
       tags: [accounts]
       security: []
       description: >
-        Native Sign in with Apple (P13-T05, B-BR-A01/A03). The server
-        verifies the identity token signature against Apple's JWKS, the
-        issuer, expiry and the server-configured native audience (the app
-        bundle ID, never a request field), then compares the token nonce
-        claim with the lowercase hex SHA-256 of the raw nonce sent here
-        and consumes it once. An existing link of the verified subject
-        signs in to its account; an unknown subject creates one FREE
-        account. Equal email strings never select or merge an account.
-        Deployments without a configured native audience answer 503
-        account.provider-unavailable. The response matches the email-code
-        consume.
+        The server verifies issuer, signature, expiry and the configured
+        native audience, then compares the token nonce claim to the lowercase
+        hex SHA-256 of the raw nonce and consumes it once. Issuer and subject
+        establish identity. A new Google subject can add an authoritative,
+        verified recovery email only if unbound. Google returns
+        account.provider-email-in-use when another account already owns
+        the address, account.oidc-wrong-audience for a disallowed client,
+        and profile_complete to prompt confirmation of a public name.
+        An unconfigured provider or JWKS outage returns 503.
       requestBody:
         required: true
         description: Provider identity token plus the raw single-use nonce.
@@ -8476,19 +8702,19 @@ paths:
                 provider:
                   type: string
                   enum: [apple, google]
-                  description: Only apple offers native sign-in; google answers 503 until its native flow is specified.
+                  description: Native identity provider.
                   example: apple
                 id_token:
                   type: string
                   maxLength: 4096
-                  description: Apple identity token (compact JWS); never stored or logged.
+                  description: Provider identity token (compact JWS); never stored or logged.
                   example: eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiIwMDEyMzQifQ.c2ln
                 nonce:
                   type: string
                   minLength: 16
                   maxLength: 128
                   pattern: '^[\x21-\x7E]+$'
-                  description: Raw nonce whose SHA-256 hex the app placed in the Apple request.
+                  description: Raw nonce whose SHA-256 hex the app placed in the provider request.
                   example: 3f9c1d2e7a6b4c58
                 authorization_code:
                   type: string
@@ -8518,6 +8744,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '410':
           $ref: '#/components/responses/Gone'
         '429':
@@ -44224,6 +44452,7 @@ components:
       properties:
         account_id: {type: string, format: uuid}
         alias: {type: string}
+        display_name: {type: string}
         status: {type: string, enum: [active, suspended, deleted]}
         created_at: {type: string, format: date-time}
     AdminAccountList:
@@ -44272,6 +44501,7 @@ components:
       properties:
         account_id: {type: string, format: uuid}
         alias: {type: string}
+        display_name: {type: string}
         status: {type: string, enum: [active, suspended, deleted]}
         created_at: {type: string, format: date-time}
         grants:
@@ -46085,30 +46315,68 @@ components:
           description: True when replaying an already completed rotation.
           example: false
     Account:
-      description: >
-        FREE account (P13-T01, B-BR-A01): email-code, Google or Apple signup
-        with no purchase prerequisite. Additive preview schemas only;
-        implemented v1 paths are untouched. Handlers land in
-        P13-T02/T03/T04.
+      description: Account returned by key or native provider sign-in.
       type: object
-      required: [account_id, public_alias, status, created_at]
+      required: [account_id, public_alias, status]
       properties:
-        account_id:
+        account_id: {type: string, format: uuid}
+        public_alias: {type: string}
+        public_name:
           type: string
-          format: uuid
-          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
-        public_alias:
+          description: Confirmed display name or legacy alias.
+        status: {type: string, enum: [active, suspended, deleted]}
+    NamedAccount:
+      type: object
+      required: [account_id, public_name]
+      properties:
+        account_id: {type: string, format: uuid}
+        public_name: {type: string}
+    AccountProfile:
+      type: object
+      required: [account_id, public_name, name, profile_complete, recovery_email_hint, has_account_key, providers]
+      properties:
+        account_id: {type: string, format: uuid}
+        public_name: {type: string}
+        name: {type: [string, 'null']}
+        profile_complete: {type: boolean}
+        recovery_email_hint:
+          type: [string, 'null']
+          description: Masked owner-only recovery address.
+          example: 'c***@example.invalid'
+        has_account_key: {type: boolean}
+        providers:
+          type: array
+          items: {type: string, enum: [apple, google]}
+    VerifiedKeySignupResult:
+      type: object
+      required: [account, session, account_key, created]
+      properties:
+        account:
+          $ref: '#/components/schemas/NamedAccount'
+        session:
+          $ref: '#/components/schemas/SessionTokens'
+        account_key:
           type: string
-          description: Opaque display name; never email, provider subject or GPS.
-          example: adore-fox-42
-        status:
+          pattern: '^[a-hj-km-np-z2-9]{32}$'
+        created: {type: boolean, enum: [true]}
+    AccountRecoveryResult:
+      type: object
+      required: [account, session, account_key, sessions_revoked]
+      properties:
+        account:
+          $ref: '#/components/schemas/NamedAccount'
+        session:
+          $ref: '#/components/schemas/SessionTokens'
+        account_key:
           type: string
-          enum: [active, suspended, deleted]
-          example: active
-        created_at:
-          type: string
-          format: date-time
-          example: 2026-10-01T00:00:00Z
+          pattern: '^[a-hj-km-np-z2-9]{32}$'
+        sessions_revoked: {type: boolean, enum: [true]}
+    NativeProviderLinkResult:
+      type: object
+      required: [provider_link]
+      properties:
+        provider_link:
+          $ref: '#/components/schemas/ProviderLink'
     ContributorBinding:
       description: Device contributor bound to a FREE account with dual proof (A04).
       type: object
@@ -46146,6 +46414,7 @@ components:
     EmailCodeRequest:
       description: Six-digit code issuance; unknown addresses answer identically (no enumeration).
       type: object
+      additionalProperties: false
       required: [email]
       example:
         email: case-01@example.invalid
@@ -46154,13 +46423,18 @@ components:
           type: string
           format: email
           example: case-01@example.invalid
+        purpose:
+          type: string
+          enum: [signup, recovery, attach]
+          description: Selects the message copy. The proof is usable by any email-verification flow.
+        locale:
+          type: string
+          description: Requested language. English tags select English. Other requests use Brazilian Portuguese.
     EmailCodeConsume:
-      description: Single-use code redemption inside the 600s TTL with five attempts.
+      description: Address and the single-use, six-digit email verification code.
       type: object
+      additionalProperties: false
       required: [email, code]
-      example:
-        email: case-01@example.invalid
-        code: '482916'
       properties:
         email:
           type: string
@@ -46269,7 +46543,7 @@ components:
           format: date-time
           example: 2026-10-31T00:00:00Z
     AuthResult:
-      description: Successful code consume with the account and one session.
+      description: Successful key or native provider sign-in with the account and one session.
       type: object
       required: [account, session, created]
       properties:
@@ -46279,8 +46553,11 @@ components:
           $ref: '#/components/schemas/SessionTokens'
         created:
           type: boolean
-          description: True when this consume created the account.
+          description: True when native sign-in created the account.
           example: true
+        profile_complete:
+          type: boolean
+          description: Returned by Google sign-in and true when a public name was confirmed.
     FeedbackRating:
       description: >
         Personal-experience stars (P14-T01, B-BR-F02): integer 1–5, one

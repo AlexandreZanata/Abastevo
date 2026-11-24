@@ -27,10 +27,12 @@ const (
 // free registration and social participation free. Values change only
 // with a new threat analysis, never to make a failing test pass.
 const (
-	// MaxAggregateCodesPerHour caps issued email codes across all
-	// addresses per rolling hour. Per-address quota (5/hour) stays;
-	// this stops distinct-address floods bypassing it.
-	MaxAggregateCodesPerHour = 20
+	// MaxAggregateCodesPerHour is the default rolling-hour mail cap.
+	// Deployments can match a provider quota in the allowed range while
+	// retaining the fixed per-address cap against targeted floods.
+	MaxAggregateCodesPerHour           = 200
+	MinAggregateCodesPerHour           = 20
+	MaxConfiguredAggregateCodesPerHour = 2000
 	// MaxKeyAccountsPerHour caps anonymous key-account creations
 	// across all usernames per rolling hour.
 	MaxKeyAccountsPerHour = 100

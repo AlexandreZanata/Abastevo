@@ -83,12 +83,33 @@ func (s StubIssuer) Token(sub, email, aud, nonce string, now time.Time, ttl time
 
 // TokenWith mints a token with explicit expiry and issuer for attack cases.
 func (s StubIssuer) TokenWith(sub, email, aud, nonce string, now, exp time.Time, iss string) (string, error) {
-	_ = now
-	header, _ := json.Marshal(map[string]string{"alg": s.Alg, "kid": s.Kid, "typ": "JWT"})
-	payload, _ := json.Marshal(map[string]any{
+	return s.signClaims(map[string]any{
 		"iss": iss, "sub": sub, "aud": aud,
 		"exp": exp.Unix(), "iat": now.Unix(), "nonce": nonce, "email": email,
 	})
+}
+
+// GoogleClaims contains the optional native Google claims used by stub tokens.
+type GoogleClaims struct {
+	EmailVerified   any
+	HostedDomain    string
+	AuthorizedParty string
+}
+
+func (s StubIssuer) TokenWithGoogleClaims(sub, email, aud, nonce string, now, exp time.Time, iss string, google GoogleClaims) (string, error) {
+	return s.signClaims(map[string]any{
+		"iss": iss, "sub": sub, "aud": aud,
+		"exp": exp.Unix(), "iat": now.Unix(), "nonce": nonce, "email": email,
+		"email_verified": google.EmailVerified, "hd": google.HostedDomain, "azp": google.AuthorizedParty,
+	})
+}
+
+func (s StubIssuer) signClaims(claims map[string]any) (string, error) {
+	header, _ := json.Marshal(map[string]string{"alg": s.Alg, "kid": s.Kid, "typ": "JWT"})
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
 	signing := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload)
 	var sig []byte
 	digest := sha256.Sum256([]byte(signing))

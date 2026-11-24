@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.auth
 
+import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.data.repository.OwnerLocalErasure
 import com.anpfuel.domain.portable.PortableAuth
@@ -33,9 +34,27 @@ class AuthReauthenticationTest {
         // The initializer's queued refresh must not replace this deliberate form.
         vm.beginReauthentication(); vm.onKeyChange("synthetic-entered-key")
         advanceUntilIdle()
-        assertEquals(AuthStep.KEY_ENTRY, vm.uiState.value.step)
+        assertEquals(AuthStep.REAUTHENTICATION, vm.uiState.value.step)
         assertEquals("synthetic-entered-key", vm.uiState.value.accountKey)
         verify(exactly = 0) { auth.logout() }
         assertNull(vm.uiState.value.keyBackup)
+    }
+    @Test
+    fun `company sign in still accepts a key when there is no personal session`() = runTest(dispatcher) {
+        val auth = mockk<AuthFlow>()
+        val erasure = mockk<OwnerLocalErasure>()
+        val session = PortableAuth.Session("family", "account", "access", "refresh", Long.MAX_VALUE, Long.MAX_VALUE)
+        every { auth.rehydrate() } returns AuthFlow.AuthState.LoggedOut
+        every { auth.profile() } returns AuthApiResult.Err(PortableAuth.Verdict.SESSION_EXPIRED)
+        every { auth.currentKey() } returns null
+        every { auth.loginWithKey("synthetic-entered-key") } returns AuthApiResult.Ok(AuthFlow.Login(session, false))
+        val vm = AuthViewModel(auth, erasure).also { it.ioDispatcher = dispatcher }
+        vm.beginReauthentication()
+        advanceUntilIdle()
+        vm.onKeyChange("synthetic-entered-key")
+        vm.onLoginWithKey()
+        advanceUntilIdle()
+        assertEquals(AuthStep.AUTHENTICATED, vm.uiState.value.step)
+        verify(exactly = 1) { auth.loginWithKey("synthetic-entered-key") }
     }
 }

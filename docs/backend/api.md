@@ -58,6 +58,42 @@ Initial protocol recommendation: [RFC 9421](https://www.rfc-editor.org/rfc/rfc94
 
 Nonce expiry is enforced with server time, signature timestamps tolerate at most 5 min. Consume nonce atomically with accepted mutation; signed reads also atomically consume their nonce. Retry obtains a new challenge/signature with the same operation ID. Storing nonces/limits solely in API memory is prohibited. P-256 is a compatibility recommendation; the Android Keystore matrix is verified in P10 before app release. Ed25519 remains an alternative requiring evidence of supported secure key storage across minSdk 26 devices.
 
+## Free account access
+
+All requests below use strict JSON and return `Cache-Control: no-store`.
+For private profile and linking routes, send the session's flat
+`family_id` and `access_token` fields in the JSON object. The server
+derives the account from those fields. See the [account rules and retention](../security/free-account-access.md)
+and the [operator setup](../operations/account-sign-in.md).
+
+| POST path under `/v1/accounts` | Request | Success and account-specific verdicts |
+|---|---|---|
+| `/email/codes` | `email`, optional `purpose` (`signup`, `recovery`, `attach`) and `locale` | 202 `{status:"sent"}` for valid requests regardless of address ownership, quota or delivery failure. 400 `account.bad-body` for invalid requests. |
+| `/keys/signup` | `name`, `email`, `code` | 201 with `account`, `session`, `account_key`, `created:true`. 400 `account.name-invalid` / `account.email-invalid`. 409 `account.address-linked` after consuming the code. 429 `account.admission-exhausted` at the signup ceiling. |
+| `/recovery` | `email`, `code` | 200 with `account`, `session`, the replacement `account_key`, and `sessions_revoked:true`. 404 `account.recovery-no-account` after valid proof for an unbound address. 403 `account.account-suspended` preserves the code. |
+| `/profile` | Session proof | 200 private profile. |
+| `/profile/name` | Session proof, `name` | 200 updated profile. 400 `account.name-invalid`. |
+| `/recovery-email` | Session proof, `email`, `code` | 200 updated profile. 403 `account.reauthentication-required` for a login family older than 600 seconds. 409 `account.address-linked` when another account owns the address. |
+| `/providers/login` | `provider`, `id_token`, raw `nonce`. Apple may also send `authorization_code`. | 200 account and session, with `created` and, for Google, `profile_complete`. 401 `account.oidc-*` for a rejected token or nonce. 409 `account.provider-email-in-use` for an authoritative Google address already bound elsewhere. 503 `account.provider-unavailable` when disabled or `account.oidc-unavailable` for JWKS failure. |
+| `/providers/link-native` | Session proof, `provider:"google"`, `id_token`, raw `nonce` | 200 `{provider_link}`. 403 `account.reauthentication-required` for a stale login family. 409 `account.link-cross-account-refused` when another account owns the subject. 401 for rejected provider proof and 503 for unavailable provider. |
+| `/providers/link` | Session proof and original link-audience proof | Existing link flow uses the `anpfuel-backend` audience. |
+| `/keys/login` | `account_key` | 200 account and session. Old or unknown keys return 401 `account.key-invalid`. |
+| `/keys` | Legacy `username` | 201 username and key for older clients. |
+| `/email/consume` | Retired route | 410 `account.email-login-retired`. |
+
+The email-code proof errors are 401 `account.code-unknown`,
+`account.code-expired`, `account.code-consumed`, and
+`account.code-attempts-exhausted`. A six-digit code has a 10-minute
+lifetime. The request purpose and locale only change the message. Wrong
+recovery codes return `account.code-unknown` for both bound and unbound addresses.
+
+The profile returns `account_id`, `public_name`, `name` (nullable),
+`profile_complete`, `recovery_email_hint` (nullable), `has_account_key`
+and `providers`. The display name takes precedence over the legacy
+alias. The masked email hint stays within the owner's profile. Recovery
+rotates the key and revokes existing account session families, including
+their derived company web access, before the new session is issued.
+
 ## Community commands (signed; private responses)
 
 - `POST /v1/observations`: body fields from COMMUNITY_PRICING_SPEC; Idempotency-Key required; 201 `{id,validation_state:"RECEIVED",received_at,status_url}`. The 201 means durably received, not validated/published. A job is persisted in the same transaction.

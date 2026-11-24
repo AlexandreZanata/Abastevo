@@ -35,8 +35,7 @@ const (
 
 // Service is the account use-case port behind the handlers.
 type Service interface {
-	RequestCode(ctx context.Context, address string) error
-	ConsumeCode(ctx context.Context, address, code string) (application.AuthResult, error)
+	RequestCodeWithPurpose(ctx context.Context, address string, purpose domain.CodePurpose, locale string) error
 	CreateKeyAccount(ctx context.Context, username string) (application.KeyAccount, error)
 	LoginWithKey(ctx context.Context, rawKey string) (application.AuthResult, error)
 	Refresh(ctx context.Context, familyID, refreshToken string) (application.Session, error)
@@ -44,12 +43,19 @@ type Service interface {
 	RevokeAll(ctx context.Context, accountID string) error
 	LinkProvider(ctx context.Context, accountID, provider, rawToken, audience, nonce string) (domain.ProviderLink, error)
 	LoginWithProvider(ctx context.Context, req application.ProviderLogin) (application.AuthResult, error)
+	LinkGoogleNative(ctx context.Context, familyID, accessToken string, req application.ProviderLogin) (domain.ProviderLink, error)
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
 	DeleteAccount(ctx context.Context, accountID string) (application.DeletionReceipt, error)
 	BindContributor(ctx context.Context, familyID, accessToken, contributorID, proof string) (domain.ContributorBinding, error)
 	UnbindContributor(ctx context.Context, familyID, accessToken, contributorID string) error
 	ListBindings(ctx context.Context, familyID, accessToken string) ([]domain.ContributorBinding, error)
+
+	SignUp(ctx context.Context, name, email, code string) (application.VerifiedKeyResult, error)
+	RecoverKey(ctx context.Context, email, code string) (application.VerifiedKeyResult, error)
+	Profile(ctx context.Context, familyID, accessToken string) (domain.AccountProfile, error)
+	UpdateName(ctx context.Context, familyID, accessToken, name string) (domain.AccountProfile, error)
+	SetRecoveryEmail(ctx context.Context, familyID, accessToken, email, code string) (domain.AccountProfile, error)
 }
 
 // Handler serves the account routes with an injected service.
@@ -63,13 +69,19 @@ type Handler struct {
 // RegisterRoutes mounts the additive account paths.
 func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/accounts/email/codes", h.requestCode)
-	r.Post("/v1/accounts/email/consume", h.consumeCode)
+	r.Post("/v1/accounts/email/consume", emailLoginRetired)
+	r.Post("/v1/accounts/keys/signup", h.signUp)
+	r.Post("/v1/accounts/recovery", h.recoverKey)
+	r.Post("/v1/accounts/profile", h.profile)
+	r.Post("/v1/accounts/profile/name", h.updateName)
+	r.Post("/v1/accounts/recovery-email", h.setRecoveryEmail)
 	r.Post("/v1/accounts/keys", h.createKeyAccount)
 	r.Post("/v1/accounts/keys/login", h.loginWithKey)
 	r.Post("/v1/accounts/sessions/refresh", h.refresh)
 	r.Post("/v1/accounts/sessions/revoke", h.revoke)
 	r.Post("/v1/accounts/providers/login", h.loginWithProvider)
 	r.Post("/v1/accounts/providers/link", h.linkProvider)
+	r.Post("/v1/accounts/providers/link-native", h.linkGoogleNative)
 	r.Post("/v1/accounts/providers/unlink", h.unlinkProvider)
 	r.Post("/v1/accounts/providers/list", h.listProviders)
 	r.Post("/v1/accounts/deletion", h.deleteAccount)
@@ -161,6 +173,18 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusServiceUnavailable, "account.key-unavailable", "key verifier unavailable"
 	case "key-proof-denied":
 		status, code, msg = http.StatusUnauthorized, "account.key-proof-denied", "key proof denied"
+	case "address-linked":
+		status, code, msg = http.StatusConflict, "account.address-linked", "verified address already belongs to an account"
+	case "name-invalid":
+		status, code, msg = http.StatusBadRequest, "account.name-invalid", "invalid public name"
+	case "email-invalid":
+		status, code, msg = http.StatusBadRequest, "account.email-invalid", "invalid email"
+	case "recovery-no-account":
+		status, code, msg = http.StatusNotFound, "account.recovery-no-account", "no account for the verified recovery address"
+	case "reauthentication-required":
+		status, code, msg = http.StatusForbidden, "account.reauthentication-required", "sign in again before changing recovery access"
+	case "email-login-retired":
+		status, code, msg = http.StatusGone, "account.email-login-retired", "sign in with Google or an account key"
 	case "username-taken":
 		status, code, msg = http.StatusConflict, "account.username-taken", "username already taken"
 	case "username-invalid":
@@ -170,6 +194,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 	case "key-collision":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "erasure-wiring-missing", "billing-exit-wiring-missing":
+		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
+	case "provider-email-in-use":
+		status, code, msg = http.StatusConflict, "account.provider-email-in-use", "recovery email already in use"
+	case "mail-delivery-unavailable":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "provider-unavailable":
 		status, code, msg = http.StatusServiceUnavailable, "account.provider-unavailable", "provider sign-in unavailable"
@@ -203,23 +231,25 @@ func validEmail(address string) bool {
 
 func (h Handler) requestCode(w http.ResponseWriter, r *http.Request) {
 	var dto struct {
-		Email string `json:"email"`
+		Email   string             `json:"email"`
+		Purpose domain.CodePurpose `json:"purpose"`
+		Locale  string             `json:"locale"`
 	}
-	if err := read(r, &dto); err != nil || !validEmail(dto.Email) {
+	if err := read(r, &dto); err != nil || !validEmail(dto.Email) || !dto.Purpose.Valid() {
 		bad(w, r)
 		return
 	}
-	if err := h.Service.RequestCode(r.Context(), dto.Email); err != nil {
-		fail(w, r, err)
-		return
-	}
+	// All well-formed requests have one public response. The service
+	// compensates and observes redacted delivery failures internally.
+	_ = h.Service.RequestCodeWithPurpose(r.Context(), dto.Email, dto.Purpose, dto.Locale)
 	write(w, r, http.StatusAccepted, map[string]string{"status": "sent"})
 }
 
 type accountJSON struct {
-	AccountID string `json:"account_id"`
-	Alias     string `json:"public_alias"`
-	Status    string `json:"status"`
+	AccountID  string `json:"account_id"`
+	Alias      string `json:"public_alias"`
+	Status     string `json:"status"`
+	PublicName string `json:"public_name,omitempty"`
 }
 
 type sessionJSON struct {
@@ -240,27 +270,6 @@ func sessionJSONOf(s application.Session) sessionJSON {
 		AccessExpires:   time.Unix(s.AccessExpires, 0).UTC().Format(time.RFC3339),
 		AbsoluteExpires: time.Unix(s.AbsoluteExpires, 0).UTC().Format(time.RFC3339),
 	}
-}
-
-func (h Handler) consumeCode(w http.ResponseWriter, r *http.Request) {
-	var dto struct {
-		Email string `json:"email"`
-		Code  string `json:"code"`
-	}
-	if err := read(r, &dto); err != nil || !validEmail(dto.Email) || dto.Code == "" {
-		bad(w, r)
-		return
-	}
-	got, err := h.Service.ConsumeCode(r.Context(), dto.Email, dto.Code)
-	if err != nil {
-		fail(w, r, err)
-		return
-	}
-	write(w, r, http.StatusOK, map[string]any{
-		"account": accountJSON{AccountID: got.Account.ID, Alias: got.Account.Alias, Status: got.Account.Status},
-		"session": sessionJSONOf(got.Session),
-		"created": got.Created,
-	})
 }
 
 // createKeyAccount mints an anonymous account for a username and returns
@@ -301,9 +310,10 @@ func (h Handler) loginWithKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, r, http.StatusOK, map[string]any{
-		"account": accountJSON{AccountID: got.Account.ID, Alias: got.Account.Alias, Status: got.Account.Status},
-		"session": sessionJSONOf(got.Session),
-		"created": got.Created,
+		"account":          accountJSON{AccountID: got.Account.ID, Alias: got.Account.Alias, Status: got.Account.Status, PublicName: got.Account.PublicName()},
+		"session":          sessionJSONOf(got.Session),
+		"created":          got.Created,
+		"profile_complete": got.Account.DisplayName != "",
 	})
 }
 
@@ -393,14 +403,8 @@ func (h Handler) linkProvider(w http.ResponseWriter, r *http.Request) {
 	write(w, r, http.StatusOK, map[string]any{"provider_link": providerLinkJSONOf(link)})
 }
 
-// loginWithProvider exchanges a native provider identity token (Apple)
-// for a FREE account session (P13-T05). Unauthenticated by design: the
-// verified token is the proof. The expected audience is the
-// server-configured native client audience, never a request field;
-// unconfigured deployments answer 503 account.provider-unavailable.
-// The response shape is identical to the email-code consume. The
-// optional authorization_code feeds best-effort grant capture for
-// revocation on account deletion; it never changes the sign-in outcome.
+// loginWithProvider exchanges a verified native identity token for a free
+// account session. Only Apple consumes optional authorization codes.
 func (h Handler) loginWithProvider(w http.ResponseWriter, r *http.Request) {
 	var dto struct {
 		Provider          string `json:"provider"`
@@ -422,11 +426,14 @@ func (h Handler) loginWithProvider(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	write(w, r, http.StatusOK, map[string]any{
-		"account": accountJSON{AccountID: got.Account.ID, Alias: got.Account.Alias, Status: got.Account.Status},
-		"session": sessionJSONOf(got.Session),
-		"created": got.Created,
-	})
+	account := accountJSON{AccountID: got.Account.ID, Alias: got.Account.Alias, Status: got.Account.Status}
+	response := map[string]any{"session": sessionJSONOf(got.Session), "created": got.Created}
+	if dto.Provider == "google" {
+		account.PublicName = got.Account.PublicName()
+		response["profile_complete"] = got.Account.DisplayName != ""
+	}
+	response["account"] = account
+	write(w, r, http.StatusOK, response)
 }
 
 // unlinkProvider removes one provider binding from the session-owned

@@ -54,6 +54,22 @@ object PortableAuth {
         val absoluteExpiresAt: Long,
     )
 
+    enum class CodePurpose(val wire: String) {
+        SIGNUP("signup"),
+        RECOVERY("recovery"),
+        ATTACH("attach"),
+    }
+
+    data class Profile(
+        val accountId: String,
+        val publicName: String,
+        val name: String?,
+        val profileComplete: Boolean,
+        val recoveryEmailHint: String?,
+        val hasAccountKey: Boolean,
+        val providers: Set<String>,
+    )
+
     /**
      * One provider-login attempt binding the request to its proof. The
      * nonce is minted per attempt and consumed exactly once: a callback
@@ -99,6 +115,13 @@ object PortableAuth {
         const val SESSION_INVALID: String = "session-invalid"
         const val ACCOUNT_SUSPENDED: String = "account-suspended"
         const val ACCOUNT_DELETED: String = "account-deleted"
+        const val ADDRESS_LINKED: String = "address-linked"
+        const val RECOVERY_NO_ACCOUNT: String = "recovery-no-account"
+        const val PROVIDER_EMAIL_IN_USE: String = "provider-email-in-use"
+        const val REAUTHENTICATION_REQUIRED: String = "reauthentication-required"
+        const val EMAIL_LOGIN_RETIRED: String = "email-login-retired"
+        const val NAME_INVALID: String = "name-invalid"
+        const val PROVIDER_UNAVAILABLE: String = "provider-unavailable"
     }
 
     /** True for `google` or `apple`; anything else is malformed. */

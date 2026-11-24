@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 )
@@ -72,6 +73,8 @@ type Store interface {
 	// only the creator observes created=true. The returned account
 	// carries its stored status for the caller's usability check.
 	ResolveProviderAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account) (domain.Account, bool, error)
+	ResolveGoogleAccount(ctx context.Context, link domain.ProviderLink, candidate domain.Account, recovery domain.RecoveryAddress) (domain.Account, bool, error)
+	LinkGoogleWithProof(ctx context.Context, proof domain.SessionProof, link domain.ProviderLink) (domain.ProviderLink, error)
 	// SaveProviderGrant stores one sealed provider refresh token,
 	// replacing the account's previous grant for the same subject. It
 	// serializes with DeleteAccount on the account row: a grant that
@@ -82,6 +85,13 @@ type Store interface {
 	FindKeyCredentialByLookup(ctx context.Context, lookup string) (domain.KeyCredential, bool, error)
 	CountAddresses(ctx context.Context, accountID string) (int, error)
 	TryConsumeNonce(ctx context.Context, nonce string, nowUnix int64) (bool, error)
+
+	SignUpWithCode(ctx context.Context, proof EmailProof, hasher domain.CodeHasher, acc domain.Account, cred domain.KeyCredential, fam domain.SessionFamily) error
+	RecoverWithCode(ctx context.Context, proof EmailProof, hasher domain.CodeHasher, cred domain.KeyCredential, fam domain.SessionFamily, auditID string) (domain.Account, error)
+	TryCreateKeyFamily(ctx context.Context, fam domain.SessionFamily, verified domain.KeyCredential) (domain.Account, error)
+	ReadProfile(ctx context.Context, proof domain.SessionProof) (domain.AccountProfile, error)
+	UpdateProfileName(ctx context.Context, proof domain.SessionProof, name string) (domain.AccountProfile, error)
+	AttachRecoveryEmail(ctx context.Context, proof domain.SessionProof, emailProof EmailProof, hasher domain.CodeHasher, auditID string) (domain.AccountProfile, error)
 }
 
 // Session is one issued login: opaque bearer tokens plus their lifetimes.
@@ -123,8 +133,10 @@ type Service struct {
 	// before any store write, so unavailable dependencies leave no
 	// retained issuances. Tests opt in explicitly.
 	MailEnabled bool
-	Store       Store
-	Verifier    domain.ProviderVerifier
+	// OnCodeDeliveryFailure observes failures without message or address data.
+	OnCodeDeliveryFailure func(ctx context.Context, compensationFailed bool)
+	Store                 Store
+	Verifier              domain.ProviderVerifier
 	// NativeAudiences maps a native sign-in provider to the
 	// server-configured client audience its identity tokens carry
 	// (Apple: the app bundle ID). A missing or empty entry refuses
@@ -163,6 +175,10 @@ type Service struct {
 // per-address quota, aggregate ceiling and cooldown admit atomically via
 // TryIssueCode before any row or mail exists.
 func (s *Service) RequestCode(ctx context.Context, address string) error {
+	return s.RequestCodeWithPurpose(ctx, address, domain.CodePurposeSignup, "")
+}
+
+func (s *Service) RequestCodeWithPurpose(ctx context.Context, address string, purpose domain.CodePurpose, locale string) error {
 	// Delivery off answers nil before any store write: identical to
 	// quota/cooldown/unknown, so no oracle leaks status and no rows
 	// accumulate for a dependency that cannot deliver.
@@ -170,7 +186,7 @@ func (s *Service) RequestCode(ctx context.Context, address string) error {
 		return nil
 	}
 	// Invalid shapes cost zero store IO: identical nil, no oracle.
-	if !domain.ValidEmail(address) {
+	if !domain.ValidEmail(address) || !purpose.Valid() {
 		return nil
 	}
 	now := s.Clock.NowUnix()
@@ -203,9 +219,21 @@ func (s *Service) RequestCode(ctx context.Context, address string) error {
 	}
 	// SEC01-D quota rollback: a failed send compensates the admitted
 	// row, so failed deliveries retain nothing and consume no budget.
-	if err := s.Mail.SendCode(ctx, address, code); err != nil {
-		_ = s.Store.DeleteCode(ctx, rec.ID)
-		return err
+	if sender, ok := s.Mail.(domain.LocalizedMailSender); ok {
+		err = sender.SendCodeWithPurpose(ctx, address, code, purpose, locale)
+	} else {
+		err = s.Mail.SendCode(ctx, address, code)
+	}
+	if err != nil {
+		// Client cancellation can itself interrupt SMTP. Use a bounded
+		// independent context to clear the undelivered code and its quota.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		cleanupErr := s.Store.DeleteCode(cleanup, rec.ID)
+		if s.OnCodeDeliveryFailure != nil {
+			s.OnCodeDeliveryFailure(ctx, cleanupErr != nil)
+		}
+		return domain.ErrMailDelivery
 	}
 	return nil
 }
@@ -423,9 +451,22 @@ func (s *Service) rotate(ctx context.Context, fam domain.SessionFamily, now int6
 }
 
 func (s *Service) storeSession(ctx context.Context, accountID, familyID string, now int64) (Session, error) {
-	access, refresh, accessSalt, refreshSalt, err := s.mintTokens()
+	fam, session, err := s.mintSession(accountID, familyID, now)
 	if err != nil {
 		return Session{}, err
+	}
+	// SEC01-C per-account session budget admits atomically before any
+	// row exists; over-budget refuses with a stable budget error.
+	if err := s.Store.TryCreateFamily(ctx, fam, now); err != nil {
+		return Session{}, err
+	}
+	return session, nil
+}
+
+func (s *Service) mintSession(accountID, familyID string, now int64) (domain.SessionFamily, Session, error) {
+	access, refresh, accessSalt, refreshSalt, err := s.mintTokens()
+	if err != nil {
+		return domain.SessionFamily{}, Session{}, err
 	}
 	accessExpires := now + domain.SessionAccessTTLSeconds
 	fam := domain.SessionFamily{
@@ -438,12 +479,7 @@ func (s *Service) storeSession(ctx context.Context, accountID, familyID string, 
 		AccessExpires: accessExpires,
 		IssuedAt:      now,
 	}
-	// SEC01-C per-account session budget admits atomically before any
-	// row exists; over-budget refuses with a stable budget error.
-	if err := s.Store.TryCreateFamily(ctx, fam, now); err != nil {
-		return Session{}, err
-	}
-	return Session{
+	return fam, Session{
 		FamilyID:        familyID,
 		AccountID:       accountID,
 		AccessToken:     access,

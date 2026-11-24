@@ -2,10 +2,10 @@
 
 engineering draft, not a declaration of legal compliance. Review lawful bases, contact details, processor contracts and international transfers with the responsible operator before any pilot. The [LGPD text](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm) is the legal reference. Contact process and regulatory response deadlines are set by legal review before pilot, not by engineering.
 
-Anonymous installation keys and photographs can still constitute
-personal data. This notice covers the backend MVP inventory only;
-account, email, billing, sync and analytics are not collected in MVP
-(P11 needs a separate inventory/basis/retention review).
+Anonymous installation keys and photographs can still constitute personal
+data. The account inventory below covers public names, verification and
+recovery email, and provider identifiers. See the [public privacy
+policy](privacy-policy.md) for the wider Android inventory.
 
 ## Your rights
 
@@ -49,6 +49,11 @@ account, email, billing, sync and analytics are not collected in MVP
 | Challenges/nonces | Proof of possession, replay defense | Until expiry (5 min) | Server only | Retention sweeper (`privacy-retention-daily`) |
 | Idempotency windows | Safe mobile retries | 7 days | Server only | Retention sweeper |
 | IP digests/quota windows | Abuse/cost bounding | ≤24 h rotating digest | Server only | Self-clean on check; provider edge retention configured consistently |
+| Public name, legacy alias | Author attribution on comments and the forum | While the account lives | Public | Clear profile name when the account is deleted, with content erasure handled by its owning module |
+| Recovery email hash and masked hint | Verify control of address and recover access | Until replaced or the account is deleted | Server hash lookup and owner-only hint | Unbind and remove on replacement or deletion |
+| SMTP message address and verification code | Deliver the account's verification or recovery message | Code valid for 10 minutes; delivery retention governed by the mail provider | SMTP provider and recipient | Verifier purged by the account job at the 24-hour expiry grace cutoff; no message payload retained by Abastevo |
+| Google issuer and subject | Sign-in and explicit account linking | While linked | Account backend | Unlink/delete; verified authoritative email follows the recovery-address row |
+| Recovery and recovery-email audit | Account security and accountability | 180 days | Restricted backend operations | Minute account sweeper; only ID, account ID, action and timestamp |
 | Sign in with Apple grant (sealed refresh token) | Revoke the app's Apple authorization when the account is deleted (App Store 5.1.1(v)) | While the account lives; after deletion until Apple accepts the revocation, at most 30 days | Server only; AES-256-GCM, key outside the database | Moved to the revocation queue with the deletion; row deleted on revocation or at 30 days |
 | Export archives | Rights access | 24 h download window | Owner only | Bytes purged on expiry/erasure; receipts stay |
 | Deletion ledger | Restore-safe replay | Backup horizon (35 days) | Restricted operators | Aged out by retention; never payload |
@@ -61,15 +66,17 @@ account, email, billing, sync and analytics are not collected in MVP
 - `privacy-retention-daily`: challenges, idempotency, closed
   moderation cases, expired export bytes, aged-out ledger rows, plus
   per-category overdue metrics in the structured log.
-- Every sweep purges bounded oldest-first and reports purged counts
-  with the oldest overdue instant; a stuck category fails its job
-  loudly for retry instead of hiding backlog.
+- `account-erasure-every-minute`: account erasure, expired email code
+  verifiers and recovery audit. Logs give counts and recovery-audit backlog
+  age without account or address identifiers.
+- Sweeps purge bounded oldest-first and report failures for retry after
+  independent categories have run.
 
 ## Target revision pending P13/P14/P15
 
 This remains an unapproved draft. The media rows above now reflect
 the P15 forward rule (every copy 24 h, no 14/30-day exception);
-account/social rows still await their revision. [Account](free-account-access.md)
+the account rows cover sign-in and recovery. Other social rows still await their revision. [Account](free-account-access.md)
 and [media/location](media-location-policy.md)
 contracts own the remaining changes. Revise the full inventory/table
 and verify enforcement before public G09/P10-T09 launch; this note

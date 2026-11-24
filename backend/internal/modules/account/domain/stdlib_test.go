@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-func TestDomainStdlibOnly(t *testing.T) {
+func TestDomainHasOnlyPortableDependencies(t *testing.T) {
 	// TARGET_ARCHITECTURE: account domain depends on the standard library
-	// only, mirroring the kernel and identity packages.
+	// and the Unicode normalization package required for public names.
 	dir, err := filepath.Abs(".")
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +36,7 @@ func TestDomainStdlibOnly(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if strings.Contains(path, ".") {
+			if strings.Contains(path, ".") && path != "golang.org/x/text/unicode/norm" {
 				t.Errorf("%s imports non-stdlib %q", name, path)
 			}
 		}
@@ -71,6 +71,11 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrKeyUnavailable:              "key-unavailable",
 		ErrKeyProofDenied:              "key-proof-denied",
 		ErrAddressLinked:               "address-linked",
+		ErrNameInvalid:                 "name-invalid",
+		ErrEmailInvalid:                "email-invalid",
+		ErrRecoveryNoAccount:           "recovery-no-account",
+		ErrReauthenticationRequired:    "reauthentication-required",
+		ErrEmailLoginRetired:           "email-login-retired",
 		ErrSessionReuse:                "session-reuse-revoked",
 		ErrSessionRevoked:              "session-revoked",
 		ErrSessionExpired:              "session-expired",

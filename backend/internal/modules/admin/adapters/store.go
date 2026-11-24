@@ -328,7 +328,7 @@ func (s *Store) SearchAccounts(ctx context.Context, query string) ([]app.Account
 	}
 	out := make([]app.Account, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, app.Account{ID: idstr(row.ID), Alias: row.Alias, Status: row.Status, CreatedAt: row.CreatedAt.Time})
+		out = append(out, app.Account{ID: idstr(row.ID), Alias: row.Alias, DisplayName: row.DisplayName.String, Status: row.Status, CreatedAt: row.CreatedAt.Time})
 	}
 	return out, nil
 }
@@ -341,7 +341,7 @@ func (s *Store) GetAccountTx(ctx context.Context, tx pgx.Tx, accountID string) (
 	if err != nil {
 		return app.Account{}, domain.ErrUnavailable
 	}
-	return app.Account{ID: idstr(row.ID), Alias: row.Alias, Status: row.Status, CreatedAt: row.CreatedAt.Time}, nil
+	return app.Account{ID: idstr(row.ID), Alias: row.Alias, DisplayName: row.DisplayName.String, Status: row.Status, CreatedAt: row.CreatedAt.Time}, nil
 }
 
 func (s *Store) ListAudit(ctx context.Context, filter app.AuditFilter) ([]app.AuditRecord, error) {

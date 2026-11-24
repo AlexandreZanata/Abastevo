@@ -1,34 +1,26 @@
 package com.anpfuel.app.ui.auth
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -41,450 +33,384 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.anpfuel.app.BuildConfig
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.account.AccountStatusCard
+import com.anpfuel.app.ui.account.SignedInAccountContent
 import com.anpfuel.app.ui.components.AbastevoBrandBanner
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
-import com.anpfuel.app.ui.components.SkeletonButton
 import com.anpfuel.app.ui.components.SkeletonCard
-import com.anpfuel.app.ui.components.SkeletonGroup
-import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
-import com.anpfuel.app.ui.theme.AnpFuelTheme
+import com.anpfuel.application.portable.AuthFlow
+import com.anpfuel.domain.portable.PortableAuth
 
-/**
- * FREE-account screen: anonymous key accounts (P13 key extension).
- *
- * A username creates the account, signs in automatically and opens the
- * protected key-backup step. The saved key also supports later login
- * (no email or provider ceremony). Session tokens never render:
- * only the account key can be deliberately revealed or exported.
- * Provider completion for legacy accounts arrives via the
- * `anpfuel://auth/callback` deep link; the native SDK minting real id
- * tokens is device-gated (release horizon).
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthRoute(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AuthViewModel = hiltViewModel(),
-    providerArg: String = "",
-    idTokenArg: String = "",
-    nonceArg: String = "",
-    stateArg: String = "",
     requireFreshProof: Boolean = false,
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(providerArg, idTokenArg, nonceArg, stateArg) {
-        if (providerArg.isNotEmpty()) {
-            viewModel.onProviderCallback(providerArg, idTokenArg, nonceArg, stateArg)
-        }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel, requireFreshProof) {
+        if (requireFreshProof) viewModel.beginReauthentication()
     }
     LaunchedEffect(viewModel) {
         viewModel.navigation.collect { onNavigateBack() }
     }
-    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-        if (requireFreshProof) viewModel.beginReauthentication() else viewModel.refreshAccount()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (!requireFreshProof) viewModel.refreshAccount()
     }
-    AuthScreen(
-        state = uiState,
-        onEmailChange = viewModel::onEmailChange,
-        onCodeChange = viewModel::onCodeChange,
-        onRequestCode = viewModel::onRequestCode,
-        onConsumeCode = viewModel::onConsumeCode,
-        onBackToEmail = viewModel::onBackToEmail,
-        onUsernameChange = viewModel::onUsernameChange,
-        onKeyChange = viewModel::onKeyChange,
-        onCreateAccount = viewModel::onCreateAccount,
-        onLoginWithKey = viewModel::onLoginWithKey,
-        onGoToKeyEntry = viewModel::onGoToKeyEntry,
-        onBackToUsername = viewModel::onBackToUsername,
-        onProviderClick = viewModel::onProviderClick,
-        onCancelProviderLink = viewModel::onCancelProviderLink,
-        onLogout = viewModel::onLogout,
-        onDeleteAccount = viewModel::onDeleteAccount,
-        onDismissError = viewModel::onDismissError,
-        onNavigateBack = onNavigateBack,
-        modifier = modifier,
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AuthScreen(
-    state: AuthUiState,
-    onEmailChange: (String) -> Unit,
-    onCodeChange: (String) -> Unit,
-    onRequestCode: () -> Unit,
-    onConsumeCode: () -> Unit,
-    onBackToEmail: () -> Unit,
-    onUsernameChange: (String) -> Unit,
-    onKeyChange: (String) -> Unit,
-    onCreateAccount: () -> Unit,
-    onLoginWithKey: () -> Unit,
-    onGoToKeyEntry: () -> Unit,
-    onBackToUsername: () -> Unit,
-    onProviderClick: (String) -> Unit,
-    onCancelProviderLink: () -> Unit,
-    onLogout: () -> Unit,
-    onDeleteAccount: () -> Unit,
-    onDismissError: () -> Unit,
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
-    val canCreate = state.username.length in 3..20 && state.username.firstOrNull() in 'a'..'z'
-    // Originating form for BUSY: keeps the loading skeleton shaped like the
-    // form the user just submitted, so the card never collapses or flashes.
-    var busyOrigin by remember { mutableStateOf(AuthStep.USERNAME_ENTRY) }
-    LaunchedEffect(state.step) {
-        if (state.step in listOf(AuthStep.USERNAME_ENTRY, AuthStep.KEY_ENTRY, AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT)) {
-            busyOrigin = state.step
-        }
+    LaunchedEffect(state.step, state.profile) {
+        if (!requireFreshProof) viewModel.resumePublicNameConfirmation()
     }
-    LaunchedEffect(state.step) {
-        if (state.step !in listOf(AuthStep.USERNAME_ENTRY, AuthStep.KEY_ENTRY, AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT)) {
-            focusManager.clearFocus()
-        }
+    val step = state.formStep
+    val canReturnToEntry = !requireFreshProof && step in setOf(
+        AuthStep.SIGNUP_FORM, AuthStep.RECOVERY_FORM, AuthStep.KEY_ENTRY, AuthStep.CODE_SENT,
+    ) && state.purpose != PortableAuth.CodePurpose.ATTACH
+    val canCancelEdit = !requireFreshProof && state.editingProfile && step != AuthStep.CONFIRM_NAME
+    val onBack = when {
+        canReturnToEntry -> viewModel::onBackToEntry
+        canCancelEdit -> viewModel::onCancelProfileEdit
+        else -> onNavigateBack
     }
+    BackHandler(enabled = canReturnToEntry || canCancelEdit, onBack = onBack)
     SecureAccountWindow()
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            AnpTopAppBar(title = { Text(stringResource(R.string.auth_title)) }, onNavigateUp = onNavigateBack)
+            AnpTopAppBar(title = { Text(stringResource(R.string.auth_title)) }, onNavigateUp = onBack)
         },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = if (state.step in listOf(AuthStep.KEY_ISSUED, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)) 16.dp else 24.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).imePadding()
+                .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (state.step == AuthStep.KEY_ISSUED) {
-                Text(stringResource(R.string.profile_account_section), style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth())
-                com.anpfuel.app.ui.account.AccountStatusCard(
-                    stringResource(R.string.auth_key_issued_title), stringResource(R.string.auth_key_issued_warning))
-                AccountKeyCard(com.anpfuel.application.portable.AuthFlow.KeyBackup(state.issuedUsername, state.issuedKey))
-                Button(onClick = onLoginWithKey, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.auth_saved_enter))
+            when (step) {
+                AuthStep.CHECKING -> SkeletonCard(height = 180.dp)
+                AuthStep.KEY_ISSUED -> {
+                    val recovered = state.purpose == PortableAuth.CodePurpose.RECOVERY
+                    AccountStatusCard(
+                        title = stringResource(if (recovered) R.string.auth_new_key_title else R.string.auth_key_issued_title),
+                        subtitle = stringResource(
+                            when {
+                                recovered -> R.string.auth_new_key_copy
+                                state.issuedKeyCanBeRecovered -> R.string.auth_key_issued_warning
+                                else -> R.string.auth_legacy_key_issued_warning
+                            },
+                        ),
+                    )
+                    AccountKeyCard(AuthFlow.KeyBackup(state.issuedUsername, state.issuedKey))
+                    Button(onClick = viewModel::onLoginWithKey, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.auth_saved_enter))
+                    }
+                    AuthError(state, viewModel::onDismissError)
                 }
-                state.error?.let { error -> TextButton(onClick = onDismissError) { Text(errorText(error), color = MaterialTheme.colorScheme.error) } }
-                return@Column
-            }
-            if (state.step in listOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)) {
-                com.anpfuel.app.ui.account.SignedInAccountContent(state, onLogout, { showDeleteConfirm = true })
-                Button(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.auth_continue)) }
-                state.error?.let { error -> TextButton(onClick = onDismissError) { Text(errorText(error), color = MaterialTheme.colorScheme.error) } }
-                return@Column
-            }
-            AbastevoBrandBanner()
-            val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            Card(
-                modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
-                shape = AnpContainerDefaults.containerShape(),
-                colors = CardDefaults.cardColors(containerColor = containerColor),
-                border = AnpContainerDefaults.borderStroke(containerColor),
-            ) {
-                Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Pure crossfade: no positional slide, so texts and inputs
-                    // never sit displaced on top of each other mid-transition.
-                    // Single Column child: AnimatedContent stacks multiple
-                    // children, so each step renders exactly one Column.
-                    AnimatedContent(
-                        targetState = state.step,
-                        transitionSpec = {
-                            fadeIn(tween(220)) togetherWith fadeOut(tween(220))
-                        },
-                        label = "auth-step",
-                    ) { step ->
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                    when (step) {
-                        AuthStep.CHECKING -> {
-                            AuthFormLoadingSkeleton()
-                        }
-                        AuthStep.BUSY -> {
-                            AuthBusySkeleton(origin = busyOrigin)
-                        }
-                        AuthStep.USERNAME_ENTRY -> {
-                            Text(stringResource(R.string.auth_signup_heading), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            Text(text = stringResource(R.string.auth_key_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val usernameTaken = state.error == AuthUiError.UsernameTaken
-                            OutlinedTextField(
-                                value = state.username,
-                                onValueChange = onUsernameChange,
-                                label = { Text(text = stringResource(R.string.auth_username_label)) },
-                                leadingIcon = { Icon(Icons.Default.PersonOutline, contentDescription = null) },
-                                supportingText = {
-                                    Text(
-                                        stringResource(
-                                            if (usernameTaken) {
-                                                R.string.auth_error_username_taken
-                                            } else {
-                                                R.string.auth_username_hint
-                                            },
-                                        ),
-                                    )
-                                },
-                                isError = usernameTaken,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = { if (canCreate) onCreateAccount() }),
-                                shape = RoundedCornerShape(16.dp),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            Button(
-                                onClick = onCreateAccount,
-                                enabled = canCreate,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(text = stringResource(R.string.auth_create_account))
-                            }
-                            TextButton(onClick = onGoToKeyEntry) {
-                                Text(text = stringResource(R.string.auth_have_key))
-                            }
-                        }
-                        AuthStep.KEY_ENTRY -> {
-                            Text(stringResource(R.string.auth_login_heading), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            Text(text = stringResource(R.string.auth_key_login_copy), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            OutlinedTextField(
-                                value = state.accountKey,
-                                onValueChange = onKeyChange,
-                                label = { Text(text = stringResource(R.string.auth_key_label)) },
-                                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = { if (state.accountKey.isNotBlank()) onLoginWithKey() }),
-                                shape = RoundedCornerShape(16.dp),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth().testTag("account-key-entry"),
-                            )
-                            Button(
-                                onClick = onLoginWithKey,
-                                enabled = state.accountKey.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth().testTag("account-key-submit"),
-                            ) {
-                                Text(text = stringResource(R.string.auth_key_login))
-                            }
-                            TextButton(onClick = onBackToUsername) {
-                                Text(text = stringResource(R.string.action_back))
-                            }
-                        }
-                        AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT -> {
-                            OutlinedTextField(
-                                value = state.email,
-                                onValueChange = onEmailChange,
-                                label = { Text(text = stringResource(R.string.auth_email_label)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = { onRequestCode() }),
-                                singleLine = true,
-                                enabled = state.step == AuthStep.EMAIL_ENTRY,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            if (state.step == AuthStep.CODE_SENT) {
-                                OutlinedTextField(
-                                    value = state.code,
-                                    onValueChange = onCodeChange,
-                                    label = { Text(text = stringResource(R.string.auth_code_label)) },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                                    keyboardActions = KeyboardActions(onDone = { onConsumeCode() }),
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Button(
-                                    onClick = onConsumeCode,
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(text = stringResource(R.string.auth_confirm))
-                                }
-                                TextButton(onClick = onBackToEmail) {
-                                    Text(text = stringResource(R.string.action_back))
-                                }
-                            } else {
-                                Button(
-                                    onClick = onRequestCode,
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(text = stringResource(R.string.auth_continue))
-                                }
-                            }
-                        }
-                        AuthStep.PROVIDER_PENDING -> {
-                            CircularProgressIndicator()
-                            Text(text = stringResource(R.string.auth_pending_provider, state.pendingProvider))
-                            TextButton(onClick = onCancelProviderLink) {
-                                Text(text = stringResource(R.string.action_cancel))
-                            }
-                        }
-                        AuthStep.KEY_ISSUED, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT -> Unit
-                    }
-                    }
+                AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT -> {
+                    SignedInAccountContent(state, viewModel, onDelete = { showDeleteConfirm = true })
+                    Button(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.auth_continue))
                     }
                 }
-            }
-            state.error?.let { error ->
-                // UsernameTaken already renders inside the username field.
-                if (error != AuthUiError.UsernameTaken) {
-                    TextButton(onClick = onDismissError) {
-                        Text(
-                            text = errorText(error),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                else -> {
+                    AbastevoBrandBanner()
+                    AccountAuthForm(state, viewModel, onBack = onBack)
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(stringResource(R.string.auth_security_footer), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text(text = stringResource(R.string.auth_delete_title)) },
-            text = { Text(text = stringResource(R.string.auth_delete_copy)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirm = false
-                        onDeleteAccount()
-                    },
-                ) {
-                    Text(text = stringResource(R.string.auth_delete_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text(text = stringResource(R.string.action_cancel))
-                }
+        ConfirmAccountDeletion(
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                showDeleteConfirm = false
+                viewModel.onDeleteAccount()
             },
         )
     }
 }
 
-@Composable
-private fun AuthFormLoadingSkeleton() {
-    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
-        SkeletonLine(width = 200.dp, height = 28.dp)
-        SkeletonLine()
-        SkeletonCard(height = 56.dp)
-        SkeletonCard(height = 56.dp)
-        SkeletonButton()
-    }
-}
+internal val AuthUiState.formStep: AuthStep
+    get() = if (step == AuthStep.BUSY) busyOrigin else step
 
-/**
- * Busy skeleton shaped like the submitted form (username or key login):
- * the card keeps its size while a linear bar shows progress, so login
- * never collapses into a lone spinner or flashes empty containers.
- */
+internal val AuthUiState.editingProfile: Boolean
+    get() = formStep in setOf(
+        AuthStep.CONFIRM_NAME, AuthStep.EDIT_NAME, AuthStep.ATTACH_EMAIL,
+        AuthStep.REAUTHENTICATION, AuthStep.LINK_GOOGLE,
+    ) || (formStep == AuthStep.CODE_SENT && purpose == PortableAuth.CodePurpose.ATTACH)
+
 @Composable
-private fun AuthBusySkeleton(origin: AuthStep) {
-    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
-        SkeletonLine(width = 200.dp, height = 28.dp)
-        SkeletonLine()
-        SkeletonCard(height = 64.dp)
-        if (origin == AuthStep.USERNAME_ENTRY) {
-            SkeletonCard(height = 56.dp)
+internal fun AccountAuthForm(state: AuthUiState, viewModel: AuthViewModel, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val gateway = remember(context) { CredentialManagerGoogleSignIn(context) }
+    val locale = LocalConfiguration.current.locales[0].toLanguageTag()
+    val busy = state.step == AuthStep.BUSY
+    val step = state.formStep
+    val googleEnabled = BuildConfig.GOOGLE_SERVER_CLIENT_ID.isNotBlank()
+    val fill = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(
+        modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = fill),
+        border = AnpContainerDefaults.borderStroke(fill),
+    ) {
+        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            when (step) {
+                AuthStep.ENTRY -> {
+                    AuthHeading(R.string.auth_signup_heading)
+                    if (googleEnabled) {
+                        GoogleSignInButton(!busy) { viewModel.onGoogle(gateway) }
+                    }
+                    OutlinedButton(viewModel::onGoToKeyEntry, Modifier.fillMaxWidth(), enabled = !busy) {
+                        Text(stringResource(R.string.auth_key_login))
+                    }
+                    Button(viewModel::beginSignUp, Modifier.fillMaxWidth(), enabled = !busy) {
+                        Text(stringResource(R.string.auth_create_account))
+                    }
+                    TextButton(viewModel::beginRecovery, Modifier.align(Alignment.CenterHorizontally), enabled = !busy) {
+                        Text(stringResource(R.string.auth_lost_key))
+                    }
+                }
+                AuthStep.SIGNUP_FORM, AuthStep.RECOVERY_FORM, AuthStep.ATTACH_EMAIL -> {
+                    val signup = step == AuthStep.SIGNUP_FORM
+                    AuthHeading(
+                        when (step) {
+                            AuthStep.SIGNUP_FORM -> R.string.auth_create_account
+                            AuthStep.ATTACH_EMAIL -> R.string.auth_recovery_email_title
+                            else -> R.string.auth_lost_key
+                        },
+                    )
+                    if (signup) PublicNameField(state.name, viewModel::onNameChange, !busy)
+                    OutlinedTextField(
+                        value = state.email,
+                        onValueChange = viewModel::onEmailChange,
+                        label = { Text(stringResource(R.string.auth_email_label)) },
+                        supportingText = if (signup || step == AuthStep.ATTACH_EMAIL) {
+                            { Text(stringResource(R.string.auth_email_helper)) }
+                        } else null,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = { viewModel.onRequestCode(locale) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy && state.email.isNotBlank() && (!signup || state.name.isNotBlank()),
+                    ) { Text(stringResource(R.string.auth_send_code)) }
+                }
+                AuthStep.CODE_SENT -> {
+                    AuthHeading(R.string.auth_email_verification_title)
+                    Text(stringResource(R.string.auth_email_check_inbox))
+                    OutlinedTextField(
+                        value = state.code,
+                        onValueChange = viewModel::onCodeChange,
+                        label = { Text(stringResource(R.string.auth_code_label)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = viewModel::onConsumeCode,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy && state.code.length == 6,
+                    ) { Text(stringResource(R.string.auth_verify_code)) }
+                    TextButton(
+                        onClick = { viewModel.onRequestCode(locale) },
+                        enabled = !busy && state.resendSeconds == 0,
+                    ) {
+                        Text(
+                            if (state.resendSeconds == 0) stringResource(R.string.auth_resend_code)
+                            else stringResource(R.string.auth_resend_after, state.resendSeconds),
+                        )
+                    }
+                    TextButton(onClick = viewModel::onChangeCodeEmail, enabled = !busy) {
+                        Text(stringResource(R.string.auth_change_email))
+                    }
+                }
+                AuthStep.KEY_ENTRY, AuthStep.REAUTHENTICATION -> {
+                    val reauth = step == AuthStep.REAUTHENTICATION
+                    AuthHeading(if (reauth) R.string.auth_reauthenticate_title else R.string.auth_key_login)
+                    if (!reauth || state.profile?.hasAccountKey != false) {
+                        OutlinedTextField(
+                            value = state.accountKey,
+                            onValueChange = viewModel::onKeyChange,
+                            label = { Text(stringResource(R.string.auth_key_label)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                autoCorrectEnabled = false,
+                                imeAction = ImeAction.Done,
+                            ),
+                            keyboardActions = KeyboardActions(onDone = {
+                                if (!busy && state.accountKey.isNotBlank()) viewModel.onLoginWithKey()
+                            }),
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth().testTag("account-key-entry"),
+                        )
+                        Button(
+                            onClick = viewModel::onLoginWithKey,
+                            modifier = Modifier.fillMaxWidth().testTag("account-key-submit"),
+                            enabled = !busy && state.accountKey.isNotBlank(),
+                        ) { Text(stringResource(R.string.auth_key_login)) }
+                    }
+                    if (reauth && googleEnabled && state.canReauthenticateWithGoogle) {
+                        GoogleSignInButton(!busy) { viewModel.onGoogle(gateway) }
+                    }
+                }
+                AuthStep.CONFIRM_NAME, AuthStep.EDIT_NAME -> {
+                    AuthHeading(if (step == AuthStep.CONFIRM_NAME) R.string.auth_confirm_public_name else R.string.auth_edit_name)
+                    PublicNameField(state.name, viewModel::onNameChange, !busy)
+                    Button(
+                        onClick = viewModel::onSaveName,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy && state.name.isNotBlank(),
+                    ) { Text(stringResource(R.string.auth_save_name)) }
+                }
+                AuthStep.LINK_GOOGLE -> {
+                    AuthHeading(R.string.auth_google)
+                    if (googleEnabled) GoogleSignInButton(!busy) { viewModel.onGoogle(gateway) }
+                }
+                else -> Unit
+            }
+            if (state.error == AuthUiError.ProviderEmailInUse && step == AuthStep.ENTRY) {
+                Text(
+                    text = stringResource(R.string.auth_error_provider_email_in_use),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                AuthError(state, viewModel::onDismissError)
+            }
+            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            if (!busy && step != AuthStep.ENTRY && step != AuthStep.CONFIRM_NAME) {
+                TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
+            }
         }
-        SkeletonButton()
     }
 }
 
 @Composable
-private fun errorText(error: AuthUiError): String = stringResource(
-    when (error) {
-        AuthUiError.InvalidInput -> R.string.auth_error_input
-        AuthUiError.WrongCode -> R.string.auth_error_code
-        AuthUiError.WrongKey -> R.string.auth_error_key
-        AuthUiError.UsernameTaken -> R.string.auth_error_username_taken
-        AuthUiError.ExpiredCode -> R.string.auth_error_expired
-        AuthUiError.LockedCode -> R.string.auth_error_locked
-        AuthUiError.SessionExpired -> R.string.auth_error_session
-        AuthUiError.Suspended -> R.string.auth_error_suspended
-        AuthUiError.Deleted -> R.string.auth_error_deleted
-        AuthUiError.Offline -> R.string.auth_error_offline
-        AuthUiError.ProviderDenied -> R.string.auth_error_provider
-        AuthUiError.LoginFirst -> R.string.auth_error_login_first
-        AuthUiError.SecureStorage -> R.string.auth_error_secure_storage
-        AuthUiError.Unknown -> R.string.auth_error_unknown
-    },
-)
+private fun AuthHeading(resource: Int) {
+    Text(
+        stringResource(resource),
+        style = MaterialTheme.typography.headlineSmall,
+        modifier = Modifier.semantics { heading() },
+    )
+}
 
-@Preview(showBackground = true)
 @Composable
-private fun AuthScreenEmailPreview() {
-    AnpFuelTheme {
-        AuthScreen(
-            state = AuthUiState(step = AuthStep.USERNAME_ENTRY, username = "ana123"),
-            onEmailChange = {},
-            onCodeChange = {},
-            onRequestCode = {},
-            onConsumeCode = {},
-            onBackToEmail = {},
-            onUsernameChange = {},
-            onKeyChange = {},
-            onCreateAccount = {},
-            onLoginWithKey = {},
-            onGoToKeyEntry = {},
-            onBackToUsername = {},
-            onProviderClick = {},
-            onCancelProviderLink = {},
-            onLogout = {},
-            onDeleteAccount = {},
-            onDismissError = {},
-            onNavigateBack = {},
+private fun PublicNameField(name: String, onChange: (String) -> Unit, enabled: Boolean) {
+    OutlinedTextField(
+        value = name,
+        onValueChange = onChange,
+        label = { Text(stringResource(R.string.auth_public_name)) },
+        supportingText = { Text(stringResource(R.string.auth_name_helper)) },
+        singleLine = true,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun GoogleSignInButton(enabled: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF1F1F1F)),
+        border = BorderStroke(1.dp, Color(0xFF747775)),
+        elevation = null,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Image(
+            painterResource(R.drawable.google_sign_in_g),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            text = stringResource(R.string.auth_continue_google),
+            fontFamily = FontFamily(
+                Font(
+                    R.font.google_sans,
+                    weight = FontWeight.Medium,
+                ),
+            ),
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            modifier = Modifier.padding(start = 10.dp),
         )
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-private fun AuthScreenAuthenticatedPreview() {
-    AnpFuelTheme {
-        AuthScreen(
-            state = AuthUiState(step = AuthStep.AUTHENTICATED),
-            onEmailChange = {},
-            onCodeChange = {},
-            onRequestCode = {},
-            onConsumeCode = {},
-            onBackToEmail = {},
-            onUsernameChange = {},
-            onKeyChange = {},
-            onCreateAccount = {},
-            onLoginWithKey = {},
-            onGoToKeyEntry = {},
-            onBackToUsername = {},
-            onProviderClick = {},
-            onCancelProviderLink = {},
-            onLogout = {},
-            onDeleteAccount = {},
-            onDismissError = {},
-            onNavigateBack = {},
-        )
+internal fun AuthError(state: AuthUiState, onDismiss: () -> Unit) {
+    state.error?.let { error ->
+        val resource = when (error) {
+            AuthUiError.InvalidInput -> R.string.auth_error_input
+            AuthUiError.WrongCode -> R.string.auth_error_code
+            AuthUiError.WrongKey -> R.string.auth_error_key
+            AuthUiError.ExpiredCode -> R.string.auth_error_expired
+            AuthUiError.LockedCode -> R.string.auth_error_locked
+            AuthUiError.SessionExpired -> R.string.auth_error_session
+            AuthUiError.Suspended -> R.string.auth_error_suspended
+            AuthUiError.Deleted -> R.string.auth_error_deleted
+            AuthUiError.Offline -> R.string.auth_error_offline
+            AuthUiError.ProviderDenied -> R.string.auth_error_provider
+            AuthUiError.SecureStorage -> R.string.auth_error_secure_storage
+            AuthUiError.Unknown -> R.string.auth_error_unknown
+            AuthUiError.InvalidName -> R.string.auth_error_public_name
+            AuthUiError.AddressLinked -> R.string.auth_error_address_linked
+            AuthUiError.RecoveryNoAccount -> R.string.auth_error_recovery_no_account
+            AuthUiError.ProviderEmailInUse -> R.string.auth_error_provider_email_in_use
+            AuthUiError.ReauthenticationRequired -> R.string.auth_error_fresh_login
+            AuthUiError.EmailLoginRetired -> R.string.auth_error_email_login_retired
+            AuthUiError.GoogleUnavailable -> R.string.auth_error_google_unavailable
+        }
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(resource), color = MaterialTheme.colorScheme.error)
+        }
     }
+}
+
+@Composable
+internal fun ConfirmAccountDeletion(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.auth_delete_title)) },
+        text = { Text(stringResource(R.string.auth_delete_copy)) },
+        confirmButton = { TextButton(onConfirm) { Text(stringResource(R.string.auth_delete_confirm)) } },
+        dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.action_back)) } },
+    )
 }

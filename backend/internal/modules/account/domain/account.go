@@ -3,7 +3,9 @@ package domain
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"net/mail"
 	"strings"
+	"unicode"
 )
 
 // Account statuses. Suspension/erasure enforcement lands in P13-T04; the
@@ -17,10 +19,11 @@ const (
 // Account is a FREE identity: opaque alias for display, never email,
 // provider subject or location.
 type Account struct {
-	ID        string
-	Alias     string
-	Status    string
-	CreatedAt int64
+	ID          string
+	Alias       string
+	Status      string
+	CreatedAt   int64
+	DisplayName string
 }
 
 // Active reports whether the account may authenticate. Suspended and
@@ -132,18 +135,18 @@ func NormalizeAddress(address string) string {
 	return strings.ToLower(strings.TrimSpace(address))
 }
 
-// ValidEmail reports whether address is a cheaply-checkable email shape
-// (SEC01-C, B-BR-A02): non-empty, <=254 bytes, one @ with local and domain
-// parts, no spaces. Invalid shapes refuse before any store IO so floods
-// of malformed input cost no backend reads or rows. Deeper deliverability
-// is never claimed here; the HTTP layer shares this exact predicate.
+// ValidEmail accepts a single bare address. Reject controls before trimming
+// so a newline, even at the boundary, cannot reach an SMTP command or header.
 func ValidEmail(address string) bool {
-	address = strings.TrimSpace(address)
-	if len(address) == 0 || len(address) > 254 {
+	if strings.ContainsFunc(address, unicode.IsControl) {
 		return false
 	}
-	at := strings.IndexByte(address, '@')
-	return at > 0 && at < len(address)-1 && !strings.Contains(address, " ")
+	address = strings.TrimSpace(address)
+	if len(address) == 0 || len(address) > 254 || strings.Count(address, "@") != 1 || strings.ContainsFunc(address, unicode.IsSpace) {
+		return false
+	}
+	parsed, err := mail.ParseAddress(address)
+	return err == nil && parsed.Name == "" && parsed.Address == address
 }
 
 // AddressHash derives the PII-minimized lookup key for an address.
