@@ -3,6 +3,17 @@ import Combine
 import SwiftUI
 import AnpFuelCore
 
+/// One driver-safe trip field read, kept in memory for the exact company session that asked for it.
+struct EnterpriseTripFieldState: Equatable {
+    let partition: EnterprisePartition
+    let membershipId: String
+    let enrollmentId: String
+    let tripId: String
+    /// Nil when the server lists no field for this member's trip.
+    let field: EnterpriseTripField?
+    let receivedAtMillis: Int64
+}
+
 /// The company selected in this app session after a server read and an ACTIVE device contact.
 public struct EnterpriseActiveCompany: Equatable {
     public let partition: EnterprisePartition
@@ -35,6 +46,10 @@ public final class EnterpriseCoordinator: ObservableObject {
     @Published public private(set) var isRefreshingAssets = false
     @Published private(set) var isRefreshingMissions = false
     @Published private(set) var missionAccessError: EnterpriseAccessError?
+    /// The open trip's driver-safe field read; memory only, bound to the exact company session and trip.
+    @Published private(set) var tripField: EnterpriseTripFieldState?
+    @Published private(set) var isRefreshingTripField = false
+    @Published private(set) var tripFieldError: String?
 
     @Published public private(set) var invitationPreview: EnterpriseInvitationPreview?
     @Published public private(set) var invitationResult: EnterpriseInvitationAcknowledgement?
@@ -53,6 +68,8 @@ public final class EnterpriseCoordinator: ObservableObject {
     private var company: EnterpriseCompanyClient
     private var generation = UUID()
     private var missionTask: Task<Void, Never>?
+    private var tripFieldTask: Task<Void, Never>?
+    private var tripFieldRequest: UUID?
     private static let missionProcessID = UUID()
     private var deliveryTask: Task<Void, Never>?
     private var deliveryToken: UUID?
@@ -108,6 +125,7 @@ public final class EnterpriseCoordinator: ObservableObject {
     /// Logout, account deletion or an origin switch: all company data leaves this device.
     public func purgeOwnedData() {
         cancelMissionRefresh()
+        clearTripField()
         stopDelivery()
         generation = UUID()
         active = nil
@@ -198,6 +216,7 @@ public final class EnterpriseCoordinator: ObservableObject {
                     held.enrollment = nil
                     held.reference = nil
                     held.missionInbox = nil
+                    held.returnChecklists = nil
                 }
                 let known = held.enrollment
                 let outcome: EnterpriseContactOutcome
@@ -223,11 +242,9 @@ public final class EnterpriseCoordinator: ObservableObject {
 
     private func applyContact(_ outcome: EnterpriseContactOutcome, detail: EnterpriseContextDetail, held: EnterprisePartitionSnapshot) {
         var snapshot = held
-        if let mission = snapshot.missionInbox,
-           !mission.matches(membershipId: detail.summary.membershipId, enrollmentId: outcome.enrollment.enrollmentId,
-                            employeeId: detail.employeeId ?? "") {
-            snapshot.missionInbox = nil
-        }
+        // A re-enrolled device or another membership starts a new mission inbox and return checklist book.
+        snapshot.dropForeignBindings(membershipId: detail.summary.membershipId, enrollmentId: outcome.enrollment.enrollmentId,
+                                     employeeId: detail.employeeId)
         switch outcome.verdict {
         case .erase:
             store.erase(snapshot.partition)
@@ -260,6 +277,7 @@ public final class EnterpriseCoordinator: ObservableObject {
     /// Back to the personal context; company work stays in its own partition.
     public func leaveCompany() {
         cancelMissionRefresh()
+        clearTripField()
         stopDelivery()
         generation = UUID()
         active = nil
@@ -463,6 +481,73 @@ public final class EnterpriseCoordinator: ObservableObject {
         return AppValidationError(message)
     }
 
+    // MARK: - Trip field
+
+    private func clearTripField() {
+        tripFieldTask?.cancel()
+        tripFieldTask = nil
+        tripFieldRequest = nil
+        tripField = nil
+        isRefreshingTripField = false
+        tripFieldError = nil
+    }
+
+    /// The server lists a trip only after its start was ACCEPTED; a start receipt dismissed later was accepted.
+    func tripFieldAvailable(tripId: String) -> Bool {
+        guard let current = active, !current.locked, let held = snapshot, held.partition == current.partition,
+              let trip = held.openTrip, trip.id == tripId else { return false }
+        let start = held.queue.first { $0.id == trip.startOperationId }
+        return start == nil || start?.status == .accepted
+    }
+
+    var canRefreshTripField: Bool { !isRefreshingTripField && !isOfflineProbe() }
+
+    /// The read of this exact open trip, company session and enrollment, if any.
+    func tripFieldState(tripId: String) -> EnterpriseTripFieldState? {
+        guard let state = tripField, let current = active, !current.locked, state.partition == current.partition,
+              state.membershipId == current.summary.membershipId, state.enrollmentId == current.enrollment.enrollmentId,
+              state.tripId == tripId, snapshot?.openTrip?.id == tripId else { return nil }
+        return state
+    }
+
+    /// Reads the open trip's driver-safe projection, at most every five minutes unless forced.
+    func refreshTripField(tripId: String, force: Bool = false) {
+        revalidate()
+        guard tripFieldTask == nil, canRefreshTripField, tripFieldAvailable(tripId: tripId), let current = active,
+              current.partition.accountId == accountId, current.partition.origin == origin else { return }
+        if !force, let held = tripFieldState(tripId: tripId), Self.nowMillis() - held.receivedAtMillis < 300_000 { return }
+        let token = generation
+        let request = UUID()
+        let sync = syncClient
+        tripFieldRequest = request
+        isRefreshingTripField = true
+        tripFieldError = nil
+        tripFieldTask = Task { [weak self] in
+            let result: Result<EnterpriseTripField?, Error>
+            do {
+                result = .success(try await sync.tripField(partition: current.partition, enrollment: current.enrollment, tripId: tripId))
+            } catch {
+                result = .failure(error)
+            }
+            guard let self, self.generation == token, self.tripFieldRequest == request else { return }
+            self.tripFieldRequest = nil
+            self.isRefreshingTripField = false
+            self.tripFieldTask = nil
+            guard !Task.isCancelled, let selected = self.active, !selected.locked, selected.partition == current.partition,
+                  selected.summary.membershipId == current.summary.membershipId, selected.enrollment == current.enrollment,
+                  current.partition.accountId == self.accountId, self.snapshot?.openTrip?.id == tripId else { return }
+            switch result {
+            case .success(let field):
+                self.tripField = EnterpriseTripFieldState(
+                    partition: current.partition, membershipId: current.summary.membershipId,
+                    enrollmentId: current.enrollment.enrollmentId, tripId: tripId, field: field, receivedAtMillis: Self.nowMillis()
+                )
+            case .failure(let error):
+                self.tripFieldError = Self.syncMessage(error)
+            }
+        }
+    }
+
     /// `trip.start` for an assigned asset with a reading or a written reason.
     public func startTrip(
         assetId: String, evidence: EnterpriseMeterEvidence, departureRunId: String?, missionId: String? = nil
@@ -493,7 +578,8 @@ public final class EnterpriseCoordinator: ObservableObject {
                                             createdAtMillis: now), partition: current.partition) { snapshot in
                 snapshot.trips.append(EnterpriseTripRecord(id: tripId, assetId: asset.id, assetLabel: label,
                                                            startOperationId: operation.operationId, startedAtMillis: now,
-                                                           startMeterId: meterId, missionId: missionId))
+                                                           startMeterId: meterId, missionId: missionId,
+                                                           departureRunId: departureRunId))
             }
             return .success(())
         } catch let error as EnterpriseMissionError {
@@ -524,7 +610,8 @@ public final class EnterpriseCoordinator: ObservableObject {
             if startItem?.status == .rejected {
                 throw AppValidationError(String(localized: "enterprise.trip.start_refused"))
             }
-            let dependency: String? = startItem?.status.isReceived == true ? nil : trip.startOperationId
+            // Only an ACCEPTED start is a trip on the server; a held or dismissed one keeps the dependency.
+            let dependency: String? = startItem?.status == .accepted ? nil : trip.startOperationId
             let now = Self.nowMillis()
             guard now >= (trip.lifecycle?.last?.declaredAtMillis ?? trip.startedAtMillis) else {
                 throw AppValidationError(String(localized: "enterprise.trip_transition.changed"))
@@ -569,7 +656,7 @@ public final class EnterpriseCoordinator: ObservableObject {
             let operation = try EnterpriseOperationBuilder.transitionTrip(
                 envelope: makeEnvelope(current, now: now), tripId: tripId, action: action,
                 expectedRevision: original.nextLifecycleRevision, reason: reason.isEmpty ? nil : reason,
-                startOperationId: start?.status.isReceived == true ? nil : original.startOperationId
+                startOperationId: start?.status == .accepted ? nil : original.startOperationId
             )
             var changed = original
             try changed.recordTransition(action, operationId: operation.operationId, declaredAtMillis: now)
@@ -593,6 +680,8 @@ public final class EnterpriseCoordinator: ObservableObject {
             return
         }
         mutate(current.partition) { snapshot in
+            // Its unsent steps become final first, so removing the trip never releases them to the server.
+            EnterpriseQueue.refuseCommandsOfRejectedStarts(in: &snapshot)
             snapshot.trips.removeAll { $0.id == tripId }
         }
     }
@@ -1190,12 +1279,14 @@ public final class EnterpriseCoordinator: ObservableObject {
                 break
             case .lock:
                 cancelMissionRefresh()
+                clearTripField()
                 mutate(current.partition) { $0.locked = true }
                 active = EnterpriseActiveCompany(partition: current.partition, summary: current.summary, employeeId: current.employeeId,
                                                  enrollment: outcome.enrollment, confirmedAtMillis: Self.nowMillis(), locked: true)
                 notice = String(localized: "enterprise.custody.locked_retained")
             case .erase:
                 cancelMissionRefresh()
+                clearTripField()
                 stopDelivery()
                 store.erase(current.partition)
                 active = nil
@@ -1405,6 +1496,7 @@ public final class EnterpriseCoordinator: ObservableObject {
         case "STALE_REVISION": return String(localized: "android.enterprise_sync_reason_revision")
         case "ORPHAN_REFERENCE": return String(localized: "android.enterprise_sync_reason_orphan")
         case "OWNER_REJECTED": return String(localized: "android.enterprise_receipts_refusal_owner")
+        case EnterpriseQueue.startRejectedCode: return String(localized: "enterprise.code.start_rejected")
         case "LOCAL_COPY_MISSING": return String(localized: "android.enterprise_sync_file_missing")
         case "UPLOAD_WINDOW_CLOSED": return String(localized: "android.enterprise_sync_reason_window")
         case "": return String(localized: "enterprise.code.none")

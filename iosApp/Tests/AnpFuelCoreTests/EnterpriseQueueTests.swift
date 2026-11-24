@@ -136,6 +136,8 @@ final class EnterpriseQueueTests: XCTestCase {
         snapshot.attachments = [attachment]
         EnterpriseQueue.apply([ack(startItem, .acceptedForReview, code: "ASSET_BUSY")], to: &snapshot, nowMillis: 40_000)
         XCTAssertEqual(snapshot.queue[0].status, .inReview)
+        XCTAssertEqual(EnterpriseQueue.dueBatch(snapshot, nowMillis: 40_000).map { $0.id }, [finishItem.id],
+                       "a held start no longer holds its finish; the server answers until a reviewer decides")
         XCTAssertEqual(snapshot.attachments[0].status, .pending)
         XCTAssertEqual(EnterpriseQueue.dueAttachment(snapshot, nowMillis: 40_000)?.id, attachment.id)
         let uploadRefused = EnterpriseAttachmentWire.isFinalRefusal(status: 409, code: "CONFLICT", source: .capabilityUpload)
@@ -159,6 +161,35 @@ final class EnterpriseQueueTests: XCTestCase {
         EnterpriseQueue.apply([ack(finishItem, .rejected, code: "FORBIDDEN")], to: &snapshot, nowMillis: 50_000)
         XCTAssertEqual(snapshot.attachments[1].status, .refused)
         XCTAssertEqual(snapshot.attachments[1].lastCode, "OWNER_REJECTED")
+    }
+
+    func testDismissedFuelingHistoryDoesNotFillTheQueue() throws {
+        var snapshot = EnterprisePartitionSnapshot(partition: try partition(accountA, orgOne), membershipId: member)
+        func item(_ kind: EnterpriseCommandKind) -> EnterpriseQueueItem {
+            let id = EnterpriseValues.newId()
+            return EnterpriseQueueItem(
+                operation: EnterpriseSealedOperation(operationId: id, type: "fueling.submit", entityType: "fueling",
+                                                     entityId: EnterpriseValues.newId(), payloadDigest: id, canonical: Data()),
+                kind: kind, summary: "Fixture", createdAtMillis: 0
+            )
+        }
+        for _ in 0..<EnterpriseQueue.maxItems {
+            try EnterpriseQueue.enqueue(item(.fueling), into: &snapshot)
+        }
+        XCTAssertThrowsError(try EnterpriseQueue.enqueue(item(.expense), into: &snapshot)) {
+            XCTAssertEqual($0 as? EnterpriseQueueError, .full)
+        }
+        snapshot.queue[0].status = .accepted
+        XCTAssertTrue(EnterpriseQueue.canDismiss(snapshot.queue[0], in: snapshot))
+        EnterpriseQueue.dismiss(id: snapshot.queue[0].id, in: &snapshot)
+        XCTAssertEqual(snapshot.queue[0].dismissedFromQueue, true, "the fueling stays as local history")
+        XCTAssertFalse(EnterpriseQueue.canDismiss(snapshot.queue[0], in: snapshot))
+        XCTAssertEqual(snapshot.retainedCommandCount, EnterpriseQueue.maxItems - 1)
+        try EnterpriseQueue.enqueue(item(.expense), into: &snapshot)
+        XCTAssertEqual(snapshot.queue.count, EnterpriseQueue.maxItems + 1)
+        XCTAssertThrowsError(try EnterpriseQueue.enqueue(item(.expense), into: &snapshot)) {
+            XCTAssertEqual($0 as? EnterpriseQueueError, .full)
+        }
     }
 
     func testStoreIsolatesPartitionsAndPurgesOnLogoutOrAccountChange() throws {

@@ -192,6 +192,10 @@ struct EnterpriseCompanySections: View {
                 Text(String(localized: "enterprise.tracking_off"))
             }
 
+            if let trip = openTrip {
+                EnterpriseTripAuthorizationSection(enterprise: enterprise, tripId: trip.id)
+            }
+
             let ended = (snapshot?.trips ?? []).reversed().filter { !$0.isOpen }
             if !ended.isEmpty {
                 Section(String(localized: "enterprise.trip_transition.history")) {

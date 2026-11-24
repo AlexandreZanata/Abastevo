@@ -393,6 +393,106 @@ public enum EnterpriseReferenceWire {
     }
 }
 
+// MARK: - Trip field read
+
+/// The driver-safe projection of one open trip (`/sync/reference` with `trip_id`, Android `TripFieldWire`).
+/// The voucher is the driver's nearest fueling authorization notice: limits, expiry and state, never a code.
+public struct EnterpriseTripField: Equatable, Sendable {
+    public let tripId: String
+    public let hasRoutePlan: Bool
+    public let expiredDocuments: Int64
+    public let documentsDueSoon: Int64
+    public let nearestDueDays: Int64?
+    public let openMaintenanceRequests: Int64
+    public let authorization: EnterpriseFuelingAuthorizationNotice?
+}
+
+/// Zero postfix unwrap operators anywhere in this wire.
+public enum EnterpriseTripFieldWire {
+    /// Android `TripFieldWire.MAX_BYTES`.
+    public static let maxResponseBytes = 128 * 1024
+
+    /// The reference request with no cursor and the open trip's identifier (the Go `parseReferenceRequest`).
+    public static func requestBody(requestId: String, familyId: String, accessToken: String, membershipId: String,
+                                   enrollmentId: String, tripId: String) throws -> Data {
+        guard EnterpriseValues.isId(requestId), EnterpriseValues.isId(familyId), EnterpriseSyncWire.isAccessToken(accessToken),
+              EnterpriseValues.isId(membershipId), EnterpriseValues.isId(enrollmentId), EnterpriseValues.isId(tripId) else {
+            throw EnterpriseProtocolFailure.invalid
+        }
+        let body = try EnterpriseCanonicalJson.encode(.object([
+            "schema_version": .int(1),
+            "request_id": .text(requestId),
+            "family_id": .text(familyId),
+            "access_token": .text(accessToken),
+            "membership_id": .text(membershipId),
+            "enrollment_id": .text(enrollmentId),
+            "cursor": .null,
+            "trip_id": .text(tripId),
+        ]))
+        if body.count > EnterpriseReferenceWire.maxRequestBytes { throw EnterpriseProtocolFailure.limit }
+        return body
+    }
+
+    /// Exact root and field keys, bound to the request, membership, enrollment and trip. The route plan is
+    /// only checked to be absent or an object; this app does not show it yet.
+    public static func parse(_ data: Data, requestId: String, membershipId: String, enrollmentId: String,
+                             tripId: String) throws -> EnterpriseTripField {
+        if data.isEmpty { throw EnterpriseProtocolFailure.invalid }
+        if data.count > maxResponseBytes { throw EnterpriseProtocolFailure.limit }
+        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              Set(root.keys) == ["schema_version", "request_id", "membership_id", "enrollment_id", "field"],
+              counter(root["schema_version"]) == 1,
+              let field = root["field"] as? [String: Any],
+              Set(field.keys) == ["trip_id", "plan", "expired", "due_soon", "nearest_days", "open_maintenance", "voucher"],
+              let expired = counter(field["expired"]), expired >= 0,
+              let due = counter(field["due_soon"]), due >= 0,
+              let maintenance = counter(field["open_maintenance"]), maintenance >= 0,
+              let plan = field["plan"], plan is NSNull || plan is [String: Any],
+              let rawVoucher = field["voucher"] else {
+            throw EnterpriseProtocolFailure.invalid
+        }
+        var nearest: Int64?
+        if let raw = field["nearest_days"], !(raw is NSNull) {
+            guard let days = counter(raw), days >= 0 else { throw EnterpriseProtocolFailure.invalid }
+            nearest = days
+        }
+        guard (nearest == nil) == (due == 0) else { throw EnterpriseProtocolFailure.invalid }
+        var authorization: EnterpriseFuelingAuthorizationNotice?
+        if !(rawVoucher is NSNull) {
+            guard let voucher = rawVoucher as? [String: Any],
+                  Set(voucher.keys) == ["id", "product", "unit", "max_quantity_milli", "max_centavos", "valid_until", "state"],
+                  let id = voucher["id"] as? String, let product = voucher["product"] as? String, let unit = voucher["unit"] as? String,
+                  let quantity = counter(voucher["max_quantity_milli"]), let centavos = counter(voucher["max_centavos"]),
+                  let until = counter(voucher["valid_until"]),
+                  let rawState = voucher["state"] as? String,
+                  let state = EnterpriseFuelingAuthorizationNotice.State(rawValue: rawState),
+                  let notice = EnterpriseFuelingAuthorizationNotice(
+                      id: id, product: product, unit: unit, maximumQuantityMilli: quantity, maximumCentavos: centavos,
+                      validUntilEpochSeconds: until, storedState: state
+                  ) else {
+                throw EnterpriseProtocolFailure.invalid
+            }
+            authorization = notice
+        }
+        guard root["request_id"] as? String == requestId, root["membership_id"] as? String == membershipId,
+              root["enrollment_id"] as? String == enrollmentId, field["trip_id"] as? String == tripId else {
+            throw EnterpriseProtocolFailure.binding
+        }
+        return EnterpriseTripField(
+            tripId: tripId, hasRoutePlan: plan is [String: Any], expiredDocuments: expired, documentsDueSoon: due,
+            nearestDueDays: nearest, openMaintenanceRequests: maintenance, authorization: authorization
+        )
+    }
+
+    /// A JSON integer only: booleans and fractional numbers are refused.
+    static func counter(_ value: Any?) -> Int64? {
+        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+              !["d", "f"].contains(String(cString: number.objCType)) else { return nil }
+        let exact = number.int64Value
+        return NSNumber(value: exact) == number ? exact : nil
+    }
+}
+
 // MARK: - Device enrollment wire
 
 public enum EnterpriseDeviceWire {
@@ -731,6 +831,38 @@ public struct EnterpriseSyncClient: Sendable {
                 sentCursor: held?.cursor, heldRevision: held?.revision
             )
             return try EnterpriseReferenceWire.apply(prior: held, response: parsed, receivedAtMillis: nowMillis)
+        } catch {
+            throw EnterpriseSyncError.invalidResponse
+        }
+    }
+
+    /// Reads the driver-safe field projection of one open trip on the signed reference route.
+    /// Nil when the server does not list it for this member (404): the start is not received yet,
+    /// the trip is no longer open or another member drives it.
+    public func tripField(partition: EnterprisePartition, enrollment: EnterpriseEnrollment, tripId: String) async throws -> EnterpriseTripField? {
+        guard EnterpriseValues.isId(tripId) else { throw EnterpriseSyncError.unavailable }
+        let session = try await liveSession(for: partition)
+        let requestId = newId()
+        let body: Data
+        do {
+            body = try EnterpriseTripFieldWire.requestBody(
+                requestId: requestId, familyId: session.familyId, accessToken: session.accessToken,
+                membershipId: enrollment.membershipId, enrollmentId: enrollment.enrollmentId, tripId: tripId
+            )
+        } catch {
+            throw EnterpriseSyncError.unavailable
+        }
+        let response: SignedHttpResponse
+        do {
+            response = try await post("/v1/orgs/\(partition.organizationId)/sync/reference", body: body)
+        } catch EnterpriseSyncError.refused(let status, _, _) where status == 404 {
+            return nil
+        }
+        do {
+            return try EnterpriseTripFieldWire.parse(
+                response.body, requestId: requestId, membershipId: enrollment.membershipId,
+                enrollmentId: enrollment.enrollmentId, tripId: tripId
+            )
         } catch {
             throw EnterpriseSyncError.invalidResponse
         }

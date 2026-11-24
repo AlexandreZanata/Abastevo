@@ -153,6 +153,50 @@ final class EnterpriseTransportTests: XCTestCase {
         XCTAssertEqual(FakeIdentityBackend.json(enroll)["label"] as? String, "iOS")
     }
 
+    func testOpenTripFieldIsReadSignedAndAnUnlistedTripIsNoError() async throws {
+        let member = "7b0e2a54-0000-4000-8000-0000000000c9"
+        let device = "7b0e2a54-0000-4000-8000-00000000012d"
+        let trip = "7b0e2a54-0000-4000-8000-000000000301"
+        let organization = org
+        let exchange = ScriptedExchange { request in
+            FakeIdentityBackend.reply(request) { request in
+                let body = FakeIdentityBackend.json(request)
+                guard request.url?.path == "/v1/orgs/\(organization)/sync/reference", body["trip_id"] as? String == trip else {
+                    return ScriptedExchange.Reply(404, #"{"error":{"code":"NOT_FOUND"}}"#)
+                }
+                return ScriptedExchange.Reply(200, #"{"schema_version":1,"request_id":"7b0e2a54-0000-4000-8000-000000000999","membership_id":"\#(member)","enrollment_id":"\#(device)","field":{"trip_id":"\#(trip)","plan":null,"expired":0,"due_soon":0,"nearest_days":null,"open_maintenance":0,"voucher":{"id":"7b0e2a54-0000-4000-8000-000000000302","product":"ETHANOL","unit":"L","max_quantity_milli":40000,"max_centavos":20000,"valid_until":1800000000,"state":"ISSUED"}}}"# + "\n")
+            }
+        }
+        let client = try makeClient(exchange, sessions: StaticSessions(session: session))
+        let partition = try XCTUnwrap(EnterprisePartition(accountId: session.accountId, origin: origin, organizationId: org))
+        let enrollment = EnterpriseEnrollment(membershipId: member, enrollmentId: device, revision: 1)
+
+        let field = try await client.tripField(partition: partition, enrollment: enrollment, tripId: trip)
+        XCTAssertEqual(field?.authorization?.product, "ETHANOL")
+        XCTAssertEqual(field?.authorization?.maximumCentavos, 20_000)
+        let read = try XCTUnwrap(exchange.requests.last)
+        XCTAssertEqual(read.url?.path, "/v1/orgs/\(org)/sync/reference")
+        XCTAssertNotNil(read.value(forHTTPHeaderField: "Signature"))
+        XCTAssertNil(read.value(forHTTPHeaderField: "Cookie"))
+        let body = FakeIdentityBackend.json(read)
+        XCTAssertEqual(body["family_id"] as? String, session.familyId)
+        XCTAssertTrue(body["cursor"] is NSNull)
+        XCTAssertEqual(body["trip_id"] as? String, trip)
+
+        let unlisted = try await client.tripField(partition: partition, enrollment: enrollment,
+                                                  tripId: "7b0e2a54-0000-4000-8000-000000000303")
+        XCTAssertNil(unlisted, "the server lists no field until the start is received or after the trip closes")
+        let foreign = try XCTUnwrap(EnterprisePartition(accountId: "b0000000-0000-4000-8000-000000000001", origin: origin, organizationId: org))
+        let before = exchange.requests.count
+        do {
+            _ = try await client.tripField(partition: foreign, enrollment: enrollment, tripId: trip)
+            XCTFail("another account's partition is never read with this session")
+        } catch let error as EnterpriseSyncError {
+            XCTAssertEqual(error, .signInRequired)
+        }
+        XCTAssertEqual(exchange.requests.count, before)
+    }
+
     func testCompanyChannelUsesTheCookieAndCsrfButNeverDeviceProof() async throws {
         let secret = String(repeating: "d", count: 64)
         let csrf = "abv_company_csrf_" + String(repeating: "e", count: 64)

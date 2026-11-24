@@ -167,6 +167,30 @@ final class EnterpriseReturnChecklistTests: XCTestCase {
         }
     }
 
+    func testReenrolledDeviceStartsANewBookAndKeepsQueuedWork() throws {
+        var held = EnterprisePartitionSnapshot(partition: try partition(), membershipId: member)
+        var book = EnterpriseReturnChecklistBook(membershipId: member, enrollmentId: enrollment)
+        try book.remember(applicable())
+        _ = try book.start(trip: trip(), nowMillis: now)
+        held.returnChecklists = book
+        held.trips = [trip()]
+        held.dropForeignBindings(membershipId: member, enrollmentId: enrollment, employeeId: nil)
+        XCTAssertEqual(held.returnChecklists, book, "the same enrollment keeps its book")
+
+        let reenrolled = "7b0e2a54-0000-4000-8000-000000009906"
+        held.dropForeignBindings(membershipId: member, enrollmentId: reenrolled, employeeId: nil)
+        XCTAssertNil(held.returnChecklists, "a stale book would refuse every later change")
+        XCTAssertEqual(held.trips.count, 1)
+        var fresh = held.returnChecklists ?? EnterpriseReturnChecklistBook(membershipId: member, enrollmentId: reenrolled)
+        try fresh.remember(applicable())
+        let restarted = try fresh.start(trip: trip(), nowMillis: now)
+        XCTAssertEqual(restarted.tripId, tripID)
+
+        held.returnChecklists = book
+        held.dropForeignBindings(membershipId: "7b0e2a54-0000-4000-8000-000000009907", enrollmentId: enrollment, employeeId: nil)
+        XCTAssertNil(held.returnChecklists, "another membership never reads this book")
+    }
+
     func testProtectedSnapshotKeepsBoundRunAndQueueAcrossRestartAndPurge() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }

@@ -118,13 +118,16 @@ public struct EnterpriseTripRecord: Codable, Equatable, Sendable, Identifiable {
     public let startedAtMillis: Int64
     public let startMeterId: String?
     public let missionId: String?
+    /// The departure checklist run the start names; absent in snapshots written before it was kept.
+    public let departureRunId: String?
     public var lifecycle: [EnterpriseTripLifecycleFact]?
     public var finishOperationId: String?
     public var finishedAtMillis: Int64?
 
     public var isOpen: Bool { localState == .running || localState == .paused }
 
-    public init(id: String, assetId: String, assetLabel: String, startOperationId: String, startedAtMillis: Int64, startMeterId: String?, missionId: String? = nil) {
+    public init(id: String, assetId: String, assetLabel: String, startOperationId: String, startedAtMillis: Int64, startMeterId: String?,
+                missionId: String? = nil, departureRunId: String? = nil) {
         self.id = id
         self.assetId = assetId
         self.assetLabel = assetLabel
@@ -132,6 +135,7 @@ public struct EnterpriseTripRecord: Codable, Equatable, Sendable, Identifiable {
         self.startedAtMillis = startedAtMillis
         self.startMeterId = startMeterId
         self.missionId = missionId
+        self.departureRunId = departureRunId
         self.lifecycle = nil
         self.finishOperationId = nil
         self.finishedAtMillis = nil
@@ -178,6 +182,11 @@ public struct EnterprisePartitionSnapshot: Codable, Equatable, Sendable {
     public var unsentCount: Int {
         return queue.filter { !$0.status.isFinal }.count + attachments.filter { $0.status == .pending || $0.status == .waitingOwner || $0.status == .exhausted }.count
     }
+
+    /// Commands that count against the queue bound; dismissed fuelings stay only as the local fueling history.
+    public var retainedCommandCount: Int {
+        return queue.filter { $0.dismissedFromQueue != true }.count
+    }
 }
 
 public enum EnterpriseQueueError: Error, Equatable, Sendable {
@@ -198,15 +207,18 @@ public enum EnterpriseQueue {
     public static let baseBackoffMillis: Int64 = 30_000
     /// Equal to the Android queue backoff cap (6 hours).
     public static let maxBackoffMillis: Int64 = 21_600_000
+    /// Local final code of a trip command whose start the server refused; it is never sent.
+    public static let startRejectedCode = "START_REJECTED"
 
     public static func enqueue(_ item: EnterpriseQueueItem, into snapshot: inout EnterprisePartitionSnapshot) throws {
         if snapshot.locked { throw EnterpriseQueueError.locked }
-        if snapshot.queue.count >= maxItems { throw EnterpriseQueueError.full }
+        // Fueling history is retained like Android (EDR-295); a dismissed fueling no longer fills the queue.
+        if snapshot.retainedCommandCount >= maxItems { throw EnterpriseQueueError.full }
         if snapshot.queue.contains(where: { $0.id == item.id }) { throw EnterpriseQueueError.duplicate }
         snapshot.queue.append(item)
     }
 
-    /// Due commands in creation order. Ineligible trip chains do not prevent an unrelated delivery.
+    /// Due commands in creation order. A held trip chain does not prevent an unrelated delivery.
     public static func dueBatch(_ snapshot: EnterprisePartitionSnapshot, nowMillis: Int64, limit: Int = batchLimit) -> [EnterpriseQueueItem] {
         var batch: [EnterpriseQueueItem] = []
         for scheduled in commandSchedule(snapshot) where scheduled.at <= nowMillis {
@@ -220,9 +232,17 @@ public enum EnterpriseQueue {
         return batch
     }
 
-    private static func commandSchedule(_ snapshot: EnterprisePartitionSnapshot) -> [(item: EnterpriseQueueItem, at: Int64)] {
+    /// The command each trip command waits for: a lifecycle step or finish waits for the step before it,
+    /// and a start waits for the departure checklist run it names (Android EDR-352).
+    static func prerequisites(_ snapshot: EnterprisePartitionSnapshot) -> [String: String] {
         var prerequisite: [String: String] = [:]
         for trip in snapshot.trips {
+            if let run = trip.departureRunId,
+               let checklist = snapshot.queue.first(where: {
+                   $0.kind == .checklist && $0.operation.entityType == "checklist_run" && $0.operation.entityId == run
+               }) {
+                prerequisite[trip.startOperationId] = checklist.id
+            }
             var latest = trip.startOperationId
             for fact in trip.lifecycle ?? [] {
                 prerequisite[fact.operationId] = latest
@@ -230,12 +250,18 @@ public enum EnterpriseQueue {
             }
             if let finish = trip.finishOperationId { prerequisite[finish] = latest }
         }
+        return prerequisite
+    }
+
+    private static func commandSchedule(_ snapshot: EnterprisePartitionSnapshot) -> [(item: EnterpriseQueueItem, at: Int64)] {
+        let prerequisite = prerequisites(snapshot)
         let status = Dictionary(snapshot.queue.map { ($0.id, $0.status) }, uniquingKeysWith: { first, _ in first })
         return snapshot.queue.compactMap { item in
             guard item.status == .pending else { return nil }
-            // Accepted receipts may be dismissed. A retained predecessor must be accepted
-            // before the server sees a command that depends on its revision.
-            if let prior = prerequisite[item.id].flatMap({ status[$0] }), prior != .accepted { return nil }
+            // A predecessor still held on this device (pending, even when due in the same pass, or
+            // paused) holds its dependent. A final or dismissed predecessor releases it: the server
+            // answers DEPENDENCY_PENDING or holds a stale revision for review, as on Android.
+            if let prior = prerequisite[item.id].flatMap({ status[$0] }), !prior.isFinal { return nil }
             return (item, item.nextAttemptAtMillis)
         }
     }
@@ -267,7 +293,24 @@ public enum EnterpriseQueue {
             }
             snapshot.queue[index] = item
         }
+        refuseCommandsOfRejectedStarts(in: &snapshot)
         releaseAttachments(in: &snapshot)
+    }
+
+    /// A trip whose start the server refused never exists there: its unsent lifecycle steps and finish
+    /// become final locally with `START_REJECTED`, so they are never sent and can be dismissed.
+    public static func refuseCommandsOfRejectedStarts(in snapshot: inout EnterprisePartitionSnapshot) {
+        for trip in snapshot.trips where snapshot.queue.first(where: { $0.id == trip.startOperationId })?.status == .rejected {
+            var dependents = Set((trip.lifecycle ?? []).map { $0.operationId })
+            if let finish = trip.finishOperationId { dependents.insert(finish) }
+            for index in snapshot.queue.indices where dependents.contains(snapshot.queue[index].id) {
+                let status = snapshot.queue[index].status
+                guard status == .pending || status == .exhausted else { continue }
+                snapshot.queue[index].status = .rejected
+                snapshot.queue[index].lastCode = startRejectedCode
+                snapshot.queue[index].nextAttemptAtMillis = 0
+            }
+        }
     }
 
     /// A whole-delivery failure: every sent command keeps its place and backs off.
@@ -333,13 +376,18 @@ public enum EnterpriseQueue {
         snapshot.attachments.removeAll { $0.id == id && ($0.status == .delivered || $0.status == .refused) }
     }
 
+    /// A final receipt may leave the list once nothing local still reads it. Final lifecycle receipts no
+    /// longer hold their dependents; a refused or held start stays while its trip is kept, the open trip's
+    /// return checklist completion stays, and a mission answer stays while its inbox line still needs it.
     public static func canDismiss(_ item: EnterpriseQueueItem, in snapshot: EnterprisePartitionSnapshot) -> Bool {
-        guard item.status.isFinal else { return false }
-        if item.status != .accepted, item.kind == .tripLifecycle { return false }
+        guard item.status.isFinal, item.dismissedFromQueue != true else { return false }
         if item.status != .accepted, item.kind == .tripStart,
            snapshot.trips.contains(where: { $0.startOperationId == item.id }) { return false }
         if let completion = snapshot.returnChecklists?.draft?.completion, completion.operationId == item.id,
            snapshot.openTrip?.id == completion.tripId { return false }
+        if item.kind == .missionResponse, let inbox = snapshot.missionInbox, !inbox.canReleaseDismissedAnswer(item.id) {
+            return false
+        }
         return true
     }
 

@@ -163,6 +163,19 @@ public struct EnterpriseReturnChecklistBook: Codable, Equatable, Sendable {
     }
 }
 
+public extension EnterprisePartitionSnapshot {
+    /// Local copies bound to an earlier membership, enrollment or employee record leave the partition:
+    /// a re-enrolled device starts a new mission inbox and return checklist book. Queued commands stay.
+    mutating func dropForeignBindings(membershipId: String, enrollmentId: String, employeeId: String?) {
+        if let inbox = missionInbox, !inbox.matches(membershipId: membershipId, enrollmentId: enrollmentId, employeeId: employeeId ?? "") {
+            missionInbox = nil
+        }
+        if let book = returnChecklists, !book.matches(membershipId: membershipId, enrollmentId: enrollmentId) {
+            returnChecklists = nil
+        }
+    }
+}
+
 public struct EnterpriseChecklistRunResult: Codable, Equatable, Sendable {
     public let runId: String
     public let assetId: String

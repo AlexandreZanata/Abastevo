@@ -43,9 +43,13 @@ struct EnterpriseFuelingsView: View {
                     Text(String(localized: "android.enterprise_fuelings_unavailable")).foregroundStyle(.secondary)
                 }
             }
-            Section(String(localized: "enterprise.fueling.authorization_title")) {
-                Text(String(localized: "enterprise.fueling.authorization_unavailable")).foregroundStyle(.secondary)
-                Text(String(localized: "enterprise.fueling.redemption_at_station")).foregroundStyle(.secondary)
+            if let trip = held?.openTrip, held?.locked == false {
+                EnterpriseTripAuthorizationSection(enterprise: enterprise, tripId: trip.id)
+            } else {
+                Section(String(localized: "enterprise.fueling.authorization_title")) {
+                    Text(String(localized: "enterprise.fueling.authorization_no_trip")).foregroundStyle(.secondary)
+                    Text(String(localized: "enterprise.fueling.redemption_at_station")).foregroundStyle(.secondary)
+                }
             }
         }
         .navigationTitle(String(localized: "android.enterprise_fuelings_title"))
@@ -55,6 +59,99 @@ struct EnterpriseFuelingsView: View {
         guard enterprise.active?.partition == partition, enterprise.active?.summary.membershipId == membershipId,
               let snapshot = enterprise.snapshot, snapshot.partition == partition else { return nil }
         return snapshot
+    }
+}
+
+/// The open trip's fueling authorization notice from the signed trip field read: product, limits,
+/// validity and state only. Redemption stays with the partner station; no code exists in this app.
+@MainActor
+struct EnterpriseTripAuthorizationSection: View {
+    @ObservedObject var enterprise: EnterpriseCoordinator
+    let tripId: String
+
+    private struct ReadKey: Equatable {
+        let tripId: String
+        let available: Bool
+    }
+
+    var body: some View {
+        let available = enterprise.tripFieldAvailable(tripId: tripId)
+        let state = enterprise.tripFieldState(tripId: tripId)
+        Section {
+            if !available {
+                Text(String(localized: "enterprise.fueling.authorization_after_start")).foregroundStyle(.secondary)
+            } else if let state {
+                if let notice = state.field?.authorization {
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        EnterpriseAuthorizationNoticeView(notice: notice, nowEpochSeconds: Int64(context.date.timeIntervalSince1970))
+                    }
+                } else {
+                    Text(String(localized: "enterprise.fueling.authorization_none")).foregroundStyle(.secondary)
+                }
+            }
+            if enterprise.isRefreshingTripField {
+                ProgressView(String(localized: "enterprise.fueling.authorization_loading"))
+            }
+            if let error = enterprise.tripFieldError {
+                Text(error).font(.footnote).foregroundStyle(AbastevoTheme.errorRed)
+            }
+            if available {
+                Button(String(localized: "enterprise.fueling.authorization_refresh")) {
+                    enterprise.refreshTripField(tripId: tripId, force: true)
+                }
+                .disabled(!enterprise.canRefreshTripField)
+            }
+            Text(String(localized: "enterprise.fueling.redemption_at_station")).font(.footnote).foregroundStyle(.secondary)
+        } header: {
+            Text(String(localized: "enterprise.fueling.authorization_title"))
+        }
+        .task(id: ReadKey(tripId: tripId, available: available)) {
+            if available { enterprise.refreshTripField(tripId: tripId) }
+        }
+    }
+}
+
+private struct EnterpriseAuthorizationNoticeView: View {
+    let notice: EnterpriseFuelingAuthorizationNotice
+    let nowEpochSeconds: Int64
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(FuelProduct.fromWireCode(notice.product)?.localizedName ?? notice.product).font(.headline)
+            if notice.state(at: nowEpochSeconds) == .issued {
+                Text(limits)
+                Text(validUntil).font(.footnote).foregroundStyle(.secondary)
+            } else {
+                Text(stateText).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var limits: String {
+        let quantity = LedgerUnits.formatScaled(notice.maximumQuantityMilli, fractionDigits: 3, locale: .current)
+        let unit: String
+        switch notice.unit {
+        case "M3": unit = String(localized: "android.enterprise_fuelings_unit_m3")
+        case "KG_13": unit = String(localized: "enterprise.fueling.unit_cylinder")
+        default: unit = String(localized: "android.enterprise_fuelings_unit_l")
+        }
+        let amount = AbastevoTheme.formatCentavos(notice.maximumCentavos)
+        return String(localized: "enterprise.fueling.authorization_limits", defaultValue: "Up to \(quantity) \(unit) and \(amount)")
+    }
+
+    private var validUntil: String {
+        let until = EnterpriseLabels.dateTime(millis: notice.validUntilEpochSeconds * 1_000)
+        return String(localized: "enterprise.fueling.authorization_valid_until", defaultValue: "Valid until \(until)")
+    }
+
+    private var stateText: String {
+        switch notice.state(at: nowEpochSeconds) {
+        case .issued: return validUntil
+        case .expired: return String(localized: "enterprise.fueling.authorization_expired")
+        case .redeemed: return String(localized: "enterprise.fueling.authorization_redeemed")
+        case .cancelled: return String(localized: "enterprise.fueling.authorization_cancelled")
+        case .locked: return String(localized: "enterprise.fueling.authorization_locked")
+        }
     }
 }
 

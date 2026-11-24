@@ -234,6 +234,9 @@ private struct EnterpriseMissionTripView: View {
                         }
                     }
                 }
+                if held.openTrip?.id == tripId, !held.locked {
+                    EnterpriseTripAuthorizationSection(enterprise: enterprise, tripId: tripId)
+                }
             } else {
                 Text(String(localized: "enterprise.trip.none_open")).foregroundStyle(.secondary)
             }

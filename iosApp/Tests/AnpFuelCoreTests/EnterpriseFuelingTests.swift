@@ -141,6 +141,97 @@ final class EnterpriseFuelingTests: XCTestCase {
         XCTAssertEqual(checked, 5)
     }
 
+    private let tripId = "7b0e2a54-0000-4000-8000-000000009511"
+    private let requestId = "7b0e2a54-0000-4000-8000-000000009512"
+    private let voucherId = "7b0e2a54-0000-4000-8000-000000009513"
+
+    private func tripFieldResponse(voucher: String? = nil, plan: String = "null", counts: String? = nil,
+                                   trip: String? = nil, request: String? = nil, extra: String = "") -> Data {
+        let notice = voucher ?? #"{"id":"\#(voucherId)","product":"DIESEL_S10","unit":"L","max_quantity_milli":150000,"max_centavos":90000,"valid_until":1800000000,"state":"ISSUED"}"#
+        let numbers = counts ?? #""expired":1,"due_soon":2,"nearest_days":5,"open_maintenance":1"#
+        // The Go encoder's field order and trailing newline (orgsync reference handler).
+        return Data((#"{"schema_version":1,"request_id":"\#(request ?? requestId)","membership_id":"\#(membership)","enrollment_id":"\#(enrollment)","field":{"trip_id":"\#(trip ?? tripId)","plan":\#(plan),"#
+            + numbers + #","voucher":\#(notice)\#(extra)}}"# + "\n").utf8)
+    }
+
+    private func parseTripField(_ data: Data) throws -> EnterpriseTripField {
+        try EnterpriseTripFieldWire.parse(data, requestId: requestId, membershipId: membership, enrollmentId: enrollment, tripId: tripId)
+    }
+
+    func testTripFieldRequestNamesOnlyTheOpenTripWithoutACursor() throws {
+        let body = try EnterpriseTripFieldWire.requestBody(
+            requestId: requestId, familyId: account, accessToken: "access-token", membershipId: membership,
+            enrollmentId: enrollment, tripId: tripId
+        )
+        let fields = try XCTUnwrap(EnterpriseCanonicalJson.parse(body).objectValue)
+        XCTAssertEqual(Set(fields.keys), ["schema_version", "request_id", "family_id", "access_token", "membership_id",
+                                          "enrollment_id", "cursor", "trip_id"])
+        XCTAssertEqual(fields["cursor"], .null)
+        XCTAssertEqual(fields["trip_id"], .text(tripId))
+        XCTAssertEqual(fields["schema_version"], .int(1))
+        XCTAssertThrowsError(try EnterpriseTripFieldWire.requestBody(
+            requestId: requestId, familyId: account, accessToken: "access-token", membershipId: membership,
+            enrollmentId: enrollment, tripId: tripId.uppercased()
+        ))
+    }
+
+    func testTripFieldKeepsOnlyTheDriverSafeAuthorizationNotice() throws {
+        let field = try parseTripField(tripFieldResponse(
+            plan: #"{"id":"\#(voucherId)","waypoints":[{"lat_e7":-155000000,"label":"Base"}],"heavy_asset_notice":false}"#
+        ))
+        XCTAssertEqual(field.tripId, tripId)
+        XCTAssertTrue(field.hasRoutePlan)
+        XCTAssertEqual(field.expiredDocuments, 1)
+        XCTAssertEqual(field.documentsDueSoon, 2)
+        XCTAssertEqual(field.nearestDueDays, 5)
+        XCTAssertEqual(field.openMaintenanceRequests, 1)
+        let notice = try XCTUnwrap(field.authorization)
+        XCTAssertEqual(notice.id, voucherId)
+        XCTAssertEqual(notice.product, "DIESEL_S10")
+        XCTAssertEqual(notice.unit, "L")
+        XCTAssertEqual(notice.maximumQuantityMilli, 150_000)
+        XCTAssertEqual(notice.maximumCentavos, 90_000)
+        XCTAssertEqual(notice.validUntilEpochSeconds, 1_800_000_000)
+        XCTAssertEqual(notice.state(at: 1_800_000_000), .issued)
+        XCTAssertEqual(notice.state(at: 1_800_000_001), .expired)
+
+        let none = try parseTripField(tripFieldResponse(voucher: "null", counts: #""expired":0,"due_soon":0,"nearest_days":null,"open_maintenance":0"#))
+        XCTAssertNil(none.authorization)
+        XCTAssertFalse(none.hasRoutePlan)
+        XCTAssertNil(none.nearestDueDays)
+        for state in ["REDEEMED", "CANCELLED", "LOCKED"] {
+            let used = try parseTripField(tripFieldResponse(voucher: #"{"id":"\#(voucherId)","product":"LPG_P13","unit":"KG_13","max_quantity_milli":2000,"max_centavos":24000,"valid_until":1800000000,"state":"\#(state)"}"#))
+            XCTAssertEqual(used.authorization?.state(at: 1_900_000_000).rawValue, state)
+        }
+    }
+
+    func testTripFieldRefusesCodesUnknownShapesAndForeignBindings() throws {
+        let invalid: [Data] = [
+            // A field that would carry a redemption code is never a driver projection.
+            tripFieldResponse(voucher: #"{"id":"\#(voucherId)","product":"DIESEL_S10","unit":"L","max_quantity_milli":1,"max_centavos":1,"valid_until":1800000000,"state":"ISSUED","code":"123456"}"#),
+            tripFieldResponse(voucher: #"{"id":"\#(voucherId)","product":"DIESEL_S10","unit":"L","max_quantity_milli":1,"max_centavos":1,"valid_until":1800000000,"state":"EXPIRED"}"#),
+            tripFieldResponse(voucher: #"{"id":"\#(voucherId)","product":"ARLA_32","unit":"L","max_quantity_milli":1,"max_centavos":1,"valid_until":1800000000,"state":"ISSUED"}"#),
+            tripFieldResponse(voucher: #"{"id":"\#(voucherId)","product":"DIESEL_S10","unit":"L","max_quantity_milli":1.5,"max_centavos":1,"valid_until":1800000000,"state":"ISSUED"}"#),
+            tripFieldResponse(voucher: #"{"id":"\#(voucherId)","product":"DIESEL_S10","unit":"L","max_quantity_milli":0,"max_centavos":1,"valid_until":1800000000,"state":"ISSUED"}"#),
+            tripFieldResponse(counts: #""expired":0,"due_soon":1,"nearest_days":null,"open_maintenance":0"#),
+            tripFieldResponse(counts: #""expired":-1,"due_soon":0,"nearest_days":null,"open_maintenance":0"#),
+            tripFieldResponse(counts: #""expired":true,"due_soon":0,"nearest_days":null,"open_maintenance":0"#),
+            tripFieldResponse(plan: "[]"),
+            tripFieldResponse(extra: #","promotions":[]"#),
+            Data(),
+            Data(repeating: 0x20, count: EnterpriseTripFieldWire.maxResponseBytes + 1),
+        ]
+        for (index, data) in invalid.enumerated() {
+            XCTAssertThrowsError(try parseTripField(data), "case \(index)")
+        }
+        XCTAssertThrowsError(try parseTripField(tripFieldResponse(trip: voucherId))) {
+            XCTAssertEqual($0 as? EnterpriseProtocolFailure, .binding)
+        }
+        XCTAssertThrowsError(try parseTripField(tripFieldResponse(request: voucherId))) {
+            XCTAssertEqual($0 as? EnterpriseProtocolFailure, .binding)
+        }
+    }
+
     func testReceiptCapabilityStopsOnOwnerSwitchWithoutSendingAccountProof() async throws {
         let original = session(account: account)
         let sessions = StaticSessions(session: original)

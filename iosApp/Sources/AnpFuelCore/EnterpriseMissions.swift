@@ -303,15 +303,19 @@ public struct EnterpriseMissionInbox: Codable, Equatable, Sendable {
         if let assigned = item.assetId, assigned != assetId { throw EnterpriseMissionError.wrongAsset }
     }
 
-    public mutating func releaseDismissedAnswer(_ operationId: String) -> Bool {
-        guard let index = answers.firstIndex(where: { $0.operationId == operationId }) else { return true }
-        let answer = answers[index]
+    /// Whether the answer's receipt may leave the queue: only once a later copy shows a later revision of
+    /// its mission, or a complete copy no longer lists it. An answer this inbox never indexed may leave.
+    public func canReleaseDismissedAnswer(_ operationId: String) -> Bool {
+        guard let answer = answers.first(where: { $0.operationId == operationId }) else { return true }
         if let item = page.items.first(where: { $0.id == answer.missionId }) {
-            guard item.revision > answer.revision else { return false }
-        } else if page.truncated {
-            return false
+            return item.revision > answer.revision
         }
-        answers.remove(at: index)
+        return !page.truncated
+    }
+
+    public mutating func releaseDismissedAnswer(_ operationId: String) -> Bool {
+        guard canReleaseDismissedAnswer(operationId) else { return false }
+        answers.removeAll { $0.operationId == operationId }
         return true
     }
 

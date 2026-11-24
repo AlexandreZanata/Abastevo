@@ -165,12 +165,18 @@ final class EnterpriseMissionTests: XCTestCase {
             startMeterId: nil, missionId: missionId
         )
         XCTAssertThrowsError(try inbox.readyTrip(missionId: missionId, assetId: assetId, queue: loaded.queue, trips: [started]))
+        XCTAssertFalse(EnterpriseQueue.canDismiss(loaded.queue[1], in: loaded), "No Dismiss action that would do nothing")
+        XCTAssertEqual(loaded.missionInbox?.canReleaseDismissedAnswer(answer.operationId), false)
         EnterpriseQueue.dismiss(id: answer.operationId, in: &loaded)
         XCTAssertTrue(loaded.queue.contains(where: { $0.id == answer.operationId }), "The old list still needs this receipt")
+        loaded.queue[1].status = .rejected
+        XCTAssertFalse(EnterpriseQueue.canDismiss(loaded.queue[1], in: loaded), "A refused answer at the listed revision stays")
+        loaded.queue[1].status = .accepted
         let reviewed = try EnterpriseMissionWire.page(
             body(items: [row(state: "ACCEPTED", revision: 3, answer: "ACCEPT")]), employeeId: employeeId
         )
         try loaded.missionInbox?.refresh(reviewed, received: clock)
+        XCTAssertTrue(EnterpriseQueue.canDismiss(loaded.queue[1], in: loaded))
         EnterpriseQueue.dismiss(id: answer.operationId, in: &loaded)
         XCTAssertFalse(loaded.queue.contains(where: { $0.id == answer.operationId }))
         let foreign = try XCTUnwrap(EnterprisePartition(accountId: id("9888"), origin: scopeOrigin, organizationId: partition.organizationId))
