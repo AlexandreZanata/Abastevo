@@ -28,6 +28,13 @@ Acceptance is open. Each supported Android journey needs an equivalent iOS entry
 - Forum edit, removal, reaction and owner reads use the account session and bound device proof. Edits and removals use the owner revision. Forum reactions are one LIKE, DISLIKE or NONE per target with authoritative counts and a private owner read. Each command keeps its operation id when retried.
 - Reports follow their specific forum, station-comment or user contract. The app names users through a public content reference. Server-side blocks are private to their owner. The app filters topics, comments and reply previews through the signed hidden-content subset, allows up to five seconds for the check, and rechecks after a block changes. Logout, deletion and origin changes clear the private UI state.
 
+## B-BR-IOS-STATIONS / BUC-IOS-STATIONS — Station dossier, quality and contributions
+
+- Verify the directory station identifier and complete CNPJ against the current origin before opening contribution or representation controls. Registry provenance, dated ANP prices and community reports keep their own source labels. A missing source, count, price or pin stays absent. Cached street data and dated offline ANP data remain readable within their verified scope.
+- PMQC shows the source revision and its published coverage and counts. Official enforcement uses the separate occurrence and establishment projections. Private quality reports use the account session and bound device proof. The report journal is scoped to account, origin and session family and holds the confirmed command for its bounded retry window.
+- Fuel and charging suggestions use the existing session envelope. A fuel suggestion needs a name and accepts an optional checksum-validated CNPJ. A charger suggestion needs a name or a public address and carries no coordinates. Reuse the submission id for the same queued proposal. The private owner list, status and pending cancellation use the result returned by the server.
+- Public commercial profile representation requires an admitted operator source and the verified badge from the backend. The owner interface uses the existing session routes and shows the integration-pending receipt when the server keeps the private routes closed. Proof uploads depend on the existing PDF validation and storage boundary.
+
 ## B-BR-IOS-ID / BUC-IOS-ID — Device identity and signed community writes
 
 - Each signed request uses the backend profile: SHA-512 over the covered base, raw r||s P-256 signature as unpadded base64url, the canonical authority of the selected origin, and one fresh SIGN challenge. The content lines cover the exact body bytes. XCTest replays the Go identity vectors.

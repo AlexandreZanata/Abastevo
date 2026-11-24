@@ -6,6 +6,7 @@ import AnpFuelCore
 public struct EvChargingExploreSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
+    @State private var showingSuggestion = false
 
     public var body: some View {
         NavigationStack {
@@ -15,7 +16,17 @@ public struct EvChargingExploreSheetView: View {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(String(localized: "android.feed_close")) { dismiss() }
                     }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showingSuggestion = true
+                        } label: {
+                            Label(String(localized: "android.charging_add_site"), systemImage: "plus")
+                        }
+                    }
                 }
+        }
+        .sheet(isPresented: $showingSuggestion) {
+            SuggestStationSheetView(viewModel: viewModel, chargingSite: true)
         }
     }
 }

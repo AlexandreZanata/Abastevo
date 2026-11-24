@@ -515,6 +515,7 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         expectedScope: String,
         requiresDeviceProof: Bool,
         idempotencyKey: String? = nil,
+        requiresSameSessionFamily: Bool = false,
         buildBody: (PortableAuth.Session) -> Data?
     ) async throws -> SignedHttpResponse {
         guard expectedScope.hasPrefix("account:") else { throw CommunityWriteError.signInRequired }
@@ -526,7 +527,8 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         guard let body = buildBody(session) else { throw CommunityWriteError.invalid("community.invalid-request") }
         if requiresDeviceProof {
             return try await transport.signedRequest(
-                method: "POST", path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope
+                method: "POST", path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope,
+                expectedSessionFamilyId: requiresSameSessionFamily ? session.familyId : nil
             )
         }
         return try await transport.plainPost(path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope)

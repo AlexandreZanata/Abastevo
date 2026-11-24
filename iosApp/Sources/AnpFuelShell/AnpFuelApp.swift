@@ -91,7 +91,9 @@ public struct AbastevoRootView: View {
         case .evExplore:
             EvChargingExploreSheetView(viewModel: viewModel)
         case .qualityReports:
-            QualityReportsSheetView()
+            OfficialOccurrenceExplorerView(viewModel: viewModel)
+        case .qualityReportHistory:
+            QualityReportHistoryView(viewModel: viewModel)
         case .suggestStation:
             SuggestStationSheetView(viewModel: viewModel)
         case .masterFaq:

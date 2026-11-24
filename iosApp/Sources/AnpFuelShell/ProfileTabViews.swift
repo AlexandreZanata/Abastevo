@@ -43,6 +43,13 @@ public struct ProfileRootView: View {
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Button {
+                    viewModel.activeSheet = .qualityReportHistory
+                } label: {
+                    Label(String(localized: "quality.reports.history"), systemImage: "flask")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+                Button {
                     viewModel.activeSheet = .premium
                 } label: {
                     Label(String(localized: "premium.title"), systemImage: "crown.fill")

@@ -108,6 +108,8 @@ public struct CommunityOutboxRow: View {
             return item.text?.text ?? ""
         case .forumTopic:
             return item.text?.title ?? ""
+        case .stationSuggestion:
+            return item.stationProposal?.label ?? ""
         }
     }
 

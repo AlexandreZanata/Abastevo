@@ -163,6 +163,45 @@
 		A261EE2637177D378A05F612 /* feedback-rating-zero.json in Resources */ = {isa = PBXBuildFile; fileRef = E129121B83C2A8A237104C9E /* feedback-rating-zero.json */; };
 		060790CFB6C830FB35BA8E49 /* feedback-revision-supersede.json in Resources */ = {isa = PBXBuildFile; fileRef = 9F4F1B6FAC28BDCB56A829F2 /* feedback-revision-supersede.json */; };
 		CD5B598C0095B32DA168F0E8 /* feedback-text-crlf.json in Resources */ = {isa = PBXBuildFile; fileRef = ACA26348C8B4E076E5A445B7 /* feedback-text-crlf.json */; };
+		95F47D09C62EF75D087B7CA6 /* StationDossier.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF2C382DA1FF56DF2FC74EF /* StationDossier.swift */; };
+		D942BF085EEA7963E66F2992 /* StationIntake.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80D42CB33E4335324FA4AA6 /* StationIntake.swift */; };
+		B82074193B908FD3A18307D8 /* StationRepresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B9F2278E9571B7E942F795 /* StationRepresentation.swift */; };
+		BEB6C7284AFAA245C4320A64 /* StationBusinessProfileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461F32A77DA47A010B97F215 /* StationBusinessProfileViews.swift */; };
+		41667D8A6BB310AEB496A77B /* StationDossierModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9380DFC9B66D32F826361E /* StationDossierModel.swift */; };
+		4C214F0877EC562ADA02B558 /* StationDossierViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68801D57AC95A4FD9E531488 /* StationDossierViews.swift */; };
+		8BEE12438229D27F856735BE /* StationSuggestionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEBA407BCD172C370CD48B5 /* StationSuggestionViews.swift */; };
+		9AFA9A7756BEA726A6A16E94 /* StationDossierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C445C62963F93D6C307D5DEE /* StationDossierTests.swift */; };
+		68015E86CB1A4C7779678882 /* StationIntakeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A29642771BBCE645AF04098A /* StationIntakeTests.swift */; };
+		AF14E1DEDFB31C737F876324 /* StationRepresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530C6AF25A6EC6201990A378 /* StationRepresentationTests.swift */; };
+		AFEC1A4E3167842D58DE9A44 /* price-groups-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = A42EBFF1F7C1E4D0E671DB82 /* price-groups-valid.json */; };
+		E8C793591D81580D1D37F749 /* station-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C4518F44244344006EC7D93F /* station-valid.json */; };
+		9AC300EF0EE18B99799E70D9 /* conflicting-prices-disputed.json in Resources */ = {isa = PBXBuildFile; fileRef = D03A6CD428F50D55DFFD2216 /* conflicting-prices-disputed.json */; };
+		65A9DCC4D117C527DE41299B /* high-quorum.json in Resources */ = {isa = PBXBuildFile; fileRef = 5BE15656526AE5EBE412CB14 /* high-quorum.json */; };
+		061341CF772976E7BFEC5BC5 /* no-data-unknown.json in Resources */ = {isa = PBXBuildFile; fileRef = 6971BCD784A73950D0F60CA8 /* no-data-unknown.json */; };
+		E51FEE027611336CB3117D47 /* cases-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = AE261678A69777D524C738B3 /* cases-v1.json */; };
+		ED3E326FCA4BCFD67286371B /* exploration-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = 6D57642D69E7A986069B9621 /* exploration-v1.json */; };
+		FDC609A58EE30B59C87062DF /* registry-api-sample.json in Resources */ = {isa = PBXBuildFile; fileRef = 6D8D0A4A3E33D571D67DCEF5 /* registry-api-sample.json */; };
+		842A7B57BEAFC7F8991CFD6E /* OfficialOccurrences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C127528F90A35DA61760B2 /* OfficialOccurrences.swift */; };
+		E6EFAE25B9CE6F469B123623 /* OfficialQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43346FF21CFF11D9A712ABBE /* OfficialQuality.swift */; };
+		11F60DF6EB8C90D8E55F24CE /* QualityPublicRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919578572AE487DFD81A9C40 /* QualityPublicRead.swift */; };
+		929D9529035D438255CCC22C /* QualityReportJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = B058C3758D9F468186C568F7 /* QualityReportJournal.swift */; };
+		35E2B7FA4A471E113400DCDC /* QualityReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C6724417F0CDD1D395A39C /* QualityReports.swift */; };
+		6E1714F38938829562A31AED /* OccurrenceExplorerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5640E90E3ABC9E6B4DB306 /* OccurrenceExplorerViews.swift */; };
+		DE4A259D067E91825DDE9D8B /* QualityReportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D2A289C46E82E55B41F4C2F /* QualityReportViews.swift */; };
+		3BD45D6BECD6D99B971933BE /* StationQualityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7EF53E0645D36D11028424 /* StationQualityViews.swift */; };
+		F5AF7B2C2C2393DC8D9186B2 /* OfficialQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4652E461F7CDDA0FFE41837B /* OfficialQualityTests.swift */; };
+		117A6C5535DC4983B39F9328 /* quality-report-appeal-invalid-revision.json in Resources */ = {isa = PBXBuildFile; fileRef = 397EB7F906A232E4673013BB /* quality-report-appeal-invalid-revision.json */; };
+		D493237959A1AB84819DF373 /* quality-report-appeal-invalid-target.json in Resources */ = {isa = PBXBuildFile; fileRef = 6211B791E5CF7CFC5DFC0F83 /* quality-report-appeal-invalid-target.json */; };
+		6E2B11817B32EEAEA7507183 /* quality-report-appeal-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 475A7574F91DEF340E20A38C /* quality-report-appeal-valid.json */; };
+		C16AC2A5F315F652E2A6071F /* quality-report-invalid-checked.json in Resources */ = {isa = PBXBuildFile; fileRef = DABDCD2C0AE46E2F97CE95DA /* quality-report-invalid-checked.json */; };
+		B64EDD2DBB26029D00C5F827 /* quality-report-invalid-document.json in Resources */ = {isa = PBXBuildFile; fileRef = 3B1FB7209AD73A365780785A /* quality-report-invalid-document.json */; };
+		DD45211FB51FFDAC76DE53DB /* quality-report-invalid-edit-revision.json in Resources */ = {isa = PBXBuildFile; fileRef = A899C636AB73533FBA5585D9 /* quality-report-invalid-edit-revision.json */; };
+		74FFF1482B4D634DDA2AF6B3 /* quality-report-invalid-empty.json in Resources */ = {isa = PBXBuildFile; fileRef = DCCBA4B35B18317DE12E8559 /* quality-report-invalid-empty.json */; };
+		56E47F7AAA727FB24CF7BC91 /* quality-report-invalid-owner.json in Resources */ = {isa = PBXBuildFile; fileRef = 4069561F4CE4C4582E11A113 /* quality-report-invalid-owner.json */; };
+		1FD3FE3C302FD33CF2167C14 /* quality-report-invalid-withdraw-payload.json in Resources */ = {isa = PBXBuildFile; fileRef = B9F13938737475E1E32119C0 /* quality-report-invalid-withdraw-payload.json */; };
+		07BF00614E1A516365977DF0 /* quality-report-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = B1C2721762B8C558FC1D2C10 /* quality-report-valid.json */; };
+		74587C0AEBDA72C110CEC3EC /* enforcement-source-record-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 0FCCE4890E2A57E50704FDF7 /* enforcement-source-record-valid.json */; };
+		A8070473F8DDC3BFDB1F2EE9 /* QualityReportsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E958A16DE52CB96A3924ADC1 /* QualityReportsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -355,6 +394,45 @@
 		E129121B83C2A8A237104C9E /* feedback-rating-zero.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-rating-zero.json"; path = "../contracts/testdata/feedback/feedback-rating-zero.json"; sourceTree = SOURCE_ROOT; };
 		9F4F1B6FAC28BDCB56A829F2 /* feedback-revision-supersede.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-revision-supersede.json"; path = "../contracts/testdata/feedback/feedback-revision-supersede.json"; sourceTree = SOURCE_ROOT; };
 		ACA26348C8B4E076E5A445B7 /* feedback-text-crlf.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-text-crlf.json"; path = "../contracts/testdata/feedback/feedback-text-crlf.json"; sourceTree = SOURCE_ROOT; };
+		CCF2C382DA1FF56DF2FC74EF /* StationDossier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossier.swift; sourceTree = "<group>"; };
+		D80D42CB33E4335324FA4AA6 /* StationIntake.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationIntake.swift; sourceTree = "<group>"; };
+		51B9F2278E9571B7E942F795 /* StationRepresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationRepresentation.swift; sourceTree = "<group>"; };
+		461F32A77DA47A010B97F215 /* StationBusinessProfileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationBusinessProfileViews.swift; sourceTree = "<group>"; };
+		2E9380DFC9B66D32F826361E /* StationDossierModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossierModel.swift; sourceTree = "<group>"; };
+		68801D57AC95A4FD9E531488 /* StationDossierViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossierViews.swift; sourceTree = "<group>"; };
+		0DEBA407BCD172C370CD48B5 /* StationSuggestionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationSuggestionViews.swift; sourceTree = "<group>"; };
+		C445C62963F93D6C307D5DEE /* StationDossierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossierTests.swift; sourceTree = "<group>"; };
+		A29642771BBCE645AF04098A /* StationIntakeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationIntakeTests.swift; sourceTree = "<group>"; };
+		530C6AF25A6EC6201990A378 /* StationRepresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationRepresentationTests.swift; sourceTree = "<group>"; };
+		A42EBFF1F7C1E4D0E671DB82 /* price-groups-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "price-groups-valid.json"; path = "../contracts/testdata/api/price-groups-valid.json"; sourceTree = SOURCE_ROOT; };
+		C4518F44244344006EC7D93F /* station-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "station-valid.json"; path = "../contracts/testdata/api/station-valid.json"; sourceTree = SOURCE_ROOT; };
+		D03A6CD428F50D55DFFD2216 /* conflicting-prices-disputed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "conflicting-prices-disputed.json"; path = "../contracts/testdata/consensus/conflicting-prices-disputed.json"; sourceTree = SOURCE_ROOT; };
+		5BE15656526AE5EBE412CB14 /* high-quorum.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "high-quorum.json"; path = "../contracts/testdata/consensus/high-quorum.json"; sourceTree = SOURCE_ROOT; };
+		6971BCD784A73950D0F60CA8 /* no-data-unknown.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "no-data-unknown.json"; path = "../contracts/testdata/consensus/no-data-unknown.json"; sourceTree = SOURCE_ROOT; };
+		AE261678A69777D524C738B3 /* cases-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "cases-v1.json"; path = "../contracts/testdata/map-discovery/cases-v1.json"; sourceTree = SOURCE_ROOT; };
+		6D57642D69E7A986069B9621 /* exploration-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "exploration-v1.json"; path = "../contracts/testdata/mobile-expansion/exploration-v1.json"; sourceTree = SOURCE_ROOT; };
+		6D8D0A4A3E33D571D67DCEF5 /* registry-api-sample.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "registry-api-sample.json"; path = "../contracts/testdata/registry/registry-api-sample.json"; sourceTree = SOURCE_ROOT; };
+		47C127528F90A35DA61760B2 /* OfficialOccurrences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialOccurrences.swift; sourceTree = "<group>"; };
+		43346FF21CFF11D9A712ABBE /* OfficialQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialQuality.swift; sourceTree = "<group>"; };
+		919578572AE487DFD81A9C40 /* QualityPublicRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityPublicRead.swift; sourceTree = "<group>"; };
+		B058C3758D9F468186C568F7 /* QualityReportJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReportJournal.swift; sourceTree = "<group>"; };
+		68C6724417F0CDD1D395A39C /* QualityReports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReports.swift; sourceTree = "<group>"; };
+		AF5640E90E3ABC9E6B4DB306 /* OccurrenceExplorerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OccurrenceExplorerViews.swift; sourceTree = "<group>"; };
+		4D2A289C46E82E55B41F4C2F /* QualityReportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReportViews.swift; sourceTree = "<group>"; };
+		2F7EF53E0645D36D11028424 /* StationQualityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationQualityViews.swift; sourceTree = "<group>"; };
+		4652E461F7CDDA0FFE41837B /* OfficialQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialQualityTests.swift; sourceTree = "<group>"; };
+		397EB7F906A232E4673013BB /* quality-report-appeal-invalid-revision.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-appeal-invalid-revision.json"; path = "../contracts/testdata/api/quality-report-appeal-invalid-revision.json"; sourceTree = SOURCE_ROOT; };
+		6211B791E5CF7CFC5DFC0F83 /* quality-report-appeal-invalid-target.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-appeal-invalid-target.json"; path = "../contracts/testdata/api/quality-report-appeal-invalid-target.json"; sourceTree = SOURCE_ROOT; };
+		475A7574F91DEF340E20A38C /* quality-report-appeal-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-appeal-valid.json"; path = "../contracts/testdata/api/quality-report-appeal-valid.json"; sourceTree = SOURCE_ROOT; };
+		DABDCD2C0AE46E2F97CE95DA /* quality-report-invalid-checked.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-checked.json"; path = "../contracts/testdata/api/quality-report-invalid-checked.json"; sourceTree = SOURCE_ROOT; };
+		3B1FB7209AD73A365780785A /* quality-report-invalid-document.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-document.json"; path = "../contracts/testdata/api/quality-report-invalid-document.json"; sourceTree = SOURCE_ROOT; };
+		A899C636AB73533FBA5585D9 /* quality-report-invalid-edit-revision.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-edit-revision.json"; path = "../contracts/testdata/api/quality-report-invalid-edit-revision.json"; sourceTree = SOURCE_ROOT; };
+		DCCBA4B35B18317DE12E8559 /* quality-report-invalid-empty.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-empty.json"; path = "../contracts/testdata/api/quality-report-invalid-empty.json"; sourceTree = SOURCE_ROOT; };
+		4069561F4CE4C4582E11A113 /* quality-report-invalid-owner.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-owner.json"; path = "../contracts/testdata/api/quality-report-invalid-owner.json"; sourceTree = SOURCE_ROOT; };
+		B9F13938737475E1E32119C0 /* quality-report-invalid-withdraw-payload.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-withdraw-payload.json"; path = "../contracts/testdata/api/quality-report-invalid-withdraw-payload.json"; sourceTree = SOURCE_ROOT; };
+		B1C2721762B8C558FC1D2C10 /* quality-report-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-valid.json"; path = "../contracts/testdata/api/quality-report-valid.json"; sourceTree = SOURCE_ROOT; };
+		0FCCE4890E2A57E50704FDF7 /* enforcement-source-record-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "enforcement-source-record-valid.json"; path = "../contracts/testdata/quality/enforcement-source-record-valid.json"; sourceTree = SOURCE_ROOT; };
+		E958A16DE52CB96A3924ADC1 /* QualityReportsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReportsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -446,6 +524,14 @@
 			4C3BCBED1B831AAC2CE0F6C8,
 			95F7BED7B90A68295B96DBB8,
 			6AA16D8EDCDFFA6821F61302,
+			CCF2C382DA1FF56DF2FC74EF,
+			D80D42CB33E4335324FA4AA6,
+			51B9F2278E9571B7E942F795,
+			47C127528F90A35DA61760B2,
+			43346FF21CFF11D9A712ABBE,
+			919578572AE487DFD81A9C40,
+			B058C3758D9F468186C568F7,
+			68C6724417F0CDD1D395A39C,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -476,6 +562,13 @@
 			E76CDF4B79D6E6E039C061E6,
 			6DDECA5E80820148452DF1CA,
 			12D6298AEEB032DD8AEE3A6D,
+			461F32A77DA47A010B97F215,
+			2E9380DFC9B66D32F826361E,
+			68801D57AC95A4FD9E531488,
+			0DEBA407BCD172C370CD48B5,
+			AF5640E90E3ABC9E6B4DB306,
+			4D2A289C46E82E55B41F4C2F,
+			2F7EF53E0645D36D11028424,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -548,6 +641,30 @@
 			E129121B83C2A8A237104C9E /* feedback-rating-zero.json */,
 			9F4F1B6FAC28BDCB56A829F2 /* feedback-revision-supersede.json */,
 			ACA26348C8B4E076E5A445B7 /* feedback-text-crlf.json */,
+			C445C62963F93D6C307D5DEE,
+			A29642771BBCE645AF04098A,
+			530C6AF25A6EC6201990A378,
+			A42EBFF1F7C1E4D0E671DB82 /* price-groups-valid.json */,
+			C4518F44244344006EC7D93F /* station-valid.json */,
+			D03A6CD428F50D55DFFD2216 /* conflicting-prices-disputed.json */,
+			5BE15656526AE5EBE412CB14 /* high-quorum.json */,
+			6971BCD784A73950D0F60CA8 /* no-data-unknown.json */,
+			AE261678A69777D524C738B3 /* cases-v1.json */,
+			6D57642D69E7A986069B9621 /* exploration-v1.json */,
+			6D8D0A4A3E33D571D67DCEF5 /* registry-api-sample.json */,
+			4652E461F7CDDA0FFE41837B,
+			397EB7F906A232E4673013BB /* quality-report-appeal-invalid-revision.json */,
+			6211B791E5CF7CFC5DFC0F83 /* quality-report-appeal-invalid-target.json */,
+			475A7574F91DEF340E20A38C /* quality-report-appeal-valid.json */,
+			DABDCD2C0AE46E2F97CE95DA /* quality-report-invalid-checked.json */,
+			3B1FB7209AD73A365780785A /* quality-report-invalid-document.json */,
+			A899C636AB73533FBA5585D9 /* quality-report-invalid-edit-revision.json */,
+			DCCBA4B35B18317DE12E8559 /* quality-report-invalid-empty.json */,
+			4069561F4CE4C4582E11A113 /* quality-report-invalid-owner.json */,
+			B9F13938737475E1E32119C0 /* quality-report-invalid-withdraw-payload.json */,
+			B1C2721762B8C558FC1D2C10 /* quality-report-valid.json */,
+			0FCCE4890E2A57E50704FDF7 /* enforcement-source-record-valid.json */,
+			E958A16DE52CB96A3924ADC1,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -653,6 +770,25 @@
 			A261EE2637177D378A05F612 /* feedback-rating-zero.json in Resources */,
 			060790CFB6C830FB35BA8E49 /* feedback-revision-supersede.json in Resources */,
 			CD5B598C0095B32DA168F0E8 /* feedback-text-crlf.json in Resources */,
+			AFEC1A4E3167842D58DE9A44 /* price-groups-valid.json in Resources */,
+			E8C793591D81580D1D37F749 /* station-valid.json in Resources */,
+			9AC300EF0EE18B99799E70D9 /* conflicting-prices-disputed.json in Resources */,
+			65A9DCC4D117C527DE41299B /* high-quorum.json in Resources */,
+			061341CF772976E7BFEC5BC5 /* no-data-unknown.json in Resources */,
+			E51FEE027611336CB3117D47 /* cases-v1.json in Resources */,
+			ED3E326FCA4BCFD67286371B /* exploration-v1.json in Resources */,
+			FDC609A58EE30B59C87062DF /* registry-api-sample.json in Resources */,
+			117A6C5535DC4983B39F9328 /* quality-report-appeal-invalid-revision.json in Resources */,
+			D493237959A1AB84819DF373 /* quality-report-appeal-invalid-target.json in Resources */,
+			6E2B11817B32EEAEA7507183 /* quality-report-appeal-valid.json in Resources */,
+			C16AC2A5F315F652E2A6071F /* quality-report-invalid-checked.json in Resources */,
+			B64EDD2DBB26029D00C5F827 /* quality-report-invalid-document.json in Resources */,
+			DD45211FB51FFDAC76DE53DB /* quality-report-invalid-edit-revision.json in Resources */,
+			74FFF1482B4D634DDA2AF6B3 /* quality-report-invalid-empty.json in Resources */,
+			56E47F7AAA727FB24CF7BC91 /* quality-report-invalid-owner.json in Resources */,
+			1FD3FE3C302FD33CF2167C14 /* quality-report-invalid-withdraw-payload.json in Resources */,
+			07BF00614E1A516365977DF0 /* quality-report-valid.json in Resources */,
+			74587C0AEBDA72C110CEC3EC /* enforcement-source-record-valid.json in Resources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		81B4DC0F6E7E97037B63B86E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 			1228440DDBCFF603473E79E6 /* Assets.xcassets in Resources */,
@@ -721,6 +857,14 @@
 			E125720E23BF451E55E9818A,
 			F017A34E9D276E02DFA9A188,
 			8D83FA3B8B62B2C2D5C6DD1B,
+			95F47D09C62EF75D087B7CA6,
+			D942BF085EEA7963E66F2992,
+			B82074193B908FD3A18307D8,
+			842A7B57BEAFC7F8991CFD6E,
+			E6EFAE25B9CE6F469B123623,
+			11F60DF6EB8C90D8E55F24CE,
+			929D9529035D438255CCC22C,
+			35E2B7FA4A471E113400DCDC,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -750,6 +894,13 @@
 			254F2283713420D0677B5A2F,
 			9E29671F4BDD4EE432171456,
 			065B8C757685B3FCF8C0AE23,
+			BEB6C7284AFAA245C4320A64,
+			41667D8A6BB310AEB496A77B,
+			4C214F0877EC562ADA02B558,
+			8BEE12438229D27F856735BE,
+			6E1714F38938829562A31AED,
+			DE4A259D067E91825DDE9D8B,
+			3BD45D6BECD6D99B971933BE,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -794,6 +945,11 @@
 			6688831D29198D62832DCAED,
 			70F717BE4311DC735FC4A238,
 			FB06169A65BD2989796D55C3,
+			9AFA9A7756BEA726A6A16E94,
+			68015E86CB1A4C7779678882,
+			AF14E1DEDFB31C737F876324,
+			F5AF7B2C2C2393DC8D9186B2,
+			A8070473F8DDC3BFDB1F2EE9,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

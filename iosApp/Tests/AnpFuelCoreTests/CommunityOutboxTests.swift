@@ -49,6 +49,11 @@ final class FakeCommunityGateway: CommunityWriteGateway, @unchecked Sendable {
         record("forum-comment", item)
         return try receipt.get()
     }
+
+    func submitStationSuggestion(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt {
+        record("station-suggestion", item)
+        return try receipt.get()
+    }
 }
 
 final class CommunityOutboxTests: XCTestCase {

@@ -106,6 +106,44 @@ targets:
         buildPhase: resources
       - path: ../contracts/testdata/feedback/feedback-text-crlf.json
         buildPhase: resources
+      - path: ../contracts/testdata/api/price-groups-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/station-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/registry/registry-api-sample.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/conflicting-prices-disputed.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/high-quorum.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/no-data-unknown.json
+        buildPhase: resources
+      - path: ../contracts/testdata/mobile-expansion/exploration-v1.json
+        buildPhase: resources
+      - path: ../contracts/testdata/map-discovery/cases-v1.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-appeal-invalid-revision.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-appeal-invalid-target.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-appeal-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-checked.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-document.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-edit-revision.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-empty.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-owner.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-withdraw-payload.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/quality/enforcement-source-record-valid.json
+        buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources
     dependencies:

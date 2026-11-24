@@ -108,6 +108,8 @@ public final class IdentityCoordinator: ObservableObject {
     public func updateEnvironment(_ environment: ApiEnvironment) {
         guard environment.origin != origin else { return }
         stopDispatch()
+        outboxItems.removeAll { $0.kind == .stationSuggestion }
+        persist()
         origin = environment.origin
         let pair = IdentityCoordinator.makeClient(
             origin: environment.origin,
@@ -210,6 +212,26 @@ public final class IdentityCoordinator: ObservableObject {
 
     public func items(of kind: CommunityWriteKind) -> [CommunityOutboxItem] {
         outboxItems.filter { $0.kind == kind }
+    }
+
+    var stationSuggestionItems: [CommunityOutboxItem] {
+        guard hasAccount, let scope = transport.ownerScope() else { return [] }
+        return outboxItems.filter { $0.kind == .stationSuggestion && $0.ownerScope == scope && $0.origin == origin }
+    }
+
+    func enqueueStationSuggestion(_ proposal: StationIntakeProposal) -> CommunityOutboxItem? {
+        guard hasAccount, let scope = transport.ownerScope() else { return nil }
+        if let pending = stationSuggestionItems.first(where: { !$0.status.isTerminal && $0.stationProposal == proposal }) {
+            return pending
+        }
+        let item = CommunityOutboxItem(
+            id: UUID().uuidString.lowercased(), kind: .stationSuggestion, ownerScope: scope,
+            origin: origin, createdAtMillis: Self.nowMillis(), stationProposal: proposal
+        )
+        outboxItems = CommunityOutbox.enqueue(item, into: outboxItems)
+        persist()
+        dispatchPending()
+        return item
     }
 
     func ownedStationComments(stationId: String, fuel: FuelProduct) -> Set<String> {
@@ -415,6 +437,10 @@ public final class IdentityCoordinator: ObservableObject {
         case "REJECTED": return String(localized: "identity.rejected")
         case "PENDING_REVIEW": return String(localized: "identity.moderation")
         case "PUBLISHED": return String(localized: "android.map_published")
+        case "pending": return String(localized: "station.suggestion.pending")
+        case "cancelled": return String(localized: "station.suggestion.cancelled")
+        case "approved": return String(localized: "station.suggestion.approved")
+        case "rejected": return String(localized: "station.suggestion.rejected")
         default: return String(localized: "identity.recorded")
         }
     }
@@ -429,6 +455,11 @@ public final class IdentityCoordinator: ObservableObject {
         case "community.capture-ineligible": return String(localized: "identity.capture_ineligible")
         case "community.account-blocked": return String(localized: "identity.account_blocked")
         case "feedback.text-too-long", "feedback.text-invalid": return String(localized: "identity.invalid_text")
+        case "intake.session-invalid": return String(localized: "android.suggest_signin")
+        case "intake.author-forbidden": return String(localized: "station.suggestion.author_forbidden")
+        case "intake.quota-exceeded": return String(localized: "android.suggest_quota")
+        case "intake.idempotency-conflict": return String(localized: "android.suggest_conflict")
+        case "intake.bad-request", "intake.invalid": return String(localized: "android.suggest_invalid")
         case "account.binding-cross-account-refused": return String(localized: "identity.cross_account")
         case "": return String(localized: "identity.no_detail")
         default: return code ?? ""

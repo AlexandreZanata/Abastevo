@@ -340,7 +340,8 @@ public actor SignedRequestTransport {
         query: String = "",
         body: Data?,
         idempotencyKey: String? = nil,
-        expectedOwnerScope: String? = nil
+        expectedOwnerScope: String? = nil,
+        expectedSessionFamilyId: String? = nil
     ) async throws -> SignedHttpResponse {
         let upperMethod = method.uppercased()
         guard upperMethod == "GET" || upperMethod == "POST",
@@ -352,8 +353,10 @@ public actor SignedRequestTransport {
             throw SignedTransportError.invalidRequest
         }
         guard let authority else { throw SignedTransportError.originUnavailable }
+        try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
         let record = try await ensureIdentity(expectedOwnerScope: expectedOwnerScope)
         let challenge = try await requestChallenge(fingerprint: record.fingerprint, purpose: PortableAnonymousProof.purposeSign)
+        try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
         try requireOwnerScope(expectedOwnerScope)
         let created = now()
         let expires = created + SignedRequestProfile.proofLifetimeSeconds
@@ -383,15 +386,25 @@ public actor SignedRequestTransport {
         }
         do {
             let response = try await send(method: upperMethod, path: path, query: query, body: body, headers: headers)
+            try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
             try requireOwnerScope(expectedOwnerScope)
             return response
         } catch let error as SignedTransportError {
+            try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
             try requireOwnerScope(expectedOwnerScope)
             if case .refused(let status, _, _) = error, status == 401 {
                 forgetProofs()
             }
             throw error
         }
+    }
+
+    private func requireSessionFamily(_ expected: String?, ownerScope: String?) async throws {
+        guard let expected else { return }
+        guard let session = await sessions.liveSession(), session.familyId == expected else {
+            throw SignedTransportError.sessionRequired
+        }
+        try requireOwnerScope(ownerScope)
     }
 
     /// Unsigned JSON POST for session-only routes (station comments and votes).

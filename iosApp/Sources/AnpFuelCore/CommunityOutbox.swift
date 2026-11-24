@@ -14,6 +14,7 @@ public enum CommunityWriteKind: String, Codable, CaseIterable, Sendable {
     case stationComment = "STATION_COMMENT"
     case forumTopic = "FORUM_TOPIC"
     case forumComment = "FORUM_COMMENT"
+    case stationSuggestion = "STATION_SUGGESTION"
 
     /// Price observations are signed by the device contributor; the social routes need an account session.
     public var requiresAccount: Bool {
@@ -132,6 +133,7 @@ public struct CommunityOutboxItem: Codable, Equatable, Identifiable, Sendable {
     public let createdAtMillis: Int64
     public var price: CommunityPriceDraft?
     public var text: CommunityTextDraft?
+    public var stationProposal: StationIntakeProposal?
     public var status: CommunityItemStatus
     public var attempts: Int
     public var nextEligibleMillis: Int64
@@ -147,6 +149,7 @@ public struct CommunityOutboxItem: Codable, Equatable, Identifiable, Sendable {
         createdAtMillis: Int64,
         price: CommunityPriceDraft? = nil,
         text: CommunityTextDraft? = nil,
+        stationProposal: StationIntakeProposal? = nil,
         status: CommunityItemStatus = .pending,
         attempts: Int = 0,
         nextEligibleMillis: Int64 = 0,
@@ -161,6 +164,7 @@ public struct CommunityOutboxItem: Codable, Equatable, Identifiable, Sendable {
         self.createdAtMillis = createdAtMillis
         self.price = price
         self.text = text
+        self.stationProposal = stationProposal
         self.status = status
         self.attempts = attempts
         self.nextEligibleMillis = nextEligibleMillis
@@ -206,6 +210,7 @@ public protocol CommunityWriteGateway: Sendable {
     func submitStationComment(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
     func submitForumTopic(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
     func submitForumComment(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
+    func submitStationSuggestion(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
 }
 
 public enum CommunityFailureDisposition: Equatable, Sendable {
@@ -463,6 +468,8 @@ public enum CommunityOutboxDispatcher {
                 receipt = try await gateway.submitForumTopic(current)
             case .forumComment:
                 receipt = try await gateway.submitForumComment(current)
+            case .stationSuggestion:
+                receipt = try await gateway.submitStationSuggestion(current)
             }
             return CommunityOutbox.accept(current, receipt: receipt)
         } catch {

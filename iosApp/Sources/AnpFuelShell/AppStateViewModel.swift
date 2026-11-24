@@ -88,6 +88,17 @@ public final class AppStateViewModel: ObservableObject {
     public let identity: IdentityCoordinator
     public let communitySafety = CommunitySafetyViewModel()
     public var communityGateway: CommunityWriteClient { identity.communityGateway }
+    let qualityPublicCache = QualityPublicCache()
+    let qualityReportJournal = QualityReportJournal()
+    var qualityReadClient: AbastevoHttpClient { httpClient }
+
+    var qualityReportScope: QualityReportScope? {
+        guard !isAuthWorking, let session = authFlow.currentSession(), session.accountId == currentAccountIdOrNil,
+              let scope = communityGateway.transport.ownerScope(), scope.hasPrefix("account:\(session.accountId):") else {
+            return nil
+        }
+        return QualityReportScope(origin: snapshot.apiEnvironment.origin, ownerScope: scope, familyId: session.familyId)
+    }
     /// Abastevo Empresas: company access, the protected per-organization queue and signed company commands.
     public let enterprise: EnterpriseCoordinator
     private var identityRelay: AnyCancellable?
@@ -171,9 +182,13 @@ public final class AppStateViewModel: ObservableObject {
     public var surveyWeekLabel: String { surveyWeekTitle }
 
     public var sortedStations: [StationRecord] {
+        sortStationRows(stations)
+    }
+
+    func sortStationRows(_ rows: [StationRecord]) -> [StationRecord] {
         let fuel = snapshot.selectedFuel
         let referenceLocation = lastDeviceCoordinate
-        return stations.sorted { lhs, rhs in
+        return rows.sorted { lhs, rhs in
             switch sortOrder {
             case .lowestPrice:
                 let lp = communityObservation(stationId: lhs.id, product: fuel)?.amountMilli ?? Int64.max
@@ -282,6 +297,8 @@ public final class AppStateViewModel: ObservableObject {
 
     public func setApiEnvironment(_ env: ApiEnvironment) {
         guard env != snapshot.apiEnvironment, canSwitchApiEnvironment else { return }
+        qualityPublicCache.purge()
+        qualityReportJournal.purge()
         snapshot.apiEnvironment = env
         httpClient.environment = env
         identity.updateEnvironment(env)
@@ -692,6 +709,8 @@ public final class AppStateViewModel: ObservableObject {
 
     public func logout() {
         let ownerId = currentAccountIdOrNil
+        qualityPublicCache.purge()
+        qualityReportJournal.purge()
         communitySafety.clear()
         photoCache.purgeAll()
         identity.purgeOwnedData()
@@ -723,6 +742,8 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     private func finishAccountDeletion(ownerId: String) {
+        qualityPublicCache.purge()
+        qualityReportJournal.purge()
         communitySafety.clear()
         proofSigner.resetKey()
         identity.forgetDeviceIdentity()
@@ -1006,6 +1027,7 @@ public final class AppStateViewModel: ObservableObject {
     public func clearOfflineCache() {
         photoCache.purgeAll()
         publicReadCache.clear()
+        qualityPublicCache.purge()
         store.clearCacheKeepingAccount(&snapshot)
         reloadCityData()
     }
@@ -1039,6 +1061,7 @@ public enum AppModalSheet: String, Identifiable {
     case priceHistory
     case evExplore
     case qualityReports
+    case qualityReportHistory
     case suggestStation
     case masterFaq
     case capturePrice
