@@ -242,10 +242,10 @@ Landing pages: `/como-usar/conta-e-privacidade/`, `/excluir-conta/`
 | Step | Image | Caption |
 |---|---|---|
 | 01 | [`account/01-guest-profile.png`](account/01-guest-profile.png) | As a guest, Profile offers "Entrar ou criar conta gratuita"; browsing never needs an account. _(sorriso-mt)_ |
-| 02 | [`account/02-signed-in-profile.png`](account/02-signed-in-profile.png) | After creating the account (username only, no email or password) Profile shows "Conectado". _(sorriso-mt; signed in)_ |
+| 02 | [`account/02-signed-in-profile.png`](account/02-signed-in-profile.png) | After creating the account (public name and verified email, no password) Profile shows "Conectado". _(sorriso-mt; signed in)_ |
 | 03 | [`account/03-after-account-deletion.png`](account/03-after-account-deletion.png) | After "Gerenciar conta → Excluir minha conta → Sim, excluir" the app returns to guest mode. _(sorriso-mt)_ |
 
-> Not captured (after step 01): Type a username (3–20 letters and numbers, starting with a letter) and tap "Criar conta". The account screens are protected with FLAG_SECURE so the account key never appears in screenshots.
+> Not captured (after step 01): Tap "Criar conta", fill in "Nome público" and "E-mail", tap "Enviar código", then enter the emailed "Código de 6 dígitos" and tap "Verificar código". The account screens are protected with FLAG_SECURE so the account key never appears in screenshots.
 
 > Not captured (after step 02): To delete: Profile → "Gerenciar conta" → "Excluir minha conta" → "Sim, excluir". This screen is FLAG_SECURE; the web path is /excluir-conta/.
 

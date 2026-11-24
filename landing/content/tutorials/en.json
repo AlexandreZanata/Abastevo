@@ -1,5 +1,5 @@
 {
-  "lastmod": "2026-11-22",
+  "lastmod": "2026-11-24",
   "common": {
     "metaLabel": "App tutorial",
     "available": "Available",
@@ -39,7 +39,7 @@
       },
       {
         "title": "Community, accounts and prices",
-        "description": "Create a free account with a username, contribute prices and track submissions."
+        "description": "Create a free account with a public name and a verified email, contribute prices and track submissions."
       },
       {
         "title": "Stations and settings",
@@ -68,7 +68,7 @@
     },
     "TU11": {
       "title": "Create a free account",
-      "summary": "The username screen was verified. Android blocks screenshots of this screen."
+      "summary": "The sign-up screen was verified. Android blocks screenshots of this screen."
     },
     "TU12": {
       "title": "Sign in with your key and keep a backup",
@@ -493,7 +493,7 @@
     "TU13": {
       "slug": "account-privacy-and-deletion",
       "title": "Account, privacy and deletion",
-      "description": "Accept Abastevo's terms, create a free username-only account, review privacy information and learn how to delete your account and data.",
+      "description": "Accept Abastevo's terms, create a free account with a public name and a recovery email, review privacy information and learn how to delete your account and data.",
       "summary": "8 steps, 2 described without screenshots, covering terms, free account, privacy and account deletion.",
       "related": {
         "/privacidade/": "Privacy policy",
@@ -521,14 +521,14 @@
           "title": "Sign in or create a free account",
           "instruction": "You can check prices without an account. In “Profile”, “Guest mode” offers “Sign in or create free account” so you can rate, comment and vote.",
           "expected": "The button opens “Free account”.",
-          "recovery": "If you already have an account, choose “I already have a key” and use the key you saved.",
+          "recovery": "If you already have an account, choose “Sign in with key”. If you lost the key, choose “I lost my key” to receive a code at your recovery email and get a new key.",
           "visual": "Guest profile with the account button, Driver hub, private reports and Dark theme turned off."
         },
         "tu13-s4": {
           "title": "Create account",
-          "instruction": "Enter a “Username” of 3–20 letters and numbers starting with a letter, then tap “Create account”. No email or password is needed.",
+          "instruction": "Tap “Create account”, fill in “Public name” and “Email”, then tap “Send code”. Enter the 6-digit code from your email and tap “Verify code”. Your name appears on the forum and in comments; your email stays private and is used only to verify and recover the account. There is no password.",
           "expected": "“Your account is ready” shows your account key. Keep it safe so you can access the account on another device.",
-          "recovery": "If the username is taken, choose another. The key can be exported later from “Profile”.",
+          "recovery": "If the name is refused, use 2–40 characters with at least two letters and no reserved words such as “Abastevo” or “Suporte”. If you lose the key, choose “I lost my key” with the same email.",
           "visual": "Account screens are protected from screenshots so account keys never appear in images."
         },
         "tu13-s5": {
