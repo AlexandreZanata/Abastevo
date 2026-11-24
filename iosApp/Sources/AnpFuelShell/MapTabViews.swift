@@ -55,7 +55,7 @@ public struct MapRootView: View {
                                             .padding(6)
                                             .background(AbastevoTheme.accentLight)
                                             .clipShape(Circle())
-                                        Text(point.place.maxPowerW.map(EvText.power) ?? "EV")
+                                        Text(point.place.maxPowerW.map(EvText.power) ?? String(localized: "map.electric"))
                                             .font(.system(size: 10, weight: .bold))
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 2)
@@ -92,7 +92,7 @@ public struct MapRootView: View {
                                 .background(.regularMaterial)
                                 .clipShape(Circle())
                         }
-                        .accessibilityLabel("Centralizar na minha localização")
+                        .accessibilityLabel(String(localized: "android.map_guidance_recenter"))
                     }
                     .padding(16)
                 }
@@ -101,10 +101,10 @@ public struct MapRootView: View {
                     HStack {
                         Image(systemName: "info.circle")
                             .font(.caption)
-                        Text("\(listOnlyStations.count) posto(s) sem pino exato permanecem acessíveis na lista.")
+                        Text(String(localized: "map.stations_without_pin", defaultValue: "Stations without a map pin: \(listOnlyStations.count.formatted()). Find them in the list."))
                             .font(.caption2)
                         Spacer()
-                        Button("Ver lista") {
+                        Button(String(localized: "map.show_list")) {
                             viewModel.selectedTab = .explore
                         }
                         .font(.caption2.bold())
@@ -148,36 +148,36 @@ public struct MapRootView: View {
     private var mapToolbar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Picker("Fonte", selection: $sourceFilter) {
-                    Text("Todos").tag("all")
-                    Text("Comunidade").tag("community")
+                Picker(String(localized: "android.map_filter_source"), selection: $sourceFilter) {
+                    Text(String(localized: "android.map_filter_all")).tag("all")
+                    Text(String(localized: "android.map_source_community")).tag("community")
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 170)
 
-                Toggle("Postos", isOn: $showCombustionStations)
+                Toggle(String(localized: "android.nav_stations"), isOn: $showCombustionStations)
                     .toggleStyle(.button)
-                Toggle("EV", isOn: $showEvSites)
+                Toggle(String(localized: "map.electric"), isOn: $showEvSites)
                     .toggleStyle(.button)
 
                 Button {
                     viewModel.activeSheet = .evTripPlanner
                 } label: {
-                    Label("Rota EV", systemImage: "bolt.horizontal.fill")
+                    Label(String(localized: "map.ev_route"), systemImage: "bolt.horizontal.fill")
                 }
                 .buttonStyle(.bordered)
 
                 Button {
                     viewModel.activeSheet = .savedPlaces
                 } label: {
-                    Label("Salvos", systemImage: "bookmark.fill")
+                    Label(String(localized: "map.saved"), systemImage: "bookmark.fill")
                 }
                 .buttonStyle(.bordered)
 
                 Button {
                     viewModel.activeSheet = .mapDownloads
                 } label: {
-                    Label("Mapas Offline", systemImage: "arrow.down.circle")
+                    Label(String(localized: "map.offline.action"), systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.bordered)
             }
@@ -219,24 +219,24 @@ public struct NativeRouteSheetView: View {
         NavigationStack {
             List {
                 if station.pinTier.allowsMapPin {
-                    Section("Destino") {
+                    Section(String(localized: "map.route.destination")) {
                         Text(station.name).font(.headline)
                         Text(station.address)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Button("Calcular rota de carro") { requestCount += 1 }
+                        Button(String(localized: "map.route.calculate")) { requestCount += 1 }
                             .disabled(isCalculating)
                         if isCalculating {
-                            ProgressView("Calculando rota…")
+                            ProgressView(String(localized: "android.map_route_calculating"))
                         } else if let routeMessage {
                             Text(routeMessage).foregroundStyle(.secondary)
                         }
                     }
 
                     if let route {
-                        Section("Prévia da rota") {
-                            Text("\((route.distance / 1_000).formatted(.number.precision(.fractionLength(1)))) km")
-                            Toggle("Ler instruções em voz alta", isOn: $viewModel.isVoiceGuidanceEnabled)
+                        Section(String(localized: "map.route.preview")) {
+                            Text(Measurement(value: route.distance / 1_000, unit: UnitLength.kilometers).formatted(.measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(1)))))
+                            Toggle(String(localized: "map.route.voice"), isOn: $viewModel.isVoiceGuidanceEnabled)
                             ForEach(route.steps.indices, id: \.self) { index in
                                 let instruction = route.steps[index].instructions
                                 if !instruction.isEmpty {
@@ -251,23 +251,23 @@ public struct NativeRouteSheetView: View {
                         }
                     }
 
-                    Section("Navegação em tempo real") {
-                        Button("Abrir no Apple Maps") {
+                    Section(String(localized: "map.route.navigation")) {
+                        Button(String(localized: "map.route.open_apple_maps")) {
                             let item = destination(for: station)
                             item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
                         }
                         if let wazeUrl = URL(string: "https://waze.com/ul?ll=\(station.latitude),\(station.longitude)&navigate=yes") {
-                            Link("Abrir no Waze", destination: wazeUrl)
+                            Link(String(localized: "map.route.open_waze"), destination: wazeUrl)
                         }
                     }
                 } else {
-                    ContentUnavailableView("Destino sem coordenadas verificadas", systemImage: "location.slash")
+                    ContentUnavailableView(String(localized: "map.route.destination_unverified"), systemImage: "location.slash")
                 }
             }
-            .navigationTitle("Rota para o posto")
+            .navigationTitle(String(localized: "map.route.station"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -293,7 +293,7 @@ public struct NativeRouteSheetView: View {
         defer { isCalculating = false }
 
         guard let origin = await viewModel.requestRouteOrigin(), !Task.isCancelled else {
-            routeMessage = "Localização atual indisponível. Você pode abrir o destino em um aplicativo de navegação."
+            routeMessage = String(localized: "map.route.location_unavailable")
             return
         }
         let request = MKDirections.Request()
@@ -305,11 +305,11 @@ public struct NativeRouteSheetView: View {
             guard !Task.isCancelled else { return }
             route = response.routes.first
             if route == nil {
-                routeMessage = "O Apple Maps não encontrou uma rota para este destino."
+                routeMessage = String(localized: "map.route.not_found")
             }
         } catch {
             guard !Task.isCancelled else { return }
-            routeMessage = "Não foi possível calcular a rota. Sem internet, toque em Abrir no Apple Maps para navegar com a região baixada nos Mapas Offline."
+            routeMessage = String(localized: "map.route.failed")
         }
     }
 }
@@ -321,7 +321,7 @@ public struct SavedPlacesSheetView: View {
     public var body: some View {
         NavigationStack {
             List {
-                Section("Locais e Postos Salvos") {
+                Section(String(localized: "map.saved.places")) {
                     ForEach(viewModel.snapshot.savedPlaces) { place in
                         VStack(alignment: .leading) {
                             Text(place.title).font(.headline)
@@ -329,21 +329,23 @@ public struct SavedPlacesSheetView: View {
                         }
                     }
                 }
-                Section("Viagens Planejadas") {
+                Section(String(localized: "map.saved.trips")) {
                     ForEach(viewModel.snapshot.savedTrips) { trip in
                         VStack(alignment: .leading) {
                             Text(trip.title).font(.headline)
-                            Text("\(trip.originLabel) → \(trip.destinationLabel) (\(Int(trip.distanceKm)) km)")
+                            let distance = Measurement(value: trip.distanceKm, unit: UnitLength.kilometers)
+                                .formatted(.measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0))))
+                            Text(String(localized: "map.saved.trip_summary", defaultValue: "\(trip.originLabel) → \(trip.destinationLabel) (\(distance))"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
             }
-            .navigationTitle("Salvos & Viagens")
+            .navigationTitle(String(localized: "map.saved.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }

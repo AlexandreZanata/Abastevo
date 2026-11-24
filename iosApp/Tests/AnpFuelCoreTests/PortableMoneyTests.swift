@@ -13,6 +13,15 @@ final class PortableMoneyTests: XCTestCase {
         XCTAssertEqual(try PortableMoney.parse("109,90"), 109900)
     }
 
+    func testKeyboardDecimalSeparatorPreservesExactPriceAndRejectsMixedSeparators() throws {
+        let english = Locale(identifier: "en_US")
+        let brazilian = Locale(identifier: "pt_BR")
+        XCTAssertEqual(try PortableMoney.parse(PortableMoney.canonicalUserInput("5.999", locale: english)), 5_999)
+        XCTAssertEqual(try PortableMoney.parse(PortableMoney.canonicalUserInput("5,999", locale: brazilian)), 5_999)
+        XCTAssertEqual(PortableMoney.code(of: PortableMoney.canonicalUserInput("5,999.1", locale: english)), "invalid-price")
+        XCTAssertEqual(PortableMoney.code(of: PortableMoney.canonicalUserInput("5.9991", locale: english)), "over-precision")
+    }
+
     func testParsesTwoDecimalIntegerAndPaddedText() throws {
         XCTAssertEqual(try PortableMoney.parse("5,99"), 5990)
         XCTAssertEqual(try PortableMoney.parse("6"), 6000)

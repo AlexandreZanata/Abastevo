@@ -45,6 +45,6 @@ extension AppStateViewModel {
 
     /// "Salvo há 2 horas" style label for cached public reads.
     func cachedLabel(_ date: Date) -> String {
-        String(localized: "Sem conexão com o servidor: dados salvos \(AnpWeekText.age(since: date)).")
+        String(localized: "network.offline_cached", defaultValue: "Server offline. Data saved \(AnpWeekText.age(since: date)).")
     }
 }

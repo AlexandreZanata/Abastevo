@@ -11,13 +11,13 @@ struct AnpCityAverageCard: View {
         EnergiaCard {
             HStack(alignment: .firstTextBaseline) {
                 SourceTrustBadge(isOfficial: true, label: "ANP")
-                Text("Pesquisa oficial da ANP")
+                Text(String(localized: "anp.week.official_title"))
                     .font(.subheadline.bold())
                 Spacer()
                 Button {
                     app.activeSheet = .weekPicker
                 } label: {
-                    Label(anp.displayWeek.map(AnpWeekText.compact) ?? String(localized: "Semanas"), systemImage: "calendar")
+                    Label(anp.displayWeek.map(AnpWeekText.compact) ?? String(localized: "anp.week.weeks"), systemImage: "calendar")
                         .font(.caption.bold())
                 }
                 .buttonStyle(.bordered)
@@ -28,13 +28,13 @@ struct AnpCityAverageCard: View {
                 Button {
                     app.activeSheet = .priceHistory
                 } label: {
-                    Label("Histórico", systemImage: "chart.bar.xaxis")
+                    Label(String(localized: "android.nav_history"), systemImage: "chart.bar.xaxis")
                         .font(.caption.bold())
                 }
                 .disabled(anp.manifests.isEmpty)
                 Spacer()
                 if let url = URL(string: OfficialAnpAverage.anpOfficialSourceUrl) {
-                    Link("Fonte: ANP", destination: url)
+                    Link(String(localized: "anp.week.source"), destination: url)
                         .font(.caption.bold())
                 }
             }
@@ -44,17 +44,17 @@ struct AnpCityAverageCard: View {
     @ViewBuilder
     private var content: some View {
         if anp.manifests.isEmpty {
-            Text("Nenhuma semana da pesquisa ANP baixada neste aparelho.")
+            Text(String(localized: "anp.week.no_downloads_full"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Button {
                 Task { await anp.manualSync() }
             } label: {
-                Label("Baixar a semana mais recente", systemImage: "arrow.down.circle")
+                Label(String(localized: "anp.week.download_latest"), systemImage: "arrow.down.circle")
             }
             .disabled(anp.isSyncing || app.isOfflineSimulation)
         } else if app.selectedMunicipality == nil {
-            Button("Escolher cidade") { app.activeSheet = .locationPicker }
+            Button(String(localized: "android.feed_choose_city")) { app.activeSheet = .locationPicker }
         } else if anp.cityAverages.isEmpty {
             Text(availabilityText)
                 .font(.subheadline)
@@ -64,7 +64,7 @@ struct AnpCityAverageCard: View {
                 AnpAverageRow(average: average, highlighted: average.product == app.snapshot.selectedFuel)
             }
             if let note = anp.displayManifest?.operationalNote {
-                Text("Nota da ANP: \(note)")
+                Text(String(localized: "android.week_picker_operational_note", defaultValue: "Note: \(note)"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -75,11 +75,11 @@ struct AnpCityAverageCard: View {
     private var availabilityText: String {
         switch anp.cityAvailability {
         case .noDataThisWeek:
-            return String(localized: "A ANP não pesquisou esta cidade na semana exibida. Escolha outra semana.")
+            return String(localized: "android.prices_empty_no_data_this_week")
         case .neverInAnp:
-            return String(localized: "Esta cidade não aparece nas semanas baixadas da pesquisa ANP.")
+            return String(localized: "anp.week.city_missing")
         default:
-            return String(localized: "Média municipal indisponível para esta cidade.")
+            return String(localized: "anp.week.average_unavailable")
         }
     }
 
@@ -92,12 +92,12 @@ struct AnpCityAverageCard: View {
                     Task {
                         let allowed = await anp.setAlert(fuel, enabled: enabled)
                         alertMessage = enabled && !allowed
-                            ? String(localized: "Permita notificações nos Ajustes do iPhone para receber o alerta.")
+                            ? String(localized: "anp.alert.settings_permission")
                             : nil
                     }
                 }
             )) {
-                Text("Avisar quando \(fuel.displayNamePtBr) cair na pesquisa ANP")
+                Text(String(localized: "anp.alert.toggle", defaultValue: "Notify me when the ANP price for \(fuel.localizedName) falls"))
                     .font(.caption)
             }
             if let alertMessage {
@@ -116,20 +116,20 @@ struct AnpAverageRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(average.product.displayNamePtBr)
+                Text(average.product.localizedName)
                     .font(highlighted ? .subheadline.bold() : .subheadline)
                 if let minimum = average.minimumMilli, let maximum = average.maximumMilli {
-                    Text("Mín. \(AnpPriceRounding.formatBrl(milli: minimum)) · Máx. \(AnpPriceRounding.formatBrl(milli: maximum))")
+                    Text(String(localized: "anp.week.price_range", defaultValue: "Min. \(AnpPriceRounding.formatBrl(milli: minimum, locale: .current)) · Max. \(AnpPriceRounding.formatBrl(milli: maximum, locale: .current))"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                Text(average.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0) } ?? "—")
+                Text(average.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0, locale: .current) } ?? "—")
                     .font(highlighted ? .headline : .subheadline)
                 if let count = average.stationCount {
-                    Text("\(count) postos")
+                    Text(String(localized: "anp.week.station_count", defaultValue: "Stations: \(count.formatted())"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -152,7 +152,7 @@ struct AnpSyncStatusView: View {
                     } else {
                         ProgressView()
                     }
-                    Button("Cancelar") { anp.cancelSync() }
+                    Button(String(localized: "android.map_cancel")) { anp.cancelSync() }
                         .font(.caption)
                 }
                 Text(progressText(progress))
@@ -161,25 +161,25 @@ struct AnpSyncStatusView: View {
             } else if anp.isCheckingLatest {
                 HStack {
                     ProgressView()
-                    Text("Consultando a página da ANP…").font(.caption)
+                    Text(String(localized: "anp.week.checking")).font(.caption)
                 }
             }
             if let week = anp.displayWeek {
                 if anp.isStaleVerified, let verification = anp.verification {
-                    Text("Verificado \(AnpWeekText.age(since: Date(timeIntervalSince1970: TimeInterval(verification.verifiedAtEpochSeconds)))): a ANP ainda não publicou semana mais nova.")
+                    Text(String(localized: "anp.week.verified_no_update", defaultValue: "Checked \(AnpWeekText.age(since: Date(timeIntervalSince1970: TimeInterval(verification.verifiedAtEpochSeconds)))). ANP has not published a newer week."))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 } else if anp.isStale {
-                    Text("Dados de \(AnpWeekText.range(week)) estão desatualizados. Puxe para atualizar.")
+                    Text(String(localized: "anp.week.stale", defaultValue: "Data for \(AnpWeekText.range(week)) is out of date. Pull to refresh."))
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 } else if anp.readiness == .partial {
-                    Text("Semana baixada sem os preços por posto deste estado.")
+                    Text(String(localized: "anp.week.partial_state"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 if !anp.isDisplayingLatest {
-                    Text("Exibindo semana escolhida; há uma semana mais recente baixada.")
+                    Text(String(localized: "anp.week.older_selected"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -199,21 +199,23 @@ struct AnpSyncStatusView: View {
 
     private func progressText(_ progress: AnpDownloadProgress) -> String {
         let received = AnpWeekText.bytes(progress.receivedBytes)
-        let total = progress.expectedBytes.map { " de \(AnpWeekText.bytes($0))" } ?? ""
+        let transfer = progress.expectedBytes.map { total in
+            String(localized: "android.map_downloads_progress", defaultValue: "\(received) of \(AnpWeekText.bytes(total))")
+        } ?? received
         switch progress.stage {
-        case .summary: return String(localized: "Baixando médias municipais: \(received)\(total)")
-        case .stations: return String(localized: "Baixando preços por posto: \(received)\(total)")
-        case .importing: return String(localized: "Verificando e importando a planilha…")
-        case .saving: return String(localized: "Salvando neste aparelho…")
+        case .summary: return String(localized: "anp.week.downloading_averages", defaultValue: "Downloading city averages: \(transfer)")
+        case .stations: return String(localized: "anp.week.downloading_prices", defaultValue: "Downloading station prices: \(transfer)")
+        case .importing: return String(localized: "android.sync_progress_importing")
+        case .saving: return String(localized: "anp.week.saving")
         }
     }
 
     private func noticeText(_ notice: AnpSurveyModel.Notice) -> String {
         switch notice {
-        case .updated(let week): return String(localized: "Semana \(week) baixada e verificada.")
-        case .partial(let week): return String(localized: "Semana \(week) baixada sem os preços por posto. Tente novamente mais tarde.")
-        case .verifiedNoNewWeek(let week): return String(localized: "Verificado: \(week) é a semana mais recente da ANP.")
-        case .alreadyDownloaded(let week): return String(localized: "Semana \(week) já está neste aparelho.")
+        case .updated(let week): return String(localized: "anp.week.downloaded", defaultValue: "Week \(week) downloaded and verified.")
+        case .partial(let week): return String(localized: "anp.week.partial_retry", defaultValue: "Week \(week) downloaded without station prices. Try again later.")
+        case .verifiedNoNewWeek(let week): return String(localized: "anp.week.verified_latest", defaultValue: "Confirmed: \(week) is the latest ANP week.")
+        case .alreadyDownloaded(let week): return String(localized: "anp.week.already_local", defaultValue: "Week \(week) is already on this device.")
         }
     }
 }
@@ -225,10 +227,10 @@ public struct WeekPickerSheetView: View {
     public var body: some View {
         NavigationStack {
             AnpWeekPickerContent(app: viewModel, anp: viewModel.anpSurvey)
-                .navigationTitle("Semanas da Pesquisa ANP")
+                .navigationTitle(String(localized: "anp.week.picker"))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Fechar") { dismiss() }
+                        Button(String(localized: "android.feed_close")) { dismiss() }
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -236,7 +238,7 @@ public struct WeekPickerSheetView: View {
                         } label: {
                             Image(systemName: "arrow.clockwise")
                         }
-                        .accessibilityLabel("Atualizar lista de semanas")
+                        .accessibilityLabel(String(localized: "anp.week.refresh_list"))
                     }
                 }
         }
@@ -249,29 +251,29 @@ struct AnpWeekPickerContent: View {
 
     var body: some View {
         List {
-            Section("Semana em uso") {
+            Section(String(localized: "anp.week.active")) {
                 if let week = anp.displayWeek {
                     Text(AnpWeekText.range(week)).font(.headline)
-                    Text(anp.isDisplayingLatest ? "Mais recente baixada" : "Semana escolhida")
+                    Text(anp.isDisplayingLatest ? String(localized: "anp.week.latest_downloaded") : String(localized: "anp.week.selected"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Nenhuma semana baixada.").foregroundStyle(.secondary)
+                    Text(String(localized: "anp.week.no_downloads")).foregroundStyle(.secondary)
                 }
                 AnpSyncStatusView(anp: anp)
                 if let latest = anp.catalog.first {
-                    Button("Usar a semana mais recente (\(AnpWeekText.compact(latest.week)))") { anp.select(latest) }
+                    Button(String(localized: "anp.week.use_latest", defaultValue: "Use the latest week (\(AnpWeekText.compact(latest.week)))")) { anp.select(latest) }
                         .disabled(anp.isSyncing)
                 }
                 if let check = anp.lastCatalogCheck {
-                    Text("Lista da ANP consultada \(AnpWeekText.age(since: check)).")
+                    Text(String(localized: "anp.week.catalog_checked", defaultValue: "ANP week list checked \(AnpWeekText.age(since: check))."))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
 
             if !anp.manifests.isEmpty {
-                Section("Baixadas neste aparelho (\(AnpWeekText.bytes(anp.storedBytes)))") {
+                Section(String(localized: "anp.week.downloads_size", defaultValue: "Downloaded on this device (\(AnpWeekText.bytes(anp.storedBytes)))")) {
                     ForEach(anp.manifests) { manifest in
                         downloadedRow(manifest)
                     }
@@ -283,11 +285,11 @@ struct AnpWeekPickerContent: View {
             }
 
             if anp.isLoadingCatalog {
-                Section { ProgressView("Carregando semanas da ANP…") }
+                Section { ProgressView(String(localized: "anp.week.loading")) }
             } else if let error = anp.catalogError {
                 Section {
                     Text(error).foregroundStyle(.secondary)
-                    Button("Tentar novamente") { anp.loadCatalog() }
+                    Button(String(localized: "android.feed_retry")) { anp.loadCatalog() }
                 }
             }
 
@@ -300,7 +302,7 @@ struct AnpWeekPickerContent: View {
             }
 
             Section {
-                Text("Arquivos oficiais baixados de gov.br/anp, verificados (tamanho, SHA-256 e conteúdo da planilha) e guardados fora do backup. Preços por posto ficam restritos ao estado da cidade escolhida.")
+                Text(String(localized: "anp.week.verification"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -320,9 +322,9 @@ struct AnpWeekPickerContent: View {
         let active = manifest.week == anp.displayWeek
         let stationText: String
         if let scope = manifest.stationScope {
-            stationText = String(localized: "\(manifest.stationRowCount) preços de postos (\(scope.rawValue))")
+            stationText = String(localized: "anp.week.station_price_count", defaultValue: "Station prices: \(manifest.stationRowCount.formatted()) (\(scope.rawValue))")
         } else {
-            stationText = String(localized: "sem preços por posto")
+            stationText = String(localized: "anp.week.no_station_prices")
         }
         let downloadedAt = Date(timeIntervalSince1970: TimeInterval(manifest.downloadedAtEpochSeconds))
         return Button {
@@ -337,13 +339,13 @@ struct AnpWeekPickerContent: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(AnpWeekText.range(manifest.week)).font(.subheadline.bold())
-                    Text("\(manifest.averageRowCount) médias · \(stationText)")
+                    Text(String(localized: "anp.week.row_summary", defaultValue: "Averages: \(manifest.averageRowCount.formatted()) · \(stationText)"))
                         .font(.caption)
-                    Text("Baixado \(AnpWeekText.age(since: downloadedAt)) · \(AnpWeekText.bytes(manifest.downloadedBytes)) transferidos")
+                    Text(String(localized: "anp.week.transfer_summary", defaultValue: "Downloaded \(AnpWeekText.age(since: downloadedAt)) · \(AnpWeekText.bytes(manifest.downloadedBytes)) transferred"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     if manifest.quarantinedRowCount > 0 {
-                        Text("\(manifest.quarantinedRowCount) linhas ignoradas por rótulo desconhecido")
+                        Text(String(localized: "anp.week.quarantined_rows", defaultValue: "Rows skipped due to unknown labels: \(manifest.quarantinedRowCount.formatted())"))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -366,7 +368,7 @@ struct AnpWeekPickerContent: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(AnpWeekText.range(entry.week)).font(.subheadline)
                     if let published = entry.publishedOnIso {
-                        Text("Atualizado pela ANP em \(AnpWeekText.brazilian(published))")
+                        Text(String(localized: "android.week_picker_updated_at", defaultValue: "Updated \(AnpWeekText.day(published))"))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -375,22 +377,22 @@ struct AnpWeekPickerContent: View {
                 if syncing {
                     ProgressView()
                 } else if downloaded != nil {
-                    Label("Baixada", systemImage: "checkmark.circle")
+                    Label(String(localized: "android.week_picker_downloaded_tag"), systemImage: "checkmark.circle")
                         .font(.caption)
                         .foregroundStyle(AbastevoTheme.accentLight)
                 }
             }
             if let note = entry.operationalNote {
-                Text("Nota: \(note)")
+                Text(String(localized: "android.week_picker_operational_note", defaultValue: "Note: \(note)"))
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
             HStack {
-                Button("Usar esta semana") { anp.select(entry) }
+                Button(String(localized: "anp.week.use")) { anp.select(entry) }
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.accentLight)
                 if downloaded == nil {
-                    Button("Só baixar") { anp.download(entry) }
+                    Button(String(localized: "anp.week.download_only")) { anp.download(entry) }
                         .buttonStyle(.bordered)
                 }
             }
@@ -408,10 +410,10 @@ public struct PriceHistorySheetView: View {
     public var body: some View {
         NavigationStack {
             AnpHistoryContent(app: viewModel, anp: viewModel.anpSurvey)
-                .navigationTitle("Histórico de Preços")
+                .navigationTitle(String(localized: "android.history_title"))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Fechar") { dismiss() }
+                        Button(String(localized: "android.feed_close")) { dismiss() }
                     }
                 }
         }
@@ -430,57 +432,57 @@ struct AnpHistoryContent: View {
         List {
             Section {
                 if app.isOfflineSimulation {
-                    Label("Sem conexão: histórico das semanas baixadas neste aparelho.", systemImage: "wifi.slash")
+                    Label(String(localized: "anp.history.offline"), systemImage: "wifi.slash")
                         .font(.caption)
                 }
-                Picker("Combustível", selection: $fuel) {
+                Picker(String(localized: "android.history_fuel_product_label"), selection: $fuel) {
                     ForEach(AnpOfficialRules.productDisplayOrder) { product in
-                        Text(product.displayNamePtBr).tag(product)
+                        Text(product.localizedName).tag(product)
                     }
                 }
-                Text(app.selectedMunicipality?.displayTitle ?? String(localized: "Escolha uma cidade"))
+                Text(app.selectedMunicipality?.displayTitle ?? String(localized: "android.feed_choose_city"))
                     .font(.headline)
             }
             if isLoading {
                 Section { ProgressView() }
             } else if app.selectedMunicipality == nil {
                 Section {
-                    Button("Escolher cidade") { app.activeSheet = .locationPicker }
+                    Button(String(localized: "android.feed_choose_city")) { app.activeSheet = .locationPicker }
                 }
             } else {
                 switch history {
                 case .available(let entries):
-                    Section("Média semanal (ANP)") {
+                    Section(String(localized: "anp.history.weekly_average")) {
                         AnpTrendBars(entries: entries, selectedWeekId: $selectedWeekId)
                             .frame(height: 140)
                         if let selected = entries.first(where: { $0.week.id == selectedWeekId }) {
-                            Text("\(AnpWeekText.compact(selected.week)): \(selected.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0) } ?? "—")")
+                            Text("\(AnpWeekText.compact(selected.week)): \(selected.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0, locale: .current) } ?? "—")")
                                 .font(.caption.bold())
                         }
                     }
-                    Section("Semanas") {
+                    Section(String(localized: "anp.week.weeks")) {
                         ForEach(entries) { entry in
                             HStack {
                                 Text(AnpWeekText.compact(entry.week))
                                 Spacer()
-                                Text(entry.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0) } ?? String(localized: "Preço indisponível"))
+                                Text(entry.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0, locale: .current) } ?? String(localized: "anp.history.price_unavailable"))
                                     .font(.headline)
                             }
                         }
                     }
                 case .insufficient(let weeks):
                     Section {
-                        Text("Histórico insuficiente: são necessárias pelo menos duas semanas baixadas com este combustível nesta cidade (há \(weeks)).")
+                        Text(String(localized: "anp.history.insufficient", defaultValue: "History requires at least two downloaded weeks for this fuel and city. Available: \(weeks.formatted())."))
                             .foregroundStyle(.secondary)
-                        Button("Baixar mais semanas") { app.activeSheet = .weekPicker }
+                        Button(String(localized: "anp.history.more_weeks")) { app.activeSheet = .weekPicker }
                     }
                 case nil:
-                    Section { Text("Histórico indisponível.").foregroundStyle(.secondary) }
+                    Section { Text(String(localized: "anp.history.unavailable")).foregroundStyle(.secondary) }
                 }
             }
             Section {
                 if let url = URL(string: OfficialAnpAverage.anpOfficialSourceUrl) {
-                    Link("Fonte: ANP — Levantamento de Preços de Combustíveis", destination: url)
+                    Link(String(localized: "anp.history.source"), destination: url)
                         .font(.caption)
                 }
             }
@@ -517,7 +519,7 @@ struct AnpTrendBars: View {
                             selectedWeekId = selectedWeekId == entry.week.id ? nil : entry.week.id
                         }
                         .accessibilityLabel(AnpWeekText.compact(entry.week))
-                        .accessibilityValue(entry.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0) } ?? "")
+                        .accessibilityValue(entry.averageMilli.map { AnpPriceRounding.formatBrl(milli: $0, locale: .current) } ?? "")
                         .accessibilityAddTraits(.isButton)
                 }
             }
@@ -536,20 +538,20 @@ struct StationOfficialHistoryCard: View {
     var body: some View {
         let fuel = viewModel.snapshot.selectedFuel
         EnergiaCard {
-            Text("Histórico ANP deste posto · \(fuel.displayNamePtBr)")
+            Text(String(localized: "anp.station_history.title", defaultValue: "Station ANP history · \(fuel.localizedName)"))
                 .font(.headline)
             switch state {
             case .loading:
                 ProgressView()
             case .unavailable:
                 Text(viewModel.isOfflineSimulation
-                     ? String(localized: "Sem conexão: histórico por posto indisponível offline.")
-                     : String(localized: "Histórico oficial deste posto indisponível."))
+                     ? String(localized: "anp.station_history.offline")
+                     : String(localized: "anp.station_history.unavailable"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             case .loaded:
                 if entries.isEmpty {
-                    Text("Nenhuma coleta ANP registrada para este combustível.")
+                    Text(String(localized: "anp.station_history.empty"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -557,7 +559,7 @@ struct StationOfficialHistoryCard: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(AnpWeekText.compact(entry.surveyWeek)).font(.subheadline)
-                            Text("Coleta em \(AnpWeekText.brazilian(entry.collectedOn))")
+                            Text(String(localized: "anp.station_history.collected", defaultValue: "Collected on \(AnpWeekText.day(entry.collectedOn))"))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }

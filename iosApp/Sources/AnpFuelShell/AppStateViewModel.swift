@@ -60,7 +60,7 @@ public final class AppStateViewModel: ObservableObject {
     @Published public private(set) var directoryCachedAt: Date?
     @Published public private(set) var communityCachedAt: Date?
     @Published public private(set) var communityExpiredCount = 0
-    @Published private var surveyWeekTitle = String(localized: "Pesquisa ANP")
+    @Published private var surveyWeekTitle = String(localized: "app.survey.label")
     private var communityExpiries: [String: Int64] = [:]
 
     // Navigation paths per tab (reset on tab re-tap per B-BR-NAV-01/02)
@@ -159,13 +159,9 @@ public final class AppStateViewModel: ObservableObject {
         anpSurvey.$weekLabel.assign(to: &$surveyWeekTitle)
     }
 
-    public var currentLocale: SupportedAppLocale {
-        return SupportedAppLocale(rawValue: snapshot.localeCode) ?? .ptBR
-    }
-
     public var selectedMunicipality: Municipality? { municipalityCatalog.municipality(code: snapshot.selectedMunicipalityCode) }
 
-    public var municipalityLabel: String { selectedMunicipality?.displayTitle ?? String(localized: "Escolher cidade") }
+    public var municipalityLabel: String { selectedMunicipality?.displayTitle ?? String(localized: "android.feed_choose_city") }
 
     public var surveyWeekLabel: String { surveyWeekTitle }
 
@@ -268,11 +264,6 @@ public final class AppStateViewModel: ObservableObject {
         snapshot.selectedFuel = fuel
         persist()
         reloadCityData()
-    }
-
-    public func setLocale(_ locale: SupportedAppLocale) {
-        snapshot.localeCode = locale.rawValue
-        persist()
     }
 
     public func setTheme(dark: Bool?) {
@@ -457,9 +448,9 @@ public final class AppStateViewModel: ObservableObject {
         self.authFlowState = state
         switch state {
         case .active(let session):
-            self.signedInAlias = authFlow.currentKey()?.username ?? "Conta \(session.accountId.prefix(6))"
+            self.signedInAlias = authFlow.currentKey()?.username ?? String(localized: "auth.account.shortLabel", defaultValue: "Account \(String(session.accountId.prefix(6)))")
         case .needsRefresh(let session):
-            self.signedInAlias = authFlow.currentKey()?.username ?? "Conta \(session.accountId.prefix(6))"
+            self.signedInAlias = authFlow.currentKey()?.username ?? String(localized: "auth.account.shortLabel", defaultValue: "Account \(String(session.accountId.prefix(6)))")
         case .pendingKeyAccount, .loggedOut:
             self.signedInAlias = nil
         }
@@ -476,16 +467,16 @@ public final class AppStateViewModel: ObservableObject {
 
     public func requestEmailOtp(email: String) {
         if isOfflineSimulation {
-            authStatusMessage = "Modo offline: conecte-se para solicitar código por e-mail."
+            authStatusMessage = String(localized: "auth.email.connect")
             return
         }
         let flow = authFlow
         runAuth({ flow.requestEmailCode(email: email) }) { viewModel, result in
             switch result {
             case .ok:
-                viewModel.authStatusMessage = "Se o e-mail for válido, enviamos um código de 6 dígitos."
+                viewModel.authStatusMessage = String(localized: "auth.email.codeRequested")
             case .err(let code):
-                viewModel.authStatusMessage = "Não foi possível enviar o código (\(code))."
+                viewModel.authStatusMessage = Self.authErrorMessage(for: code)
             }
         }
     }
@@ -495,17 +486,17 @@ public final class AppStateViewModel: ObservableObject {
         runAuth({ flow.consumeEmailCode(email: email, code: code) }) { viewModel, result in
             switch result {
             case .ok(let outcome):
-                viewModel.authStatusMessage = outcome.created ? "Conta gratuita criada e conectada." : "Sessão conectada com sucesso."
+                viewModel.authStatusMessage = outcome.created ? String(localized: "auth.account.created") : String(localized: "android.auth_logged_in")
                 viewModel.completeSignIn()
             case .err(let verdict):
-                viewModel.authStatusMessage = "Falha ao entrar (\(verdict))."
+                viewModel.authStatusMessage = Self.authErrorMessage(for: verdict)
             }
         }
     }
 
     public func createAnonymousKeyAccount(username: String) async -> AuthKeyIssued? {
         guard !isOfflineSimulation else {
-            authStatusMessage = "Conecte-se para criar sua conta e receber a chave."
+            authStatusMessage = String(localized: "auth.key.connect")
             return nil
         }
         let flow = authFlow
@@ -514,11 +505,11 @@ public final class AppStateViewModel: ObservableObject {
         isAuthWorking = false
         switch result {
         case .ok(let issued):
-            authStatusMessage = "Chave emitida. Guarde-a antes de prosseguir."
+            authStatusMessage = String(localized: "auth.key.created")
             rehydrateAuth()
             return issued
         case .err(let verdict):
-            authStatusMessage = "Erro ao criar chave (\(verdict))."
+            authStatusMessage = Self.authErrorMessage(for: verdict)
             return nil
         }
     }
@@ -528,10 +519,10 @@ public final class AppStateViewModel: ObservableObject {
         runAuth({ flow.loginWithKey(rawKey: rawKey) }) { viewModel, result in
             switch result {
             case .ok:
-                viewModel.authStatusMessage = "Acesso via chave restaurado."
+                viewModel.authStatusMessage = String(localized: "auth.key.restored")
                 viewModel.completeSignIn()
             case .err(let verdict):
-                viewModel.authStatusMessage = "Chave inválida ou indisponível (\(verdict))."
+                viewModel.authStatusMessage = Self.authErrorMessage(for: verdict)
             }
         }
     }
@@ -548,18 +539,18 @@ public final class AppStateViewModel: ObservableObject {
 
     public func completeAppleSignIn(identityToken: Data?, authorizationCode: Data?) {
         guard let rawNonce = pendingAppleNonce else {
-            authStatusMessage = "Não foi possível iniciar o login com a Apple. Tente novamente."
+            authStatusMessage = String(localized: "auth.apple.startFailed")
             return
         }
         pendingAppleNonce = nil
         guard let tokenData = identityToken,
               let idToken = String(data: tokenData, encoding: .utf8),
               !idToken.isEmpty else {
-            authStatusMessage = "A Apple não retornou um token de identidade."
+            authStatusMessage = String(localized: "auth.apple.tokenMissing")
             return
         }
         guard !isOfflineSimulation else {
-            authStatusMessage = "Conecte-se para entrar com a Apple."
+            authStatusMessage = String(localized: "auth.apple.connect")
             return
         }
         let code = authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
@@ -575,15 +566,15 @@ public final class AppStateViewModel: ObservableObject {
         }) { viewModel, result in
             switch result {
             case .ok(let outcome):
-                viewModel.authStatusMessage = outcome.created ? "Conta gratuita criada com a Apple." : "Conectado com a Apple."
+                viewModel.authStatusMessage = outcome.created ? String(localized: "auth.apple.accountCreated") : String(localized: "auth.apple.signedIn")
                 viewModel.completeSignIn()
             case .err(let verdict):
                 if verdict == AccountProviderLogin.unavailableVerdict {
-                    viewModel.authStatusMessage = "Login com a Apple ainda não está disponível neste servidor."
+                    viewModel.authStatusMessage = String(localized: "auth.apple.serverUnavailable")
                 } else if verdict == AuthFlow.clientInvalid && hasKeyAccount {
-                    viewModel.authStatusMessage = "Saia da conta com chave antes de entrar com a Apple."
+                    viewModel.authStatusMessage = String(localized: "auth.apple.keyAccountActive")
                 } else {
-                    viewModel.authStatusMessage = "Falha no login com a Apple (\(verdict))."
+                    viewModel.authStatusMessage = Self.authErrorMessage(for: verdict)
                 }
             }
         }
@@ -591,7 +582,39 @@ public final class AppStateViewModel: ObservableObject {
 
     public func failAppleSignIn(cancelled: Bool) {
         pendingAppleNonce = nil
-        authStatusMessage = cancelled ? "Login com a Apple cancelado." : "Login com a Apple indisponível neste aparelho."
+        authStatusMessage = cancelled ? String(localized: "auth.apple.cancelled") : String(localized: "auth.apple.deviceUnavailable")
+    }
+
+    /// Mirrors Android AuthViewModel; provider refusals share one public message.
+    private static func authErrorMessage(for verdict: String) -> String {
+        switch verdict {
+        case AuthFlow.clientInvalid, "username-invalid":
+            return String(localized: "android.auth_error_input")
+        case AuthFlow.secureStorageUnavailable:
+            return String(localized: "android.auth_error_secure_storage")
+        case PortableAuth.Verdict.codeUnknown, PortableAuth.Verdict.codeConsumed:
+            return String(localized: "android.auth_error_code")
+        case "key-invalid":
+            return String(localized: "android.auth_error_key")
+        case "username-taken":
+            return String(localized: "android.auth_error_username_taken")
+        case PortableAuth.Verdict.codeExpired:
+            return String(localized: "android.auth_error_expired")
+        case PortableAuth.Verdict.codeLocked:
+            return String(localized: "android.auth_error_locked")
+        case PortableAuth.Verdict.sessionReuse, PortableAuth.Verdict.sessionRevoked, PortableAuth.Verdict.sessionExpired:
+            return String(localized: "android.auth_error_session")
+        case PortableAuth.Verdict.accountSuspended:
+            return String(localized: "android.auth_error_suspended")
+        case PortableAuth.Verdict.accountDeleted:
+            return String(localized: "android.auth_error_deleted")
+        case PortableAuth.unavailable:
+            return String(localized: "android.auth_error_offline")
+        case let provider where provider.hasPrefix("oidc-") || provider.hasPrefix("link-"):
+            return String(localized: "android.auth_error_provider")
+        default:
+            return String(localized: "android.auth_error_unknown")
+        }
     }
 
     /// After any login: refresh the visible state, then register and bind the device key for owner-signed writes.
@@ -624,13 +647,13 @@ public final class AppStateViewModel: ObservableObject {
         let flow = authFlow
         runAuth({ flow.logout() }) { viewModel, _ in
             viewModel.rehydrateAuth()
-            viewModel.authStatusMessage = "Sessão encerrada e dados privados limpos."
+            viewModel.authStatusMessage = String(localized: "auth.account.signedOutPurged")
         }
     }
 
     public func deleteAccountAndPurge() {
         guard !isOfflineSimulation, let ownerId = currentAccountIdOrNil else {
-            authStatusMessage = "Entre na sua conta com conexão à internet para solicitar a exclusão."
+            authStatusMessage = String(localized: "auth.delete.connect")
             return
         }
         let flow = authFlow
@@ -640,7 +663,7 @@ public final class AppStateViewModel: ObservableObject {
                 viewModel.finishAccountDeletion(ownerId: ownerId)
             case .err:
                 viewModel.rehydrateAuth()
-                viewModel.authStatusMessage = "Não foi possível confirmar a exclusão. Verifique sua conexão e tente novamente."
+                viewModel.authStatusMessage = String(localized: "auth.delete.failed")
             }
         }
     }
@@ -653,7 +676,7 @@ public final class AppStateViewModel: ObservableObject {
         photoCache.purgeAll()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
         rehydrateAuth()
-        authStatusMessage = "O servidor registrou seu pedido de exclusão."
+        authStatusMessage = String(localized: "auth.delete.accepted")
     }
 
     public func exportMyDataJson() -> String {
@@ -682,17 +705,18 @@ public final class AppStateViewModel: ObservableObject {
     ) -> Result<CommunityOutboxItem, AppValidationError> {
         let milli: Int64
         do {
-            milli = try PortableMoney.parse(priceText)
-        } catch let err as PortableMoneyError {
-            return .failure(AppValidationError("Preço inválido (\(err.code)). Use vírgula, ex: 5,999."))
+            milli = try PortableMoney.parse(PortableMoney.canonicalUserInput(priceText))
+        } catch is PortableMoneyError {
+            let example = (Decimal(5_999) / 1_000).formatted(.number.precision(.fractionLength(3)))
+            return .failure(AppValidationError(String(localized: "community.price.invalidExample", defaultValue: "Enter a valid price, for example \(example).")))
         } catch {
-            return .failure(AppValidationError("Preço inválido."))
+            return .failure(AppValidationError(String(localized: "community.price.invalid")))
         }
         guard milli <= CommunityWire.maxAmountMilli else {
-            return .failure(AppValidationError("Preço acima do limite aceito pelo servidor."))
+            return .failure(AppValidationError(String(localized: "community.price.overLimit")))
         }
         guard CommunityWire.conditionWire(condition) != nil else {
-            return .failure(AppValidationError("O servidor ainda não aceita a condição Pix. Escolha outra condição."))
+            return .failure(AppValidationError(String(localized: "community.price.pixUnavailable")))
         }
 
         let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
@@ -701,10 +725,10 @@ public final class AppStateViewModel: ObservableObject {
             guard let grant = photoGrant,
                   let capturedAt = photoCapturedAtMillis,
                   grant.admits(stationId: station.id, capturedAtMillis: capturedAt) else {
-                return .failure(AppValidationError("A autorização da foto não vale para este posto ou expirou. Tire a foto novamente."))
+                return .failure(AppValidationError(String(localized: "community.photo.grantInvalid")))
             }
             guard condition == .standard else {
-                return .failure(AppValidationError("Foto como evidência exige o preço padrão na bomba."))
+                return .failure(AppValidationError(String(localized: "android.capture_conditional_warning")))
             }
             switch photoFlow.prepareAt(intentBytes: bytes, mime: photoMime, capturedAtMillis: min(capturedAt, nowMs)) {
             case .ready(let id, _, _):
@@ -715,7 +739,7 @@ public final class AppStateViewModel: ObservableObject {
                     captureExpiresAtMillis: grant.expiresAtMillis
                 )
             case .refused(let code):
-                return .failure(AppValidationError("Foto recusada (\(code)). Use JPEG/HEIC/PNG até 256 KiB comprimidos."))
+                return .failure(AppValidationError(String(localized: "community.photo.refused", defaultValue: "Photo refused (\(code)). Use JPEG, HEIC or PNG up to 256 KiB after compression.")))
             }
         }
 
@@ -732,7 +756,7 @@ public final class AppStateViewModel: ObservableObject {
             if let photo {
                 photoFlow.discard(id: photo.photoId)
             }
-            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+            return .failure(AppValidationError(String(localized: "identity.device.keyUnavailable")))
         }
         return .success(item)
     }
@@ -743,11 +767,11 @@ public final class AppStateViewModel: ObservableObject {
     public func publishStationComment(stationId: String, product: FuelProduct, text: String) -> Result<CommunityOutboxItem, AppValidationError> {
         let normalized = PortableText.normalize(text)
         guard PortableText.isValidComment(normalized) else {
-            return .failure(AppValidationError("Comentário deve ter entre 1 e 280 caracteres."))
+            return .failure(AppValidationError(String(localized: "community.comment.length")))
         }
         let draft = CommunityTextDraft(text: normalized, stationId: stationId, product: product)
         guard let item = identity.enqueue(kind: .stationComment, price: nil, text: draft) else {
-            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+            return .failure(AppValidationError(String(localized: "identity.device.keyUnavailable")))
         }
         return .success(item)
     }
@@ -762,10 +786,10 @@ public final class AppStateViewModel: ObservableObject {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !categoryCode.isEmpty else {
-            return .failure(AppValidationError("Escolha uma categoria."))
+            return .failure(AppValidationError(String(localized: "android.forum_topic_validation_category")))
         }
         guard CommunityWire.isValidTopic(title: cleanTitle, body: cleanBody) else {
-            return .failure(AppValidationError("Informe título (até 120 caracteres) e descrição (até 4000)."))
+            return .failure(AppValidationError(String(localized: "forum.topic.invalidText")))
         }
         let city = selectedMunicipality
         let draft = CommunityTextDraft(
@@ -776,7 +800,7 @@ public final class AppStateViewModel: ObservableObject {
             regionMunicipalityIbge: city.flatMap { Int($0.ibgeCode) }
         )
         guard let item = identity.enqueue(kind: .forumTopic, price: nil, text: draft) else {
-            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+            return .failure(AppValidationError(String(localized: "identity.device.keyUnavailable")))
         }
         return .success(item)
     }
@@ -785,11 +809,11 @@ public final class AppStateViewModel: ObservableObject {
     public func publishForumComment(postId: String, text: String) -> Result<CommunityOutboxItem, AppValidationError> {
         let normalized = PortableText.normalize(text)
         guard CommunityWire.isUuid(postId), PortableText.isValidComment(normalized) else {
-            return .failure(AppValidationError("Comentário deve ter entre 1 e 280 caracteres."))
+            return .failure(AppValidationError(String(localized: "community.comment.length")))
         }
         let draft = CommunityTextDraft(text: normalized, postId: postId)
         guard let item = identity.enqueue(kind: .forumComment, price: nil, text: draft) else {
-            return .failure(AppValidationError("A chave deste aparelho está indisponível."))
+            return .failure(AppValidationError(String(localized: "identity.device.keyUnavailable")))
         }
         return .success(item)
     }
@@ -807,11 +831,11 @@ public final class AppStateViewModel: ObservableObject {
             return .failure(AppValidationError(LedgerCoordinator.admissionMessage(admission)))
         }
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else { return .failure(AppValidationError("Informe o nome do veículo.")) }
+        guard !cleanName.isEmpty else { return .failure(AppValidationError(String(localized: "android.vehicle_validation_name_required"))) }
         let tankMl: Int64
         if propulsion.supportsFuel {
             guard let parsed = try? PortableMoney.parseCapacityMilliLiters(tankLitersText) else {
-                return .failure(AppValidationError("Capacidade do tanque inválida (1 a 200 L)."))
+                return .failure(AppValidationError(String(localized: "android.vehicle_validation_tank_capacity")))
             }
             tankMl = parsed
         } else {
@@ -820,7 +844,7 @@ public final class AppStateViewModel: ObservableObject {
         let batteryWh: Int64
         if propulsion.supportsElectric {
             guard let parsed = try? PortableMoney.parseBatteryCapacityWh(batteryKwhText) else {
-                return .failure(AppValidationError("Informe uma capacidade de bateria válida em kWh."))
+                return .failure(AppValidationError(String(localized: "android.vehicle_validation_battery_capacity")))
             }
             batteryWh = parsed
         } else {
@@ -845,13 +869,13 @@ public final class AppStateViewModel: ObservableObject {
 
     public func startDriverShift(vehicleId: String, startOdometerKm: Int64) -> Result<Void, AppValidationError> {
         guard snapshot.vehicles.contains(where: { $0.id == vehicleId }) else {
-            return .failure(AppValidationError("Selecione um veículo cadastrado."))
+            return .failure(AppValidationError(LedgerFormError.vehicleRequired.localizedMessage))
         }
         guard !snapshot.driverShifts.contains(where: \.isActive) else {
-            return .failure(AppValidationError("Encerre o turno em andamento antes de iniciar outro."))
+            return .failure(AppValidationError(String(localized: "driver.shift.alreadyActive")))
         }
         guard (0...(PremiumEnergyCalculator.maxDistanceMetres / 1000)).contains(startOdometerKm) else {
-            return .failure(AppValidationError("Informe o hodômetro inicial em quilômetros."))
+            return .failure(AppValidationError(String(localized: "driver.shift.invalidStartOdometer")))
         }
         let shift = DriverShiftRecord(vehicleId: vehicleId, startedAtLabel: Date().ISO8601Format(), startOdometerKm: startOdometerKm)
         snapshot.driverShifts.insert(shift, at: 0)
@@ -861,15 +885,15 @@ public final class AppStateViewModel: ObservableObject {
 
     public func finishActiveDriverShift(shiftId: String, endOdometerKm: Int64, grossCentavos: Int64, fuelCentavos: Int64, minutes: Int) -> Result<Void, AppValidationError> {
         guard let idx = snapshot.driverShifts.firstIndex(where: { $0.id == shiftId && $0.isActive }) else {
-            return .failure(AppValidationError("O turno selecionado já foi encerrado."))
+            return .failure(AppValidationError(String(localized: "driver.shift.alreadyEnded")))
         }
         let current = snapshot.driverShifts[idx]
         guard endOdometerKm >= current.startOdometerKm,
               (0...(PremiumEnergyCalculator.maxDistanceMetres / 1000)).contains(endOdometerKm) else {
-            return .failure(AppValidationError("O hodômetro final deve ser igual ou maior que o inicial."))
+            return .failure(AppValidationError(String(localized: "driver.shift.invalidEndOdometer")))
         }
         guard [grossCentavos, fuelCentavos].allSatisfy({ (0...PortableMoney.maxRecordCentavos).contains($0) }), minutes > 0 else {
-            return .failure(AppValidationError("Informe valores e duração válidos para o turno."))
+            return .failure(AppValidationError(String(localized: "driver.shift.invalidTotals")))
         }
         snapshot.driverShifts[idx] = DriverShiftRecord(
             id: current.id,
@@ -902,7 +926,8 @@ public final class AppStateViewModel: ObservableObject {
 
     public func speakGuidanceStep(_ text: String) {
         guard isVoiceGuidanceEnabled else { return }
-        voiceGuidance.speak(instruction: text, localeCode: currentLocale.rawValue)
+        let appLanguage = Bundle.main.preferredLocalizations.first ?? "en"
+        voiceGuidance.speak(instruction: text, localeCode: appLanguage)
     }
 
     public func stopGuidance() {

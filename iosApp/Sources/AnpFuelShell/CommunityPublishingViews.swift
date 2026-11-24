@@ -15,7 +15,7 @@ public struct AppleSignInSection: View {
     }
 
     public var body: some View {
-        Section("Iniciar sessão com a Apple") {
+        Section(String(localized: "identity.apple_sign_in")) {
             #if canImport(AuthenticationServices)
             SignInWithAppleButton(.signIn) { request in
                 request.requestedScopes = []
@@ -39,11 +39,11 @@ public struct AppleSignInSection: View {
             .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
             .frame(height: 44)
             .disabled(viewModel.isAuthWorking || viewModel.isOfflineSimulation)
-            Text("Nome e e-mail não são solicitados à Apple. Ao entrar, a chave deste aparelho é vinculada à sua conta gratuita para publicar.")
+            Text(String(localized: "identity.apple_privacy"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             #else
-            Text("Indisponível nesta plataforma.")
+            Text(String(localized: "identity.platform_unavailable"))
                 .foregroundStyle(.secondary)
             #endif
         }
@@ -70,21 +70,21 @@ public struct CommunityOutboxRow: View {
                 .foregroundStyle(statusColor)
             HStack(spacing: 16) {
                 if item.status == .pending {
-                    Button("Tentar agora") {
+                    Button(String(localized: "android.action_retry")) {
                         viewModel.identity.retryNow(item.id)
                     }
                 }
                 if item.status == .draft && viewModel.currentAccountIdOrNil == nil {
-                    Button("Entrar para publicar") {
+                    Button(String(localized: "community.sign_in_publish")) {
                         viewModel.activeSheet = .auth
                     }
                 }
                 if item.status.isTerminal {
-                    Button("Remover da lista", role: .destructive) {
+                    Button(String(localized: "community.remove_from_list"), role: .destructive) {
                         viewModel.identity.discard(item.id)
                     }
                 } else {
-                    Button("Descartar", role: .destructive) {
+                    Button(String(localized: "android.forum_topic_discard_confirm"), role: .destructive) {
                         viewModel.identity.discard(item.id)
                     }
                 }
@@ -99,8 +99,11 @@ public struct CommunityOutboxRow: View {
         switch item.kind {
         case .priceObservation:
             guard let price = item.price else { return "" }
-            let photo = price.photo == nil ? "" : " · com foto"
-            return "\(price.stationName) · \(price.product.displayNamePtBr) · \(AbastevoTheme.formatBrlMilli(price.amountMilli))\(photo)"
+            var parts = [price.stationName, price.product.localizedName, AbastevoTheme.formatBrlMilli(price.amountMilli)]
+            if price.photo != nil {
+                parts.append(String(localized: "community.with_photo"))
+            }
+            return parts.joined(separator: " · ")
         case .stationComment, .forumComment:
             return item.text?.text ?? ""
         case .forumTopic:
@@ -138,17 +141,17 @@ public struct StationCommentComposerCard: View {
         let queued = viewModel.identity.items(of: .stationComment).filter { $0.text?.stationId == station.id }
         let legacy = viewModel.snapshot.stationComments.filter { $0.isOwn && $0.stationId == station.id }
         EnergiaCard {
-            Text("Seu comentário · \(fuel.displayNamePtBr)")
+            Text(String(localized: "community.comment_fuel", defaultValue: "Your comment · \(fuel.localizedName)"))
                 .font(.headline)
-            TextField("Escreva sua experiência (até 280 caracteres)...", text: $text, axis: .vertical)
+            TextField(String(localized: "android.station_feedback_comment_hint"), text: $text, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(1...4)
             HStack {
-                Text("\(scalars)/\(PortableText.maxCommentScalars)")
+                Text("\(scalars.formatted())/\(PortableText.maxCommentScalars.formatted())")
                     .font(.caption2)
                     .foregroundStyle(scalars > PortableText.maxCommentScalars ? AbastevoTheme.errorRed : Color.secondary)
                 Spacer()
-                Button("Publicar") {
+                Button(String(localized: "android.forum_comment_publish")) {
                     publish(fuel: fuel)
                 }
                 .buttonStyle(.borderedProminent)
@@ -156,7 +159,7 @@ public struct StationCommentComposerCard: View {
                 .disabled(!PortableText.isValidComment(text))
             }
             if viewModel.currentAccountIdOrNil == nil {
-                Text("Entre na conta gratuita para publicar. Até lá, o texto fica como rascunho neste aparelho.")
+                Text(String(localized: "community.comment_draft"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -169,7 +172,7 @@ public struct StationCommentComposerCard: View {
                 CommunityOutboxRow(viewModel: viewModel, item: item)
             }
             if !legacy.isEmpty {
-                Text("Rascunhos antigos (não enviados)")
+                Text(String(localized: "community.old_drafts"))
                     .font(.caption.bold())
                 ForEach(legacy) { comment in
                     Text(comment.text)
@@ -229,15 +232,15 @@ public struct StationCommentVoteBar: View {
     }
 
     private var validLabel: String {
-        guard let tally else { return String(localized: "Válido") }
-        let count = String(tally.valid)
-        return String(localized: "Válido (\(count))")
+        guard let tally else { return String(localized: "android.station_feedback_vote_valid") }
+        let count = tally.valid.formatted()
+        return String(localized: "community.vote_valid_count", defaultValue: "Helpful (\(count))")
     }
 
     private var invalidLabel: String {
-        guard let tally else { return String(localized: "Inválido") }
-        let count = String(tally.invalid)
-        return String(localized: "Inválido (\(count))")
+        guard let tally else { return String(localized: "android.station_feedback_vote_invalid") }
+        let count = tally.invalid.formatted()
+        return String(localized: "community.vote_invalid_count", defaultValue: "Not helpful (\(count))")
     }
 
     private func vote(valid: Bool) {
@@ -271,21 +274,21 @@ public struct ForumCommentComposer: View {
     public var body: some View {
         let scalars = PortableText.countScalars(PortableText.normalize(text))
         let mine = viewModel.identity.items(of: .forumComment).filter { $0.text?.postId == postId }
-        Section("Comentar") {
-            TextField("Seu comentário (até 280 caracteres)", text: $text, axis: .vertical)
+        Section(String(localized: "android.forum_action_comment")) {
+            TextField(String(localized: "android.forum_comment_composer_hint"), text: $text, axis: .vertical)
                 .lineLimit(2...5)
             HStack {
-                Text("\(scalars)/\(PortableText.maxCommentScalars)")
+                Text("\(scalars.formatted())/\(PortableText.maxCommentScalars.formatted())")
                     .font(.caption2)
                     .foregroundStyle(scalars > PortableText.maxCommentScalars ? AbastevoTheme.errorRed : Color.secondary)
                 Spacer()
-                Button("Publicar comentário") {
+                Button(String(localized: "android.forum_comment_publish")) {
                     publish()
                 }
                 .disabled(!PortableText.isValidComment(text))
             }
             if viewModel.currentAccountIdOrNil == nil {
-                Text("Entre na conta gratuita para publicar. Até lá, o texto fica como rascunho neste aparelho.")
+                Text(String(localized: "community.comment_draft"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -319,22 +322,24 @@ public struct OwnObservationHistorySection: View {
     }
 
     public var body: some View {
-        Section("Histórico no servidor (privado)") {
+        Section(String(localized: "community.owner_history")) {
             switch viewModel.identity.ownHistoryState {
             case .loading:
                 ProgressView()
             case .unavailable:
-                Text("Carregue as contribuições assinadas por este aparelho.")
+                Text(String(localized: "community.owner_history_prompt"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             case .loaded:
                 if viewModel.identity.ownObservations.isEmpty {
-                    Text("Nenhuma contribuição registrada no servidor.")
+                    Text(String(localized: "community.owner_history_empty"))
                         .foregroundStyle(.secondary)
                 }
                 ForEach(viewModel.identity.ownObservations) { observation in
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("\(observation.product?.displayNamePtBr ?? observation.fuelWire) · \(AbastevoTheme.formatBrlMilli(observation.amountMilli))")
+                        let fuel = observation.product?.localizedName
+                            ?? String(localized: "community.unknown_fuel")
+                        Text("\(fuel) · \(AbastevoTheme.formatBrlMilli(observation.amountMilli))")
                             .font(.subheadline.weight(.semibold))
                         Text(IdentityCoordinator.serverStateLabel(observation.validationState))
                             .font(.caption)
@@ -350,7 +355,7 @@ public struct OwnObservationHistorySection: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Button("Carregar histórico do servidor") {
+            Button(String(localized: "community.owner_history_load")) {
                 Task {
                     await viewModel.identity.refreshOwnHistory()
                 }

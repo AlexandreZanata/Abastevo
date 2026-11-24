@@ -123,6 +123,9 @@
 		F57922C607471F6AAA9954B0 /* LedgerMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1661DDCB1B3C39962F1748 /* LedgerMathTests.swift */; };
 		8245A3F5FFA9FA3253DFEB4B /* LedgerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30750A091480D6A3A2C78EE2 /* LedgerModelsTests.swift */; };
 		816E2BC8ED6D605E934DCC41 /* LedgerSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B8D1395C1678213C90DFA9 /* LedgerSyncTests.swift */; };
+		B15F0B28694258453DAE68F3 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = D3EBDD8FEB0A64F5F946C8B4 /* InfoPlist.xcstrings */; };
+		AE75B8367BA59DFF0A4CAE94 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 2DC8C47995FCB139CAE873A4 /* Localizable.xcstrings */; };
+		D44FD1F6D2F1E6B454B2B913 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 5A94680613CC12950FE38AC8 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -275,6 +278,9 @@
 		DC1661DDCB1B3C39962F1748 /* LedgerMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerMathTests.swift; sourceTree = "<group>"; };
 		30750A091480D6A3A2C78EE2 /* LedgerModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModelsTests.swift; sourceTree = "<group>"; };
 		34B8D1395C1678213C90DFA9 /* LedgerSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerSyncTests.swift; sourceTree = "<group>"; };
+		D3EBDD8FEB0A64F5F946C8B4 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = "InfoPlist.xcstrings"; path = "InfoPlist.xcstrings"; sourceTree = "<group>"; };
+		2DC8C47995FCB139CAE873A4 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = "Localizable.xcstrings"; path = "Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
+		5A94680613CC12950FE38AC8 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = "Localizable.xcstrings"; path = "Localizable.xcstrings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -305,6 +311,7 @@
 			666AD20B1C9005A6726CA501,
 			799C92C8B67C5868F3D38727,
 			DC57EAABB38F68D74718337B,
+			D3EBDD8FEB0A64F5F946C8B4 /* InfoPlist.xcstrings */,
 		); path = App; sourceTree = "<group>"; };
 		8F91E2D59E4024DA7927DEE4 /* Sources */ = {isa = PBXGroup; children = (
 			34DF44F350687D839743EEA7,
@@ -360,6 +367,7 @@
 			F9B759DD9FC21D0AAD62EDBA,
 			2B71AE4C1631944F8FB4953B,
 			8CF4B1183E525244A69AC0AD,
+			2DC8C47995FCB139CAE873A4 /* Localizable.xcstrings */,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -384,6 +392,7 @@
 			BDD16B7694540EE6489A9EFD,
 			1A5C25C23337593034D0BDD3,
 			3013762CA6B1A57282813B72,
+			5A94680613CC12950FE38AC8 /* Localizable.xcstrings */,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -456,6 +465,7 @@
 			buildPhases = (
 				0CFD22AF9DE4828679DAC33F,
 				77C48D39C57760F779963160,
+				3FFCD466740B080059039756 /* Resources */,
 			);
 			buildRules = ();
 			dependencies = ();
@@ -489,9 +499,9 @@
 			attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; };
 			buildConfigurationList = B0D3B7D22269663DD77FCD84;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = "pt-BR";
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
-			knownRegions = ("pt-BR", en, es, de, fr, ja, ru, "zh-Hans", Base);
+			knownRegions = (en, "pt-BR", es, de, fr, ja, ru, "zh-Hans", Base);
 			mainGroup = 0C54F0470E2253EA01E96383;
 			productRefGroup = B40202C75D4FB44D8C59CFA5;
 			projectDirPath = "";
@@ -513,6 +523,11 @@
 			1228440DDBCFF603473E79E6 /* Assets.xcassets in Resources */,
 			F49879C4F16F82BEE5490E90 /* PrivacyInfo.xcprivacy in Resources */,
 			6817AB20D0A048A490CBD235 /* ibge_municipalities.json in Resources */,
+			B15F0B28694258453DAE68F3 /* InfoPlist.xcstrings in Resources */,
+			D44FD1F6D2F1E6B454B2B913 /* Localizable.xcstrings in Resources */,
+		); runOnlyForDeploymentPostprocessing = 0; };
+		3FFCD466740B080059039756 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+			AE75B8367BA59DFF0A4CAE94 /* Localizable.xcstrings in Resources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 

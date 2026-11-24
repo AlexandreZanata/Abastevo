@@ -25,23 +25,23 @@ public enum LedgerFormError: String, Error, Equatable, Sendable {
     case noteInvalid = "note-invalid"
     case recordInvalid = "record-invalid"
 
-    public var messagePtBr: String {
+    public var localizedMessage: String {
         switch self {
-        case .vehicleRequired: return "Selecione um veículo cadastrado."
-        case .kindUnsupported: return "Este tipo de lançamento não pode ser editado."
-        case .refuelUnavailable: return "Abastecimento indisponível para este veículo."
-        case .chargeUnavailable: return "Recarga elétrica indisponível para este veículo."
-        case .fuelRequired: return "Escolha o combustível abastecido."
-        case .dateInvalid: return "Informe uma data e hora válidas."
-        case .quantityInvalid: return "Informe a quantidade (até 3 casas decimais, maior que zero)."
-        case .totalInvalid: return "Informe o valor pago em reais (até 2 casas decimais)."
-        case .unitPriceInvalid: return "Preço por unidade inválido (até 3 casas decimais)."
-        case .energyInvalid: return "Energia inválida em kWh (até 3 casas decimais)."
-        case .socInvalid: return "Carga da bateria deve ser um número inteiro de 0 a 100."
-        case .feesInvalid: return "Taxas inválidas em reais (até 2 casas decimais)."
-        case .odometerInvalid: return "Hodômetro inválido em quilômetros (até 3 casas decimais)."
-        case .noteInvalid: return "Use até 280 caracteres de texto na observação."
-        case .recordInvalid: return "Revise os valores do lançamento."
+        case .vehicleRequired: return String(localized: "ledger.form.chooseVehicle", bundle: CoreLocalization.bundle)
+        case .kindUnsupported: return String(localized: "ledger.form.kindUnsupported", bundle: CoreLocalization.bundle)
+        case .refuelUnavailable: return String(localized: "android.ledger_entry_fuel_unavailable", bundle: CoreLocalization.bundle)
+        case .chargeUnavailable: return String(localized: "android.ledger_entry_charge_unavailable", bundle: CoreLocalization.bundle)
+        case .fuelRequired: return String(localized: "ledger.form.chooseFuel", bundle: CoreLocalization.bundle)
+        case .dateInvalid: return String(localized: "android.ledger_entry_validation_date", bundle: CoreLocalization.bundle)
+        case .quantityInvalid: return String(localized: "ledger.form.invalidQuantity", bundle: CoreLocalization.bundle)
+        case .totalInvalid: return String(localized: "ledger.form.invalidTotal", bundle: CoreLocalization.bundle)
+        case .unitPriceInvalid: return String(localized: "ledger.form.invalidUnitPrice", bundle: CoreLocalization.bundle)
+        case .energyInvalid: return String(localized: "ledger.form.invalidEnergy", bundle: CoreLocalization.bundle)
+        case .socInvalid: return String(localized: "android.ledger_entry_validation_soc", bundle: CoreLocalization.bundle)
+        case .feesInvalid: return String(localized: "ledger.form.invalidFees", bundle: CoreLocalization.bundle)
+        case .odometerInvalid: return String(localized: "ledger.form.invalidOdometer", bundle: CoreLocalization.bundle)
+        case .noteInvalid: return String(localized: "ledger.form.invalidNote", bundle: CoreLocalization.bundle)
+        case .recordInvalid: return String(localized: "ledger.form.invalidRecord", bundle: CoreLocalization.bundle)
         }
     }
 }

@@ -22,12 +22,12 @@ public enum LedgerEntryKind: String, CaseIterable, Codable, Sendable {
     /// Kinds a new entry can take; they match the backend datasets.
     public static let recordable: [LedgerEntryKind] = [.refuel, .charge, .expense]
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .refuel: return "Abastecimento"
-        case .charge: return "Recarga Elétrica"
-        case .expense: return "Despesa"
-        case .odometer: return "Hodômetro"
+        case .refuel: return String(localized: "android.ledger_entry_add_refuel", bundle: CoreLocalization.bundle)
+        case .charge: return String(localized: "android.ledger_entry_add_charge", bundle: CoreLocalization.bundle)
+        case .expense: return String(localized: "android.ledger_entry_add_expense", bundle: CoreLocalization.bundle)
+        case .odometer: return String(localized: "ledger.kind.odometer", bundle: CoreLocalization.bundle)
         }
     }
 
@@ -55,7 +55,7 @@ public enum LedgerDataset: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    public var labelPtBr: String { kind.labelPtBr }
+    public var localizedLabel: String { kind.localizedLabel }
 }
 
 public enum LedgerFill: String, CaseIterable, Codable, Sendable {
@@ -63,11 +63,11 @@ public enum LedgerFill: String, CaseIterable, Codable, Sendable {
     case partial
     case unknown
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .full: return "Tanque cheio"
-        case .partial: return "Parcial"
-        case .unknown: return "Não informado"
+        case .full: return String(localized: "android.ledger_entry_fill_full", bundle: CoreLocalization.bundle)
+        case .partial: return String(localized: "android.ledger_entry_fill_partial", bundle: CoreLocalization.bundle)
+        case .unknown: return String(localized: "android.ledger_entry_fill_unknown", bundle: CoreLocalization.bundle)
         }
     }
 }
@@ -81,15 +81,15 @@ public enum LedgerExpenseCategory: String, CaseIterable, Codable, Sendable {
     case cleaning
     case other
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .maintenance: return "Manutenção"
-        case .insurance: return "Seguro"
-        case .taxes: return "Impostos e taxas"
-        case .parking: return "Estacionamento"
-        case .tolls: return "Pedágio"
-        case .cleaning: return "Limpeza"
-        case .other: return "Outros"
+        case .maintenance: return String(localized: "android.ledger_entry_category_maintenance", bundle: CoreLocalization.bundle)
+        case .insurance: return String(localized: "android.ledger_entry_category_insurance", bundle: CoreLocalization.bundle)
+        case .taxes: return String(localized: "android.ledger_entry_category_taxes", bundle: CoreLocalization.bundle)
+        case .parking: return String(localized: "android.ledger_entry_category_parking", bundle: CoreLocalization.bundle)
+        case .tolls: return String(localized: "android.ledger_entry_category_tolls", bundle: CoreLocalization.bundle)
+        case .cleaning: return String(localized: "android.ledger_entry_category_cleaning", bundle: CoreLocalization.bundle)
+        case .other: return String(localized: "android.ledger_entry_category_other", bundle: CoreLocalization.bundle)
         }
     }
 }
@@ -126,8 +126,8 @@ public enum LedgerFuel: String, CaseIterable, Codable, Sendable {
         return LedgerFuel(rawValue: vehicleFuel.wireCode)
     }
 
-    public var labelPtBr: String {
-        FuelProduct.fromWireCode(rawValue)?.displayNamePtBr ?? rawValue
+    public var localizedLabel: String {
+        FuelProduct.fromWireCode(rawValue)?.localizedName ?? rawValue
     }
 }
 
@@ -313,6 +313,13 @@ public enum LedgerUnits {
         }
         let body = fraction.isEmpty ? whole : whole + separator + fraction
         return negative ? "-" + body : body
+    }
+
+    /// Grouped, localized decimal text for display. Use the edit formatter for parseable input.
+    public static func formatScaled(_ value: Int64, fractionDigits: Int, locale: Locale) -> String {
+        let scale = max(0, min(fractionDigits, 18))
+        let quantity = Decimal(value) / pow(Decimal(10), scale)
+        return quantity.formatted(.number.precision(.fractionLength(0...scale)).locale(locale))
     }
 
     public static func parseKilometres(_ text: String, maximumMetres: Int64) -> Int64? {

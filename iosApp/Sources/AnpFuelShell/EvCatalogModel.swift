@@ -12,9 +12,9 @@ public enum EvCatalogScope: String, CaseIterable, Identifiable {
 
     public var label: String {
         switch self {
-        case .city: return String(localized: "Cidade")
-        case .state: return String(localized: "Estado")
-        case .country: return String(localized: "Brasil")
+        case .city: return String(localized: "android.map_city_label")
+        case .state: return String(localized: "android.location_state_label")
+        case .country: return String(localized: "region.brazil")
         }
     }
 }
@@ -100,7 +100,7 @@ public final class EvCatalogModel: ObservableObject {
     public func refresh() {
         guard let host, refreshTask == nil else { return }
         guard !host.isOfflineSimulation else {
-            errorMessage = String(localized: "Sem conexão. O catálogo salvo continua disponível.")
+            errorMessage = String(localized: "android.charging_explore_offline")
             return
         }
         errorMessage = nil
@@ -125,7 +125,7 @@ public final class EvCatalogModel: ObservableObject {
                 self.refreshTask = nil
                 self.refreshProgress = nil
                 if !(error is CancellationError) {
-                    self.errorMessage = String(localized: "Não foi possível atualizar o catálogo de recarga. O catálogo salvo continua disponível.")
+                    self.errorMessage = String(localized: "ev.catalog.refresh_failed")
                 }
             }
         }

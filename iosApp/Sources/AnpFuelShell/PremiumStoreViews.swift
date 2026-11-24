@@ -64,7 +64,7 @@ public final class PremiumStoreModel: ObservableObject {
         guard let current = session() else {
             status = nil
             products = []
-            phase = .message(String(localized: "Entre na sua conta gratuita para ver o Premium."))
+            phase = .message(String(localized: "android.premium_signed_out_title"))
             return
         }
         phase = .loading
@@ -75,7 +75,7 @@ public final class PremiumStoreModel: ObservableObject {
             await loadProducts()
             phase = .idle
         } catch {
-            phase = .message(String(localized: "Não foi possível consultar o Premium agora. Tente novamente."))
+            phase = .message(String(localized: "android.premium_offline"))
         }
     }
 
@@ -89,7 +89,7 @@ public final class PremiumStoreModel: ObservableObject {
             products = loaded.sorted { $0.price < $1.price }
         } catch {
             products = []
-            phase = .message(String(localized: "A App Store não respondeu. Tente novamente."))
+            phase = .message(String(localized: "premium.app_store_offline"))
         }
     }
 
@@ -109,7 +109,7 @@ public final class PremiumStoreModel: ObservableObject {
                 phase = .idle
             }
         } catch {
-            phase = .message(String(localized: "A compra não foi concluída. Nenhuma cobrança foi confirmada."))
+            phase = .message(String(localized: "premium.purchase_incomplete"))
         }
     }
 
@@ -120,7 +120,7 @@ public final class PremiumStoreModel: ObservableObject {
         do {
             try await AppStore.sync()
         } catch {
-            phase = .message(String(localized: "Não foi possível falar com a App Store para restaurar."))
+            phase = .message(String(localized: "premium.restore_offline"))
             return
         }
         var found = false
@@ -131,19 +131,19 @@ public final class PremiumStoreModel: ObservableObject {
             }
         }
         if !found {
-            phase = .message(String(localized: "Nenhuma assinatura da App Store encontrada para este Apple ID."))
+            phase = .message(String(localized: "premium.no_subscription"))
         }
     }
 
     private func handle(_ result: VerificationResult<StoreKit.Transaction>, kind: PremiumPurchaseKind) async {
         guard case .verified(let transaction) = result else {
             // An unverified transaction is never sent or finished.
-            phase = .message(String(localized: "A App Store não confirmou esta transação."))
+            phase = .message(String(localized: "premium.unverified_transaction"))
             return
         }
         guard transaction.productType == .autoRenewable else { return }
         guard let current = session(), let signer = signer() else {
-            phase = .message(String(localized: "Entre na conta usada na compra para ativar o Premium."))
+            phase = .message(String(localized: "premium.purchase_sign_in"))
             return
         }
         let original = transaction.originalID
@@ -175,13 +175,13 @@ public final class PremiumStoreModel: ObservableObject {
             if session()?.accountId == current.accountId {
                 status = receipt.status
             }
-            phase = .message(String(localized: "Premium ativo. Obrigado por apoiar o Abastevo."))
+            phase = .message(String(localized: "android.premium_status_active"))
         case .failure(.denied):
-            phase = .message(String(localized: "Esta assinatura pertence a outra conta e não foi ativada aqui."))
+            phase = .message(String(localized: "premium.other_account"))
         case .failure(.authRequired):
-            phase = .message(String(localized: "Sua sessão expirou. Entre novamente para ativar o Premium."))
+            phase = .message(String(localized: "premium.session_expired"))
         case .failure:
-            phase = .message(String(localized: "Compra recebida pela App Store. A ativação será tentada de novo automaticamente."))
+            phase = .message(String(localized: "premium.verify_retry"))
         }
     }
 }
@@ -203,21 +203,21 @@ public struct PremiumStoreSheetView: View {
                 statusSection
                 purchaseSection
                 Section {
-                    Button(String(localized: "Restaurar compras")) {
+                    Button(String(localized: "android.premium_restore")) {
                         Task { await model.restore() }
                     }
-                    Button(String(localized: "Gerenciar assinatura na App Store")) {
+                    Button(String(localized: "premium.manage_app_store")) {
                         model.showManageSheet = true
                     }
                 } footer: {
-                    Text("Cancelar o Premium não apaga seus dados. Excluir a conta não cancela a cobrança da App Store: cancele a assinatura aqui.")
+                    Text(String(localized: "premium.cancel_and_delete"))
                 }
                 legalSection
             }
-            .navigationTitle(String(localized: "Abastevo Premium"))
+            .navigationTitle(String(localized: "premium.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Fechar")) { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
             .manageSubscriptionsSheet(isPresented: $model.showManageSheet)
@@ -231,24 +231,24 @@ public struct PremiumStoreSheetView: View {
 
     @ViewBuilder
     private var statusSection: some View {
-        Section(String(localized: "Seu acesso")) {
+        Section(String(localized: "android.premium_status_section_title")) {
             if let status = model.status {
-                LabeledContent(String(localized: "Situação"), value: Self.stateLabel(status))
+                LabeledContent(String(localized: "premium.status"), value: Self.stateLabel(status))
                 if let until = status.validUntil, status.isPremiumActive {
-                    LabeledContent(String(localized: "Acesso até"), value: Self.dateLabel(until))
+                    LabeledContent(String(localized: "premium.valid_until"), value: Self.dateLabel(until))
                 }
                 ForEach(Array(status.tiers.enumerated()), id: \.offset) { _, tier in
-                    LabeledContent(String(localized: "Origem"), value: Self.sourceLabel(tier.source))
+                    LabeledContent(String(localized: "premium.source"), value: Self.sourceLabel(tier.source))
                 }
             } else {
-                Text("Entre na sua conta gratuita para consultar o Premium.")
+                Text(String(localized: "android.premium_signed_out_title"))
                     .foregroundStyle(.secondary)
             }
             switch model.phase {
             case .loading, .verifying, .purchasing:
                 ProgressView()
             case .pending:
-                Text("Compra aguardando aprovação (Pedir para Comprar). O Premium ativa quando a App Store confirmar.")
+                Text(String(localized: "premium.ask_to_buy"))
                     .font(.footnote)
             case .message(let text):
                 Text(text).font(.footnote)
@@ -263,11 +263,11 @@ public struct PremiumStoreSheetView: View {
         switch model.availability {
         case .active:
             Section {
-                Text("Seu Premium já está ativo e vale também no Android e na web.")
+                Text(String(localized: "premium.active_platforms"))
             }
         case .unavailable:
             Section {
-                Text("A assinatura pelo iPhone ainda não está disponível.")
+                Text(String(localized: "premium.iphone_subscription_unavailable"))
                     .foregroundStyle(.secondary)
             }
         case .available:
@@ -287,9 +287,9 @@ public struct PremiumStoreSheetView: View {
                     .disabled(model.phase == .purchasing || model.phase == .verifying)
                 }
             } header: {
-                Text("Assinar pela App Store")
+                Text(String(localized: "premium.subscribe_app_store"))
             } footer: {
-                Text("Backup e sincronização na nuvem, alertas avançados, ferramentas profissionais e veículos adicionais. A cobrança é feita na sua conta Apple e renova automaticamente até ser cancelada nos Ajustes, pelo menos 24 horas antes do fim do período.")
+                Text(String(localized: "premium.store_disclosure"))
             }
         }
     }
@@ -297,10 +297,10 @@ public struct PremiumStoreSheetView: View {
     private var legalSection: some View {
         Section {
             if let terms = Self.termsUrl {
-                Link(String(localized: "Termos de Uso (EULA)"), destination: terms)
+                Link(String(localized: "premium.terms_eula"), destination: terms)
             }
             if let privacy = Self.privacyUrl {
-                Link(String(localized: "Política de Privacidade"), destination: privacy)
+                Link(String(localized: "premium.privacy_policy"), destination: privacy)
             }
         }
     }
@@ -309,39 +309,52 @@ public struct PremiumStoreSheetView: View {
         guard let period = product.subscription?.subscriptionPeriod else {
             return product.displayPrice
         }
-        let unit: String
+        let components: DateComponents
+        let unit: NSCalendar.Unit
         switch period.unit {
-        case .day: unit = period.value == 1 ? String(localized: "dia") : String(localized: "dias")
-        case .week: unit = period.value == 1 ? String(localized: "semana") : String(localized: "semanas")
-        case .month: unit = period.value == 1 ? String(localized: "mês") : String(localized: "meses")
-        case .year: unit = period.value == 1 ? String(localized: "ano") : String(localized: "anos")
-        @unknown default: unit = ""
+        case .day:
+            components = DateComponents(day: period.value)
+            unit = .day
+        case .week:
+            components = DateComponents(weekOfMonth: period.value)
+            unit = .weekOfMonth
+        case .month:
+            components = DateComponents(month: period.value)
+            unit = .month
+        case .year:
+            components = DateComponents(year: period.value)
+            unit = .year
+        @unknown default:
+            return product.displayPrice
         }
-        let count = period.value == 1 ? "" : "\(period.value) "
-        return "\(product.displayPrice) / \(count)\(unit)"
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = unit
+        formatter.unitsStyle = .full
+        guard let interval = formatter.string(from: components) else { return product.displayPrice }
+        return String(localized: "premium.price_period", defaultValue: "\(product.displayPrice) / \(interval)")
     }
 
     static func stateLabel(_ status: PremiumStatusWire) -> String {
         switch status.state {
-        case "ACTIVE": return String(localized: "Ativo")
-        case "CANCELED": return String(localized: "Ativo até o fim do período (renovação desligada)")
-        case "GRACE": return String(localized: "Ativo em período de carência de cobrança")
-        case "HOLD": return String(localized: "Suspenso: problema de cobrança na loja")
-        case "PAUSED": return String(localized: "Pausado")
-        case "PENDING": return String(localized: "Aguardando pagamento")
-        case "EXPIRED": return String(localized: "Expirado")
-        case "REVOKED": return String(localized: "Reembolsado ou revogado")
-        default: return String(localized: "Gratuito")
+        case "ACTIVE": return String(localized: "android.premium_status_active")
+        case "CANCELED": return String(localized: "android.premium_status_canceled")
+        case "GRACE": return String(localized: "android.premium_status_grace")
+        case "HOLD": return String(localized: "android.premium_status_hold")
+        case "PAUSED": return String(localized: "android.premium_status_paused")
+        case "PENDING": return String(localized: "premium.payment_pending")
+        case "EXPIRED": return String(localized: "android.premium_status_expired")
+        case "REVOKED": return String(localized: "android.premium_status_revoked")
+        default: return String(localized: "android.premium_status_none")
         }
     }
 
     static func sourceLabel(_ source: String) -> String {
         switch source {
-        case "app_store": return "App Store"
-        case "play": return "Google Play"
-        case "web": return String(localized: "Site abastevo.com.br")
-        case "admin": return String(localized: "Concedido pela equipe")
-        default: return source
+        case "app_store": return String(localized: "premium.source_app_store")
+        case "play": return String(localized: "premium.source_play")
+        case "web": return String(localized: "premium.source_web")
+        case "admin": return String(localized: "premium.source_admin")
+        default: return String(localized: "premium.source_unknown")
         }
     }
 

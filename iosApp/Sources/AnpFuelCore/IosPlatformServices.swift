@@ -4,7 +4,7 @@ import CoreLocation
 import AVFoundation
 #endif
 
-/// Native iOS one-shot location, voice guidance, and 8-locale string catalog.
+/// Native iOS one-shot location, and voice guidance.
 /// Zero postfix unwrap operators anywhere in this file.
 /// Zero continuous or background location APIs anywhere in this file.
 public final class IosLocationManager: NSObject, CLLocationManagerDelegate {
@@ -152,108 +152,14 @@ public final class IosVoiceGuidance {
     }
 }
 
-public enum SupportedAppLocale: String, CaseIterable, Codable, Identifiable, Sendable {
-    case ptBR = "pt-BR"
-    case en = "en"
-    case es = "es"
-    case de = "de"
-    case fr = "fr"
-    case ja = "ja"
-    case ru = "ru"
-    case zhCN = "zh-CN"
+enum CoreLocalization {
+    static let bundle: Bundle = {
+        #if SWIFT_PACKAGE
+        return .module
+        #else
+        return Bundle(for: LocalizationBundleMarker.self)
+        #endif
+    }()
 
-    public var id: String { rawValue }
-
-    public var flagEmoji: String {
-        switch self {
-        case .ptBR: return "🇧🇷"
-        case .en: return "🇺🇸"
-        case .es: return "🇪🇸"
-        case .de: return "🇩🇪"
-        case .fr: return "🇫🇷"
-        case .ja: return "🇯🇵"
-        case .ru: return "🇷🇺"
-        case .zhCN: return "🇨🇳"
-        }
-    }
-
-    public var nativeName: String {
-        switch self {
-        case .ptBR: return "Português (Brasil)"
-        case .en: return "English"
-        case .es: return "Español"
-        case .de: return "Deutsch"
-        case .fr: return "Français"
-        case .ja: return "日本語"
-        case .ru: return "Русский"
-        case .zhCN: return "简体中文"
-        }
-    }
-}
-
-public enum IosStrings {
-    public static func tabExplore(_ locale: SupportedAppLocale) -> String {
-        switch locale {
-        case .ptBR: return "Explorar"
-        case .en: return "Explore"
-        case .es: return "Explorar"
-        case .de: return "Entdecken"
-        case .fr: return "Explorer"
-        case .ja: return "探索"
-        case .ru: return "Обзор"
-        case .zhCN: return "探索"
-        }
-    }
-
-    public static func tabCommunity(_ locale: SupportedAppLocale) -> String {
-        switch locale {
-        case .ptBR: return "Comunidade"
-        case .en: return "Community"
-        case .es: return "Comunidad"
-        case .de: return "Community"
-        case .fr: return "Communauté"
-        case .ja: return "コミュニティ"
-        case .ru: return "Сообщество"
-        case .zhCN: return "社区"
-        }
-    }
-
-    public static func tabMap(_ locale: SupportedAppLocale) -> String {
-        switch locale {
-        case .ptBR: return "Mapa"
-        case .en: return "Map"
-        case .es: return "Mapa"
-        case .de: return "Karte"
-        case .fr: return "Carte"
-        case .ja: return "マップ"
-        case .ru: return "Карта"
-        case .zhCN: return "地图"
-        }
-    }
-
-    public static func tabProfile(_ locale: SupportedAppLocale) -> String {
-        switch locale {
-        case .ptBR: return "Perfil"
-        case .en: return "Profile"
-        case .es: return "Perfil"
-        case .de: return "Profil"
-        case .fr: return "Profil"
-        case .ja: return "プロフィール"
-        case .ru: return "Профиль"
-        case .zhCN: return "我的"
-        }
-    }
-
-    public static func contributePriceCta(_ locale: SupportedAppLocale) -> String {
-        switch locale {
-        case .ptBR: return "Enviar foto de preço"
-        case .en: return "Submit price photo"
-        case .es: return "Enviar foto de precio"
-        case .de: return "Preisfoto senden"
-        case .fr: return "Envoyer une photo de prix"
-        case .ja: return "価格写真を送信"
-        case .ru: return "Отправить фото цены"
-        case .zhCN: return "上传价格照片"
-        }
-    }
+    private final class LocalizationBundleMarker: NSObject {}
 }

@@ -74,7 +74,6 @@ public struct AbastevoRootView: View {
 
             AbastevoBottomTabBar(
                 selectedTab: viewModel.selectedTab,
-                locale: viewModel.currentLocale,
                 onSelectTab: { viewModel.selectTab($0) }
             )
         }
@@ -149,11 +148,8 @@ struct TankFillViewModel {
     }
 
     var totalText: String {
-        guard let result = result,
-              let text = try? PortableMoney.format(result.totalMilli) else {
-            return "—"
-        }
-        return "R$ \(text)"
+        guard let result else { return "—" }
+        return AbastevoTheme.formatBrlMilli(result.totalMilli)
     }
 }
 
@@ -162,12 +158,12 @@ struct TankFillView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Cheapest tank fill").font(.headline)
+            Text(String(localized: "tankFill.cheapest")).font(.headline)
             if let result = viewModel.result {
                 Text(result.station)
                 Text(viewModel.totalText).font(.title)
             } else {
-                Text("No prices").foregroundStyle(.secondary)
+                Text(String(localized: "tankFill.noPrices")).foregroundStyle(.secondary)
             }
         }
         .padding()

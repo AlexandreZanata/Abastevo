@@ -10,10 +10,10 @@ public struct EvChargingExploreSheetView: View {
     public var body: some View {
         NavigationStack {
             EvExploreContent(app: viewModel, ev: viewModel.evCatalog)
-                .navigationTitle("Recarga Elétrica (EV)")
+                .navigationTitle(String(localized: "ev.catalog.title"))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Fechar") { dismiss() }
+                        Button(String(localized: "android.feed_close")) { dismiss() }
                     }
                 }
         }
@@ -31,46 +31,46 @@ struct EvExploreContent: View {
         let near = app.lastDeviceCoordinate.map { EvCoordinate(latitude: $0.latitude, longitude: $0.longitude) }
         let places = ev.filteredPlaces(city: app.selectedMunicipality, near: near)
         List {
-            Section("Catálogo") {
+            Section(String(localized: "ev.catalog.catalog")) {
                 EvCatalogStatusView(ev: ev)
             }
-            Section("Filtros") {
-                Picker("Abrangência", selection: $ev.scope) {
+            Section(String(localized: "android.map_filters")) {
+                Picker(String(localized: "ev.catalog.scope"), selection: $ev.scope) {
                     ForEach(EvCatalogScope.allCases) { scope in
                         Text(scope.label).tag(scope)
                     }
                 }
                 .pickerStyle(.segmented)
-                Picker("Conector", selection: $ev.filter.connector) {
-                    Text("Todos").tag(ChargingConnector?.none)
+                Picker(String(localized: "android.charging_explore_connector_label"), selection: $ev.filter.connector) {
+                    Text(String(localized: "android.charging_explore_all")).tag(ChargingConnector?.none)
                     ForEach(ChargingConnector.allCases) { connector in
                         Text(connector.label).tag(ChargingConnector?.some(connector))
                     }
                 }
-                Picker("Corrente", selection: $ev.filter.current) {
-                    Text("Todas").tag(ChargingCurrent?.none)
-                    Text("AC").tag(ChargingCurrent?.some(.ac))
-                    Text("DC").tag(ChargingCurrent?.some(.dc))
+                Picker(String(localized: "ev.catalog.current"), selection: $ev.filter.current) {
+                    Text(String(localized: "android.charging_explore_all_current")).tag(ChargingCurrent?.none)
+                    Text(String(localized: "ev.catalog.ac")).tag(ChargingCurrent?.some(.ac))
+                    Text(String(localized: "ev.catalog.dc")).tag(ChargingCurrent?.some(.dc))
                 }
-                Picker("Potência mínima", selection: Binding(
+                Picker(String(localized: "ev.catalog.min_power"), selection: Binding(
                     get: { ev.filter.minPowerKw ?? 0 },
                     set: { ev.filter.minPowerKw = $0 > 0 ? $0 : nil }
                 )) {
                     ForEach(powerOptions, id: \.self) { kw in
-                        Text(kw == 0 ? String(localized: "Qualquer") : "\(kw) kW").tag(kw)
+                        Text(kw == 0 ? String(localized: "ev.catalog.any_power") : EvText.power(Int64(kw) * 1_000)).tag(kw)
                     }
                 }
-                Toggle("Somente acesso público", isOn: $ev.filter.publicOnly)
-                TextField("Buscar por nome, operador ou endereço", text: $ev.filter.query)
+                Toggle(String(localized: "android.charging_explore_public_only"), isOn: $ev.filter.publicOnly)
+                TextField(String(localized: "ev.catalog.search"), text: $ev.filter.query)
             }
-            Section(String(localized: "Pontos de recarga (\(places.count))")) {
+            Section(String(localized: "ev.catalog.site_count", defaultValue: "Charging sites (\(places.count.formatted()))")) {
                 if ev.isLoading {
                     ProgressView()
                 } else if ev.snapshot == nil {
-                    Text("Catálogo de recarga ainda não baixado neste aparelho. Toque em Atualizar com conexão.")
+                    Text(String(localized: "ev.catalog.not_downloaded"))
                         .foregroundStyle(.secondary)
                 } else if places.isEmpty {
-                    Text("Nenhum ponto de recarga para estes filtros.")
+                    Text(String(localized: "android.charging_explore_empty"))
                         .foregroundStyle(.secondary)
                 }
                 ForEach(places.prefix(visibleLimit)) { place in
@@ -81,7 +81,7 @@ struct EvExploreContent: View {
                     }
                 }
                 if places.count > visibleLimit {
-                    Button("Mostrar mais") { visibleLimit += 100 }
+                    Button(String(localized: "android.charging_explore_more")) { visibleLimit += 100 }
                 }
             }
         }
@@ -95,21 +95,22 @@ struct EvCatalogStatusView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let snapshot = ev.snapshot {
-                Text(snapshot.profile == EvCatalogService.nationalProfile ? "Catálogo nacional de recarga" : "Catálogo Open Charge Map")
+                Text(snapshot.profile == EvCatalogService.nationalProfile ? String(localized: "ev.catalog.national") : String(localized: "ev.catalog.ocm"))
                     .font(.subheadline.bold())
-                Text("\(snapshot.places.count) locais · revisão \(String(snapshot.sourceRevision.prefix(12)))")
+                Text(String(localized: "ev.catalog.revision", defaultValue: "Sites: \(snapshot.places.count.formatted()) · revision \(String(snapshot.sourceRevision.prefix(12)))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if let savedAt = ev.savedAt {
-                    Text("Salvo \(AnpWeekText.age(since: savedAt)) · \(ev.age == .stale ? String(localized: "desatualizado") : String(localized: "recente"))")
+                    let freshness = ev.age == .stale ? String(localized: "ev.catalog.stale") : String(localized: "ev.catalog.current_snapshot")
+                    Text(String(localized: "ev.catalog.saved_status", defaultValue: "Saved \(AnpWeekText.age(since: savedAt)) · \(freshness)"))
                         .font(.caption)
                         .foregroundStyle(ev.age == .stale ? Color.orange : Color.secondary)
                 }
-                Text("Fonte: \(snapshot.license). Dados de referência; disponibilidade em tempo real não é informada.")
+                Text(String(localized: "ev.catalog.license", defaultValue: "Source: \(snapshot.license). Reference data only. Live availability is unknown."))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Nenhum catálogo salvo.")
+                Text(String(localized: "ev.catalog.empty"))
                     .font(.subheadline)
             }
             if let progress = ev.refreshProgress {
@@ -119,16 +120,16 @@ struct EvCatalogStatusView: View {
                     } else {
                         ProgressView()
                     }
-                    Text("Página \(progress.pages)")
+                    Text(String(localized: "ev.catalog.page", defaultValue: "Page \(progress.pages.formatted())"))
                         .font(.caption)
-                    Button("Cancelar") { ev.cancelRefresh() }
+                    Button(String(localized: "android.ev_cancel")) { ev.cancelRefresh() }
                         .font(.caption)
                 }
             } else {
                 Button {
                     ev.refresh()
                 } label: {
-                    Label("Atualizar catálogo", systemImage: "arrow.clockwise")
+                    Label(String(localized: "android.charging_explore_refresh"), systemImage: "arrow.clockwise")
                 }
             }
             if let message = ev.errorMessage {
@@ -171,7 +172,7 @@ struct EvPlaceRow: View {
                     .foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
-                Text(place.connectors.isEmpty ? String(localized: "Conectores não informados") : place.connectors.map(\.label).joined(separator: ", "))
+                Text(place.connectors.isEmpty ? String(localized: "android.charging_explore_no_groups") : place.connectors.map(\.label).joined(separator: ", "))
                     .font(.caption)
                 if let near, let coordinate = place.coordinate {
                     Text(EvText.distance(ChargingRules.distanceMeters(near, coordinate)))
@@ -179,7 +180,7 @@ struct EvPlaceRow: View {
                         .foregroundStyle(.secondary)
                 }
                 if place.coordinate == nil {
-                    Text("Sem coordenada admitida")
+                    Text(String(localized: "ev.site.unverified_location"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -198,15 +199,15 @@ struct EvCompatibilityBadge: View {
     var body: some View {
         switch verdict {
         case .compatible:
-            Label("Compatível com o conector escolhido", systemImage: "checkmark.circle")
+            Label(String(localized: "android.charging_explore_compatible"), systemImage: "checkmark.circle")
                 .font(.caption2)
                 .foregroundStyle(AbastevoTheme.accentLight)
         case .unknown:
-            Label("Compatibilidade desconhecida", systemImage: "questionmark.circle")
+            Label(String(localized: "android.charging_explore_unknown_compat"), systemImage: "questionmark.circle")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         case .incompatible:
-            Label("Conector incompatível", systemImage: "xmark.circle")
+            Label(String(localized: "android.charging_explore_incompatible"), systemImage: "xmark.circle")
                 .font(.caption2)
                 .foregroundStyle(.orange)
         }
@@ -223,47 +224,47 @@ struct EvPlaceDetailView: View {
             Section {
                 Text(place.displayName).font(.title3.bold())
                 if let operatorName = place.operatorName {
-                    Text("Operador: \(operatorName)")
+                    Text(String(localized: "android.charging_place_operator", defaultValue: "Operator · \(operatorName)"))
                 }
                 if let address = place.addressLine {
                     Text(address).foregroundStyle(.secondary)
                 }
-                Text(place.publicAccess == .publicAccess ? "Acesso público informado" : "Acesso não confirmado")
+                Text(place.publicAccess == .publicAccess ? String(localized: "ev.site.public_access") : String(localized: "android.ev_access_unknown"))
                     .font(.caption)
                 if place.confirmedByTwoSources {
-                    Label("Confirmado por duas fontes (OSM e OCM)", systemImage: "checkmark.seal")
+                    Label(String(localized: "android.charging_place_two_sources"), systemImage: "checkmark.seal")
                         .font(.caption)
                 }
                 if let coordinate = place.coordinate {
-                    Text("Coordenada admitida: \(EvText.coordinate(coordinate))")
+                    Text(String(localized: "ev.site.coordinates", defaultValue: "Verified coordinates: \(EvText.coordinate(coordinate))"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Button("Abrir no Apple Maps") {
+                    Button(String(localized: "map.route.open_apple_maps")) {
                         let item = MKMapItem(placemark: MKPlacemark(coordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)))
                         item.name = place.displayName
                         item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
                     }
                 } else {
-                    Text("Sem coordenada admitida: este local não aparece no mapa nem em rotas.")
+                    Text(String(localized: "ev.site.unverified_location_details"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            Section("Conectores (\(place.groups.count) grupos · \(place.reportedPoints) pontos informados)") {
+            Section(String(localized: "ev.site.connector_counts", defaultValue: "Connectors (groups: \(place.groups.count.formatted()) · reported points: \(place.reportedPoints.formatted()))")) {
                 if place.groups.isEmpty {
-                    Text("Conectores não informados pela fonte.").foregroundStyle(.secondary)
+                    Text(String(localized: "android.charging_explore_no_groups")).foregroundStyle(.secondary)
                 }
                 ForEach(place.groups) { group in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("\(group.connector.label) · \(group.current.rawValue)")
+                        Text("\(group.connector.label) · \(EvText.current(group.current))")
                             .font(.subheadline.bold())
-                        Text(group.powerW.map(EvText.power) ?? String(localized: "Potência não informada"))
+                        Text(group.powerW.map(EvText.power) ?? String(localized: "ev.site.power_unknown"))
                             .font(.caption)
                         if let quantity = group.reportedQuantity {
-                            Text("Quantidade informada: \(quantity)").font(.caption2)
+                            Text(String(localized: "ev.site.quantity", defaultValue: "Reported quantity: \(quantity.formatted())")).font(.caption2)
                         }
                         if group.connector == .unknown {
-                            Text("Código da fonte: \(group.rawConnectorCode)")
+                            Text(String(localized: "ev.site.source_code", defaultValue: "Source code: \(group.rawConnectorCode)"))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
@@ -273,7 +274,7 @@ struct EvPlaceDetailView: View {
                     EvCompatibilityBadge(verdict: ChargingRules.assess(vehicleConnector: vehicleConnector, groups: place.groups))
                 }
             }
-            Section("Fontes e licenças") {
+            Section(String(localized: "ev.site.sources")) {
                 ForEach(Array(place.sources.enumerated()), id: \.offset) { _, source in
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(source.source) · \(source.externalId)").font(.caption.bold())
@@ -282,16 +283,16 @@ struct EvPlaceDetailView: View {
                     }
                 }
                 if let snapshot {
-                    Text("Catálogo \(snapshot.profile), revisão \(String(snapshot.sourceRevision.prefix(12))), salvo \(AnpWeekText.age(since: Date(timeIntervalSince1970: TimeInterval(snapshot.savedAtEpochSeconds)))).")
+                    Text(String(localized: "ev.site.snapshot", defaultValue: "Catalog \(snapshot.profile), revision \(String(snapshot.sourceRevision.prefix(12))), saved \(AnpWeekText.age(since: Date(timeIntervalSince1970: TimeInterval(snapshot.savedAtEpochSeconds))))."))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-                Text("Disponibilidade, horário e tarifa não fazem parte do catálogo.")
+                Text(String(localized: "android.ev_operation_unknown"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Ponto de recarga")
+        .navigationTitle(String(localized: "ev.site.title"))
     }
 }
 
@@ -306,7 +307,7 @@ struct EvPlaceDetailSheet: View {
             EvPlaceDetailView(place: place, snapshot: snapshot, vehicleConnector: nil)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Fechar") { dismiss() }
+                        Button(String(localized: "android.feed_close")) { dismiss() }
                     }
                 }
         }
@@ -314,13 +315,34 @@ struct EvPlaceDetailSheet: View {
 }
 
 enum EvText {
-    static func power(_ watts: Int64) -> String {
-        let kw = Double(watts) / 1_000.0
-        return kw >= 10 ? "\(Int(kw.rounded())) kW" : "\(kw.formatted(.number.precision(.fractionLength(1)))) kW"
+    static func current(_ current: ChargingCurrent) -> String {
+        switch current {
+        case .ac: return String(localized: "ev.catalog.ac")
+        case .dc: return String(localized: "ev.catalog.dc")
+        case .unknown: return String(localized: "android.charging_explore_unknown")
+        }
+    }
+
+    static func power(_ powerW: Int64) -> String {
+        let kw = Double(powerW) / 1_000
+        let measurement = Measurement(value: kw, unit: UnitPower.kilowatts)
+        return measurement.formatted(.measurement(
+            width: .abbreviated,
+            usage: .asProvided,
+            numberFormatStyle: .number.precision(.fractionLength(kw >= 10 ? 0 : 1))
+        ))
     }
 
     static func distance(_ meters: Double) -> String {
-        meters >= 1_000 ? "\((meters / 1_000).formatted(.number.precision(.fractionLength(1)))) km" : "\(Int(meters.rounded())) m"
+        let longDistance = meters >= 1_000
+        let measurement = longDistance
+            ? Measurement(value: meters / 1_000, unit: UnitLength.kilometers)
+            : Measurement(value: meters, unit: UnitLength.meters)
+        return measurement.formatted(.measurement(
+            width: .abbreviated,
+            usage: .asProvided,
+            numberFormatStyle: .number.precision(.fractionLength(longDistance ? 1 : 0))
+        ))
     }
 
     static func coordinate(_ value: EvCoordinate) -> String {
@@ -328,54 +350,55 @@ enum EvText {
     }
 
     static func percent(_ basisPoints: Int64) -> String {
-        "\((Double(basisPoints) / 100.0).formatted(.number.precision(.fractionLength(0...1))))%"
+        (Double(basisPoints) / 10_000).formatted(.percent.precision(.fractionLength(0...1)))
     }
 
     static func energy(_ wattHours: Int64) -> String {
-        "\((Double(wattHours) / 1_000.0).formatted(.number.precision(.fractionLength(1)))) kWh"
+        Measurement(value: Double(wattHours) / 1_000, unit: UnitEnergy.kilowattHours)
+            .formatted(.measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(1))))
     }
 
     static func duration(_ seconds: Int64) -> String {
         let minutes = max(1, (seconds + 59) / 60)
-        return minutes >= 60 ? "\(minutes / 60) h \(minutes % 60) min" : "\(minutes) min"
+        return Duration.seconds(minutes * 60).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated))
     }
 
     static func issue(_ code: EvIssueCode) -> String {
         switch code {
-        case .snapshotMissing: return String(localized: "Catálogo de recarga não baixado.")
-        case .coverageUnknown: return String(localized: "Cobertura do catálogo desconhecida.")
-        case .noCompatibleCandidate: return String(localized: "Nenhum carregador compatível ao longo da rota.")
-        case .noRoadRoute: return String(localized: "Rota rodoviária indisponível.")
-        case .routeBudgetExhausted: return String(localized: "Limite de consultas de rota atingido.")
-        case .roadWarning: return String(localized: "A rota tem avisos do Apple Maps.")
-        case .accessUnknown: return String(localized: "Acesso público não confirmado.")
-        case .hoursUnknown: return String(localized: "Horário de funcionamento desconhecido.")
-        case .powerUnknown: return String(localized: "Potência não informada.")
-        case .tariffUnknown: return String(localized: "Tarifa desconhecida: custo não estimado.")
-        case .stopUnreachable: return String(localized: "Algum carregador ficou fora do alcance com a reserva.")
-        case .destinationUnreachable: return String(localized: "Destino fora do alcance com os carregadores disponíveis.")
-        case .stopLimitReached: return String(localized: "Limite de paradas atingido.")
-        case .noEvidencedAlternative: return String(localized: "Sem alternativa comprovada se a parada falhar.")
-        case .vehicleConnectorMissing: return String(localized: "Escolha o conector do veículo.")
-        case .batteryMissing, .invalidBattery: return String(localized: "Informe a bateria útil do veículo.")
-        case .consumptionMissing, .invalidConsumption: return String(localized: "Informe um consumo válido.")
-        case .invalidTargetSoc: return String(localized: "A meta de carga deve ser maior que a reserva.")
-        case .invalidRoute: return String(localized: "Origem e destino inválidos.")
-        case .energyUnknown: return String(localized: "Energia do trecho desconhecida.")
+        case .snapshotMissing: return String(localized: "ev.trip.snapshot_missing")
+        case .coverageUnknown: return String(localized: "ev.trip.coverage_unknown")
+        case .noCompatibleCandidate: return String(localized: "android.ev_status_no_candidates")
+        case .noRoadRoute: return String(localized: "ev.trip.no_route")
+        case .routeBudgetExhausted: return String(localized: "ev.trip.route_budget")
+        case .roadWarning: return String(localized: "ev.trip.road_warning")
+        case .accessUnknown: return String(localized: "android.ev_access_unknown")
+        case .hoursUnknown: return String(localized: "android.ev_hours_unknown")
+        case .powerUnknown: return String(localized: "ev.site.power_unknown")
+        case .tariffUnknown: return String(localized: "android.ev_tariff_unknown")
+        case .stopUnreachable: return String(localized: "ev.trip.stop_unreachable")
+        case .destinationUnreachable: return String(localized: "android.ev_status_insufficient_energy")
+        case .stopLimitReached: return String(localized: "ev.trip.stop_limit")
+        case .noEvidencedAlternative: return String(localized: "android.ev_no_alternative")
+        case .vehicleConnectorMissing: return String(localized: "ev.trip.connector_required")
+        case .batteryMissing, .invalidBattery: return String(localized: "ev.trip.battery_required")
+        case .consumptionMissing, .invalidConsumption: return String(localized: "android.ev_invalid_consumption")
+        case .invalidTargetSoc: return String(localized: "android.ev_invalid_target")
+        case .invalidRoute: return String(localized: "ev.trip.invalid_route")
+        case .energyUnknown: return String(localized: "ev.trip.energy_unknown")
         default: return code.rawValue
         }
     }
 
     static func status(_ status: EvPlanStatus) -> String {
         switch status {
-        case .planned: return String(localized: "Plano calculado")
-        case .invalidInput: return String(localized: "Dados inválidos")
-        case .noRoute: return String(localized: "Sem rota rodoviária")
-        case .insufficientData: return String(localized: "Dados insuficientes")
-        case .noCandidates: return String(localized: "Sem carregadores compatíveis")
-        case .insufficientEnergy: return String(localized: "Energia insuficiente para o destino")
-        case .budgetExhausted: return String(localized: "Limite de consultas atingido")
-        case .cancelled: return String(localized: "Cancelado")
+        case .planned: return String(localized: "android.ev_status_planned")
+        case .invalidInput: return String(localized: "android.ev_status_invalid")
+        case .noRoute: return String(localized: "ev.trip.no_route")
+        case .insufficientData: return String(localized: "ev.trip.insufficient_data")
+        case .noCandidates: return String(localized: "android.ev_status_no_candidates")
+        case .insufficientEnergy: return String(localized: "android.ev_status_insufficient_energy")
+        case .budgetExhausted: return String(localized: "android.ev_status_budget")
+        case .cancelled: return String(localized: "android.ev_status_cancelled")
         }
     }
 }
@@ -389,10 +412,10 @@ public struct EvTripPlannerSheetView: View {
     public var body: some View {
         NavigationStack {
             EvPlannerContent(app: viewModel, ev: viewModel.evCatalog)
-                .navigationTitle("Planejador de Viagem EV")
+                .navigationTitle(String(localized: "ev.trip.title"))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Fechar") { dismiss() }
+                        Button(String(localized: "android.feed_close")) { dismiss() }
                     }
                 }
         }
@@ -430,67 +453,67 @@ struct EvPlannerContent: View {
 
     var body: some View {
         List {
-            Section("Veículo") {
+            Section(String(localized: "android.enterprise_assets_kind_vehicle")) {
                 if electricVehicles.isEmpty {
-                    TextField("Bateria útil (kWh)", text: $manualBatteryText)
+                    TextField(String(localized: "ev.trip.battery_kwh"), text: $manualBatteryText)
                         .decimalKeyboard()
-                    Text("Cadastre um veículo elétrico no Perfil para usar a bateria dele.")
+                    Text(String(localized: "ev.trip.register_vehicle"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Picker("Veículo", selection: $vehicleId) {
+                    Picker(String(localized: "android.enterprise_assets_kind_vehicle"), selection: $vehicleId) {
                         ForEach(electricVehicles) { vehicle in
                             Text(vehicle.name).tag(vehicle.id)
                         }
                     }
                     if let vehicle = selectedVehicle {
-                        Text("Bateria útil: \(EvText.energy(vehicle.batteryCapacityWh))")
+                        Text(String(localized: "ev.trip.battery_value", defaultValue: "Usable battery: \(EvText.energy(vehicle.batteryCapacityWh))"))
                             .font(.caption)
                         if vehicle.propulsion == .plugInHybrid {
-                            TextField("Parcela elétrica da bateria (%)", text: $phevShareText)
+                            TextField(String(localized: "android.ev_phev_share"), text: $phevShareText)
                                 .decimalKeyboard()
                         }
                     }
                 }
-                Picker("Conector do veículo", selection: $connectorRaw) {
+                Picker(String(localized: "ev.trip.connector"), selection: $connectorRaw) {
                     ForEach(ChargingConnector.vehicleChoices) { connector in
                         Text(connector.label).tag(connector.rawValue)
                     }
                 }
             }
-            Section("Energia") {
-                LabeledContent("Carga atual (%)") {
+            Section(String(localized: "ev.trip.energy")) {
+                LabeledContent(String(localized: "android.ev_soc")) {
                     TextField("30", text: $socText).decimalKeyboard().multilineTextAlignment(.trailing)
                 }
-                LabeledContent("Reserva mínima (%)") {
+                LabeledContent(String(localized: "android.ev_reserve")) {
                     TextField("10", text: $reserveText).decimalKeyboard().multilineTextAlignment(.trailing)
                 }
-                LabeledContent("Meta de carga (%)") {
+                LabeledContent(String(localized: "android.ev_target")) {
                     TextField("80", text: $targetText).decimalKeyboard().multilineTextAlignment(.trailing)
                 }
-                LabeledContent("Consumo (Wh/km)") {
+                LabeledContent(String(localized: "android.ev_consumption")) {
                     TextField("180", text: $consumptionText).decimalKeyboard().multilineTextAlignment(.trailing)
                 }
             }
-            Section("Rota") {
-                Toggle("Partir da minha localização", isOn: $useCurrentLocation)
+            Section(String(localized: "ev.trip.route")) {
+                Toggle(String(localized: "ev.trip.from_current"), isOn: $useCurrentLocation)
                 if !useCurrentLocation {
-                    TextField("Origem (cidade ou endereço)", text: $originText)
+                    TextField(String(localized: "ev.trip.origin"), text: $originText)
                 }
-                TextField("Destino (cidade ou endereço)", text: $destinationText)
+                TextField(String(localized: "ev.trip.destination"), text: $destinationText)
                 if isPlanning {
                     HStack {
                         ProgressView()
-                        Text("Calculando com o Apple Maps…")
+                        Text(String(localized: "ev.trip.calculating"))
                         Spacer()
-                        Button("Cancelar") { planTask?.cancel() }
+                        Button(String(localized: "android.ev_cancel")) { planTask?.cancel() }
                     }
                 } else {
-                    Button("Planejar viagem") { startPlan(failures: []) }
+                    Button(String(localized: "android.ev_plan")) { startPlan(failures: []) }
                         .disabled(destinationText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 if ev.snapshot == nil {
-                    Text("Baixe o catálogo de recarga em Explorar › Recarga EV para considerar paradas.")
+                    Text(String(localized: "ev.trip.download_catalog"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -502,7 +525,7 @@ struct EvPlannerContent: View {
                 planSections(plan)
             }
             Section {
-                Text("Estimativa conservadora sem trânsito, relevo ou disponibilidade em tempo real. O plano nunca garante a viagem.")
+                Text(String(localized: "ev.trip.assumptions"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -516,50 +539,50 @@ struct EvPlannerContent: View {
 
     @ViewBuilder
     private func planSections(_ plan: EvTripPlan) -> some View {
-        Section("Resultado: \(EvText.status(plan.status))") {
+        Section(String(localized: "ev.trip.result", defaultValue: "Result: \(EvText.status(plan.status))")) {
             if let distance = plan.mainRoute?.road.distanceMeters {
-                Text("Distância rodoviária: \(EvText.distance(Double(distance)))")
+                Text(String(localized: "ev.trip.distance", defaultValue: "Road distance: \(EvText.distance(Double(distance)))"))
             }
             if let energy = plan.mainRoute?.energyWh.value {
-                Text("Energia estimada do trajeto: \(EvText.energy(energy))")
+                Text(String(localized: "ev.trip.energy_estimate", defaultValue: "Estimated trip energy: \(EvText.energy(energy))"))
             }
             if let arrival = plan.arrivalSocBp?.value {
-                Text("Carga estimada na chegada: \(EvText.percent(arrival))")
+                Text(String(localized: "ev.trip.arrival", defaultValue: "Estimated arrival charge: \(EvText.percent(arrival))"))
                     .font(.headline)
             }
-            Text("Paradas: \(plan.stops.count) · Carregadores avaliados: \(plan.candidateCount) · Consultas de rota: \(plan.routeCalls)")
+            Text(String(localized: "ev.trip.search_counts", defaultValue: "Stops: \(plan.stops.count.formatted()) · chargers checked: \(plan.candidateCount.formatted()) · route requests: \(plan.routeCalls.formatted())"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if plan.scope == .electricPortionOnly {
-                Text("Considera apenas a parcela elétrica da bateria do híbrido plug-in.")
+                Text(String(localized: "ev.trip.electric_share"))
                     .font(.caption2)
             }
         }
         if !plan.stops.isEmpty {
-            Section("Paradas sugeridas") {
+            Section(String(localized: "ev.trip.suggested_stops")) {
                 ForEach(Array(plan.stops.enumerated()), id: \.offset) { index, stop in
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("\(index + 1). \(stop.candidate.siteName)").font(.headline)
-                        Text("\(stop.candidate.connector.label) · \(stop.candidate.powerW.map(EvText.power) ?? String(localized: "potência não informada"))")
+                        Text("\((index + 1).formatted()). \(stop.candidate.siteName)").font(.headline)
+                        Text("\(stop.candidate.connector.label) · \(stop.candidate.powerW.map(EvText.power) ?? String(localized: "ev.site.power_unknown"))")
                             .font(.caption)
-                        Text("Chegada com \(EvText.percent(stop.arrivalSocBp)) · carregar \(EvText.energy(stop.chargeEnergyWh)) até \(EvText.percent(stop.targetSocBp))")
+                        Text(String(localized: "ev.trip.stop_charge", defaultValue: "Arrive at \(EvText.percent(stop.arrivalSocBp)) · charge \(EvText.energy(stop.chargeEnergyWh)) to \(EvText.percent(stop.targetSocBp))"))
                             .font(.caption)
                         if let seconds = stop.minimumChargeSeconds.value {
-                            Text("Tempo mínimo de recarga: \(EvText.duration(seconds))").font(.caption)
+                            Text(String(localized: "android.ev_charge_time", defaultValue: "Minimum charge time: \(EvText.duration(seconds))")).font(.caption)
                         }
                         if let alternative = stop.alternative {
-                            Text("Alternativa próxima: \(alternative.candidate.siteName)")
+                            Text(String(localized: "android.ev_alternative", defaultValue: "Alternative from failure: \(alternative.candidate.siteName)"))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
-                Button("A primeira parada falhou: replanejar sem ela") { replanWithoutFirstStop(plan) }
+                Button(String(localized: "ev.trip.replan")) { replanWithoutFirstStop(plan) }
             }
         }
         let codes = uniqueCodes(plan.issues)
         if !codes.isEmpty {
-            Section("Avisos") {
+            Section(String(localized: "ev.trip.warnings")) {
                 ForEach(codes, id: \.self) { code in
                     Text(EvText.issue(code)).font(.caption)
                 }
@@ -592,15 +615,15 @@ struct EvPlannerContent: View {
 
     private func startPlan(failures: [EvFailure]) {
         guard let battery = batteryInput() else {
-            message = String(localized: "Revise bateria, carga atual e reserva (0 a 100%).")
+            message = String(localized: "ev.trip.check_energy")
             return
         }
         guard let target = EvPlannerInputParser.percentBp(targetText, min: 0, max: 100) else {
-            message = String(localized: "Meta de carga inválida (0 a 100%).")
+            message = String(localized: "android.ev_invalid_target")
             return
         }
         guard let consumption = EvPlannerInputParser.consumptionMilli(consumptionText) else {
-            message = String(localized: "Consumo inválido. Use Wh/km, por exemplo 180.")
+            message = String(localized: "android.ev_invalid_consumption")
             return
         }
         let connector = ChargingConnector(rawValue: connectorRaw)
@@ -613,11 +636,11 @@ struct EvPlannerContent: View {
         planTask = Task {
             defer { isPlanning = false }
             guard let origin = await resolveOrigin(originQuery) else {
-                message = String(localized: "Origem indisponível. Permita a localização ou digite uma origem.")
+                message = String(localized: "ev.trip.origin_unavailable")
                 return
             }
             guard let destination = await search(destinationQuery) else {
-                message = String(localized: "Destino não encontrado pelo Apple Maps.")
+                message = String(localized: "ev.trip.destination_not_found")
                 return
             }
             var input = EvTripInput(
@@ -662,7 +685,7 @@ struct EvPlannerContent: View {
             return await search(query)
         }
         guard let coordinate = await app.requestRouteOrigin() else { return nil }
-        return EvRoutePoint(latitude: coordinate.latitude, longitude: coordinate.longitude, label: String(localized: "Minha localização"))
+        return EvRoutePoint(latitude: coordinate.latitude, longitude: coordinate.longitude, label: String(localized: "ev.trip.my_location"))
     }
 
     private func search(_ text: String) async -> EvRoutePoint? {

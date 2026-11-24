@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>pt-BR</string>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>abastevo</string>
 	<key>CFBundleExecutable</key>
@@ -14,8 +14,8 @@
 	<string>6.0</string>
 	<key>CFBundleLocalizations</key>
 	<array>
-		<string>pt-BR</string>
 		<string>en</string>
+		<string>pt-BR</string>
 		<string>es</string>
 		<string>de</string>
 		<string>fr</string>
@@ -59,11 +59,11 @@
 		<false/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>O abastevo usa a câmera para fotografar placas de preços nos postos. Os metadados de GPS/EXIF são removidos no aparelho.</string>
+	<string>Abastevo uses the camera to photograph price signs at fuel stations. GPS and EXIF metadata are removed on your device.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>O abastevo usa sua localização quando solicitada para centralizar o mapa, ordenar postos por distância e calcular rotas.</string>
+	<string>Abastevo uses your location when you request it to center the map, sort stations by distance, and calculate routes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Permite selecionar fotos de placas de postos para reconhecimento local de preços (OCR).</string>
+	<string>Select photos of fuel station signs to recognize prices on your device (OCR).</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

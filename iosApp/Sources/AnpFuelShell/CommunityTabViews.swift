@@ -30,7 +30,6 @@ public struct CommunityRootView: View {
 
                     FuelProductChipsBar(
                         selectedFuel: viewModel.snapshot.selectedFuel,
-                        locale: viewModel.currentLocale,
                         onSelect: { viewModel.selectFuel($0) }
                     )
 
@@ -52,9 +51,9 @@ public struct CommunityRootView: View {
                     .font(.system(size: 32))
                     .foregroundStyle(AbastevoTheme.accentLight)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Contribuir com um preço")
+                    Text(String(localized: "android.home_hero_contribute"))
                         .font(.headline)
-                    Text("O OCR sugere os valores no dispositivo. O envio é assinado por este aparelho e aguarda na fila quando você está sem conexão.")
+                    Text(String(localized: "community.capture_intro"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -63,7 +62,7 @@ public struct CommunityRootView: View {
                 IosHaptics.lightTap()
                 viewModel.activeSheet = .capturePrice
             } label: {
-                Text("Abrir captura")
+                Text(String(localized: "android.capture_take_photo"))
                     .font(.subheadline.bold())
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -77,9 +76,9 @@ public struct CommunityRootView: View {
         EnergiaCard {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Fórum da Comunidade & Guias")
+                    Text(String(localized: "android.forum_card_title"))
                         .font(.headline)
-                    Text("Dicas regionais, guias da ANP, qualidade de combustível e mobilidade elétrica.")
+                    Text(String(localized: "community.forum_summary"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -91,7 +90,7 @@ public struct CommunityRootView: View {
             Button {
                 viewModel.activeSheet = .forumFeed
             } label: {
-                Text("Abrir Fórum")
+                Text(String(localized: "android.forum_card_cta"))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -103,7 +102,7 @@ public struct CommunityRootView: View {
             Button {
                 viewModel.activeSheet = .myContributions
             } label: {
-                Label("Minhas contribuições (\(viewModel.identity.items(of: .priceObservation).count))", systemImage: "tray.full.fill")
+                Label(String(localized: "community.my_contributions_count", defaultValue: "My contributions (\(viewModel.identity.items(of: .priceObservation).count.formatted()))"), systemImage: "tray.full.fill")
                     .font(.caption.bold())
                     .frame(maxWidth: .infinity)
             }
@@ -112,7 +111,7 @@ public struct CommunityRootView: View {
             Button {
                 viewModel.activeSheet = .contributors
             } label: {
-                Label("Contribuidores", systemImage: "person.2.fill")
+                Label(String(localized: "community.contributors"), systemImage: "person.2.fill")
                     .font(.caption.bold())
                     .frame(maxWidth: .infinity)
             }
@@ -124,12 +123,12 @@ public struct CommunityRootView: View {
         let items = viewModel.visibleCommunityFeed
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Feed de Preços — \(viewModel.municipalityLabel)")
+                Text(String(localized: "community.price_feed", defaultValue: "Price feed — \(viewModel.municipalityLabel)"))
                     .font(.headline)
                 Spacer()
-                Picker("Ordem", selection: $viewModel.feedSortOrder) {
+                Picker(String(localized: "community.sort_order"), selection: $viewModel.feedSortOrder) {
                     ForEach(FeedSortOrder.allCases) { order in
-                        Text(order.labelPtBr).tag(order)
+                        Text(order.localizedLabel).tag(order)
                     }
                 }
                 .pickerStyle(.menu)
@@ -137,10 +136,10 @@ public struct CommunityRootView: View {
 
             if items.isEmpty {
                 EnergiaCard {
-                    Text("Nenhuma observação comunitária para \(viewModel.snapshot.selectedFuel.displayNamePtBr) ainda.")
+                    Text(String(localized: "community.fuel_empty", defaultValue: "No community observations for \(viewModel.snapshot.selectedFuel.localizedName) yet."))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Button("Contribuir com um preço") {
+                    Button(String(localized: "android.home_hero_contribute")) {
                         viewModel.activeSheet = .capturePrice
                     }
                     .font(.subheadline.bold())
@@ -151,13 +150,13 @@ public struct CommunityRootView: View {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(obs.stationName).font(.headline)
-                                Text("\(obs.product.displayNamePtBr) · \(obs.condition.labelPtBr)")
+                                Text("\(obs.product.localizedName) · \(obs.condition.localizedLabel)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 HStack(spacing: 8) {
                                     Text(obs.observedAtLabel).font(.caption2).foregroundStyle(.secondary)
                                     if obs.hasPhotoEvidence {
-                                        Label("Com foto", systemImage: "photo")
+                                        Label(String(localized: "community.with_photo"), systemImage: "photo")
                                             .font(.caption2)
                                             .foregroundStyle(AbastevoTheme.accentLight)
                                     }
@@ -167,7 +166,7 @@ public struct CommunityRootView: View {
                             Text(AbastevoTheme.formatBrlMilli(obs.amountMilli))
                                 .font(.title3.bold())
                         }
-                        Label("Confirmações: \(obs.confirmations)", systemImage: "hand.thumbsup")
+                        Label(String(localized: "community.confirmation_count", defaultValue: "Confirmations: \(obs.confirmations.formatted())"), systemImage: "hand.thumbsup")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -205,31 +204,31 @@ public struct CapturePriceSheetView: View {
         let cityStations = viewModel.stations
         NavigationStack {
             Form {
-                Section("1. Posto e Combustível") {
-                    Picker("Posto", selection: $selectedStationId) {
+                Section(String(localized: "capture.station_fuel")) {
+                    Picker(String(localized: "capture.station"), selection: $selectedStationId) {
                         ForEach(cityStations) { st in
                             Text(st.name).tag(st.id)
                         }
                     }
-                    Picker("Combustível", selection: $selectedFuel) {
+                    Picker(String(localized: "android.map_filter_fuel"), selection: $selectedFuel) {
                         ForEach(FuelProduct.allCases) { fuel in
-                            Text(fuel.displayNamePtBr).tag(fuel)
+                            Text(fuel.localizedName).tag(fuel)
                         }
                     }
-                    Picker("Condição", selection: $selectedCondition) {
+                    Picker(String(localized: "capture.condition"), selection: $selectedCondition) {
                         ForEach(PriceConditionKind.allCases) { cond in
-                            Text(cond.labelPtBr).tag(cond)
+                            Text(cond.localizedLabel).tag(cond)
                         }
                     }
                 }
 
-                Section("2. Foto da Placa (On-device OCR)") {
+                Section(String(localized: "capture.board_photo")) {
                     HStack(spacing: 10) {
                         #if os(iOS)
                         Button {
                             openEvidenceCamera()
                         } label: {
-                            Label(isAuthorizingCamera ? "Autorizando..." : "Câmera", systemImage: "camera.fill")
+                            Label(isAuthorizingCamera ? String(localized: "capture.authorizing") : String(localized: "capture.camera"), systemImage: "camera.fill")
                         }
                         .buttonStyle(.bordered)
                         .disabled(isAuthorizingCamera || selectedStationId.isEmpty)
@@ -237,7 +236,7 @@ public struct CapturePriceSheetView: View {
 
                         #if canImport(PhotosUI)
                         PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                            Label("Galeria", systemImage: "photo.on.rectangle")
+                            Label(String(localized: "capture.gallery"), systemImage: "photo.on.rectangle")
                         }
                         .buttonStyle(.bordered)
                         .onChange(of: selectedPhotoItem) { _, newItem in
@@ -250,7 +249,7 @@ public struct CapturePriceSheetView: View {
                         }
                         #endif
 
-                        Button("Simular OCR") {
+                        Button(String(localized: "capture.simulate_ocr")) {
                             let sampleBoard = "GASOLINA COMUM R$ 5,899\nETANOL R$ 3,890\nDIESEL S10 R$ 6,149"
                             runTextOcr(sampleBoard)
                         }
@@ -259,11 +258,11 @@ public struct CapturePriceSheetView: View {
 
                     if let data = rawPhotoData {
                         if photoIsEvidence {
-                            Text("Foto autorizada como evidência (\(data.count / 1024) KiB). Será reduzida, sem metadados, e expira em 24 h.")
+                            Text(String(localized: "capture.evidence_photo", defaultValue: "Photo authorized as evidence (\((data.count / 1024).formatted()) KiB). It will be compressed without metadata and expires after 24 hours."))
                                 .font(.caption)
                                 .foregroundStyle(AbastevoTheme.accentLight)
                         } else {
-                            Text("Foto usada só para a leitura local do preço. Ela não será enviada.")
+                            Text(String(localized: "capture.local_photo"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -275,16 +274,14 @@ public struct CapturePriceSheetView: View {
                     }
 
                     if !ocrCandidates.isEmpty {
-                        Text("Candidatos encontrados (ordem da placa — selecione ou digite):")
+                        Text(String(localized: "capture.candidates"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(ocrCandidates) { cand in
                                     Button(AbastevoTheme.formatBrlMilli(cand.priceMilli)) {
-                                        if let formatted = try? PortableMoney.format(cand.priceMilli) {
-                                            priceInputText = formatted
-                                        }
+                                        priceInputText = priceInputValue(cand.priceMilli)
                                     }
                                     .buttonStyle(.bordered)
                                 }
@@ -296,25 +293,25 @@ public struct CapturePriceSheetView: View {
                     }
                 }
 
-                Section("3. Preço Observado (vírgula decimal)") {
-                    TextField("Ex.: 5,899", text: $priceInputText)
+                Section(String(localized: "capture.observed_price")) {
+                    TextField(String(localized: "capture.price_example", defaultValue: "For example: \(priceInputValue(5_899))"), text: $priceInputText)
                         #if os(iOS)
                         .keyboardType(.decimalPad)
                         #endif
-                    let code = PortableMoney.code(of: priceInputText)
-                    Text(code == "ok" ? "Valor válido em milli-BRL" : "Validação: \(code)")
+                    let code = PortableMoney.code(of: PortableMoney.canonicalUserInput(priceInputText))
+                    Text(priceValidationLabel(code))
                         .font(.caption)
                         .foregroundStyle(code == "ok" ? AbastevoTheme.accentLight : .secondary)
                 }
 
-                Section("4. Verificação de Localização (local, não enviada)") {
+                Section(String(localized: "capture.location_check")) {
                     Button {
                         Task { await viewModel.requestOneShotDeviceLocation() }
                     } label: {
-                        Label("Validar GPS atual (sem rastreamento contínuo)", systemImage: "location.fill")
+                        Label(String(localized: "capture.location_request"), systemImage: "location.fill")
                     }
                     if let risk = viewModel.lastLocationRisk {
-                        Text("Status: \(risk.verdict) · Precisão: \(risk.accuracy) · Frescor: \(risk.freshness)")
+                        Text(String(localized: "capture.location_status", defaultValue: "Status: \(locationLabel(risk.verdict)) · Accuracy: \(locationLabel(risk.accuracy)) · Freshness: \(locationLabel(risk.freshness))"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -353,7 +350,7 @@ public struct CapturePriceSheetView: View {
                             statusBanner = errorMsg.localizedDescription
                         }
                     } label: {
-                        Text("Enviar contribuição")
+                        Text(String(localized: "capture.submit"))
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -361,7 +358,7 @@ public struct CapturePriceSheetView: View {
                     .disabled(draftSaved || cityStations.isEmpty)
                 }
             }
-            .navigationTitle("Contribuir Preço")
+            .navigationTitle(String(localized: "android.capture_screen_title"))
             .onAppear {
                 if selectedStationId.isEmpty, let first = cityStations.first {
                     selectedStationId = first.id
@@ -375,7 +372,7 @@ public struct CapturePriceSheetView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
             #if os(iOS) && canImport(UIKit)
@@ -385,6 +382,36 @@ public struct CapturePriceSheetView: View {
                 }
             }
             #endif
+        }
+    }
+
+    private func priceInputValue(_ milli: Int64) -> String {
+        (Decimal(milli) / 1_000).formatted(.number.precision(.fractionLength(3)).grouping(.never))
+    }
+
+    private func priceValidationLabel(_ code: String) -> String {
+        switch code {
+        case "ok": return String(localized: "capture.valid_price")
+        case "missing-price": return String(localized: "capture.money_missing")
+        case "negative-price", "zero-price": return String(localized: "capture.money_positive")
+        case "over-precision": return String(localized: "capture.money_precision")
+        case "over-range": return String(localized: "capture.money_range")
+        default: return String(localized: "capture.money_invalid")
+        }
+    }
+
+    private func locationLabel(_ code: String) -> String {
+        switch code {
+        case PortableLocation.verified: return String(localized: "capture.verdict_verified")
+        case PortableLocation.degraded: return String(localized: "capture.verdict_degraded")
+        case PortableLocation.manual: return String(localized: "capture.verdict_manual")
+        case PortableLocation.denied: return String(localized: "capture.verdict_denied")
+        case PortableLocation.simulated: return String(localized: "capture.verdict_simulated")
+        case PortableLocation.accuracyAccurate: return String(localized: "capture.accuracy_accurate")
+        case PortableLocation.accuracyCoarse: return String(localized: "capture.accuracy_coarse")
+        case PortableLocation.freshnessFresh: return String(localized: "capture.freshness_fresh")
+        case PortableLocation.freshnessStale: return String(localized: "capture.freshness_stale")
+        default: return String(localized: "capture.location_unknown")
         }
     }
 
@@ -398,8 +425,8 @@ public struct CapturePriceSheetView: View {
         }
         let result = FuelBoardOcr.associate(tokens: tokens)
         if !result.rows.isEmpty {
-            let names = result.rows.map { "\(FuelProduct.fromOcr($0.product).displayNamePtBr): \(AbastevoTheme.formatBrlMilli($0.amountMilli))" }
-            ocrAssociationSummary = "Associação da placa: \(names.joined(separator: " | "))"
+            let names = result.rows.map { "\(FuelProduct.fromOcr($0.product).localizedName): \(AbastevoTheme.formatBrlMilli($0.amountMilli))" }
+            ocrAssociationSummary = String(localized: "capture.board_association", defaultValue: "Prices recognized on the board: \(names.joined(separator: " | "))")
         }
     }
 
@@ -517,9 +544,9 @@ public struct ForumFeedSheetView: View {
     public var body: some View {
         NavigationStack {
             List {
-                Section("Publicações") {
-                    Picker("Categoria", selection: $selectedCategory) {
-                        Text("Todas").tag(Optional<String>.none)
+                Section(String(localized: "forum.posts")) {
+                    Picker(String(localized: "android.forum_topic_category_label"), selection: $selectedCategory) {
+                        Text(String(localized: "forum.all_categories")).tag(Optional<String>.none)
                         ForEach(categories) { category in
                             Text(category.name).tag(Optional(category.code))
                         }
@@ -528,10 +555,10 @@ public struct ForumFeedSheetView: View {
                     case .loading:
                         ProgressView()
                     case .unavailable:
-                        Text("Não foi possível carregar o fórum.").foregroundStyle(.secondary)
+                        Text(String(localized: "android.forum_unavailable_title")).foregroundStyle(.secondary)
                     case .loaded:
                         if posts.isEmpty {
-                            Text("Nenhuma publicação nesta categoria.").foregroundStyle(.secondary)
+                            Text(String(localized: "android.forum_feed_empty_hint")).foregroundStyle(.secondary)
                         }
                         ForEach(posts) { post in
                             NavigationLink {
@@ -550,16 +577,16 @@ public struct ForumFeedSheetView: View {
                 }
                 let myTopics = viewModel.identity.items(of: .forumTopic)
                 if !myTopics.isEmpty {
-                    Section("Meus tópicos") {
+                    Section(String(localized: "forum.my_topics")) {
                         ForEach(myTopics) { item in
                             CommunityOutboxRow(viewModel: viewModel, item: item)
                         }
                     }
                 }
                 if !viewModel.snapshot.forumTopics.isEmpty {
-                    Section("Rascunhos antigos neste dispositivo") {
+                    Section(String(localized: "forum.local_drafts")) {
                         ForEach(viewModel.snapshot.forumTopics) { draft in
-                            NavigationLink(draft.title.isEmpty ? "Rascunhos de comentários" : draft.title) {
+                            NavigationLink(draft.title.isEmpty ? String(localized: "forum.comment_drafts") : draft.title) {
                                 List {
                                     if !draft.body.isEmpty {
                                         Text(draft.body)
@@ -568,20 +595,20 @@ public struct ForumFeedSheetView: View {
                                         Text(comment.body)
                                     }
                                 }
-                                .navigationTitle("Rascunho local")
+                                .navigationTitle(String(localized: "forum.local_draft"))
                             }
                         }
                     }
                 }
             }
-            .navigationTitle("Fórum Abastevo")
+            .navigationTitle(String(localized: "android.forum_screen_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
                 if !categories.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Novo tópico", systemImage: "square.and.pencil") { showNewDraft = true }
+                        Button(String(localized: "android.forum_new_topic"), systemImage: "square.and.pencil") { showNewDraft = true }
                     }
                 }
             }
@@ -612,10 +639,10 @@ public struct ForumFeedSheetView: View {
 
     private func postLabel(_ kind: ForumPublicPost.Kind) -> String {
         switch kind {
-        case .editorial: return "Guia editorial"
-        case .news: return "Notícia"
-        case .topic: return "Comunidade"
-        case .bulletin: return "Boletim"
+        case .editorial: return String(localized: "android.forum_kind_editorial")
+        case .news: return String(localized: "android.forum_kind_news")
+        case .topic: return String(localized: "android.source_badge_community")
+        case .bulletin: return String(localized: "android.forum_kind_bulletin")
         }
     }
 }
@@ -645,20 +672,20 @@ public struct ForumPostDetailView: View {
                         Link(source.name, destination: url)
                     }
                     HStack(spacing: 12) {
-                        Label("\(detail.likeCount)", systemImage: "hand.thumbsup")
-                        Label("\(detail.dislikeCount)", systemImage: "hand.thumbsdown")
+                        Label(detail.likeCount.formatted(), systemImage: "hand.thumbsup")
+                        Label(detail.dislikeCount.formatted(), systemImage: "hand.thumbsdown")
                     }
                     .foregroundStyle(.secondary)
                 } else if isLoadingDetail {
                     ProgressView()
                 } else {
-                    Text("Não foi possível carregar a publicação.").foregroundStyle(.secondary)
+                    Text(String(localized: "android.forum_post_not_found_hint")).foregroundStyle(.secondary)
                 }
             }
-            Section("Comentários publicados") {
+            Section(String(localized: "android.forum_comments_title")) {
                 if let comments {
                     if comments.isEmpty {
-                        Text("Nenhum comentário publicado.").foregroundStyle(.secondary)
+                        Text(String(localized: "forum.no_comments")).foregroundStyle(.secondary)
                     }
                     ForEach(comments) { comment in
                         VStack(alignment: .leading, spacing: 4) {
@@ -669,12 +696,12 @@ public struct ForumPostDetailView: View {
                 } else if isLoadingComments {
                     ProgressView()
                 } else {
-                    Text("Não foi possível carregar os comentários.").foregroundStyle(.secondary)
+                    Text(String(localized: "forum.comments_unavailable")).foregroundStyle(.secondary)
                 }
             }
             ForumCommentComposer(viewModel: viewModel, postId: post.id)
         }
-        .navigationTitle("Publicação")
+        .navigationTitle(String(localized: "android.forum_detail_title"))
         .task {
             if let client = try? viewModel.socialReadClient() {
                 let loaded = try? await client.fetchForumPost(id: post.id)
@@ -706,26 +733,26 @@ public struct ForumNewTopicSheetView: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Picker("Categoria", selection: $categoryCode) {
+                Picker(String(localized: "android.forum_topic_category_label"), selection: $categoryCode) {
                     ForEach(categories) { category in
                         Text(category.name).tag(category.code)
                     }
                 }
-                TextField("Título do tópico (até 120 caracteres)", text: $title)
-                TextField("Descrição (até 4000 caracteres)", text: $bodyText, axis: .vertical)
+                TextField(String(localized: "forum.title_hint"), text: $title)
+                TextField(String(localized: "forum.body_hint"), text: $bodyText, axis: .vertical)
                     .lineLimit(4...8)
-                Text("O tópico passa por moderação antes de aparecer no fórum.")
+                Text(String(localized: "forum.moderation_notice"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if viewModel.currentAccountIdOrNil == nil {
-                    Text("Entre na conta gratuita para publicar. Até lá, o tópico fica como rascunho neste aparelho.")
+                    Text(String(localized: "forum.topic_draft"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 if let errorText {
                     Text(errorText).foregroundStyle(.red)
                 }
-                Button("Publicar tópico") {
+                Button(String(localized: "android.forum_topic_publish")) {
                     switch viewModel.publishForumTopic(categoryCode: categoryCode, title: title, body: bodyText) {
                     case .success:
                         dismiss()
@@ -736,10 +763,10 @@ public struct ForumNewTopicSheetView: View {
                 .disabled(categoryCode.isEmpty)
             }
             .onAppear { categoryCode = categories.first?.code ?? "" }
-            .navigationTitle("Novo tópico")
+            .navigationTitle(String(localized: "android.forum_new_topic"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
+                    Button(String(localized: "android.action_cancel")) { dismiss() }
                 }
             }
         }
@@ -759,10 +786,10 @@ public struct ContributorsSheetView: View {
                 case .loading:
                     ProgressView()
                 case .unavailable:
-                    Text("Não foi possível carregar os colaboradores.").foregroundStyle(.secondary)
+                    Text(String(localized: "community.contributors_unavailable")).foregroundStyle(.secondary)
                 case .loaded:
                     if contributors.isEmpty {
-                        Text("Nenhum perfil público disponível.").foregroundStyle(.secondary)
+                        Text(String(localized: "community.no_profiles")).foregroundStyle(.secondary)
                     }
                     ForEach(contributors.indices, id: \.self) { index in
                         let contributor = contributors[index]
@@ -777,10 +804,10 @@ public struct ContributorsSheetView: View {
                     }
                 }
             }
-            .navigationTitle("Contribuidores")
+            .navigationTitle(String(localized: "community.contributors"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
             .task {
@@ -806,9 +833,9 @@ public struct MyContributionsSheetView: View {
         let items = viewModel.identity.items(of: .priceObservation)
         NavigationStack {
             List {
-                Section("Envios deste aparelho") {
+                Section(String(localized: "community.device_submissions")) {
                     if items.isEmpty {
-                        Text("Nenhuma contribuição enviada por este aparelho.")
+                        Text(String(localized: "community.device_submissions_empty"))
                             .foregroundStyle(.secondary)
                     }
                     ForEach(items) { item in
@@ -817,11 +844,11 @@ public struct MyContributionsSheetView: View {
                 }
                 OwnObservationHistorySection(viewModel: viewModel)
                 if !viewModel.snapshot.myContributions.isEmpty {
-                    Section("Rascunhos antigos (não enviados)") {
+                    Section(String(localized: "community.old_drafts")) {
                         ForEach(viewModel.snapshot.myContributions) { entry in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(entry.stationName).font(.headline)
-                                Text("\(entry.product.displayNamePtBr) · \(AbastevoTheme.formatBrlMilli(entry.amountMilli))")
+                                Text("\(entry.product.localizedName) · \(AbastevoTheme.formatBrlMilli(entry.amountMilli))")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -829,10 +856,10 @@ public struct MyContributionsSheetView: View {
                     }
                 }
             }
-            .navigationTitle("Minhas Contribuições")
+            .navigationTitle(String(localized: "android.profile_contributions_section"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
             .task {

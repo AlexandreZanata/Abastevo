@@ -83,11 +83,11 @@ public enum ApiEnvironment: String, CaseIterable, Codable, Sendable {
 
     public var origin: String { rawValue }
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .staging: return "Oficial / Staging (abastevo.com.br)"
-        case .preview: return "Offline / Preview (RFC 2606)"
-        case .localProof: return "Local Proof (127.0.0.1:18080)"
+        case .staging: return String(localized: "origin.official", bundle: CoreLocalization.bundle)
+        case .preview: return String(localized: "origin.offline", bundle: CoreLocalization.bundle)
+        case .localProof: return String(localized: "origin.local", bundle: CoreLocalization.bundle)
         }
     }
 

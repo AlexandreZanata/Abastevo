@@ -1,6 +1,7 @@
 name: AnpFuel
 options:
   bundleIdPrefix: com.anpfuel
+  developmentLanguage: en
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -17,6 +18,10 @@ targets:
     platform: iOS
     sources:
       - path: Sources/AnpFuelCore
+        excludes:
+          - Resources/Localizable.xcstrings
+      - path: Sources/AnpFuelCore/Resources/Localizable.xcstrings
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anpfuel.core
@@ -26,8 +31,14 @@ targets:
     platform: iOS
     sources:
       - path: Sources/AnpFuelShell
+        excludes:
+          - Localizable.xcstrings
+      - path: Sources/AnpFuelShell/Localizable.xcstrings
+        buildPhase: resources
       - path: Assets.xcassets
       - path: App/PrivacyInfo.xcprivacy
+      - path: App/InfoPlist.xcstrings
+        buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources
     dependencies:

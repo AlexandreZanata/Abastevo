@@ -29,7 +29,7 @@ public final class AnpSurveyModel: ObservableObject {
     @Published public private(set) var cityAverages: [AnpMunicipalityAverage] = []
     @Published public private(set) var cityAvailability: AnpCityAvailability?
     @Published public private(set) var displayStations: [AnpStationWeekPrice] = []
-    @Published public private(set) var weekLabel = String(localized: "Pesquisa ANP")
+    @Published public private(set) var weekLabel = String(localized: "anp.survey")
     @Published public private(set) var lastCatalogCheck: Date?
     @Published public private(set) var verification: AnpManualVerification?
 
@@ -94,7 +94,7 @@ public final class AnpSurveyModel: ObservableObject {
         lastCatalogCheck = state.lastCatalogCheckEpochSeconds.map { Date(timeIntervalSince1970: TimeInterval($0)) }
         verification = state.verification
         displayWeek = AnpOfficialRules.displayWeek(activeWeekId: activeWeekId, manifests: manifests)
-        weekLabel = displayWeek.map(AnpWeekText.compact) ?? String(localized: "Pesquisa ANP")
+        weekLabel = displayWeek.map(AnpWeekText.compact) ?? String(localized: "anp.survey")
         cityContextChanged()
     }
 
@@ -149,7 +149,7 @@ public final class AnpSurveyModel: ObservableObject {
     public func loadCatalog() {
         guard let host, !isLoadingCatalog else { return }
         guard !host.isOfflineSimulation else {
-            catalogError = String(localized: "Sem conexão. As semanas já baixadas continuam disponíveis.")
+            catalogError = String(localized: "anp.catalog.offline")
             return
         }
         isLoadingCatalog = true
@@ -206,7 +206,7 @@ public final class AnpSurveyModel: ObservableObject {
     public func manualSync() async {
         guard let host, !isSyncing else { return }
         guard !host.isOfflineSimulation else {
-            syncError = String(localized: "Sem conexão. Mostrando os dados oficiais já baixados.")
+            syncError = String(localized: "anp.sync.offline")
             return
         }
         isCheckingLatest = true
@@ -359,8 +359,8 @@ public final class AnpSurveyModel: ObservableObject {
         )
         for drop in drops {
             let content = UNMutableNotificationContent()
-            content.title = String(localized: "Queda de preço: \(drop.product.displayNamePtBr)")
-            content.body = String(localized: "\(city.displayTitle): \(AnpPriceRounding.formatBrl(milli: drop.currentMilli)) na pesquisa ANP de \(AnpWeekText.compact(current)) (antes \(AnpPriceRounding.formatBrl(milli: drop.previousMilli))).")
+            content.title = String(localized: "anp.alert.drop", defaultValue: "Price drop: \(drop.product.localizedName)")
+            content.body = String(localized: "anp.alert.survey_price", defaultValue: "\(city.displayTitle): \(AnpPriceRounding.formatBrl(milli: drop.currentMilli, locale: .current)) in the \(AnpWeekText.compact(current)) ANP survey (previously \(AnpPriceRounding.formatBrl(milli: drop.previousMilli, locale: .current))).")
             let request = UNNotificationRequest(identifier: "\(drop.alertKey):\(drop.weekId)", content: content, trigger: nil)
             do {
                 try await center.add(request)
@@ -376,75 +376,57 @@ public final class AnpSurveyModel: ObservableObject {
     static func message(for error: Error) -> String {
         if let client = error as? AnpSurveyClientError {
             switch client {
-            case .refusedUrl: return String(localized: "Endereço fora do site oficial da ANP foi recusado.")
-            case .httpStatus(let code): return String(localized: "O site da ANP respondeu com erro (\(code)). Tente novamente mais tarde.")
-            case .tooLarge: return String(localized: "Arquivo da ANP maior que o limite permitido.")
-            case .empty, .notSpreadsheet, .unsupportedContentType: return String(localized: "O arquivo recebido não é uma planilha válida da ANP.")
-            case .transport: return String(localized: "Não foi possível conectar ao site da ANP.")
-            case .emptyCatalog: return String(localized: "Nenhuma semana encontrada na página da ANP.")
+            case .refusedUrl: return String(localized: "anp.error.url")
+            case .httpStatus(let code): return String(localized: "anp.error.http", defaultValue: "The ANP website returned an error (\(String(code))). Try again later.")
+            case .tooLarge: return String(localized: "anp.error.size")
+            case .empty, .notSpreadsheet, .unsupportedContentType: return String(localized: "anp.error.file")
+            case .transport: return String(localized: "anp.error.connect")
+            case .emptyCatalog: return String(localized: "anp.error.empty")
             }
         }
         if let xlsx = error as? AnpXlsxError {
             switch xlsx {
-            case .weekMismatch: return String(localized: "A planilha não corresponde à semana escolhida.")
-            case .limitExceeded, .entryTooLarge: return String(localized: "A planilha excede os limites de leitura seguros.")
-            default: return String(localized: "Não foi possível ler a planilha da ANP.")
+            case .weekMismatch: return String(localized: "anp.error.week")
+            case .limitExceeded, .entryTooLarge: return String(localized: "anp.error.read_limit")
+            default: return String(localized: "anp.error.read")
             }
         }
-        if error is AnpStoreError { return String(localized: "Não foi possível salvar os dados neste aparelho.") }
-        return String(localized: "Não foi possível concluir o download.")
+        if error is AnpStoreError { return String(localized: "anp.error.save") }
+        return String(localized: "anp.error.download")
     }
 }
 
-/// pt-BR survey week labels (Android `SurveyWeekFormatter`).
+/// Display official survey dates in UTC with the user's regional format.
 enum AnpWeekText {
-    private static let monthFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "pt_BR")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "MMM"
-        return formatter
-    }()
-
-    private static func parts(_ iso: String) -> (day: Int, month: String, year: Int)? {
-        guard let date = AnpCalendar.parseIsoDay(iso) else { return nil }
-        let pieces = iso.split(separator: "-")
-        guard pieces.count == 3, let year = Int(pieces[0]), let day = Int(pieces[2]) else { return nil }
-        let month = monthFormatter.string(from: date).replacingOccurrences(of: ".", with: "")
-        return (day, month, year)
-    }
-
-    /// "9–15 nov 2026", "29 nov – 5 dez 2026", "29 dez 2025 – 4 jan 2026".
     static func compact(_ week: AnpSurveyWeekRef) -> String {
-        guard let start = parts(week.startIso), let end = parts(week.endIso) else { return week.id }
-        if start.year == end.year && start.month == end.month {
-            return "\(start.day)–\(end.day) \(start.month) \(start.year)"
-        }
-        if start.year == end.year {
-            return "\(start.day) \(start.month) – \(end.day) \(end.month) \(end.year)"
-        }
-        return "\(start.day) \(start.month) \(start.year) – \(end.day) \(end.month) \(end.year)"
+        format(startIso: week.startIso, endIso: week.endIso, dateStyle: .abbreviated)
     }
 
-    /// "09/11/2026 a 15/11/2026".
     static func range(_ week: AnpSurveyWeekRef) -> String {
-        "\(brazilian(week.startIso)) a \(brazilian(week.endIso))"
+        range(startIso: week.startIso, endIso: week.endIso)
     }
 
-    static func brazilian(_ iso: String) -> String {
-        let pieces = iso.split(separator: "-")
-        guard pieces.count == 3 else { return iso }
-        return "\(pieces[2])/\(pieces[1])/\(pieces[0])"
+    static func range(startIso: String, endIso: String) -> String {
+        format(startIso: startIso, endIso: endIso, dateStyle: .numeric)
+    }
+
+    static func day(_ iso: String) -> String {
+        guard let date = AnpCalendar.parseIsoDay(iso) else { return "—" }
+        return date.formatted(Date.FormatStyle(date: .numeric, time: .omitted, timeZone: .gmt))
+    }
+
+    private static func format(startIso: String, endIso: String, dateStyle: Date.IntervalFormatStyle.DateStyle) -> String {
+        guard let start = AnpCalendar.parseIsoDay(startIso),
+              let end = AnpCalendar.parseIsoDay(endIso), start <= end else { return "—" }
+        if start == end { return day(startIso) }
+        return (start..<end).formatted(Date.IntervalFormatStyle(date: dateStyle, time: .omitted, timeZone: .gmt))
     }
 
     static func bytes(_ count: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: count, countStyle: .file)
+        count.formatted(.byteCount(style: .file))
     }
 
-    static func age(since date: Date, now: Date = Date()) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "pt_BR")
-        formatter.unitsStyle = .full
-        return formatter.localizedString(for: date, relativeTo: now)
+    static func age(since date: Date) -> String {
+        date.formatted(.relative(presentation: .numeric, unitsStyle: .wide))
     }
 }

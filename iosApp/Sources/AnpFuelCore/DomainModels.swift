@@ -40,29 +40,16 @@ public enum FuelProduct: String, CaseIterable, Codable, Identifiable, Hashable, 
         }
     }
 
-    public var displayNamePtBr: String {
+    public var localizedName: String {
         switch self {
-        case .gasolineRegular: return "Gasolina Comum"
-        case .gasolinePremium: return "Gasolina Aditivada"
-        case .gasolinePremiumGrade: return "Gasolina Premium"
-        case .ethanol: return "Etanol"
-        case .dieselS10: return "Diesel S10"
-        case .dieselS500: return "Diesel S500"
-        case .cng: return "GNV"
-        case .lpgP13: return "GLP 13 kg"
-        }
-    }
-
-    public var displayNameEn: String {
-        switch self {
-        case .gasolineRegular: return "Regular Gasoline"
-        case .gasolinePremium: return "Additive Gasoline"
-        case .gasolinePremiumGrade: return "Premium Gasoline"
-        case .ethanol: return "Ethanol"
-        case .dieselS10: return "Diesel S10"
-        case .dieselS500: return "Diesel S500"
-        case .cng: return "CNG"
-        case .lpgP13: return "LPG 13 kg"
+        case .gasolineRegular: return String(localized: "android.fuel_product_gasoline_regular", bundle: CoreLocalization.bundle)
+        case .gasolinePremium: return String(localized: "android.fuel_product_gasoline_premium", bundle: CoreLocalization.bundle)
+        case .gasolinePremiumGrade: return String(localized: "android.fuel_product_gasoline_premium_grade", bundle: CoreLocalization.bundle)
+        case .ethanol: return String(localized: "android.fuel_product_ethanol", bundle: CoreLocalization.bundle)
+        case .dieselS10: return String(localized: "android.fuel_product_diesel_s10", bundle: CoreLocalization.bundle)
+        case .dieselS500: return String(localized: "android.fuel_product_diesel_s500", bundle: CoreLocalization.bundle)
+        case .cng: return String(localized: "android.fuel_product_cng", bundle: CoreLocalization.bundle)
+        case .lpgP13: return String(localized: "android.fuel_product_lpg_p13", bundle: CoreLocalization.bundle)
         }
     }
 
@@ -106,13 +93,13 @@ public enum Propulsion: String, CaseIterable, Codable, Identifiable, Sendable {
 
     public var id: String { rawValue }
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .combustion: return "Combustão"
-        case .flex: return "Flex"
-        case .hybrid: return "Híbrido"
-        case .plugInHybrid: return "Híbrido Plug-in"
-        case .electric: return "Elétrico (BEV)"
+        case .combustion: return String(localized: "android.vehicle_propulsion_ice", bundle: CoreLocalization.bundle)
+        case .flex: return String(localized: "vehicle.propulsion.flex", bundle: CoreLocalization.bundle)
+        case .hybrid: return String(localized: "android.vehicle_propulsion_hev", bundle: CoreLocalization.bundle)
+        case .plugInHybrid: return String(localized: "android.vehicle_propulsion_phev", bundle: CoreLocalization.bundle)
+        case .electric: return String(localized: "android.vehicle_propulsion_bev", bundle: CoreLocalization.bundle)
         }
     }
 
@@ -354,15 +341,15 @@ public enum PriceConditionKind: String, CaseIterable, Codable, Identifiable, Sen
 
     public var id: String { rawValue }
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .standard: return "Preço padrão na bomba"
-        case .cash: return "Dinheiro / à vista"
-        case .pix: return "Pix"
-        case .debit: return "Débito"
-        case .credit: return "Crédito"
-        case .app: return "App do posto"
-        case .loyalty: return "Clube / fidelidade"
+        case .standard: return String(localized: "community.price.standard", bundle: CoreLocalization.bundle)
+        case .cash: return String(localized: "android.map_sheet_condition_cash", bundle: CoreLocalization.bundle)
+        case .pix: return String(localized: "android.enterprise_fuelings_payment_pix", bundle: CoreLocalization.bundle)
+        case .debit: return String(localized: "android.enterprise_fuelings_payment_debit", bundle: CoreLocalization.bundle)
+        case .credit: return String(localized: "android.enterprise_fuelings_payment_credit", bundle: CoreLocalization.bundle)
+        case .app: return String(localized: "android.map_sheet_condition_app", bundle: CoreLocalization.bundle)
+        case .loyalty: return String(localized: "android.map_sheet_condition_loyalty", bundle: CoreLocalization.bundle)
         }
     }
 
@@ -437,13 +424,13 @@ public enum CoordinatePinTier: String, Codable, Equatable, Sendable {
         return self != .cityCentroid
     }
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .reviewed: return "Coordenada revisada"
-        case .osmMapped: return "Mapeado (OSM)"
-        case .anpReported: return "Localização ANP"
-        case .addressPoint: return "Ponto de endereço"
-        case .cityCentroid: return "Somente na lista (sem pino exato)"
+        case .reviewed: return String(localized: "station.pin.reviewed", bundle: CoreLocalization.bundle)
+        case .osmMapped: return String(localized: "station.pin.osm", bundle: CoreLocalization.bundle)
+        case .anpReported: return String(localized: "station.pin.anp", bundle: CoreLocalization.bundle)
+        case .addressPoint: return String(localized: "station.pin.address", bundle: CoreLocalization.bundle)
+        case .cityCentroid: return String(localized: "station.pin.listOnly", bundle: CoreLocalization.bundle)
         }
     }
 }
@@ -556,12 +543,12 @@ public enum StationSortOrder: String, CaseIterable, Codable, Identifiable, Senda
 
     public var id: String { rawValue }
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .lowestPrice: return "Menor preço"
-        case .mostRecent: return "Mais recentes"
-        case .distance: return "Mais perto"
-        case .name: return "Nome"
+        case .lowestPrice: return String(localized: "station.order.lowest", bundle: CoreLocalization.bundle)
+        case .mostRecent: return String(localized: "android.forum_sort_recent", bundle: CoreLocalization.bundle)
+        case .distance: return String(localized: "station.order.closest", bundle: CoreLocalization.bundle)
+        case .name: return String(localized: "station.order.name", bundle: CoreLocalization.bundle)
         }
     }
 }
@@ -572,10 +559,10 @@ public enum FeedSortOrder: String, CaseIterable, Codable, Identifiable, Sendable
 
     public var id: String { rawValue }
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .recent: return "Mais recentes"
-        case .cheapest: return "Menor preço"
+        case .recent: return String(localized: "android.forum_sort_recent", bundle: CoreLocalization.bundle)
+        case .cheapest: return String(localized: "station.order.lowest", bundle: CoreLocalization.bundle)
         }
     }
 }
@@ -1293,10 +1280,10 @@ public enum ArcadeGameKind: String, CaseIterable, Identifiable, Sendable {
     case fuelFlight = "FUEL_FLIGHT"
 
     public var id: String { rawValue }
-    public var titlePtBr: String {
+    public var localizedTitle: String {
         switch self {
-        case .fuelRun: return "Corrida do Combustível"
-        case .fuelFlight: return "Voo Econômico"
+        case .fuelRun: return String(localized: "android.games_run_title", bundle: CoreLocalization.bundle)
+        case .fuelFlight: return String(localized: "android.games_flight_title", bundle: CoreLocalization.bundle)
         }
     }
 }

@@ -88,11 +88,11 @@ public final class LedgerCoordinator: ObservableObject {
     // MARK: - Entries
 
     public func save(form: LedgerEntryForm, editing existing: LedgerEntryRecord?) -> Result<LedgerEntryRecord, AppValidationError> {
-        guard let host else { return .failure(AppValidationError(String(localized: "Diário indisponível."))) }
+        guard let host else { return .failure(AppValidationError(String(localized: "ledger.unavailable"))) }
         let id = existing?.id ?? LedgerIds.newId()
         switch form.build(id: id, vehicles: host.snapshot.vehicles, timezone: TimeZone.current.identifier, existing: existing) {
         case .failure(let error):
-            return .failure(AppValidationError(error.messagePtBr))
+            return .failure(AppValidationError(error.localizedMessage))
         case .success(let record):
             var entries = host.snapshot.ledgerEntries
             if let index = entries.firstIndex(where: { $0.id == record.id }) {
@@ -166,13 +166,13 @@ public final class LedgerCoordinator: ObservableObject {
     public static func admissionMessage(_ outcome: VehicleAdmissionOutcome) -> String {
         switch outcome {
         case .accept:
-            return String(localized: "Cadastro permitido.")
+            return String(localized: "ledger.admission_allowed")
         case .premiumRequired:
-            return String(localized: "O plano gratuito inclui um veículo. Veículos adicionais exigem o Premium com a capacidade vehicles.multiple verificada pelo servidor.")
+            return String(localized: "android.vehicle_premium_required_message")
         case .capacityExceeded:
-            return String(localized: "Limite técnico de três veículos atingido. Remova um veículo para cadastrar outro.")
+            return String(localized: "android.vehicle_max_reached")
         case .hostedAuthorityRequired:
-            return String(localized: "O servidor precisa confirmar a assinatura antes deste cadastro.")
+            return String(localized: "ledger.verify_subscription")
         }
     }
 
@@ -220,15 +220,15 @@ public final class LedgerCoordinator: ObservableObject {
     private func readyClient() -> ReadyClient? {
         guard let host else { return nil }
         guard let scope = currentScope else {
-            notice = String(localized: "Entre na conta gratuita para sincronizar o diário.")
+            notice = String(localized: "ledger.sync.sign_in")
             return nil
         }
         guard !host.isOfflineSimulation else {
-            notice = String(localized: "Modo offline: os registros continuam neste aparelho.")
+            notice = String(localized: "ledger.sync.offline")
             return nil
         }
         guard let client = makeClient(for: scope) else {
-            notice = String(localized: "Ambiente de rede inválido para a conta atual.")
+            notice = String(localized: "ledger.sync.invalid_origin")
             return nil
         }
         return ReadyClient(scope: scope, client: client)
@@ -265,15 +265,15 @@ public final class LedgerCoordinator: ObservableObject {
                     )
                 }
                 self.notice = enabled
-                    ? String(localized: "Sincronização ativada. Os registros pendentes serão enviados.")
-                    : String(localized: "Sincronização desativada. Os registros continuam neste aparelho.")
+                    ? String(localized: "ledger.sync.enabled_notice")
+                    : String(localized: "ledger.sync.disabled_notice")
                 if enabled { self.dispatchPending() }
             } catch {
                 guard let self else { return }
                 self.isWorking = false
                 self.notice = enabled
                     ? Self.describe(error)
-                    : String(localized: "Envios pausados neste aparelho; o consentimento no servidor não pôde ser revogado agora.")
+                    : String(localized: "ledger.sync.revoke_pending")
             }
         }
     }
@@ -416,7 +416,7 @@ public final class LedgerCoordinator: ObservableObject {
                 pages += 1
                 guard let next = page.nextCursor else { break }
                 if !seen.insert(next).inserted {
-                    notice = String(localized: "O servidor repetiu a página; tente novamente.")
+                    notice = String(localized: "ledger.sync.repeated_page")
                     return
                 }
                 if pages >= 50 {
@@ -485,7 +485,7 @@ public final class LedgerCoordinator: ObservableObject {
             guard self.currentScope == scope else { return }
             self.mutate { LedgerSyncEngine.updateConflictCurrent($0, conflictKey: conflict.key, current: current) }
             if current.state == .unknown {
-                self.notice = String(localized: "Não foi possível ler a versão do servidor agora.")
+                self.notice = String(localized: "ledger.sync.read_failed")
             }
         }
     }
@@ -508,7 +508,7 @@ public final class LedgerCoordinator: ObservableObject {
                 guard self.currentScope == scope else { return }
                 let entries = self.records
                 self.mutate { LedgerSyncEngine.applyErasure($0, records: entries) }
-                self.notice = String(localized: "Diário apagado da nuvem. Os registros continuam neste aparelho.")
+                self.notice = String(localized: "ledger.sync.erased_notice")
             } catch {
                 guard let self else { return }
                 self.isWorking = false
@@ -533,29 +533,29 @@ public final class LedgerCoordinator: ObservableObject {
     public static func codeLabel(_ code: String?) -> String {
         switch code ?? "" {
         case "ledger.capability-required":
-            return String(localized: "Premium (professional.write) ou consentimento de envio necessário; os registros continuam neste aparelho")
+            return String(localized: "ledger.refusal.capability")
         case "ledger.invalid", "http-400":
-            return String(localized: "dados recusados pelo servidor: o veículo precisa existir na nuvem e o hodômetro não pode ser menor que um já enviado")
+            return String(localized: "ledger.refusal.invalid")
         case "ledger.auth-required", "http-401":
-            return String(localized: "entre novamente na conta")
+            return String(localized: "ledger.refusal.sign_in_again")
         case "ledger.not-found", "http-404":
-            return String(localized: "registro indisponível no servidor")
+            return String(localized: "ledger.refusal.missing")
         case "ledger.conflict":
-            return String(localized: "conflito de versões")
+            return String(localized: "ledger.refusal.conflict")
         case "ledger.offline":
-            return String(localized: "sem conexão")
+            return String(localized: "ledger.refusal.offline")
         case "ledger.sign-in-required":
-            return String(localized: "entre na conta gratuita")
+            return String(localized: "ledger.refusal.sign_in")
         case "ledger.current-unknown":
-            return String(localized: "Atualize a versão do servidor antes de decidir.")
+            return String(localized: "ledger.refusal.refresh_current")
         case "ledger.current-missing":
-            return String(localized: "O servidor não tem mais este registro; use a versão do servidor para removê-lo aqui.")
+            return String(localized: "ledger.refusal.current_missing")
         case "ledger.current-undecodable":
-            return String(localized: "A versão do servidor não pôde ser lida neste aparelho.")
+            return String(localized: "ledger.refusal.current_undecodable")
         case "ledger.local-invalid":
-            return String(localized: "Revise o registro local antes de mantê-lo.")
+            return String(localized: "ledger.refusal.local_invalid")
         case "":
-            return String(localized: "sem detalhe")
+            return String(localized: "ledger.refusal.no_detail")
         default:
             return code ?? ""
         }
@@ -564,57 +564,57 @@ public final class LedgerCoordinator: ObservableObject {
     public static func describe(_ error: Error) -> String {
         if let sync = error as? LedgerSyncError {
             switch sync {
-            case .signInRequired: return String(localized: "Entre na conta gratuita para continuar.")
-            case .ownerMismatch: return String(localized: "A sessão mudou de conta; nada foi enviado.")
-            case .invalidCommand: return String(localized: "O registro não pôde ser preparado para envio.")
-            case .invalidReceipt, .invalidPage: return String(localized: "Resposta inválida do servidor.")
+            case .signInRequired: return String(localized: "ledger.sync.sign_in_continue")
+            case .ownerMismatch: return String(localized: "ledger.sync.owner_changed")
+            case .invalidCommand: return String(localized: "ledger.sync.invalid_command")
+            case .invalidReceipt, .invalidPage: return String(localized: "ledger.sync.invalid_response")
             }
         }
         if let transport = error as? SignedTransportError, case .refused(_, let code, _) = transport, let code,
            code.hasPrefix("ledger.") {
-            return String(localized: "Servidor recusou (\(codeLabel(code))).")
+            return String(localized: "ledger.sync.refused_server", defaultValue: "Server refused (\(codeLabel(code))).")
         }
         return IdentityCoordinator.describe(error)
     }
 
     public static func statusLabel(_ status: LedgerRecordSyncStatus) -> String {
         switch status {
-        case .localOnly: return String(localized: "Somente neste aparelho")
-        case .reviewRequired: return String(localized: "Registro antigo: revise antes de sincronizar")
-        case .pending: return String(localized: "Envio pendente")
-        case .synced(let revision): return String(localized: "Sincronizado (revisão \(String(revision)))")
-        case .conflict: return String(localized: "Conflito: escolha a versão")
-        case .refused(let code): return String(localized: "Recusado · \(codeLabel(code))")
-        case .paused: return String(localized: "Envio pausado: Premium necessário")
-        case .erasedFromCloud: return String(localized: "Apagado da nuvem; mantido neste aparelho")
+        case .localOnly: return String(localized: "ledger.status.local_only")
+        case .reviewRequired: return String(localized: "ledger.status.review_required")
+        case .pending: return String(localized: "ledger.status.pending")
+        case .synced(let revision): return String(localized: "ledger.status.synced", defaultValue: "Synced (revision \(revision.formatted()))")
+        case .conflict: return String(localized: "ledger.status.conflict")
+        case .refused(let code): return String(localized: "ledger.status.refused", defaultValue: "Refused · \(codeLabel(code))")
+        case .paused: return String(localized: "ledger.status.paused")
+        case .erasedFromCloud: return String(localized: "ledger.status.erased")
         }
     }
 
     public static func reasonLabel(_ reason: String) -> String {
         switch reason {
-        case "no-records": return String(localized: "sem registros no mês")
-        case "odometer-missing": return String(localized: "falta hodômetro em algum registro")
-        case "odometer-unit-unverified": return String(localized: "há registros antigos com hodômetro a revisar")
-        case "declared-fill-gap": return String(localized: "há abastecimento não registrado declarado")
-        case "odometer-segment-boundary": return String(localized: "o hodômetro foi zerado ou trocado no período")
-        case "distance-nonpositive": return String(localized: "distância insuficiente entre leituras")
-        case "full-anchors-required": return String(localized: "são necessários dois abastecimentos de tanque cheio")
-        case "unsupported-mixed-method": return String(localized: "combustíveis diferentes no mesmo intervalo")
-        case "unsupported-gnv-method": return String(localized: "consumo de GNV ainda não tem método aprovado")
-        case "incompatible-unit": return String(localized: "unidades incompatíveis")
-        case "phev-shared-distance": return String(localized: "híbrido plug-in: distância compartilhada entre combustível e energia")
-        case "energy-unmeasured": return String(localized: "energia das recargas não informada")
-        case "partial-measurement": return String(localized: "nem todas as recargas têm energia informada")
-        case "soc-inconsistent": return String(localized: "carga final menor que a inicial")
-        case "comparison-baseline-zero": return String(localized: "mês anterior sem custo para comparar")
-        case "input-out-of-bounds": return String(localized: "valores fora dos limites")
-        case "unmatched-period-window": return String(localized: "janela de distância não corresponde ao período")
+        case "no-records": return String(localized: "ledger.reason.no_records")
+        case "odometer-missing": return String(localized: "ledger.reason.odometer_missing")
+        case "odometer-unit-unverified": return String(localized: "ledger.reason.odometer_unverified")
+        case "declared-fill-gap": return String(localized: "ledger.reason.declared_gap")
+        case "odometer-segment-boundary": return String(localized: "ledger.reason.odometer_reset")
+        case "distance-nonpositive": return String(localized: "ledger.reason.distance")
+        case "full-anchors-required": return String(localized: "ledger.reason.full_tanks")
+        case "unsupported-mixed-method": return String(localized: "ledger.reason.mixed_fuel")
+        case "unsupported-gnv-method": return String(localized: "ledger.reason.cng")
+        case "incompatible-unit": return String(localized: "ledger.reason.incompatible_unit")
+        case "phev-shared-distance": return String(localized: "ledger.reason.phev_shared")
+        case "energy-unmeasured": return String(localized: "ledger.reason.energy_unmeasured")
+        case "partial-measurement": return String(localized: "ledger.reason.partial_energy")
+        case "soc-inconsistent": return String(localized: "ledger.reason.soc")
+        case "comparison-baseline-zero": return String(localized: "ledger.reason.baseline_zero")
+        case "input-out-of-bounds": return String(localized: "ledger.reason.out_of_bounds")
+        case "unmatched-period-window": return String(localized: "ledger.reason.period_mismatch")
         default:
             if reason.hasPrefix("baseline-incomplete: ") {
-                return String(localized: "mês anterior incompleto: \(reasonLabel(String(reason.dropFirst("baseline-incomplete: ".count))))")
+                return String(localized: "ledger.reason.baseline_incomplete", defaultValue: "previous month incomplete: \(reasonLabel(String(reason.dropFirst("baseline-incomplete: ".count))))")
             }
             if reason.hasPrefix("current-incomplete: ") {
-                return String(localized: "mês atual incompleto: \(reasonLabel(String(reason.dropFirst("current-incomplete: ".count))))")
+                return String(localized: "ledger.reason.current_incomplete", defaultValue: "current month incomplete: \(reasonLabel(String(reason.dropFirst("current-incomplete: ".count))))")
             }
             return reason
         }

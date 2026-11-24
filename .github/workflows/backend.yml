@@ -12,6 +12,8 @@ on:
     branches: [main]
     paths:
       - backend/**
+      # iOS parity exercises backend contracts, so the PR needs backend checks.
+      - iosApp/**
       - tools/station-prep/**
       - contracts/**
       - infra/**

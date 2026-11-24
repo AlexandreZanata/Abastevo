@@ -613,6 +613,12 @@ public enum AnpPriceRounding {
         return "R$ \(groupThousands(reais)),\(centsText)"
     }
 
+    /// Keep ANP prices in BRL while following the display locale for separators and currency placement.
+    public static func formatBrl(milli: Int64, locale: Locale) -> String {
+        (Decimal(milli) / 1_000)
+            .formatted(.currency(code: "BRL").precision(.fractionLength(2)).rounded(rule: .toNearestOrAwayFromZero).locale(locale))
+    }
+
     private static func groupThousands(_ value: Int64) -> String {
         let digits = String(value)
         var groups: [String] = []

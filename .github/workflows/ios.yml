@@ -8,7 +8,9 @@ on:
       - 'iosApp/**'
       - 'contracts/**'
       - 'data/src/main/assets/ibge_municipalities.json'
+      - 'scripts/ios_sync_xcodeproj.py'
       - 'scripts/tests/test_ios_app_integrity.py'
+      - 'scripts/tests/test_ios_localization.py'
       - '.github/workflows/ios.yml'
   push:
     branches: [main]
@@ -16,7 +18,9 @@ on:
       - 'iosApp/**'
       - 'contracts/**'
       - 'data/src/main/assets/ibge_municipalities.json'
+      - 'scripts/ios_sync_xcodeproj.py'
       - 'scripts/tests/test_ios_app_integrity.py'
+      - 'scripts/tests/test_ios_localization.py'
       - '.github/workflows/ios.yml'
 
 permissions:
@@ -36,8 +40,8 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
-      - name: Check project integrity
-        run: python3 -m unittest -v scripts.tests.test_ios_app_integrity
+      - name: Check project integrity and localization
+        run: python3 -m unittest -v scripts.tests.test_ios_app_integrity scripts.tests.test_ios_localization
       - name: Build the native app and run XCTest
         working-directory: iosApp
         run: |

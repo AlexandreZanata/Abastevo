@@ -191,7 +191,8 @@ else
     MOBILE_CHANGED=0
     while IFS= read -r f || [[ -n "$f" ]]; do
         case "$f" in
-            domain/*|application/*|data/*|app/*|maps/*|iosApp/*|shared/*|gradle/*|settings.gradle.kts|build.gradle.kts|gradle.properties)
+            domain/*|application/*|data/*|app/*|maps/*|iosApp/*|shared/*|gradle/*|settings.gradle.kts|build.gradle.kts|gradle.properties|\
+            scripts/check-mobile.sh|scripts/ios_sync_xcodeproj.py|scripts/tests/test_ios_app_integrity.py|scripts/tests/test_ios_localization.py)
                 MOBILE_CHANGED=1
                 break
                 ;;

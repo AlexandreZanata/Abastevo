@@ -9,7 +9,8 @@
 # Test override: MOBILE_ROOT=<dir> points at a fixture tree (see test-gate).
 set -euo pipefail
 
-ROOT="${MOBILE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+SCRIPT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="${MOBILE_ROOT:-$SCRIPT_ROOT}"
 MODE="full"
 if [[ "${1:-}" == "--static-only" ]]; then
     MODE="static"
@@ -172,6 +173,16 @@ if grep -rn "startUpdatingLocation\|allowsBackgroundLocationUpdates" "$ROOT/iosA
     fail "background location tracking found in shipped iOS sources (one-shot only)"
 fi
 pass "no background location tracking in shipped sources"
+
+# MOBILE_ROOT may point to a synthetic tree for the shell guards. The Python
+# suites require the complete repository and run when checking the real tree.
+if [[ "$ROOT" -ef "$SCRIPT_ROOT" ]]; then
+    (
+        cd "$ROOT"
+        python3 -m unittest -v scripts.tests.test_ios_app_integrity scripts.tests.test_ios_localization
+    ) || fail "iOS integrity or localization checks failed"
+    pass "iOS project integrity and localization catalogs"
+fi
 
 if [[ "$MODE" == "static" ]]; then
     echo "check-mobile: static-only ok"

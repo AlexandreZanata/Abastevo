@@ -14,6 +14,12 @@ Acceptance is open. Each supported Android journey needs an equivalent iOS entry
 - Driver Hub and Empresas. Exercise shift lifecycle, GPS opt-in, accounting and recovery. The Empresas flows follow B-BR-IOS-EMP below; staging and device evidence is still needed for every route, and missions, fuelings, fueling authorizations, pause/resume/cancel, the return checklist, checklist photos and tracking are not on iOS.
 - Settings and accessibility. Match the eight Android language resources, appearance, terms, onboarding, permissions, notifications, privacy controls, manual sync and retention. Verify VoiceOver, Dynamic Type, reduced motion, locale switching and iPhone/iPad layouts. Match both Android Arcade games, input options, per-game records and app scene lifecycle.
 
+## B-BR-IOS-I18N / BUC-IOS-I18N — Language and regional formats
+
+- The app follows the operating system's preferred app language. English is the development language. The available languages match Android: English, Brazilian Portuguese, Spanish, German, French, Japanese, Russian and Simplified Chinese.
+- App copy and permission prompts use String Catalogs. Shared labels use the matching Android resource translations where their meaning is the same. Display dates, numbers and units follow the regional format, and prices stay in BRL.
+- Localization leaves signed request bytes, wire formats and the authoritative wording of hash-bound legal terms intact.
+
 ## B-BR-IOS-ID / BUC-IOS-ID — Device identity and signed community writes
 
 - Each signed request uses the backend profile: SHA-512 over the covered base, raw r||s P-256 signature as unpadded base64url, the canonical authority of the selected origin, and one fresh SIGN challenge. The content lines cover the exact body bytes. XCTest replays the Go identity vectors.

@@ -278,7 +278,7 @@ class IosAppIntegrityTests(unittest.TestCase):
             # Tracking stays off on iOS: no location API in company mode.
             for token in ("CLLocationManager", "requestAlwaysAuthorization", "startMonitoring", "CoreLocation"):
                 self.assertNotIn(token, text, f"{token} in {path.name}")
-        self.assertIn("Rastreamento desligado no iOS", views)
+        self.assertRegex(views, r'Text\(\s*String\(localized:\s*"enterprise\.tracking_off"')
 
         state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
         self.assertNotIn("joinSampleEnterprise", state)
@@ -293,7 +293,12 @@ class IosAppIntegrityTests(unittest.TestCase):
         # The hub is the real flow, wired to the coordinator; the placeholder is gone.
         profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
         self.assertNotIn("struct EnterpriseHubSheetView", profile)
-        self.assertIn('title: "Abastevo Empresas", subtitle: "Convites, viagens e despesas da empresa"', profile)
+        self.assertRegex(
+            profile,
+            r'profileNavRow\(\s*icon:\s*"building\.2\.fill",\s*'
+            r'title:\s*String\(localized:\s*"enterprise\.title"[^\n]*\),\s*'
+            r'subtitle:\s*String\(localized:\s*"enterprise\.profile_subtitle"',
+        )
         self.assertIn("public struct EnterpriseHubSheetView: View", views)
         self.assertIn("enterprise: viewModel.enterprise", views)
         self.assertNotIn("ContentUnavailableView", views)
@@ -371,7 +376,10 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertEqual(views.count("public struct VehiclesAndLedgerSheetView: View {"), 1)
         editor = views.split("struct LedgerEntryEditorView: View {", 1)[1].split("struct LedgerIndicatorsSection", 1)[0]
         self.assertIn("selection: $ledgerVehicleId", editor)
-        self.assertIn('Text("Selecione um veículo").tag(nil as String?)', editor)
+        self.assertRegex(
+            editor,
+            r'Text\(\s*String\(localized:\s*"ledger\.select_vehicle"[^\n]*\)\)\s*\.tag\(nil as String\?\)',
+        )
         self.assertIn("self._ledgerVehicleId = State(initialValue: existing?.vehicleId)", editor)
         self.assertIn(".disabled(ledgerVehicleId == nil)", editor)
         self.assertNotIn('?? "default"', views)
@@ -478,6 +486,7 @@ class IosAppIntegrityTests(unittest.TestCase):
         with (IOS_ROOT / "App/Info.plist").open("rb") as fh:
             info = plistlib.load(fh)
         self.assertEqual(info["CFBundleDisplayName"], "abastevo")
+        self.assertEqual(info["CFBundleDevelopmentRegion"], "en")
         self.assertEqual(info["CFBundleShortVersionString"], "3.1.18")
         self.assertEqual(info["CFBundleVersion"], "30118")
         self.assertIn("NSLocationWhenInUseUsageDescription", info)
@@ -510,6 +519,13 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;", pbx)
         self.assertIn("PRODUCT_BUNDLE_IDENTIFIER = com.anpfuel.app;", pbx)
         self.assertIn("PrivacyInfo.xcprivacy", pbx)
+        self.assertIn("developmentRegion = en;", pbx)
+        known_regions = re.search(r"knownRegions = \(([^)]+)\);", pbx)
+        self.assertIsNotNone(known_regions)
+        self.assertEqual(
+            {name.strip().strip('"') for name in known_regions.group(1).split(",")},
+            {"Base", "en", "pt-BR", "es", "de", "fr", "ja", "ru", "zh-Hans"},
+        )
         self.assertEqual(re.findall(r"SWIFT_VERSION = ([^;]+);", pbx), ["5.0", "5.0"])
         self.assertIn('SWIFT_VERSION: "5.0"', (IOS_ROOT / "project.yml").read_text())
         self.assertIn("ENABLE_TESTABILITY = YES;", pbx)
@@ -520,7 +536,7 @@ class IosAppIntegrityTests(unittest.TestCase):
         for entry in icon_catalog["images"]:
             self.assertTrue((IOS_ROOT / "Assets.xcassets/AppIcon.appiconset" / entry["filename"]).is_file(), entry["filename"])
 
-    def test_xcode_project_registers_every_swift_source(self):
+    def test_xcode_project_registers_every_swift_source_and_catalog(self):
         import subprocess
         import sys
 
@@ -635,8 +651,8 @@ class IosAppIntegrityTests(unittest.TestCase):
         offline = (shell / "OfflineNavigationViews.swift").read_text(encoding="utf-8")
         # B-BR-IOS-01: offline navigation hands off to Apple Maps offline maps;
         # the app never claims its own regional package is available.
-        self.assertIn("Mapas regionais indisponíveis", offline)
-        self.assertIn("Mapas Offline", offline)
+        self.assertRegex(offline, r'Text\(\s*String\(localized:\s*"map\.offline\.unavailable"')
+        self.assertRegex(offline, r'Label\(\s*String\(localized:\s*"map\.offline\.apple_maps"')
         self.assertIn("https://maps.apple.com/", offline)
         self.assertNotIn("FileManager", offline)
         store = (IOS_ROOT / "Sources/AnpFuelCore/IosLocalStore.swift").read_text(encoding="utf-8")

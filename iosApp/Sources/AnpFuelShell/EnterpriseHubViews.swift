@@ -17,10 +17,10 @@ public struct EnterpriseHubSheetView: View {
                 signedIn: viewModel.currentAccountIdOrNil != nil,
                 openSignIn: { viewModel.activeSheet = .auth }
             )
-            .navigationTitle("Abastevo Empresas")
+            .navigationTitle(String(localized: "enterprise.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -35,22 +35,22 @@ struct EnterpriseHubContent: View {
     var body: some View {
         List {
             Section {
-                Label("Ambiente de teste com dados sintéticos", systemImage: "testtube.2")
+                Label(String(localized: "android.enterprise_test_environment"), systemImage: "testtube.2")
                     .font(.subheadline.weight(.semibold))
-                Text("Os registros da empresa ficam separados dos seus dados pessoais e são enviados assinados pela chave deste aparelho.")
+                Text(String(localized: "enterprise.context.partition_notice"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
             if !signedIn {
                 Section {
-                    Text("Entre na sua conta pessoal do Abastevo para consultar suas empresas e convites.")
-                    Button("Entrar na minha conta", action: openSignIn)
+                    Text(String(localized: "enterprise.context.sign_in"))
+                    Button(String(localized: "android.enterprise_invitation_sign_in"), action: openSignIn)
                         .buttonStyle(.borderedProminent)
                         .tint(AbastevoTheme.ink)
                 }
             } else if !enterprise.isOriginSupported {
                 Section {
-                    Text("O Abastevo Empresas exige um servidor HTTPS publicado. Este ambiente de rede não oferece o modo empresa.")
+                    Text(String(localized: "enterprise.context.origin_unavailable"))
                 }
             } else if let active = enterprise.active {
                 EnterpriseCompanySections(enterprise: enterprise, active: active)
@@ -58,7 +58,7 @@ struct EnterpriseHubContent: View {
                 EnterpriseContextSections(enterprise: enterprise)
             }
             if let notice = enterprise.notice {
-                Section("Aviso") {
+                Section(String(localized: "enterprise.notice")) {
                     Text(notice).font(.footnote)
                 }
             }
@@ -79,18 +79,18 @@ struct EnterpriseContextSections: View {
 
     var body: some View {
         Section {
-            Text("Escolha uma empresa ou continue no modo pessoal.")
+            Text(String(localized: "android.enterprise_context_intro"))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             if enterprise.isBusy {
-                ProgressView("Consultando suas empresas…")
+                ProgressView(String(localized: "android.enterprise_context_busy"))
             }
             ForEach(enterprise.contexts) { context in
                 Button {
                     enterprise.select(context)
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Entrar em \(context.name)").font(.headline)
+                        Text(String(localized: "android.enterprise_context_select", defaultValue: "Enter \(context.name)")).font(.headline)
                         if let state = context.state, state != "ACTIVE" {
                             Text(EnterpriseLabels.organizationState(state))
                                 .font(.caption)
@@ -101,9 +101,9 @@ struct EnterpriseContextSections: View {
                 .disabled(enterprise.isBusy)
             }
             if enterprise.contextsLoaded && enterprise.contexts.isEmpty && !enterprise.isBusy {
-                Text("Nenhuma empresa disponível nesta consulta.").foregroundStyle(.secondary)
+                Text(String(localized: "android.enterprise_context_empty")).foregroundStyle(.secondary)
             }
-            Button("Atualizar empresas") {
+            Button(String(localized: "android.enterprise_context_refresh")) {
                 enterprise.refreshContexts()
             }
             .disabled(enterprise.isBusy)
@@ -113,15 +113,15 @@ struct EnterpriseContextSections: View {
                     .foregroundStyle(AbastevoTheme.errorRed)
             }
         } header: {
-            Text("Escolher espaço")
+            Text(String(localized: "android.enterprise_context_title"))
         } footer: {
-            Text("A seleção de empresa exige confirmação online. Os registros continuam na empresa em que foram criados ao trocar de espaço.")
+            Text(String(localized: "enterprise.context.selection_notice"))
         }
         Section {
             NavigationLink {
                 EnterpriseInvitationView(enterprise: enterprise)
             } label: {
-                Label("Aceitar um convite", systemImage: "envelope.open")
+                Label(String(localized: "android.enterprise_context_invitation"), systemImage: "envelope.open")
             }
         }
     }
@@ -137,65 +137,65 @@ struct EnterpriseCompanySections: View {
         let snapshot = enterprise.snapshot
         let openTrip = snapshot?.openTrip
         Section {
-            Text("Você está em \(active.summary.name)").font(.headline)
+            Text(String(localized: "android.enterprise_context_current", defaultValue: "You are in \(active.summary.name)")).font(.headline)
             if active.locked {
-                Text("Acesso encerrado: registros ainda não enviados continuam guardados; nenhum registro novo é aceito.")
+                Text(String(localized: "enterprise.context.locked"))
                     .font(.footnote)
                     .foregroundStyle(AbastevoTheme.errorRed)
             } else {
-                Text("Acesso confirmado nesta consulta.").font(.footnote).foregroundStyle(.secondary)
+                Text(String(localized: "android.enterprise_context_confirmed")).font(.footnote).foregroundStyle(.secondary)
             }
-            Button("Usar modo pessoal") {
+            Button(String(localized: "android.enterprise_context_personal")) {
                 enterprise.leaveCompany()
             }
-            Button("Trocar espaço") {
+            Button(String(localized: "android.enterprise_context_switch")) {
                 enterprise.leaveCompany()
                 enterprise.refreshContexts()
             }
         } header: {
-            Text("Modo empresa")
+            Text(String(localized: "android.enterprise_context_home"))
         } footer: {
-            Text("Os registros continuam na empresa em que foram criados ao trocar de espaço.")
+            Text(String(localized: "android.enterprise_context_ownership"))
         }
 
         if !active.locked {
             Section {
                 if let trip = openTrip {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Viagem em andamento").font(.headline)
+                        Text(String(localized: "enterprise.trip.in_progress")).font(.headline)
                         Text(trip.assetLabel)
-                        Text("Início \(EnterpriseLabels.dateTime(millis: trip.startedAtMillis))")
+                        Text(String(localized: "enterprise.trip.start_time", defaultValue: "Started \(EnterpriseLabels.dateTime(millis: trip.startedAtMillis))"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    NavigationLink("Encerrar viagem") {
+                    NavigationLink(String(localized: "android.enterprise_trips_finish")) {
                         EnterpriseTripFinishView(enterprise: enterprise, trip: trip)
                     }
                 } else {
-                    NavigationLink("Iniciar viagem") {
+                    NavigationLink(String(localized: "android.enterprise_trips_start")) {
                         EnterpriseTripStartView(enterprise: enterprise)
                     }
                 }
-                NavigationLink("Registrar despesa") {
+                NavigationLink(String(localized: "android.enterprise_expenses_new")) {
                     EnterpriseExpenseView(enterprise: enterprise)
                 }
             } header: {
-                Text("Operação")
+                Text(String(localized: "enterprise.operations"))
             } footer: {
-                Text("Rastreamento desligado no iOS: o aplicativo não registra trajeto nem localização durante a viagem.")
+                Text(String(localized: "enterprise.tracking_off"))
             }
 
             Section {
                 if enterprise.isRefreshingAssets {
-                    ProgressView("Atualizando seus ativos…")
+                    ProgressView(String(localized: "enterprise.assets.refreshing"))
                 }
                 if enterprise.snapshot?.reference?.forbidden == true {
-                    Text("O servidor não libera a lista de ativos para o seu acesso.").foregroundStyle(.secondary)
+                    Text(String(localized: "enterprise.assets.forbidden")).foregroundStyle(.secondary)
                 } else if enterprise.assets.isEmpty {
-                    Text("Nenhum ativo atribuído a você nesta empresa.").foregroundStyle(.secondary)
+                    Text(String(localized: "android.enterprise_assets_empty")).foregroundStyle(.secondary)
                 }
                 if !enterprise.assets.isEmpty && !enterprise.assetsConfirmed {
-                    Text("Lista não confirmada nas últimas 24 horas. Atualize antes de escolher um ativo.")
+                    Text(String(localized: "android.enterprise_assets_not_confirmed"))
                         .font(.footnote)
                         .foregroundStyle(AbastevoTheme.warningLight)
                 }
@@ -207,34 +207,34 @@ struct EnterpriseCompanySections: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Button("Atualizar ativos") {
+                Button(String(localized: "android.enterprise_assets_refresh")) {
                     enterprise.refreshAssets()
                 }
                 .disabled(enterprise.isRefreshingAssets)
             } header: {
-                Text("Meus ativos")
+                Text(String(localized: "android.enterprise_assets_title"))
             }
         }
 
         Section {
             let unsent = snapshot?.unsentCount ?? 0
             if enterprise.isDelivering {
-                ProgressView("Enviando registros…")
+                ProgressView(String(localized: "enterprise.queue.sending"))
             }
             Text(unsent == 0
-                 ? String(localized: "Nenhum registro aguardando envio.")
-                 : String(localized: "\(unsent) registro(s) aguardando envio."))
-            NavigationLink("Fila de envio") {
+                 ? String(localized: "enterprise.queue.no_pending")
+                 : String(localized: "enterprise.queue.pending_count", defaultValue: "Records waiting to be sent: \(unsent.formatted())."))
+            NavigationLink(String(localized: "enterprise.queue.title")) {
                 EnterpriseQueueView(enterprise: enterprise)
             }
-            Button("Enviar agora") {
+            Button(String(localized: "android.enterprise_trips_send_now")) {
                 enterprise.deliverNow()
             }
             .disabled(enterprise.isDelivering)
         } header: {
-            Text("Sincronização")
+            Text(String(localized: "android.enterprise_sync_title"))
         } footer: {
-            Text("Sem conexão, os registros ficam guardados neste aparelho e são enviados depois. Sair da conta apaga estes registros do aparelho.")
+            Text(String(localized: "enterprise.queue.offline_notice"))
         }
     }
 }
@@ -252,18 +252,18 @@ struct EnterpriseInvitationView: View {
             if let result = enterprise.invitationResult {
                 Section {
                     if result.isActive {
-                        Text("O servidor confirmou seu acesso à empresa.")
+                        Text(String(localized: "android.enterprise_invitation_active"))
                     } else if result.awaitsConfirmation {
-                        Text("Convite aceito. Seu acesso ainda depende da confirmação de um responsável da empresa.")
+                        Text(String(localized: "android.enterprise_invitation_pending"))
                     } else {
-                        Text("Convite recusado. Nenhum acesso foi concedido.")
+                        Text(String(localized: "android.enterprise_invitation_declined"))
                     }
-                    Button("Ver minhas empresas") {
+                    Button(String(localized: "android.enterprise_context_my_companies")) {
                         enterprise.restartInvitation()
                         enterprise.refreshContexts()
                         dismiss()
                     }
-                    Button("Usar outro código") {
+                    Button(String(localized: "android.enterprise_invitation_restart")) {
                         enterprise.restartInvitation()
                         code = ""
                         consented = false
@@ -272,35 +272,39 @@ struct EnterpriseInvitationView: View {
             } else if let preview = enterprise.invitationPreview {
                 Section {
                     Text(preview.organizationName).font(.title3.weight(.semibold))
-                    Text(preview.legalEntityVerified ? "Dados jurídicos verificados" : "Dados jurídicos não verificados")
+                    Text(preview.legalEntityVerified ? String(localized: "android.enterprise_invitation_verified") : String(localized: "android.enterprise_invitation_unverified"))
                         .foregroundStyle(.secondary)
                 } header: {
-                    Text("Convite da empresa")
+                    Text(String(localized: "android.enterprise_invitation_title"))
                 }
-                Section("Acesso oferecido") {
+                Section(String(localized: "android.enterprise_invitation_roles")) {
                     ForEach(preview.grants, id: \.self) { grant in
-                        Text("\(EnterpriseCoordinator.roleLabel(grant.role)) · \(grant.scope == "ORG" ? String(localized: "Empresa") : String(localized: "Próprios registros"))")
+                        let role = EnterpriseCoordinator.roleLabel(grant.role)
+                        let scope = grant.scope == "ORG"
+                            ? String(localized: "android.enterprise_scope_organization")
+                            : String(localized: "android.enterprise_scope_self")
+                        Text(String(localized: "android.enterprise_invitation_role_scope", defaultValue: "\(role) · \(scope)"))
                     }
                 }
                 Section {
-                    Text("A empresa verá seu cadastro de funcionário, o apelido da conta que aceitou o convite e suas ações nesta empresa. Ela não verá suas credenciais pessoais, veículos pessoais, histórico privado ou outras empresas às quais você tem acesso.")
+                    Text(String(localized: "android.enterprise_invitation_privacy"))
                         .font(.footnote)
                     if preview.confirmationRequired {
-                        Text("Este acesso só será ativado depois da confirmação de um responsável da empresa.")
+                        Text(String(localized: "android.enterprise_invitation_confirmation_required"))
                             .font(.footnote)
                     }
-                    Toggle("Aceito participar desta empresa e compartilhar os dados descritos acima.", isOn: $consented)
-                    Button(enterprise.invitationRetryAccept == true ? "Tentar a mesma decisão novamente" : "Aceitar convite") {
+                    Toggle(String(localized: "android.enterprise_invitation_consent"), isOn: $consented)
+                    Button(enterprise.invitationRetryAccept == true ? String(localized: "android.enterprise_invitation_retry") : String(localized: "android.enterprise_invitation_accept")) {
                         enterprise.decideInvitation(accept: true)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.ink)
                     .disabled(!consented || enterprise.invitationBusy || enterprise.invitationRetryAccept == false)
-                    Button(enterprise.invitationRetryAccept == false ? "Tentar a mesma decisão novamente" : "Recusar convite") {
+                    Button(enterprise.invitationRetryAccept == false ? String(localized: "android.enterprise_invitation_retry") : String(localized: "android.enterprise_invitation_decline")) {
                         enterprise.decideInvitation(accept: false)
                     }
                     .disabled(enterprise.invitationBusy || enterprise.invitationRetryAccept == true)
-                    Button("Usar outro código") {
+                    Button(String(localized: "android.enterprise_invitation_restart")) {
                         enterprise.restartInvitation()
                         consented = false
                     }
@@ -308,23 +312,23 @@ struct EnterpriseInvitationView: View {
                 }
             } else {
                 Section {
-                    Text("Digite o código que o responsável da empresa enviou para você.")
-                    TextField("Código do convite", text: $code)
+                    Text(String(localized: "android.enterprise_invitation_intro"))
+                    TextField(String(localized: "android.enterprise_invitation_code_label"), text: $code)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
-                    Button("Consultar convite") {
+                    Button(String(localized: "android.enterprise_invitation_preview")) {
                         enterprise.previewInvitation(code: code)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.ink)
                     .disabled(code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || enterprise.invitationBusy)
                 } footer: {
-                    Text("Conecte-se à internet para consultar ou responder a um convite. Nenhuma decisão será confirmada sem conexão.")
+                    Text(String(localized: "android.enterprise_invitation_offline"))
                 }
             }
             if enterprise.invitationBusy {
                 Section {
-                    ProgressView("Aguardando a confirmação do servidor…")
+                    ProgressView(String(localized: "android.enterprise_invitation_busy"))
                 }
             }
             if let error = enterprise.invitationError {
@@ -333,7 +337,7 @@ struct EnterpriseInvitationView: View {
                 }
             }
         }
-        .navigationTitle("Convite da empresa")
+        .navigationTitle(String(localized: "android.enterprise_invitation_title"))
     }
 }
 
@@ -347,17 +351,21 @@ struct EnterpriseEvidenceFields: View {
     @Binding var reasonText: String
 
     var body: some View {
-        Picker("Leitura", selection: $meterId) {
-            Text("Sem leitura (informar motivo)").tag(nil as String?)
+        Picker(String(localized: "enterprise.meter.reading"), selection: $meterId) {
+            Text(String(localized: "enterprise.meter.no_reading")).tag(nil as String?)
             ForEach(meters) { meter in
-                Text(meter.kind == .odometer ? "Hodômetro (km)" : "Horímetro (horas)").tag(Optional(meter.id))
+                Text(meter.kind == .odometer ? String(localized: "android.enterprise_trips_meter_odometer") : String(localized: "android.enterprise_trips_meter_hours")).tag(Optional(meter.id))
             }
         }
         if let selected = meters.first(where: { $0.id == meterId }) {
-            TextField(selected.kind == .odometer ? "Leitura em km, por exemplo 184320,5" : "Leitura em horas, por exemplo 3600,25", text: $valueText)
+            let odometerExample = (Decimal(1_843_205) / 10)
+                .formatted(.number.grouping(.never).precision(.fractionLength(1)))
+            let hoursExample = (Decimal(360_025) / 100)
+                .formatted(.number.grouping(.never).precision(.fractionLength(2)))
+            TextField(selected.kind == .odometer ? String(localized: "enterprise.meter.km_example", defaultValue: "Reading in km, e.g. \(odometerExample)") : String(localized: "enterprise.meter.hours_example", defaultValue: "Reading in hours, e.g. \(hoursExample)"), text: $valueText)
                 .keyboardType(.decimalPad)
         } else {
-            TextField("Motivo da falta de leitura", text: $reasonText, axis: .vertical)
+            TextField(String(localized: "android.enterprise_trips_absence_reason"), text: $reasonText, axis: .vertical)
         }
     }
 
@@ -367,18 +375,18 @@ struct EnterpriseEvidenceFields: View {
             let parsedValue = meter.kind == .odometer ? EnterpriseValues.parseKilometres(valueText) : EnterpriseValues.parseHours(valueText)
             guard let value = parsedValue else {
                 return (nil, meter.kind == .odometer
-                    ? String(localized: "Informe a leitura em km com até três casas decimais.")
-                    : String(localized: "Informe a leitura em horas com até duas casas decimais."))
+                    ? String(localized: "enterprise.meter.km_invalid")
+                    : String(localized: "enterprise.meter.hours_invalid"))
             }
             if let modulus = meter.modulus, value >= modulus {
-                return (nil, String(localized: "A leitura passa do limite deste medidor."))
+                return (nil, String(localized: "enterprise.meter.over_limit"))
             }
             return (.reading(meterId: meter.id, segmentId: meter.segmentId, kind: meter.kind, readingId: EnterpriseValues.newId(),
                              value: value, modulus: meter.modulus), nil)
         }
         let reason = reasonText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard EnterpriseValues.isValidText(reason, maxScalars: EnterpriseValues.maxReasonScalars) else {
-            return (nil, String(localized: "Informe o motivo da falta de leitura (até 280 caracteres)."))
+            return (nil, String(localized: "enterprise.meter.reason_invalid"))
         }
         return (.missing(reason: reason), nil)
     }
@@ -422,9 +430,9 @@ struct EnterpriseTripStartView: View {
 
     var body: some View {
         Form {
-            Section("Ativo") {
-                Picker("Ativo", selection: $assetId) {
-                    Text("Selecione um ativo").tag(nil as String?)
+            Section(String(localized: "enterprise.assets.asset")) {
+                Picker(String(localized: "enterprise.assets.asset"), selection: $assetId) {
+                    Text(String(localized: "android.enterprise_assets_pick_title")).tag(nil as String?)
                     ForEach(enterprise.assets) { item in
                         Text(EnterpriseCoordinator.assetLabel(item)).tag(Optional(item.id))
                     }
@@ -437,20 +445,20 @@ struct EnterpriseTripStartView: View {
                     Text(EnterpriseLabels.assetStatus(asset, nowMillis: EnterpriseLabels.nowMillis()))
                         .font(.footnote)
                         .foregroundStyle(AbastevoTheme.warningLight)
-                    Toggle("Entendi e quero usar este ativo; o servidor decide", isOn: $reviewAccepted)
+                    Toggle(String(localized: "enterprise.assets.acknowledge"), isOn: $reviewAccepted)
                 }
             }
             if let asset {
-                Section("Checklist de saída") {
+                Section(String(localized: "android.enterprise_checklists_departure_title")) {
                     if loading {
-                        ProgressView("Consultando checklist…")
+                        ProgressView(String(localized: "enterprise.checklist.loading"))
                     } else if departureRunId != nil {
-                        Text(blocking ? "Checklist bloqueante: não inicie a viagem e fale com o gestor da frota." : "Checklist registrado neste aparelho.")
+                        Text(blocking ? String(localized: "enterprise.checklist.trip_blocked") : String(localized: "android.enterprise_checklists_saved"))
                             .foregroundStyle(blocking ? AbastevoTheme.errorRed : .primary)
                     } else if checklistConsulted && applicable?.required == false {
-                        Text("Nenhum checklist obrigatório para este ativo.").foregroundStyle(.secondary)
+                        Text(String(localized: "android.enterprise_checklists_none_required")).foregroundStyle(.secondary)
                     } else {
-                        Button("Consultar checklist de saída") {
+                        Button(String(localized: "enterprise.checklist.read_departure")) {
                             consultChecklist(asset.id)
                         }
                     }
@@ -458,15 +466,15 @@ struct EnterpriseTripStartView: View {
                         Text(checklistMessage).font(.footnote).foregroundStyle(.secondary)
                     }
                     if checklistFailed {
-                        Toggle("Iniciar sem checklist consultado; o servidor decide", isOn: $skipChecklist)
+                        Toggle(String(localized: "enterprise.checklist.skip"), isOn: $skipChecklist)
                     }
                 }
-                Section("Leitura de saída") {
+                Section(String(localized: "android.enterprise_trips_departure_value")) {
                     EnterpriseEvidenceFields(meters: asset.meters, meterId: $meterId, valueText: $valueText, reasonText: $reasonText)
                 }
             }
             Section {
-                Button("Iniciar viagem", action: start)
+                Button(String(localized: "android.enterprise_trips_start"), action: start)
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.accentLight)
                     .disabled(asset == nil || (needsReview && !reviewAccepted) || !checklistReady)
@@ -474,10 +482,10 @@ struct EnterpriseTripStartView: View {
                     Text(error).font(.footnote).foregroundStyle(AbastevoTheme.errorRed)
                 }
             } footer: {
-                Text("A viagem é guardada neste aparelho e enviada assinada. O iOS não registra trajeto nem localização.")
+                Text(String(localized: "enterprise.trip.device_notice"))
             }
         }
-        .navigationTitle("Iniciar viagem")
+        .navigationTitle(String(localized: "android.enterprise_trips_start"))
         .sheet(isPresented: $showChecklist) {
             if let applicable {
                 NavigationStack {
@@ -555,15 +563,15 @@ struct EnterpriseTripFinishView: View {
 
     var body: some View {
         Form {
-            Section("Viagem") {
+            Section(String(localized: "enterprise.trip.title")) {
                 Text(trip.assetLabel).font(.headline)
-                Text("Início \(EnterpriseLabels.dateTime(millis: trip.startedAtMillis))").foregroundStyle(.secondary)
+                Text(String(localized: "enterprise.trip.start_time", defaultValue: "Started \(EnterpriseLabels.dateTime(millis: trip.startedAtMillis))")).foregroundStyle(.secondary)
             }
-            Section("Leitura final") {
+            Section(String(localized: "android.enterprise_trips_final_value")) {
                 EnterpriseEvidenceFields(meters: meters, meterId: $meterId, valueText: $valueText, reasonText: $reasonText)
             }
             Section {
-                Button("Encerrar viagem", action: finish)
+                Button(String(localized: "android.enterprise_trips_finish"), action: finish)
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.ink)
                 if let error {
@@ -571,7 +579,7 @@ struct EnterpriseTripFinishView: View {
                 }
             }
         }
-        .navigationTitle("Encerrar viagem")
+        .navigationTitle(String(localized: "android.enterprise_trips_finish"))
         .onAppear {
             if meterId == nil {
                 meterId = trip.startMeterId ?? meters.first?.id
@@ -627,9 +635,10 @@ struct EnterpriseChecklistView: View {
         Form {
             Section {
                 Text(applicable.name ?? "").font(.headline)
-                Text(applicable.policyMode == "BLOCK"
-                     ? "Itens críticos com problema bloqueiam a saída."
-                     : "Itens críticos com problema exigem sua confirmação.")
+                let blocksDeparture = applicable.policyMode == "BLOCK"
+                Text(blocksDeparture
+                     ? String(localized: "enterprise.checklist.critical_blocked")
+                     : String(localized: "enterprise.checklist.critical_required"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -637,20 +646,20 @@ struct EnterpriseChecklistView: View {
                 Section {
                     Text(item.label)
                     if item.critical {
-                        Text("Item crítico").font(.caption).foregroundStyle(AbastevoTheme.errorRed)
+                        Text(String(localized: "android.enterprise_checklists_critical")).font(.caption).foregroundStyle(AbastevoTheme.errorRed)
                     }
-                    Picker("Resposta", selection: answerBinding(item.position - 1)) {
-                        Text("Sem resposta").tag(nil as EnterpriseChecklistAnswer?)
-                        Text("OK").tag(Optional(EnterpriseChecklistAnswer.ok))
-                        Text("Com problema").tag(Optional(EnterpriseChecklistAnswer.notOk))
+                    Picker(String(localized: "enterprise.checklist.answer"), selection: answerBinding(item.position - 1)) {
+                        Text(String(localized: "android.enterprise_checklists_unanswered")).tag(nil as EnterpriseChecklistAnswer?)
+                        Text(String(localized: "android.enterprise_checklists_answer_ok")).tag(Optional(EnterpriseChecklistAnswer.ok))
+                        Text(String(localized: "android.enterprise_checklists_answer_not_ok")).tag(Optional(EnterpriseChecklistAnswer.notOk))
                         if item.optional {
-                            Text("Não se aplica").tag(Optional(EnterpriseChecklistAnswer.notApplicable))
+                            Text(String(localized: "android.enterprise_checklists_answer_na")).tag(Optional(EnterpriseChecklistAnswer.notApplicable))
                         }
                     }
                     if answers[item.position - 1] == EnterpriseChecklistAnswer.notOk {
-                        TextField("Observação (opcional, até 140 caracteres)", text: noteBinding(item.position - 1))
+                        TextField(String(localized: "android.enterprise_checklists_note"), text: noteBinding(item.position - 1))
                         if item.photoOnNotOk {
-                            Text("Este item exige foto quando há problema; o envio de foto do checklist ainda não está disponível no iOS.")
+                            Text(String(localized: "enterprise.checklist.photo_unavailable"))
                                 .font(.caption)
                                 .foregroundStyle(AbastevoTheme.warningLight)
                         }
@@ -659,22 +668,22 @@ struct EnterpriseChecklistView: View {
             }
             Section {
                 if hasCriticalIssue && applicable.policyMode == "WARN" {
-                    Toggle("Estou ciente dos itens críticos com problema", isOn: $acknowledged)
+                    Toggle(String(localized: "enterprise.checklist.acknowledged"), isOn: $acknowledged)
                 }
-                Button("Registrar checklist", action: submit)
+                Button(String(localized: "android.enterprise_checklists_complete"), action: submit)
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.ink)
                 if let error {
                     Text(error).font(.footnote).foregroundStyle(AbastevoTheme.errorRed)
                 }
             } footer: {
-                Text("O resultado informado é conferido pelo servidor.")
+                Text(String(localized: "android.enterprise_checklists_company_rechecks"))
             }
         }
-        .navigationTitle("Checklist de saída")
+        .navigationTitle(String(localized: "android.enterprise_checklists_departure_title"))
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancelar") { dismiss() }
+                Button(String(localized: "android.enterprise_trips_cancel")) { dismiss() }
             }
         }
     }
@@ -725,31 +734,32 @@ struct EnterpriseExpenseView: View {
 
     var body: some View {
         Form {
-            Section("Despesa") {
-                Picker("Ativo", selection: $assetId) {
-                    Text("Selecione um ativo").tag(nil as String?)
+            Section(String(localized: "android.ledger_entry_add_expense")) {
+                Picker(String(localized: "enterprise.assets.asset"), selection: $assetId) {
+                    Text(String(localized: "android.enterprise_assets_pick_title")).tag(nil as String?)
                     ForEach(enterprise.assets) { item in
                         Text(EnterpriseCoordinator.assetLabel(item)).tag(Optional(item.id))
                     }
                 }
-                Picker("Categoria", selection: $category) {
+                Picker(String(localized: "android.forum_topic_category_label"), selection: $category) {
                     ForEach(EnterpriseOperationBuilder.expenseCategories, id: \.self) { code in
                         Text(EnterpriseCoordinator.categoryLabel(code)).tag(code)
                     }
                 }
-                TextField("Valor pago (R$)", text: $paidText)
+                TextField(String(localized: "android.enterprise_expenses_paid"), text: $paidText)
                     .keyboardType(.decimalPad)
-                TextField("Valor da empresa (R$, padrão: valor pago)", text: $companyText)
+                TextField(String(localized: "enterprise.expense.company_amount"), text: $companyText)
                     .keyboardType(.decimalPad)
-                Picker("Quem pagou", selection: $payer) {
-                    Text("Empresa").tag(EnterpriseExpensePayer.company)
-                    Text("Eu (reembolso)").tag(EnterpriseExpensePayer.employee)
+                Picker(String(localized: "android.enterprise_expenses_payer"), selection: $payer) {
+                    Text(String(localized: "android.enterprise_scope_organization")).tag(EnterpriseExpensePayer.company)
+                    Text(String(localized: "enterprise.expense.paid_employee")).tag(EnterpriseExpensePayer.employee)
                 }
             }
             Section {
                 if preparing {
-                    ProgressView("Preparando a foto…")
+                    ProgressView(String(localized: "enterprise.receipt.preparing"))
                 } else if let receipt {
+                    let size = ByteCountFormatStyle(style: .file).format(Int64(receipt.count))
                     #if canImport(UIKit)
                     if let image = UIImage(data: receipt) {
                         Image(uiImage: image)
@@ -758,31 +768,31 @@ struct EnterpriseExpenseView: View {
                             .frame(maxHeight: 180)
                     }
                     #endif
-                    Text("Foto pronta (\(receipt.count / 1024) KB), sem localização nem metadados.")
+                    Text(String(localized: "enterprise.receipt.ready", defaultValue: "Photo ready (\(size)). Location and metadata removed."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Button("Remover foto", role: .destructive) {
+                    Button(String(localized: "android.vehicle_remove_photo"), role: .destructive) {
                         self.receipt = nil
                     }
                 } else {
                     PhotosPicker(selection: $pickerItem, matching: .images) {
-                        Label("Escolher foto do comprovante", systemImage: "photo")
+                        Label(String(localized: "enterprise.receipt.choose_photo"), systemImage: "photo")
                     }
                     #if canImport(UIKit)
                     Button {
                         showCamera = true
                     } label: {
-                        Label("Fotografar comprovante", systemImage: "camera")
+                        Label(String(localized: "enterprise.receipt.take_photo"), systemImage: "camera")
                     }
                     #endif
                 }
             } header: {
-                Text("Comprovante (opcional)")
+                Text(String(localized: "android.enterprise_fuelings_receipt_optional"))
             } footer: {
-                Text("A foto é enviada depois que o servidor recebe a despesa.")
+                Text(String(localized: "enterprise.receipt.sent_after_expense"))
             }
             Section {
-                Button("Salvar despesa", action: submit)
+                Button(String(localized: "android.enterprise_expenses_save"), action: submit)
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.ink)
                     .disabled(assetId == nil || preparing)
@@ -791,7 +801,7 @@ struct EnterpriseExpenseView: View {
                 }
             }
         }
-        .navigationTitle("Registrar despesa")
+        .navigationTitle(String(localized: "android.enterprise_expenses_new"))
         .onChange(of: pickerItem) { _, newItem in
             guard let item = newItem else { return }
             preparing = true
@@ -814,7 +824,7 @@ struct EnterpriseExpenseView: View {
         preparing = true
         guard let data else {
             preparing = false
-            error = String(localized: "Não foi possível ler a foto.")
+            error = String(localized: "enterprise.receipt.read_failed")
             return
         }
         let encoded = await EnterpriseReceiptEncoder.prepare(data)
@@ -823,7 +833,7 @@ struct EnterpriseExpenseView: View {
             receipt = encoded
             error = nil
         } else {
-            error = String(localized: "A foto não pôde ser preparada com até 5 MB.")
+            error = String(localized: "enterprise.receipt.prepare_failed")
         }
     }
 
@@ -865,10 +875,10 @@ struct EnterpriseQueueView: View {
     var body: some View {
         let snapshot = enterprise.snapshot
         List {
-            Section("Registros") {
+            Section(String(localized: "enterprise.queue.records")) {
                 let items = (snapshot?.queue ?? []).reversed()
                 if items.isEmpty {
-                    Text("Nenhum registro neste aparelho.").foregroundStyle(.secondary)
+                    Text(String(localized: "enterprise.queue.empty")).foregroundStyle(.secondary)
                 }
                 ForEach(Array(items)) { item in
                     VStack(alignment: .leading, spacing: 4) {
@@ -876,11 +886,11 @@ struct EnterpriseQueueView: View {
                         Text(EnterpriseCoordinator.statusLabel(item)).font(.caption)
                         Text(EnterpriseLabels.dateTime(millis: item.createdAtMillis)).font(.caption2).foregroundStyle(.secondary)
                         if item.status == .exhausted || (item.status == .pending && item.attempts > 0) {
-                            Button("Tentar agora") { enterprise.retryNow(item.id) }
+                            Button(String(localized: "enterprise.queue.retry_now")) { enterprise.retryNow(item.id) }
                                 .font(.caption)
                         }
                         if item.status.isFinal {
-                            Button("Remover da lista") { enterprise.dismiss(item.id) }
+                            Button(String(localized: "enterprise.queue.dismiss")) { enterprise.dismiss(item.id) }
                                 .font(.caption)
                         }
                     }
@@ -888,15 +898,15 @@ struct EnterpriseQueueView: View {
             }
             let attachments = snapshot?.attachments ?? []
             if !attachments.isEmpty {
-                Section("Fotos de comprovantes") {
+                Section(String(localized: "enterprise.queue.receipts")) {
                     ForEach(attachments) { item in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(EnterpriseCoordinator.attachmentLabel(item)).font(.subheadline)
                             if item.status == .exhausted {
-                                Button("Tentar agora") { enterprise.retryNow(item.id) }.font(.caption)
+                                Button(String(localized: "enterprise.queue.retry_now")) { enterprise.retryNow(item.id) }.font(.caption)
                             }
                             if item.status == .delivered || item.status == .refused {
-                                Button("Remover da lista") { enterprise.dismiss(item.id) }.font(.caption)
+                                Button(String(localized: "enterprise.queue.dismiss")) { enterprise.dismiss(item.id) }.font(.caption)
                             }
                         }
                     }
@@ -906,18 +916,18 @@ struct EnterpriseQueueView: View {
                 snapshot?.queue.first(where: { $0.id == trip.startOperationId })?.status == .rejected
             }
             if !refusedTrips.isEmpty {
-                Section("Viagens recusadas") {
+                Section(String(localized: "enterprise.queue.rejected_trips")) {
                     ForEach(refusedTrips) { trip in
                         HStack {
                             Text(trip.assetLabel)
                             Spacer()
-                            Button("Remover") { enterprise.dismissRefusedTrip(trip.id) }
+                            Button(String(localized: "enterprise.queue.remove")) { enterprise.dismissRefusedTrip(trip.id) }
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Fila de envio")
+        .navigationTitle(String(localized: "enterprise.queue.title"))
         .refreshable {
             enterprise.deliverNow()
         }
@@ -938,24 +948,24 @@ enum EnterpriseLabels {
 
     static func organizationState(_ state: String) -> String {
         switch state {
-        case "SUSPENDED": return String(localized: "Empresa suspensa")
-        case "ARCHIVED": return String(localized: "Empresa arquivada")
-        case "SETUP", "DRAFT": return String(localized: "Empresa em configuração")
+        case "SUSPENDED": return String(localized: "enterprise.context.suspended")
+        case "ARCHIVED": return String(localized: "enterprise.context.archived")
+        case "SETUP", "DRAFT": return String(localized: "enterprise.context.setup")
         default: return state
         }
     }
 
     static func assetStatus(_ asset: EnterpriseReferenceAsset, nowMillis: Int64) -> String {
         if !asset.isActive {
-            return String(localized: "Ativo indisponível no momento (\(asset.state))")
+            return String(localized: "enterprise.assets.currently_unavailable", defaultValue: "Asset unavailable now (\(asset.state))")
         }
         if asset.assignmentEnded(nowMillis: nowMillis) {
-            return String(localized: "Sua atribuição a este ativo terminou")
+            return String(localized: "enterprise.assets.assignment_ended")
         }
         switch asset.assignmentKind {
-        case "TEMPORARY": return String(localized: "Atribuição temporária")
-        case "ADDITIONAL": return String(localized: "Atribuição adicional")
-        default: return String(localized: "Atribuição principal")
+        case "TEMPORARY": return String(localized: "android.enterprise_assets_assignment_temporary")
+        case "ADDITIONAL": return String(localized: "android.enterprise_assets_assignment_additional")
+        default: return String(localized: "android.enterprise_assets_assignment_primary")
         }
     }
 }
