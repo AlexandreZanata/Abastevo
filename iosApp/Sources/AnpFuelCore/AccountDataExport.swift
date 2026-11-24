@@ -544,7 +544,8 @@ enum AccountExportPlan {
         }
         let conversationReads = posts.sorted().map { id in
             AccountExportRead(
-                section: .forum, path: "/v1/forum/owner/read", auth: .signedSession, shape: .list(items: "comments", maximum: 100),
+                // The owner's comments on one post are not capped by the server (forum discussion.go ownerPostComments).
+                section: .forum, path: "/v1/forum/owner/read", auth: .signedSession, shape: .list(items: "comments", maximum: nil),
                 fields: forumCommentFields, required: ["id", "post_id", "body_text"], parameters: ["post_id": id], correlation: ["post_id": id]
             )
         }

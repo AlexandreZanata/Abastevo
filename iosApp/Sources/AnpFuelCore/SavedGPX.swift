@@ -159,11 +159,10 @@ public enum SavedGPX {
         guard places.count <= SavedMapBounds.places, trips.count <= SavedMapBounds.trips else {
             throw SavedMapError.tooManyRecords
         }
+        // Export has no byte cap, like Android `GeoExchange.writeGpx`: the record counts are bounded,
+        // and "export everything" must not fail because two large imported tracks add up past 5 MiB.
         var document = Data()
         func append(_ text: String) throws {
-            guard document.count + text.utf8.count <= SavedMapBounds.fileBytes else {
-                throw SavedMapError.fileTooLarge
-            }
             document.append(contentsOf: text.utf8)
         }
 
