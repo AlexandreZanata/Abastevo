@@ -169,10 +169,17 @@ if [[ -n "$tracking_block" || -f "$tracking" ]]; then
         fail "OrganizationTrackingService must stay a non-exported location foreground service"
     fi
 fi
-if grep -rn "startUpdatingLocation\|allowsBackgroundLocationUpdates" "$ROOT/iosApp/Sources" 2>/dev/null; then
-    fail "background location tracking found in shipped iOS sources (one-shot only)"
-fi
-pass "no background location tracking in shipped sources"
+ios_location_sources="$(grep -rnE --include='*.swift' 'requestAlwaysAuthorization|startUpdatingLocation|allowsBackgroundLocationUpdates|showsBackgroundLocationIndicator|startMonitoringSignificantLocationChanges|CLBackgroundActivitySession' "$ROOT/iosApp/Sources" 2>/dev/null || true)"
+while IFS= read -r match; do
+    case "$match" in
+        '') ;;
+        *requestAlwaysAuthorization*) fail "Always authorization found in shipped iOS sources" ;;
+        "$ROOT/iosApp/Sources/AnpFuelShell/ActiveNavigationLocation.swift:"*) ;;
+        "$ROOT/iosApp/Sources/AnpFuelShell/DriverDistanceLocation.swift:"*) ;;
+        *) fail "continuous location found outside active iOS navigation and driver sessions" ;;
+    esac
+done <<< "$ios_location_sources"
+pass "iOS location updates are limited to active navigation and driver sessions"
 
 # MOBILE_ROOT may point to a synthetic tree for the shell guards. The Python
 # suites require the complete repository and run when checking the real tree.

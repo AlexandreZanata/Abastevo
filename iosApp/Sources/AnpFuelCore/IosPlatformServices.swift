@@ -125,32 +125,76 @@ public final class IosLocationManager: NSObject, CLLocationManagerDelegate {
     }
 }
 
-/// AVSpeechSynthesizer voice guidance adapter supporting all 8 Abastevo locales.
-public final class IosVoiceGuidance {
-    #if canImport(AVFoundation)
+/// One localized turn prompt at a time. Other audio is ducked only during speech.
+#if os(iOS) && canImport(AVFoundation)
+@MainActor
+public final class IosVoiceGuidance: NSObject, @preconcurrency AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
-    #endif
+    private var current: AVSpeechUtterance?
+    private var audioActive = false
 
-    public init() {}
+    public override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
 
-    public func speak(instruction: String, localeCode: String) {
-        #if canImport(AVFoundation)
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
+    public func speak(instruction: String, localeCode: String) -> Bool {
+        let language = localeCode == "zh-Hans" ? "zh-CN" : localeCode
+        let base = language.split(separator: "-").first
+        let selected = AVSpeechSynthesisVoice(language: language)
+            ?? AVSpeechSynthesisVoice.speechVoices().first { $0.language.split(separator: "-").first == base }
+        guard !instruction.isEmpty, let selected else { return false }
+        stop()
+        do {
+            let audio = AVAudioSession.sharedInstance()
+            try audio.setCategory(.playback, mode: .voicePrompt, options: [.duckOthers])
+            try audio.setActive(true)
+            audioActive = true
+        } catch {
+            return false
         }
         let utterance = AVSpeechUtterance(string: instruction)
-        utterance.voice = AVSpeechSynthesisVoice(language: localeCode)
+        utterance.voice = selected
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        current = utterance
         synthesizer.speak(utterance)
-        #endif
+        return true
     }
 
     public func stop() {
-        #if canImport(AVFoundation)
-        synthesizer.stopSpeaking(at: .immediate)
-        #endif
+        current = nil
+        if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
+        releaseAudio()
+    }
+
+    public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        finish(utterance)
+    }
+
+    public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        finish(utterance)
+    }
+
+    private func finish(_ utterance: AVSpeechUtterance) {
+        guard current === utterance else { return }
+        current = nil
+        releaseAudio()
+    }
+
+    private func releaseAudio() {
+        guard audioActive else { return }
+        audioActive = false
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
+#else
+@MainActor
+public final class IosVoiceGuidance {
+    public init() {}
+    public func speak(instruction: String, localeCode: String) -> Bool { false }
+    public func stop() {}
+}
+#endif
 
 enum CoreLocalization {
     static let bundle: Bundle = {

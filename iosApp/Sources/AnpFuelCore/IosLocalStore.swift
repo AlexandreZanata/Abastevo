@@ -101,6 +101,10 @@ public final class IosLocalStore {
         self.fileUrl = baseDir.appendingPathComponent("abastevo-state-v3.json")
     }
 
+    public var savedMapDirectory: URL {
+        fileUrl.deletingLastPathComponent().appendingPathComponent("saved-map", isDirectory: true)
+    }
+
     public static func defaultDirectory() -> URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory

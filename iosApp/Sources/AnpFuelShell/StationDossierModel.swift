@@ -103,6 +103,7 @@ final class StationCatalogSearchModel: ObservableObject {
         let origin: String
         let municipalityCode: String?
         let query: String
+        let offline: Bool
     }
 
     @Published private(set) var rows: [StationRecord] = []
@@ -113,13 +114,27 @@ final class StationCatalogSearchModel: ObservableObject {
     private var scope: Scope?
     private var generation = UUID()
     private var usedCursors: Set<String> = []
+    private let pageSize: Int
+
+    init(pageSize: Int = 20) { self.pageSize = pageSize }
+
+    func cancel() {
+        scope = nil
+        generation = UUID()
+        usedCursors = []
+        isLoading = false
+        failure = nil
+        showsLoadedFallback = false
+        cursor = nil
+        rows = []
+    }
 
     func isCurrent(_ request: Scope) -> Bool { scope == request }
 
     func activeScope(for raw: String, on host: AppStateViewModel) -> Scope {
         Scope(
             origin: host.snapshot.apiEnvironment.origin, municipalityCode: host.selectedMunicipality?.ibgeCode,
-            query: StationDossierCodec.normalizedSearch(raw)
+            query: StationDossierCodec.normalizedSearch(raw), offline: host.isOfflineSimulation
         )
     }
 
@@ -145,7 +160,7 @@ final class StationCatalogSearchModel: ObservableObject {
             if debounce { try await Task.sleep(for: .milliseconds(300)) }
             guard active(requested, on: host, token: token) else { return }
             let page = try await host.socialReadClient().searchStationDirectory(
-                in: city, query: requested.query, cursor: continuation
+                in: city, query: requested.query, cursor: continuation, pageSize: pageSize
             )
             guard active(requested, on: host, token: token) else { return }
             if let next = page.nextCursor, next == continuation || usedCursors.contains(next) {
@@ -161,12 +176,22 @@ final class StationCatalogSearchModel: ObservableObject {
             let http = error as? HttpClientError ?? .unavailable
             failure = http
             if case .httpStatus(400, "station.bad-cursor") = http { cursor = nil }
-            if reset, rows.isEmpty, http == .unavailable {
-                rows = host.stations.filter {
+            if reset, rows.isEmpty, canUseFallback(http) {
+                let cached = host.publicReadCache.directory(origin: requested.origin, municipalityCode: city.ibgeCode)
+                let available = host.stations.isEmpty ? (cached?.stations ?? []) : host.stations
+                rows = Array(available.lazy.filter {
                     $0.municipalityCode == city.ibgeCode && $0.name.localizedStandardContains(requested.query)
-                }
-                showsLoadedFallback = true
+                }.prefix(pageSize))
+                showsLoadedFallback = !rows.isEmpty
             }
+        }
+    }
+
+    private func canUseFallback(_ error: HttpClientError) -> Bool {
+        switch error {
+        case .unavailable: return true
+        case .httpStatus(let status, _): return status == 408 || status == 429 || (500...599).contains(status)
+        default: return false
         }
     }
 

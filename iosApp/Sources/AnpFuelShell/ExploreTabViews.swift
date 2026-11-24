@@ -409,7 +409,7 @@ public struct StationDetailSheetView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
-                let saved = viewModel.snapshot.savedPlaces.contains(where: { $0.stationId == displayStation.id })
+                let saved = viewModel.visibleSavedMap.hasStation(displayStation.id)
                 Button {
                     viewModel.toggleSavedStation(displayStation)
                 } label: {
@@ -417,7 +417,7 @@ public struct StationDetailSheetView: View {
                 }
                 .accessibilityLabel(saved ? String(localized: "station.dossier.remove_saved")
                                     : String(localized: "station.dossier.save"))
-                .disabled(state == .notFound)
+                .disabled(state == .notFound || viewModel.currentSavedMapScope == nil)
             }
             Text(displayStation.name)
                 .font(.title3.bold())

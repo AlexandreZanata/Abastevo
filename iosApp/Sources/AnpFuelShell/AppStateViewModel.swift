@@ -47,6 +47,8 @@ public final class AppStateViewModel: ObservableObject {
     @Published public var lastDeviceCoordinate: CLLocationCoordinate2D?
     @Published public var lastLocationRisk: PortableLocation.FixRisk?
     @Published public var isVoiceGuidanceEnabled: Bool = true
+    @Published public var navigationDestination: NavigationDestination?
+    let navigation = NavigationCoordinator()
 
     // Community & Outbox
     @Published public var communityFeed: [CommunityPriceObservation] = []
@@ -78,6 +80,10 @@ public final class AppStateViewModel: ObservableObject {
     @Published public var profilePath = NavigationPath()
 
     private let store: IosLocalStore
+    let savedMapStore: SavedMapStore
+    @Published private var savedMapInventory = SavedMapInventory()
+    @Published private(set) var savedMapMessage: String?
+    private var presentedSavedMapScope: SavedMapScope?
     private let keychain: IosKeychainSecretStore
     private let proofSigner: IosDeviceProofSigner
     private let httpClient: AbastevoHttpClient
@@ -85,7 +91,6 @@ public final class AppStateViewModel: ObservableObject {
     private let photoCache: IosTransientPhotoCache
     private let photoFlow: PhotoFlow
     private let locationManager = IosLocationManager()
-    private let voiceGuidance = IosVoiceGuidance()
     private var directoryRead: Task<Void, Never>?
     private var communityRead: Task<Void, Never>?
     private var cityReadGeneration = UUID()
@@ -140,6 +145,7 @@ public final class AppStateViewModel: ObservableObject {
 
     public init(store: IosLocalStore = IosLocalStore()) {
         self.store = store
+        self.savedMapStore = SavedMapStore(directory: store.savedMapDirectory)
         self.municipalityCatalog = (try? MunicipalityCatalog(bundle: .main)) ?? .empty
         let loaded = store.load()
         self.snapshot = loaded
@@ -318,10 +324,14 @@ public final class AppStateViewModel: ObservableObject {
 
     public func setApiEnvironment(_ env: ApiEnvironment) {
         guard env != snapshot.apiEnvironment, canSwitchApiEnvironment else { return }
+        guard migrateSavedMapIfNeeded() else { return }
+        navigation.stop()
+        navigationDestination = nil
         trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
         snapshot.apiEnvironment = env
+        refreshSavedMap()
         httpClient.environment = env
         identity.updateEnvironment(env)
         configureCommunitySafety()
@@ -530,8 +540,13 @@ public final class AppStateViewModel: ObservableObject {
     // MARK: - Auth & Account Management
 
     public func rehydrateAuth() {
+        let previousAccount = currentAccountIdOrNil
         let state = authFlow.rehydrate()
         self.authFlowState = state
+        if previousAccount != currentAccountIdOrNil {
+            navigation.stop()
+            navigationDestination = nil
+        }
         switch state {
         case .active(let session):
             self.signedInAlias = authFlow.currentKey()?.username ?? String(localized: "auth.account.shortLabel", defaultValue: "Account \(String(session.accountId.prefix(6)))")
@@ -540,6 +555,7 @@ public final class AppStateViewModel: ObservableObject {
         case .pendingKeyAccount, .loggedOut:
             self.signedInAlias = nil
         }
+        refreshSavedMap()
         configureCommunitySafety()
         configureTrainingConsent()
     }
@@ -743,6 +759,8 @@ public final class AppStateViewModel: ObservableObject {
 
     public func logout() {
         let ownerId = currentAccountIdOrNil
+        navigation.stop()
+        navigationDestination = nil
         trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
@@ -777,6 +795,8 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     private func finishAccountDeletion(ownerId: String) {
+        navigation.stop()
+        navigationDestination = nil
         trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
@@ -788,17 +808,34 @@ public final class AppStateViewModel: ObservableObject {
         photoCache.purgeAll()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
         rehydrateAuth()
+        if let scope = SavedMapScope(owner: ownerId, origin: snapshot.apiEnvironment.origin) {
+            do {
+                try savedMapStore.erase(scope)
+            } catch {
+                authStatusMessage = String(localized: "map.saved.account_delete_cleanup_failed")
+                return
+            }
+        }
         authStatusMessage = String(localized: "auth.delete.accepted")
     }
 
     public func exportMyDataJson() -> String {
+        var local = snapshot
+        let map = visibleSavedMap
+        local.savedPlaces = map.legacyPlaces
+        local.savedTrips = map.legacyTrips
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let data = try? encoder.encode(snapshot),
-           let str = String(data: data, encoding: .utf8) {
-            return str
+        guard let snapshotData = try? encoder.encode(local),
+              var document = (try? JSONSerialization.jsonObject(with: snapshotData)) as? [String: Any] else {
+            return "{}"
         }
-        return "{}"
+        if let data = try? encoder.encode(map), let ownedMap = try? JSONSerialization.jsonObject(with: data) {
+            document["savedMap"] = ownedMap
+        }
+        guard let export = try? JSONSerialization.data(withJSONObject: document, options: [.prettyPrinted, .sortedKeys]) else {
+            return "{}"
+        }
+        return String(decoding: export, as: UTF8.self)
     }
 
     // MARK: - Contributions and Photo Pipeline
@@ -1032,32 +1069,82 @@ public final class AppStateViewModel: ObservableObject {
         return coordinate
     }
 
-    public func speakGuidanceStep(_ text: String) {
-        guard isVoiceGuidanceEnabled else { return }
-        let appLanguage = Bundle.main.preferredLocalizations.first ?? "en"
-        voiceGuidance.speak(instruction: text, localeCode: appLanguage)
+    var currentSavedMapScope: SavedMapScope? {
+        guard !isAuthWorking else { return nil }
+        return SavedMapScope(owner: currentAccountIdOrNil ?? SavedMapScope.guest, origin: snapshot.apiEnvironment.origin)
     }
 
-    public func stopGuidance() {
-        voiceGuidance.stop()
+    var visibleSavedMap: SavedMapInventory {
+        guard let scope = currentSavedMapScope, scope == presentedSavedMapScope else { return SavedMapInventory() }
+        return savedMapInventory
     }
 
     public func toggleSavedStation(_ station: StationRecord) {
-        if let idx = snapshot.savedPlaces.firstIndex(where: { $0.stationId == station.id }) {
-            snapshot.savedPlaces.remove(at: idx)
-        } else {
-            snapshot.savedPlaces.insert(
-                SavedPlaceRecord(
-                    title: station.name,
-                    subtitle: "\(station.brand) · \(station.neighborhood)",
-                    latitude: station.latitude,
-                    longitude: station.longitude,
-                    stationId: station.id
-                ),
-                at: 0
+        guard let scope = currentSavedMapScope else { return }
+        do {
+            let point = try SavedGeoPoint(latitude: station.latitude, longitude: station.longitude)
+            let name = station.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let subtitle = [station.brand, station.neighborhood].filter { !$0.isEmpty }.joined(separator: " · ")
+            let now = Int64(Date().timeIntervalSince1970 * 1_000)
+            let saved = try savedMapStore.toggleStation(
+                id: station.id, name: name, point: point, source: .anp, note: subtitle.isEmpty ? nil : subtitle,
+                nowMillis: now, in: scope
             )
+            setSavedMap(saved, scope: scope)
+        } catch let error as SavedMapError {
+            savedMapMessage = error == .invalidRecord ? String(localized: "map.saved.favorite_failed") : error.savedMessage
+        } catch {
+            savedMapMessage = SavedMapError.localStorage.savedMessage
         }
-        persist()
+    }
+
+    func deleteSavedMap(_ selection: SavedMapStore.Selection) throws {
+        guard let scope = currentSavedMapScope else { throw SavedMapError.scopeChanged }
+        setSavedMap(try savedMapStore.delete(selection, in: scope), scope: scope)
+    }
+
+    func importSavedGPX(
+        _ content: SavedGPXContent, confirmed: Bool, scope: SavedMapScope
+    ) throws -> SavedMapImportResult {
+        guard scope == currentSavedMapScope else { throw SavedMapError.scopeChanged }
+        let result = try savedMapStore.importGPX(content, restoringDeleted: confirmed, in: scope)
+        setSavedMap(result.inventory, scope: scope)
+        return result.result
+    }
+
+    private func setSavedMap(_ inventory: SavedMapInventory, scope: SavedMapScope) {
+        guard scope == currentSavedMapScope else { return }
+        presentedSavedMapScope = scope
+        savedMapInventory = inventory
+        savedMapMessage = nil
+    }
+
+    private func refreshSavedMap() {
+        presentedSavedMapScope = nil
+        savedMapInventory = SavedMapInventory()
+        savedMapMessage = nil
+        guard migrateSavedMapIfNeeded(), let scope = currentSavedMapScope else { return }
+        do {
+            setSavedMap(try savedMapStore.inventory(in: scope), scope: scope)
+        } catch {
+            savedMapMessage = SavedMapError.localStorage.savedMessage
+        }
+    }
+
+    @discardableResult
+    private func migrateSavedMapIfNeeded() -> Bool {
+        guard !snapshot.savedPlaces.isEmpty || !snapshot.savedTrips.isEmpty else { return true }
+        guard let guest = SavedMapScope(owner: SavedMapScope.guest, origin: snapshot.apiEnvironment.origin) else { return false }
+        do {
+            try savedMapStore.migrateLegacy(snapshot.savedPlaces, trips: snapshot.savedTrips, inGuestScope: guest)
+            snapshot.savedPlaces.removeAll()
+            snapshot.savedTrips.removeAll()
+            store.save(snapshot)
+            return true
+        } catch {
+            savedMapMessage = SavedMapError.localStorage.savedMessage
+            return false
+        }
     }
 
     public func clearOfflineCache() {

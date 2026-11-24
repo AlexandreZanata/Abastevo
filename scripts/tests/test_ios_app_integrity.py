@@ -159,7 +159,7 @@ class IosAppIntegrityTests(unittest.TestCase):
         ]:
             self.assertTrue((IOS_ROOT / rel).is_file(), rel)
 
-    def test_no_force_unwrap_in_core_and_no_background_location_in_sources(self):
+    def test_no_force_unwrap_in_core_and_background_location_is_session_scoped(self):
         force_unwrap = re.compile(r"[A-Za-z0-9_\)\]]!(?![=])")
         for swift in sorted((IOS_ROOT / "Sources/AnpFuelCore").glob("*.swift")):
             text = swift.read_text(encoding="utf-8")
@@ -169,11 +169,27 @@ class IosAppIntegrityTests(unittest.TestCase):
                     f"Forbidden force-unwrap pattern in {swift.name}:{idx}: {line}",
                 )
 
-        banned = ("startUpdatingLocation", "allowsBackgroundLocationUpdates")
+        continuous = (
+            "startUpdatingLocation", "allowsBackgroundLocationUpdates", "showsBackgroundLocationIndicator",
+            "startMonitoringSignificantLocationChanges", "CLBackgroundActivitySession",
+        )
+        allowed = {
+            "Sources/AnpFuelShell/ActiveNavigationLocation.swift",
+            "Sources/AnpFuelShell/DriverDistanceLocation.swift",
+        }
         for swift in sorted((IOS_ROOT / "Sources").rglob("*.swift")):
             text = swift.read_text(encoding="utf-8")
-            for token in banned:
-                self.assertNotIn(token, text, f"Forbidden location token {token} in {swift}")
+            self.assertNotIn("requestAlwaysAuthorization", text, f"Always authorization in {swift}")
+            if swift.relative_to(IOS_ROOT).as_posix() not in allowed:
+                for token in continuous:
+                    self.assertNotIn(token, text, f"Forbidden location token {token} in {swift}")
+
+        adapter = (IOS_ROOT / "Sources/AnpFuelShell/ActiveNavigationLocation.swift").read_text(encoding="utf-8")
+        for token in (
+            "requestWhenInUseAuthorization()", "applicationState == .active", "allowsBackgroundLocationUpdates = true",
+            "showsBackgroundLocationIndicator = true", "stopUpdatingLocation()", "allowsBackgroundLocationUpdates = false",
+        ):
+            self.assertIn(token, adapter)
 
     def test_swift_files_have_balanced_braces_and_parens(self):
         for swift in sorted((IOS_ROOT / "Sources").rglob("*.swift")) + sorted((IOS_ROOT / "Tests").rglob("*.swift")):
@@ -490,7 +506,9 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertEqual(info["CFBundleShortVersionString"], "3.1.18")
         self.assertEqual(info["CFBundleVersion"], "30118")
         self.assertIn("NSLocationWhenInUseUsageDescription", info)
+        self.assertNotIn("NSLocationAlwaysUsageDescription", info)
         self.assertNotIn("NSLocationAlwaysAndWhenInUseUsageDescription", info)
+        self.assertCountEqual(info["UIBackgroundModes"], ["location", "audio"])
         self.assertIn("NSCameraUsageDescription", info)
         self.assertIn("NSPhotoLibraryUsageDescription", info)
         self.assertFalse(info["NSAppTransportSecurity"]["NSAllowsArbitraryLoads"])
@@ -654,9 +672,20 @@ class IosAppIntegrityTests(unittest.TestCase):
         maps = (shell / "MapTabViews.swift").read_text(encoding="utf-8")
         self.assertIn("NativeRouteSheetView(viewModel: viewModel, station: station)", explore)
         self.assertIn("station.pinTier.allowsMapPin", maps)
-        self.assertIn("await viewModel.requestRouteOrigin()", maps)
-        self.assertIn("await MKDirections(request: request).calculate()", maps)
-        self.assertIn("MKLaunchOptionsDirectionsModeDriving", maps)
+        view = (shell / "ActiveNavigationViews.swift").read_text(encoding="utf-8")
+        guidance = (shell / "NavigationCoordinator.swift").read_text(encoding="utf-8")
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        audio = (IOS_ROOT / "Sources/AnpFuelCore/IosPlatformServices.swift").read_text(encoding="utf-8")
+        self.assertIn("await viewModel.requestRouteOrigin()", view)
+        self.assertIn("MKDirections(request: request)", guidance)
+        self.assertIn("try await directions.calculate()", guidance)
+        self.assertIn("MKLaunchOptionsDirectionsModeDriving", view)
+        self.assertIn("location.start {", guidance)
+        self.assertIn("location.stop()", guidance)
+        self.assertIn("NavigationGuidancePolicy.nativeLocaleFor", guidance)
+        self.assertIn("AVSpeechSynthesizer()", audio)
+        self.assertIn(".duckOthers", audio)
+        self.assertGreaterEqual(state.count("navigation.stop()"), 3)
         offline = (shell / "OfflineNavigationViews.swift").read_text(encoding="utf-8")
         # B-BR-IOS-01: offline navigation hands off to Apple Maps offline maps;
         # the app never claims its own regional package is available.

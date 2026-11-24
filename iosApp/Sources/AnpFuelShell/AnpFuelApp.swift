@@ -39,8 +39,12 @@ public struct AbastevoRootView: View {
         .sheet(item: $viewModel.activeSheet) { sheet in
             sheetDestination(sheet)
         }
+        .sheet(item: $viewModel.navigationDestination) { destination in
+            ActiveNavigationSheetView(viewModel: viewModel, destination: destination)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
+                viewModel.navigation.foregrounded()
                 viewModel.configureTrainingConsent()
                 viewModel.trainingConsent.foregrounded()
                 viewModel.anpSurvey.automaticSyncIfDue()

@@ -269,6 +269,23 @@ public enum StationDossierCodec {
         return StationDossierPrices(official: official, community: community)
     }
 
+    static func searchQuery(
+        in municipality: Municipality, query: String, cursor: String?, pageSize: Int
+    ) throws -> [URLQueryItem] {
+        guard query == normalizedSearch(query), !query.isEmpty, (1...100).contains(pageSize),
+              cursor.map({ !$0.isEmpty && $0.utf8.count <= 4_096 }) ?? true else {
+            throw HttpClientError.invalidRequest
+        }
+        var items = [
+            URLQueryItem(name: "state", value: municipality.state.rawValue),
+            URLQueryItem(name: "municipality_code", value: municipality.ibgeCode),
+            URLQueryItem(name: "limit", value: String(pageSize)),
+            URLQueryItem(name: "q", value: query),
+        ]
+        if let cursor { items.append(URLQueryItem(name: "cursor", value: cursor)) }
+        return items
+    }
+
     public static func normalizedSearch(_ raw: String) -> String {
         let clean = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard clean.unicodeScalars.count >= 2 else { return "" }
@@ -292,22 +309,12 @@ extension AbastevoHttpClient {
     }
 
     public func searchStationDirectory(
-        in municipality: Municipality, query: String, cursor: String? = nil
+        in municipality: Municipality, query: String, cursor: String? = nil, pageSize: Int = 20
     ) async throws -> StationDirectoryPage {
-        guard query == StationDossierCodec.normalizedSearch(query), !query.isEmpty,
-              cursor.map({ !$0.isEmpty && $0.utf8.count <= 4_096 }) ?? true else {
-            throw HttpClientError.invalidRequest
-        }
-        var items = [
-            URLQueryItem(name: "state", value: municipality.state.rawValue),
-            URLQueryItem(name: "municipality_code", value: municipality.ibgeCode),
-            URLQueryItem(name: "limit", value: "20"),
-            URLQueryItem(name: "q", value: query),
-        ]
-        if let cursor { items.append(URLQueryItem(name: "cursor", value: cursor)) }
+        let items = try StationDossierCodec.searchQuery(in: municipality, query: query, cursor: cursor, pageSize: pageSize)
         let data = try await publicRead(path: "/v1/stations", query: items, preserveHttpErrors: true)
         let page = try Self.decodeStations(data, in: municipality)
-        guard page.stations.count <= 20,
+        guard page.stations.count <= pageSize,
               page.nextCursor.map({ !$0.isEmpty && $0.utf8.count <= 4_096 }) ?? true else {
             throw HttpClientError.invalidJson
         }
