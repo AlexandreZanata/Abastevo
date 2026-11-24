@@ -48,7 +48,12 @@ final class VehicleEditingTests: XCTestCase {
         }
         draft.name = "Example"
         draft.propulsion = .plugInHybrid
+        // A new draft starts empty: an absent battery is refused before the tank is checked.
         draft.tankLiters = "200.001"
+        XCTAssertThrowsError(try draft.build(existing: nil)) {
+            XCTAssertEqual($0 as? VehicleEditorError, .invalidBattery)
+        }
+        draft.batteryKwh = "12"
         XCTAssertThrowsError(try draft.build(existing: nil)) {
             XCTAssertEqual($0 as? VehicleEditorError, .invalidTank)
         }
