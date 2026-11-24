@@ -1,0 +1,218 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "CFBundleDisplayName": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abastevo"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo verwendet die Kamera, um Preistafeln an Tankstellen zu fotografieren. GPS- und EXIF-Metadaten werden auf deinem Gerät entfernt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo uses the camera to photograph price signs at fuel stations. GPS and EXIF metadata are removed on your device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo usa la cámara para fotografiar los carteles de precios de las gasolineras. Los metadatos GPS y EXIF se eliminan en tu dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo utilise l’appareil photo pour photographier les panneaux de prix des stations-service. Les métadonnées GPS et EXIF sont supprimées sur votre appareil."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevoは、ガソリンスタンドの価格表示板を撮影するためにカメラを使用します。GPSおよびEXIFのメタデータは端末上で削除されます。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O abastevo usa a câmera para fotografar placas de preços nos postos. Os metadados de GPS/EXIF são removidos no aparelho."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo использует камеру для съёмки табло с ценами на заправках. Метаданные GPS и EXIF удаляются на вашем устройстве."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo 使用相机拍摄加油站的价格牌。GPS 和 EXIF 元数据会在设备上删除。"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo verwendet deinen Standort auf Anfrage, um die Karte zu zentrieren, Tankstellen nach Entfernung zu sortieren und Routen zu berechnen. Bei einer von dir gestarteten Route kann die Navigation bei gesperrtem Bildschirm fortgesetzt werden. Die optionale Fahrerdistanz nutzt den Standort nur während einer Schicht mit aktiviertem GPS."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo uses your location when you request it to center the map, sort stations by distance, and calculate routes. Navigation can continue while the screen is locked during a route you start. Optional driver distance uses location only during a GPS-enabled shift."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo usa tu ubicación cuando lo solicitas para centrar el mapa, ordenar las gasolineras por distancia y calcular rutas. La navegación puede continuar con la pantalla bloqueada durante una ruta que inicies. La distancia opcional del conductor usa la ubicación solo durante un turno con GPS activado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo utilise votre position à votre demande pour centrer la carte, trier les stations-service par distance et calculer des itinéraires. La navigation peut continuer quand l’écran est verrouillé pendant un itinéraire que vous démarrez. La distance du conducteur est facultative et utilise la position uniquement pendant une session avec GPS activé."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevoは、地図の中央に現在地を表示したり、ガソリンスタンドを距離順に並べ替えたり、経路を計算したりするために、操作に応じて位置情報を使用します。 開始したルートのナビゲーションは、画面をロックしても続行できます。 ドライバーの距離計測は任意で、GPS を有効にしたシフト中のみ位置情報を使用します。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O abastevo usa sua localização quando solicitada para centralizar o mapa, ordenar postos por distância e calcular rotas. A navegação pode continuar com a tela bloqueada durante uma rota que você iniciar. A distância opcional da Central do Motorista usa a localização apenas durante um turno com GPS ativado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abastevo использует ваше местоположение по запросу, чтобы центрировать карту, сортировать заправки по расстоянию и строить маршруты. На запущенном вами маршруте навигация может продолжаться при заблокированном экране. Необязательный расчёт расстояния использует геопозицию только во время смены с включённым GPS."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在您请求时，Abastevo 会使用您的位置来居中显示地图、按距离排列加油站并计算路线。 在你启动的路线中，锁屏后导航仍可继续。 可选的司机距离统计仅在启用 GPS 的班次期间使用位置。"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle Fotos von Preistafeln an Tankstellen aus, um die Preise auf deinem Gerät zu erkennen (OCR)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select photos of fuel station signs to recognize prices on your device (OCR)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona fotos de carteles de gasolineras para reconocer los precios en tu dispositivo (OCR)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez des photos de panneaux de stations-service pour reconnaître les prix sur votre appareil (OCR)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ガソリンスタンドの価格表示板の写真を選択して、端末上で価格を読み取ります（OCR）。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite selecionar fotos de placas de postos para reconhecimento local de preços (OCR)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбирайте фотографии табло на заправках, чтобы распознавать цены на своём устройстве (OCR)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择加油站价格牌的照片，在设备上识别价格（OCR）。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

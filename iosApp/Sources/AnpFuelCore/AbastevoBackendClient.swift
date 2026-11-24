@@ -22,7 +22,7 @@ public struct ForumPublicCategory: Decodable, Identifiable, Sendable {
 }
 
 public struct ForumPublicPost: Decodable, Identifiable, Sendable {
-    public enum Kind: String, Decodable, Sendable {
+    public enum Kind: String, CaseIterable, Decodable, Equatable, Sendable {
         case editorial = "EDITORIAL"
         case news = "NEWS"
         case topic = "TOPIC"
@@ -47,16 +47,69 @@ public struct ForumPublicDetail: Decodable, Sendable {
     public let id: String
     public let bodyText: String?
     public let source: Source?
-    public let likeCount: Int64
-    public let dislikeCount: Int64
+    public let commentsEnabled: Bool?
+    public let likeCount: Int64?
+    public let dislikeCount: Int64?
+
+    public var reactionCounts: ForumReactionCounts? {
+        ForumReactionCounts(likes: likeCount, dislikes: dislikeCount)
+    }
 }
 
 public struct ForumPublicComment: Decodable, Identifiable, Sendable {
     public let id: String
     public let postId: String
+    public let parentId: String?
     public let publicAlias: String
     public let bodyText: String
     public let createdAt: String
+    public let depth: Int
+    public let revision: Int64
+    public let replyCount: Int
+    public let likeCount: Int64?
+    public let dislikeCount: Int64?
+    public let topReply: ForumPublicReplyPreview?
+
+    public var reactionCounts: ForumReactionCounts? {
+        ForumReactionCounts(likes: likeCount, dislikes: dislikeCount)
+    }
+
+    func belongsTo(postId: String, parentId: String?) -> Bool {
+        guard CommunityWire.isUuid(id),
+              self.postId.caseInsensitiveCompare(postId) == .orderedSame,
+              revision >= 1, replyCount >= 0 else {
+            return false
+        }
+        if let parentId {
+            return depth == 1 && self.parentId?.caseInsensitiveCompare(parentId) == .orderedSame
+                && topReply == nil
+        }
+        guard depth == 0, self.parentId == nil else { return false }
+        return topReply?.comment.belongsTo(postId: postId, parentId: id) ?? true
+    }
+}
+
+/// Ranked pages can include one reply preview. Replies cannot themselves contain a preview.
+public struct ForumPublicReplyPreview: Decodable, Sendable {
+    public let id: String
+    public let postId: String
+    public let parentId: String
+    public let publicAlias: String
+    public let bodyText: String
+    public let createdAt: String
+    public let depth: Int
+    public let revision: Int64
+    public let replyCount: Int
+    public let likeCount: Int64?
+    public let dislikeCount: Int64?
+
+    public var comment: ForumPublicComment {
+        ForumPublicComment(
+            id: id, postId: postId, parentId: parentId, publicAlias: publicAlias,
+            bodyText: bodyText, createdAt: createdAt, depth: depth, revision: revision,
+            replyCount: replyCount, likeCount: likeCount, dislikeCount: dislikeCount, topReply: nil
+        )
+    }
 }
 
 public struct PublicContributor: Decodable, Sendable {
@@ -72,6 +125,9 @@ public struct PublicStationComment: Decodable, Identifiable, Sendable {
     public let publicAlias: String
     public let text: String
     public let createdAt: String
+    public let parentId: String?
+    public let depth: Int?
+    public let revision: Int64?
 }
 
 /// Explicit backend environment and URLSession HTTP client synchronized with `main`.
@@ -83,11 +139,11 @@ public enum ApiEnvironment: String, CaseIterable, Codable, Sendable {
 
     public var origin: String { rawValue }
 
-    public var labelPtBr: String {
+    public var localizedLabel: String {
         switch self {
-        case .staging: return "Oficial / Staging (abastevo.com.br)"
-        case .preview: return "Offline / Preview (RFC 2606)"
-        case .localProof: return "Local Proof (127.0.0.1:18080)"
+        case .staging: return String(localized: "origin.official", bundle: CoreLocalization.bundle)
+        case .preview: return String(localized: "origin.offline", bundle: CoreLocalization.bundle)
+        case .localProof: return String(localized: "origin.local", bundle: CoreLocalization.bundle)
         }
     }
 
@@ -142,6 +198,7 @@ public struct OfficialStationPrice: Identifiable, Sendable {
 /// The bridge blocks its caller, so the shell runs it through `AuthBlockingWork`, never on the main actor.
 /// Signed device requests live in `SignedRequestTransport`.
 public final class AbastevoHttpClient: AuthAccountApi {
+    static let communityFeedPath = "/v1/community/feed"
     private static let maxResponseBytes = 512 * 1024
     private static let requestTimeout: TimeInterval = 20.0
 
@@ -335,16 +392,11 @@ public final class AbastevoHttpClient: AuthAccountApi {
         fuel: FuelProduct,
         sort: FeedSortOrder
     ) async -> [CommunityPriceObservation]? {
-        let sortWire = sort == .cheapest ? "cheapest" : "recent"
-        let query = [
-            URLQueryItem(name: "state", value: state.rawValue),
-            URLQueryItem(name: "municipality_code", value: municipalityCode),
-            URLQueryItem(name: "fuel_product", value: fuel.wireCode),
-            URLQueryItem(name: "sort", value: sortWire),
-            URLQueryItem(name: "limit", value: "20"),
-        ]
-        guard let data = try? await publicRead(path: "/v1/community/feed", query: query) else { return nil }
-        return try? Self.decodeCommunityFeed(data, state: state, municipalityCode: municipalityCode, fuel: fuel)
+        let now = Int64(Date().timeIntervalSince1970)
+        guard let items = try? await fetchCommunityFeedItems(
+            state: state, municipalityCode: municipalityCode, fuel: fuel, sort: sort
+        ) else { return nil }
+        return items.filter { $0.isLive(nowEpochSeconds: now) }.map(\.observation)
     }
 
     public func fetchForumCategories() async throws -> [ForumPublicCategory] {
@@ -353,25 +405,52 @@ public final class AbastevoHttpClient: AuthAccountApi {
     }
 
     public func fetchForumPosts(category: String?) async throws -> [ForumPublicPost] {
-        let query = category.map { [URLQueryItem(name: "category", value: $0)] } ?? []
-        let data = try await publicRead(path: "/v1/forum/posts", query: query)
-        return try Self.decodePublicPage(data, as: ForumPublicPost.self)
+        try await fetchForumFeed(filters: ForumFeedFilters(category: category)).items
+    }
+
+    public func fetchForumFeed(
+        filters: ForumFeedFilters, limit: Int = ForumReadWire.pageSize, cursor: String? = nil
+    ) async throws -> ForumFeedPage {
+        let query = try filters.query(limit: limit, cursor: cursor)
+        let data = try await publicRead(path: "/v1/forum/posts", query: query, preserveHttpErrors: true)
+        return try ForumReadWire.feed(data, limit: limit)
     }
 
     public func fetchForumPost(id: String) async throws -> ForumPublicDetail {
         guard UUID(uuidString: id) != nil else { throw HttpClientError.invalidRequest }
-        let data = try await publicRead(path: "/v1/forum/posts/\(id)")
+        let data = try await publicRead(path: "/v1/forum/posts/\(id)", preserveHttpErrors: true)
         let post = try Self.publicDecoder().decode(ForumPublicDetailResponse.self, from: data).post
-        guard post.id == id else { throw HttpClientError.invalidJson }
+        guard post.id.caseInsensitiveCompare(id) == .orderedSame else { throw HttpClientError.invalidJson }
         return post
     }
 
     public func fetchForumComments(postId: String) async throws -> [ForumPublicComment] {
+        try await fetchForumCommentsPage(postId: postId, sort: nil).items
+    }
+
+    public func fetchForumCommentsPage(
+        postId: String, sort: ForumReplySort?, limit: Int = ForumReadWire.pageSize, cursor: String? = nil
+    ) async throws -> ForumCommentsPage {
         guard UUID(uuidString: postId) != nil else { throw HttpClientError.invalidRequest }
-        let data = try await publicRead(path: "/v1/forum/posts/\(postId)/comments")
-        let comments = try Self.decodePublicPage(data, as: ForumPublicComment.self)
-        guard comments.allSatisfy({ $0.postId == postId }) else { throw HttpClientError.invalidJson }
-        return comments
+        var query = try ForumReadWire.pageQuery(limit: limit, cursor: cursor)
+        if let sort { query.append(URLQueryItem(name: "sort", value: sort.rawValue)) }
+        let data = try await publicRead(
+            path: "/v1/forum/posts/\(postId)/comments", query: query, preserveHttpErrors: true
+        )
+        return try ForumReadWire.comments(data, postId: postId, parentId: nil, limit: limit)
+    }
+
+    public func fetchForumReplies(
+        postId: String, parentId: String, limit: Int = ForumReadWire.pageSize, cursor: String? = nil
+    ) async throws -> ForumCommentsPage {
+        guard UUID(uuidString: postId) != nil, UUID(uuidString: parentId) != nil else {
+            throw HttpClientError.invalidRequest
+        }
+        let query = try ForumReadWire.pageQuery(limit: limit, cursor: cursor)
+        let data = try await publicRead(
+            path: "/v1/forum/comments/\(parentId)/replies", query: query, preserveHttpErrors: true
+        )
+        return try ForumReadWire.comments(data, postId: postId, parentId: parentId, limit: limit)
     }
 
     public func fetchContributors() async throws -> [PublicContributor] {
@@ -402,23 +481,27 @@ public final class AbastevoHttpClient: AuthAccountApi {
         return comments
     }
 
-    func publicRead(path: String, query: [URLQueryItem] = [], maxBytes: Int? = nil) async throws -> Data {
+    func publicRead(
+        path: String, query: [URLQueryItem] = [], maxBytes: Int? = nil, preserveHttpErrors: Bool = false
+    ) async throws -> Data {
         guard let origin = environment.join(path),
               var components = URLComponents(url: origin, resolvingAgainstBaseURL: false) else {
             throw HttpClientError.invalidRequest
         }
         components.queryItems = query.isEmpty ? nil : query
         guard let url = components.url else { throw HttpClientError.invalidRequest }
-        return try await performGet(url: url, maxBytes: maxBytes ?? Self.maxResponseBytes)
+        return try await performGet(url: url, maxBytes: maxBytes ?? Self.maxResponseBytes, preserveHttpErrors: preserveHttpErrors)
     }
 
-    private func performGet(url: URL, maxBytes: Int) async throws -> Data {
+    private func performGet(url: URL, maxBytes: Int, preserveHttpErrors: Bool) async throws -> Data {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let (data, response) = try await session.data(for: request)
         if data.count > maxBytes { throw HttpClientError.oversizedResponse }
-        guard let http = response as? HTTPURLResponse, http.statusCode >= 200 && http.statusCode < 300 else {
+        guard let http = response as? HTTPURLResponse else { throw HttpClientError.unavailable }
+        guard (200..<300).contains(http.statusCode) else {
+            if preserveHttpErrors { throw HttpClientError.httpStatus(http.statusCode, parseErrorCode(data)) }
             throw HttpClientError.unavailable
         }
         return data
@@ -600,35 +683,10 @@ extension AbastevoHttpClient {
         fuel: FuelProduct,
         now: Date = Date()
     ) throws -> [CommunityPriceObservation] {
-        let page = try publicDecoder().decode(CommunityFeedWire.self, from: data)
-        guard page.state == state.rawValue, page.municipalityCode == municipalityCode, page.fuelProduct == fuel.wireCode else {
-            throw HttpClientError.invalidJson
-        }
-        return try page.items.compactMap { row in
-            guard UUID(uuidString: row.stationId) != nil, row.source == "COMMUNITY", row.currency == "BRL",
-                  row.fuelProduct == fuel.wireCode, row.unit == fuel.unitWire, row.amountMilliBrl > 0,
-                  let condition = PriceConditionKind(rawValue: row.condition),
-                  let updatedAt = readIsoDate(row.updatedAt), let expiresAt = readIsoDate(row.expiresAt) else {
-                throw HttpClientError.invalidJson
-            }
-            guard expiresAt > now else { return nil }
-            return CommunityPriceObservation(
-                id: row.stationId,
-                stationId: row.stationId,
-                stationName: row.stationName,
-                municipalityCode: municipalityCode,
-                product: fuel,
-                amountMilli: row.amountMilliBrl,
-                condition: condition,
-                confirmations: row.confirmations,
-                disputes: 0,
-                helpfulCount: 0,
-                notHelpfulCount: 0,
-                observedAtLabel: row.updatedAt,
-                observedEpochSeconds: Int64(updatedAt.timeIntervalSince1970),
-                hasPhotoEvidence: false
-            )
-        }
+        let nowSeconds = Int64(now.timeIntervalSince1970)
+        return try decodeCommunityFeedItems(data, state: state, municipalityCode: municipalityCode, fuel: fuel)
+            .filter { $0.isLive(nowEpochSeconds: nowSeconds) }
+            .map(\.observation)
     }
 
     static func publicDecoder() -> JSONDecoder {
@@ -705,25 +763,4 @@ private struct PriceGroupWire: Decodable {
     let unit: String
     let condition: Condition
     let official: Official?
-}
-
-private struct CommunityFeedWire: Decodable {
-    struct Item: Decodable {
-        let stationId: String
-        let stationName: String
-        let fuelProduct: String
-        let amountMilliBrl: Int64
-        let unit: String
-        let currency: String
-        let source: String
-        let condition: String
-        let updatedAt: String
-        let expiresAt: String
-        let confirmations: Int
-    }
-
-    let items: [Item]
-    let state: String
-    let municipalityCode: String
-    let fuelProduct: String
 }

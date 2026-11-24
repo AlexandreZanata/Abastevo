@@ -101,6 +101,10 @@ public final class IosLocalStore {
         self.fileUrl = baseDir.appendingPathComponent("abastevo-state-v3.json")
     }
 
+    public var savedMapDirectory: URL {
+        fileUrl.deletingLastPathComponent().appendingPathComponent("saved-map", isDirectory: true)
+    }
+
     public static func defaultDirectory() -> URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
@@ -139,10 +143,14 @@ public final class IosLocalStore {
     }
 
     public func save(_ snapshot: PersistedAppSnapshot) {
+        try? saveChecked(snapshot)
+    }
+
+    public func saveChecked(_ snapshot: PersistedAppSnapshot) throws {
         lock.lock()
         defer { lock.unlock() }
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        try? data.write(to: fileUrl, options: .atomic)
+        let data = try JSONEncoder().encode(snapshot)
+        try data.write(to: fileUrl, options: .atomic)
         Self.excludeFromBackup(fileUrl)
     }
 

@@ -44,18 +44,12 @@ public enum AbastevoTheme {
     }
 
     public static func formatBrlMilli(_ milli: Int64) -> String {
-        if let formatted = try? PortableMoney.format(milli) {
-            return "R$ \(formatted)"
-        }
-        return "R$ —"
+        guard (PortableMoney.minMilli...PortableMoney.maxMilli).contains(milli) else { return "—" }
+        return (Decimal(milli) / 1_000).formatted(.currency(code: "BRL").precision(.fractionLength(3)))
     }
 
     public static func formatCentavos(_ centavos: Int64) -> String {
-        let absVal = abs(centavos)
-        let reais = absVal / 100
-        let cents = absVal % 100
-        let sign = centavos < 0 ? "-" : ""
-        return String(format: "%@R$ %lld,%02lld", sign, reais, cents)
+        (Decimal(centavos) / 100).formatted(.currency(code: "BRL").precision(.fractionLength(2)))
     }
 }
 
@@ -121,13 +115,14 @@ public struct AbastevoTopChromeBar: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 HStack(spacing: 6) {
-                    Text("A")
+                    Text(verbatim: "A")
+                        .accessibilityHidden(true)
                         .font(.system(size: 16, weight: .black, design: .rounded))
                         .foregroundStyle(AbastevoTheme.accentDark)
                         .frame(width: 26, height: 26)
                         .background(AbastevoTheme.chromeControl)
                         .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                    Text("abastevo")
+                    Text(String(localized: "brand.name"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                 }
@@ -139,7 +134,7 @@ public struct AbastevoTopChromeBar: View {
                         .background(AbastevoTheme.chromeControl)
                         .clipShape(Circle())
                 }
-                .accessibilityLabel("Configurações")
+                .accessibilityLabel(String(localized: "android.nav_settings"))
 
                 Button(action: onProfileTap) {
                     HStack(spacing: 5) {
@@ -157,7 +152,7 @@ public struct AbastevoTopChromeBar: View {
                     .background(AbastevoTheme.chromeControl)
                     .clipShape(Capsule())
                 }
-                .accessibilityLabel("Perfil")
+                .accessibilityLabel(String(localized: "android.nav_profile"))
             }
 
             HStack(spacing: 8) {
@@ -200,7 +195,7 @@ public struct AbastevoTopChromeBar: View {
                 HStack(spacing: 6) {
                     Image(systemName: "wifi.slash")
                         .font(.caption2)
-                    Text("Modo offline: dados locais disponíveis e envio na fila")
+                    Text(String(localized: "network.offline_work"))
                         .font(.caption2)
                 }
                 .foregroundStyle(AbastevoTheme.warningDark)
@@ -240,19 +235,18 @@ public enum AppTab: String, CaseIterable, Identifiable {
         }
     }
 
-    public func title(locale: SupportedAppLocale) -> String {
+    public var title: String {
         switch self {
-        case .explore: return IosStrings.tabExplore(locale)
-        case .community: return IosStrings.tabCommunity(locale)
-        case .map: return IosStrings.tabMap(locale)
-        case .profile: return IosStrings.tabProfile(locale)
+        case .explore: return String(localized: "android.nav_explore")
+        case .community: return String(localized: "android.nav_community")
+        case .map: return String(localized: "android.nav_map")
+        case .profile: return String(localized: "android.nav_profile")
         }
     }
 }
 
 public struct AbastevoBottomTabBar: View {
     let selectedTab: AppTab
-    let locale: SupportedAppLocale
     let onSelectTab: (AppTab) -> Void
 
     public var body: some View {
@@ -266,7 +260,7 @@ public struct AbastevoBottomTabBar: View {
                     VStack(spacing: 4) {
                         Image(systemName: isSelected ? tab.selectedSystemImage : tab.systemImage)
                             .font(.system(size: 18, weight: isSelected ? .bold : .regular))
-                        Text(tab.title(locale: locale))
+                        Text(tab.title)
                             .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                             .lineLimit(1)
                     }
@@ -289,7 +283,6 @@ public struct AbastevoBottomTabBar: View {
 public struct FuelProductChipsBar: View {
     @Environment(\.colorScheme) private var colorScheme
     let selectedFuel: FuelProduct
-    let locale: SupportedAppLocale
     let onSelect: (FuelProduct) -> Void
 
     public var body: some View {
@@ -306,7 +299,7 @@ public struct FuelProductChipsBar: View {
                             Circle()
                                 .fill(tint)
                                 .frame(width: 8, height: 8)
-                            Text(locale == .ptBR ? product.displayNamePtBr : product.displayNameEn)
+                            Text(product.localizedName)
                                 .font(.subheadline.weight(isSelected ? .bold : .medium))
                         }
                         .padding(.horizontal, 12)

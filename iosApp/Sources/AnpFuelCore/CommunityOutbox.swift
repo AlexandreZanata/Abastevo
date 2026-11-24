@@ -8,12 +8,15 @@ import Foundation
 /// sign-in, `pending` waits for a server receipt, `accepted` carries the
 /// receipt id, `refused` carries the server code, and `expired` covers a
 /// lapsed photo window or the 25-attempt cap from `PortableOutbox`.
+/// `unconfirmed` holds a create the server cannot deduplicate whose outcome is
+/// unknown: it is never resent automatically, only after the user reloads and asks.
 /// Zero postfix unwrap operators anywhere in this file.
 public enum CommunityWriteKind: String, Codable, CaseIterable, Sendable {
     case priceObservation = "PRICE_OBSERVATION"
     case stationComment = "STATION_COMMENT"
     case forumTopic = "FORUM_TOPIC"
     case forumComment = "FORUM_COMMENT"
+    case stationSuggestion = "STATION_SUGGESTION"
 
     /// Price observations are signed by the device contributor; the social routes need an account session.
     public var requiresAccount: Bool {
@@ -27,11 +30,12 @@ public enum CommunityItemStatus: String, Codable, Sendable {
     case accepted = "ACCEPTED"
     case refused = "REFUSED"
     case expired = "EXPIRED"
+    case unconfirmed = "UNCONFIRMED"
 
     public var isTerminal: Bool {
         switch self {
         case .accepted, .refused, .expired: return true
-        case .draft, .pending: return false
+        case .draft, .pending, .unconfirmed: return false
         }
     }
 }
@@ -132,6 +136,7 @@ public struct CommunityOutboxItem: Codable, Equatable, Identifiable, Sendable {
     public let createdAtMillis: Int64
     public var price: CommunityPriceDraft?
     public var text: CommunityTextDraft?
+    public var stationProposal: StationIntakeProposal?
     public var status: CommunityItemStatus
     public var attempts: Int
     public var nextEligibleMillis: Int64
@@ -147,6 +152,7 @@ public struct CommunityOutboxItem: Codable, Equatable, Identifiable, Sendable {
         createdAtMillis: Int64,
         price: CommunityPriceDraft? = nil,
         text: CommunityTextDraft? = nil,
+        stationProposal: StationIntakeProposal? = nil,
         status: CommunityItemStatus = .pending,
         attempts: Int = 0,
         nextEligibleMillis: Int64 = 0,
@@ -161,6 +167,7 @@ public struct CommunityOutboxItem: Codable, Equatable, Identifiable, Sendable {
         self.createdAtMillis = createdAtMillis
         self.price = price
         self.text = text
+        self.stationProposal = stationProposal
         self.status = status
         self.attempts = attempts
         self.nextEligibleMillis = nextEligibleMillis
@@ -206,6 +213,7 @@ public protocol CommunityWriteGateway: Sendable {
     func submitStationComment(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
     func submitForumTopic(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
     func submitForumComment(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
+    func submitStationSuggestion(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt
 }
 
 public enum CommunityFailureDisposition: Equatable, Sendable {
@@ -220,6 +228,20 @@ public enum CommunityOutbox {
     public static let ownerChangedCode = "community.owner-or-origin-changed"
     public static let signInRequiredCode = "community.sign-in-required"
     public static let attemptsExhaustedCode = "outbox.attempts-exhausted"
+    public static let outcomeUnknownCode = "community.outcome-unknown"
+
+    public static func ownedStationCommentIds(
+        _ items: [CommunityOutboxItem], ownerScope: String, origin: String, stationId: String, fuel: FuelProduct
+    ) -> Set<String> {
+        guard ownerScope.hasPrefix("account:") else { return [] }
+        return Set(items.compactMap { item in
+            guard item.kind == .stationComment, item.status == .accepted,
+                  item.ownerScope == ownerScope, item.origin == origin,
+                  item.text?.stationId?.lowercased() == stationId.lowercased(), item.text?.product == fuel,
+                  let id = item.receiptId, CommunityWire.isUuid(id) else { return nil }
+            return id.lowercased()
+        })
+    }
 
     public static func enqueue(_ item: CommunityOutboxItem, into items: [CommunityOutboxItem]) -> [CommunityOutboxItem] {
         var next = items.filter { $0.id != item.id }
@@ -325,14 +347,45 @@ public enum CommunityOutbox {
         }
     }
 
-    /// Manual retry of an open item; terminal items stay as they are.
+    /// Manual retry of an open item; terminal items stay as they are. An unconfirmed create is
+    /// sent again only through this explicit action.
     public static func retryNow(_ items: [CommunityOutboxItem], id: String) -> [CommunityOutboxItem] {
         return items.map { item in
-            guard item.id == id, item.status == .pending else { return item }
+            guard item.id == id, item.status == .pending || item.status == .unconfirmed else { return item }
             var next = item
+            next.status = .pending
             next.nextEligibleMillis = 0
+            if item.status == .unconfirmed { next.lastCode = nil }
             return next
         }
+    }
+
+    /// Station comment creates carry no operation id the feedback API could deduplicate. These
+    /// failures may follow an applied create: a connection lost after sending, an unreadable or
+    /// malformed 2xx reply, or a server error after the request arrived.
+    public static func createOutcomeIsUnknown(_ error: Error) -> Bool {
+        if error is SignedDeliveryUncertain { return true }
+        if let write = error as? CommunityWriteError { return write == .invalidReceipt }
+        guard let transport = error as? SignedTransportError else { return false }
+        switch transport {
+        case .oversizedResponse, .invalidResponse:
+            return true
+        case .refused(let status, _, _):
+            return status >= 500
+        case .invalidRequest, .originUnavailable, .identityUnavailable, .signingUnavailable,
+             .sessionRequired, .offline:
+            return false
+        }
+    }
+
+    /// Parks a create whose outcome is unknown until the user reloads and explicitly sends it again.
+    public static func awaitReload(_ item: CommunityOutboxItem) -> CommunityOutboxItem {
+        var next = item
+        next.status = .unconfirmed
+        next.attempts = min(item.attempts + 1, PortableOutbox.maxDispatchAttempts)
+        next.lastCode = outcomeUnknownCode
+        next.nextEligibleMillis = 0
+        return next
     }
 
     public static func classify(_ error: Error, nowMillis: Int64) -> CommunityFailureDisposition {
@@ -450,9 +503,14 @@ public enum CommunityOutboxDispatcher {
                 receipt = try await gateway.submitForumTopic(current)
             case .forumComment:
                 receipt = try await gateway.submitForumComment(current)
+            case .stationSuggestion:
+                receipt = try await gateway.submitStationSuggestion(current)
             }
             return CommunityOutbox.accept(current, receipt: receipt)
         } catch {
+            if item.kind == .stationComment, CommunityOutbox.createOutcomeIsUnknown(error) {
+                return CommunityOutbox.awaitReload(current)
+            }
             let now = clock()
             return CommunityOutbox.apply(CommunityOutbox.classify(error, nowMillis: now), to: current, nowMillis: now)
         }

@@ -2,10 +2,12 @@ import SwiftUI
 import AnpFuelCore
 
 /// Explore Tab + Station Detail + Price History + EV Explore + Location/Week Pickers + Quality/Suggest/FAQ.
+@MainActor
 public struct ExploreRootView: View {
     @ObservedObject var viewModel: AppStateViewModel
     @State private var tankLitersDouble: Double = 50.0
     @State private var searchStationText: String = ""
+    @StateObject private var stationSearch = StationCatalogSearchModel()
 
     public var body: some View {
         NavigationStack(path: $viewModel.explorePath) {
@@ -13,7 +15,6 @@ public struct ExploreRootView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     FuelProductChipsBar(
                         selectedFuel: viewModel.snapshot.selectedFuel,
-                        locale: viewModel.currentLocale,
                         onSelect: { viewModel.selectFuel($0) }
                     )
 
@@ -38,6 +39,9 @@ public struct ExploreRootView: View {
             }
             .refreshable {
                 await viewModel.refreshCityData()
+                if !stationSearchScope.query.isEmpty {
+                    await stationSearch.load(stationSearchScope, host: viewModel, reset: true)
+                }
                 await viewModel.anpSurvey.manualSync()
             }
         }
@@ -48,31 +52,31 @@ public struct ExploreRootView: View {
         let latest = feed.first
         return EnergiaCard {
             HStack {
-                SourceTrustBadge(isOfficial: false, label: "Comunidade")
+                SourceTrustBadge(isOfficial: false, label: String(localized: "android.home_source_community"))
                 Spacer()
                 Button {
                     viewModel.activeSheet = .capturePrice
                 } label: {
-                    Label("Enviar foto", systemImage: "camera.fill")
+                    Label(String(localized: "explore.capture_photo"), systemImage: "camera.fill")
                         .font(.caption.bold())
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AbastevoTheme.accentLight)
             }
             if let latest = latest {
-                Text("Menor/último relato recente: \(AbastevoTheme.formatBrlMilli(latest.amountMilli))")
+                Text(String(localized: "explore.community.recent_price", defaultValue: "Recent community price: \(AbastevoTheme.formatBrlMilli(latest.amountMilli))"))
                     .font(.headline)
-                Text("\(latest.stationName) · \(latest.condition.labelPtBr) · \(latest.confirmations) confirmações")
+                Text(String(localized: "explore.community.recent_summary", defaultValue: "\(latest.stationName) · \(latest.condition.localizedLabel) · confirmations: \(latest.confirmations.formatted())"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else if viewModel.communityReadState == .loading {
                 ProgressView()
             } else if viewModel.communityReadState == .unavailable {
-                Text("Preços da comunidade indisponíveis.")
+                Text(String(localized: "android.home_community_unavailable"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Sem preços comunitários recentes para este combustível.")
+                Text(String(localized: "android.home_community_empty"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -81,7 +85,7 @@ public struct ExploreRootView: View {
                     .font(.caption2)
                     .foregroundStyle(.orange)
                 if viewModel.communityExpiredCount > 0 {
-                    Text("\(viewModel.communityExpiredCount) relato(s) salvos expiraram e não são exibidos.")
+                    Text(String(localized: "explore.community.expired", defaultValue: "Expired reports hidden: \(viewModel.communityExpiredCount.formatted())."))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -95,12 +99,14 @@ public struct ExploreRootView: View {
             guard let price = viewModel.communityObservation(stationId: st.id, product: fuel) else { return nil }
             return StationPrice(station: st.name, unitMilli: price.amountMilli)
         }
+        let capacity = Measurement(value: tankLitersDouble, unit: UnitVolume.liters)
+            .formatted(.measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0))))
         let ml = Int64(tankLitersDouble * 1000.0)
         let cheapestFill = try? TankFillUseCase.fillCheapest(prices: stationPrices, capacityMilliLiters: ml)
 
         return EnergiaCard {
             HStack {
-                Text("Simulador de Tanque (\(Int(tankLitersDouble)) \(fuel.shortUnitLabel))")
+                Text(String(localized: "explore.tank.title", defaultValue: "Tank fill estimate (\(capacity))"))
                     .font(.subheadline.bold())
                 Spacer()
                 Stepper("", value: $tankLitersDouble, in: 10...120, step: 5)
@@ -111,7 +117,7 @@ public struct ExploreRootView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(fill.station)
                             .font(.subheadline.weight(.semibold))
-                        Text("Preço comunitário disponível (\(AbastevoTheme.formatBrlMilli(fill.unitMilli))/\(fuel.shortUnitLabel))")
+                        Text(String(localized: "explore.tank.community_price", defaultValue: "Community price (\(AbastevoTheme.formatBrlMilli(fill.unitMilli))/L)"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -120,7 +126,7 @@ public struct ExploreRootView: View {
                         .font(.title3.bold())
                 }
             } else {
-                Text("Aguardando preços de postos para estimar o total.")
+                Text(String(localized: "explore.tank.no_prices"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -129,22 +135,22 @@ public struct ExploreRootView: View {
 
     private var discoveryShortcutsGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-            shortcutButton(title: "Histórico", icon: "chart.line.uptrend.xyaxis") {
+            shortcutButton(title: String(localized: "android.nav_history"), icon: "chart.line.uptrend.xyaxis") {
                 viewModel.activeSheet = .priceHistory
             }
-            shortcutButton(title: "Recarga EV", icon: "bolt.car.fill") {
+            shortcutButton(title: String(localized: "ev.catalog.title"), icon: "bolt.car.fill") {
                 viewModel.activeSheet = .evExplore
             }
-            shortcutButton(title: "Qualidade", icon: "flask.fill") {
+            shortcutButton(title: String(localized: "explore.quality"), icon: "flask.fill") {
                 viewModel.activeSheet = .qualityReports
             }
-            shortcutButton(title: "Sugerir Posto", icon: "plus.circle.fill") {
+            shortcutButton(title: String(localized: "explore.suggest_station"), icon: "plus.circle.fill") {
                 viewModel.activeSheet = .suggestStation
             }
-            shortcutButton(title: "Perguntas", icon: "questionmark.circle.fill") {
+            shortcutButton(title: String(localized: "explore.faq"), icon: "questionmark.circle.fill") {
                 viewModel.activeSheet = .masterFaq
             }
-            shortcutButton(title: "Rotas EV", icon: "map.fill") {
+            shortcutButton(title: String(localized: "ev.trip.title"), icon: "map.fill") {
                 viewModel.activeSheet = .evTripPlanner
             }
         }
@@ -172,50 +178,54 @@ public struct ExploreRootView: View {
         .buttonStyle(.plain)
     }
 
+    private var stationSearchScope: StationCatalogSearchModel.Scope {
+        stationSearch.activeScope(for: searchStationText, on: viewModel)
+    }
+
     private var stationListSection: some View {
-        let filtered = viewModel.sortedStations.filter { st in
-            searchStationText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                || st.name.localizedCaseInsensitiveContains(searchStationText)
-                || st.brand.localizedCaseInsensitiveContains(searchStationText)
-                || st.neighborhood.localizedCaseInsensitiveContains(searchStationText)
-        }
+        let searching = !stationSearchScope.query.isEmpty
+        let currentSearch = stationSearch.isCurrent(stationSearchScope)
+        let rows = searching
+            ? (currentSearch ? viewModel.sortStationRows(stationSearch.rows) : [])
+            : viewModel.sortedStations
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(viewModel.selectedMunicipality.map { String(localized: "Postos em \($0.name)") } ?? String(localized: "Postos"))
+                Text(viewModel.selectedMunicipality.map { String(localized: "explore.stations.in_city", defaultValue: "Stations in \($0.name)") } ?? String(localized: "android.nav_stations"))
                     .font(.headline)
                 Spacer()
-                Picker("Ordenar", selection: $viewModel.sortOrder) {
+                Picker(String(localized: "android.home_filter_title"), selection: $viewModel.sortOrder) {
                     ForEach(StationSortOrder.allCases) { order in
-                        Text(order.labelPtBr).tag(order)
+                        Text(order.localizedLabel).tag(order)
                     }
                 }
                 .pickerStyle(.menu)
             }
 
-            TextField("Filtrar postos carregados por nome ou bairro", text: $searchStationText)
+            TextField(String(localized: "explore.stations.filter"), text: $searchStationText)
                 .textFieldStyle(.roundedBorder)
 
             if viewModel.selectedMunicipality == nil {
-                Button("Escolher cidade") { viewModel.activeSheet = .locationPicker }
+                Button(String(localized: "android.feed_choose_city")) { viewModel.activeSheet = .locationPicker }
+            } else if searching {
+                stationSearchStatus(current: currentSearch, hasRows: !rows.isEmpty)
             } else if viewModel.stationReadState == .loading {
                 ProgressView()
             } else if viewModel.stationReadState == .unavailable {
-                Text("Catálogo de postos indisponível.")
-                Button("Tentar novamente") { viewModel.reloadCityData() }
-            } else if filtered.isEmpty {
-                Text("Nenhum posto encontrado nesta lista.")
+                Text(String(localized: "explore.stations.unavailable"))
+                Button(String(localized: "android.feed_retry")) { viewModel.reloadCityData() }
+            } else if rows.isEmpty {
+                Text(String(localized: "explore.stations.no_match"))
             }
-            if let cachedAt = viewModel.directoryCachedAt {
+            if !searching, let cachedAt = viewModel.directoryCachedAt {
                 Text(viewModel.cachedLabel(cachedAt))
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
             if viewModel.sortOrder == .distance && viewModel.lastDeviceCoordinate == nil {
-                Text("Use sua localização no mapa para ordenar por distância.")
+                Text(String(localized: "explore.stations.sort_by_location"))
                     .font(.caption)
             }
-
-            ForEach(filtered) { station in
+            ForEach(rows) { station in
                 Button {
                     viewModel.selectedStation = station
                 } label: {
@@ -223,17 +233,56 @@ public struct ExploreRootView: View {
                 }
                 .buttonStyle(.plain)
             }
-            if viewModel.stationPageUnavailable {
-                Text("Não foi possível carregar a próxima página.")
-                    .font(.caption)
-            }
-            if viewModel.isLoadingMoreStations {
-                ProgressView()
-            } else if viewModel.nextStationCursor != nil {
-                Button("Carregar mais postos") {
-                    Task { await viewModel.loadMoreStations() }
+            if searching, currentSearch {
+                if let failure = stationSearch.failure {
+                    let staleCursor = failure == .httpStatus(400, "station.bad-cursor")
+                    Button(String(localized: "android.feed_retry")) {
+                        Task {
+                            await stationSearch.load(
+                                stationSearchScope, host: viewModel,
+                                reset: staleCursor || stationSearch.cursor == nil
+                            )
+                        }
+                    }
+                    .disabled(stationSearch.isLoading)
+                } else if !stationSearch.isLoading, stationSearch.cursor != nil {
+                    Button(String(localized: "explore.stations.load_more")) {
+                        Task { await stationSearch.load(stationSearchScope, host: viewModel, reset: false) }
+                    }
+                }
+            } else if !searching {
+                if viewModel.stationPageUnavailable {
+                    Text(String(localized: "explore.stations.next_failed")).font(.caption)
+                }
+                if viewModel.isLoadingMoreStations {
+                    ProgressView()
+                } else if viewModel.nextStationCursor != nil {
+                    Button(String(localized: "explore.stations.load_more")) {
+                        Task { await viewModel.loadMoreStations() }
+                    }
                 }
             }
+        }
+        .task(id: stationSearchScope) {
+            guard searching else { return }
+            await stationSearch.load(stationSearchScope, host: viewModel, reset: true, debounce: true)
+        }
+    }
+
+    @ViewBuilder
+    private func stationSearchStatus(current: Bool, hasRows: Bool) -> some View {
+        if !current || stationSearch.isLoading {
+            ProgressView()
+        } else if let failure = stationSearch.failure {
+            if stationSearch.showsLoadedFallback && hasRows {
+                Text(String(localized: "station.directory.loaded_matches")).font(.caption)
+            } else if failure == .httpStatus(400, "station.bad-cursor") {
+                Text(String(localized: "station.directory.cursor_invalid")).font(.caption)
+            } else {
+                Text(String(localized: "explore.stations.unavailable"))
+            }
+        } else if !hasRows {
+            Text(String(localized: "explore.stations.no_match"))
         }
     }
 
@@ -262,10 +311,10 @@ public struct ExploreRootView: View {
                     if let comm = community {
                         Text(AbastevoTheme.formatBrlMilli(comm.amountMilli))
                             .font(.title3.bold())
-                        SourceTrustBadge(isOfficial: false, label: "\(comm.confirmations) conf.")
+                        SourceTrustBadge(isOfficial: false, label: String(localized: "station.price.confirmations_short", defaultValue: "Confirmations: \(comm.confirmations.formatted())"))
                     }
                     if community == nil {
-                        Text("Ver preços")
+                        Text(String(localized: "android.home_view_price_details"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -275,211 +324,144 @@ public struct ExploreRootView: View {
     }
 }
 
+@MainActor
 public struct StationDetailSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
     let station: StationRecord
 
-    @State private var publicComments: [PublicStationComment] = []
-    @State private var commentsReadState: PublicReadState = .loading
-    @State private var officialPrices: [OfficialStationPrice] = []
-    @State private var officialSource: OfficialPriceSource?
-    @State private var officialReadState: PublicReadState = .loading
-    @State private var officialReadAttempt = 0
+    @StateObject private var dossier = StationDossierModel()
+    @State private var readAttempt = 0
     @State private var showRoute = false
 
+    private struct ReadScope: Hashable {
+        let stationId: String
+        let origin: String
+        let attempt: Int
+    }
+
     public var body: some View {
+        let read = ReadScope(stationId: station.id, origin: viewModel.snapshot.apiEnvironment.origin, attempt: readAttempt)
+        let current = dossier.matches(seed: station, origin: read.origin)
+        let verified = current ? dossier.canonicalStation : nil
+        let identityState: StationDossierModel.IdentityState = current ? dossier.identityState : .loading
+        let displayStation = verified ?? station
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    EnergiaCard {
-                        HStack {
-                            Text(station.pinTier.labelPtBr)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Button {
-                                viewModel.toggleSavedStation(station)
-                            } label: {
-                                let saved = viewModel.snapshot.savedPlaces.contains(where: { $0.stationId == station.id })
-                                Image(systemName: saved ? "bookmark.fill" : "bookmark")
-                            }
+                    identityCard(displayStation, state: identityState)
+                    if current, let registry = dossier.identity {
+                        StationDirectorySourcesCard(dossier: registry)
+                    }
+
+                    if current, identityState != .notFound {
+                        StationDossierPricesCard(viewModel: viewModel, dossier: dossier, retry: retry)
+                        StationOfficialHistoryCard(viewModel: viewModel, station: displayStation)
+                    }
+
+                    if let canonical = verified {
+                        StationLinkedPlacesCard(evCatalog: viewModel.evCatalog, stationId: canonical.id)
+                        StationQualityCard(viewModel: viewModel, station: canonical, fuel: viewModel.snapshot.selectedFuel)
+                        StationFeedbackCard(app: viewModel, station: canonical, fuel: viewModel.snapshot.selectedFuel)
+                            .id(canonical.id + viewModel.snapshot.selectedFuel.wireCode)
+                        StationCommentComposerCard(viewModel: viewModel, station: canonical)
+                        StationBusinessProfileCard(
+                            viewModel: viewModel, canonicalStationId: canonical.id, fuel: viewModel.snapshot.selectedFuel
+                        )
+                    } else {
+                        if identityState == .unavailable && CommunityWire.isUuid(station.id) {
+                            StationLinkedPlacesCard(evCatalog: viewModel.evCatalog, stationId: station.id)
                         }
-                        Text(station.name).font(.title3.bold())
-                        Text("\(station.address) — \(station.neighborhood)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        if !station.cnpj.isEmpty {
-                            Text("CNPJ: \(station.cnpj)")
+                        EnergiaCard {
+                            Text(String(localized: "android.station_page_experience_title"))
+                                .font(.headline)
+                            Text(String(localized: "android.station_page_participation_pending"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        if let promo = station.ownerPromotionText {
-                            Text("Promoção informada: \(promo)")
-                                .font(.caption.bold())
-                                .foregroundStyle(AbastevoTheme.accentLight)
-                        }
-                        HStack(spacing: 10) {
-                            Button {
-                                viewModel.activeSheet = .capturePrice
-                            } label: {
-                                Label("Enviar foto", systemImage: "camera.fill")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(AbastevoTheme.accentLight)
-
-                            Button {
-                                showRoute = true
-                            } label: {
-                                Label("Traçar rota", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(!station.pinTier.allowsMapPin)
-                        }
                     }
-
-                    EnergiaCard {
-                        Text("Preços por Combustível (ANP vs Comunidade)")
-                            .font(.headline)
-                        switch officialReadState {
-                        case .loading:
-                            ProgressView()
-                        case .unavailable:
-                            Text("Preços oficiais deste posto indisponíveis.")
-                            Button("Tentar novamente") { officialReadAttempt += 1 }
-                        case .loaded:
-                            if officialPrices.isEmpty {
-                                Text("Nenhuma coleta oficial registrada para este posto.")
-                            }
-                            switch officialSource {
-                            case .cached(let savedAt):
-                                Text(viewModel.cachedLabel(savedAt))
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                            case .anpDownload(let week):
-                                Text("Sem conexão: preços ANP da semana baixada \(AnpWeekText.range(week)), por CNPJ.")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                            default:
-                                EmptyView()
-                            }
-                        }
-                        ForEach(FuelProduct.allCases) { product in
-                            let comm = viewModel.communityObservation(stationId: station.id, product: product)
-                            let off = officialPrices.first { $0.product == product }
-                            if comm != nil || off != nil {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(product.displayNamePtBr)
-                                            .font(.subheadline.bold())
-                                        Spacer()
-                                        if let comm = comm {
-                                            Text("Comunidade: \(AbastevoTheme.formatBrlMilli(comm.amountMilli))")
-                                                .font(.subheadline.bold())
-                                                .foregroundStyle(AbastevoTheme.accentLight)
-                                        }
-                                        if let off = off {
-                                            Text("ANP: \(AbastevoTheme.formatBrlMilli(off.amountMilli))")
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(.blue)
-                                        }
-                                    }
-                                    if let off {
-                                        Text("Coleta ANP: \(off.collectedOn) · Pesquisa: \(off.surveyStart) a \(off.surveyEnd)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    if let comm = comm {
-                                        HStack(spacing: 12) {
-                                            Label("Confirmações: \(comm.confirmations)", systemImage: "hand.thumbsup")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                            Text(comm.condition.labelPtBr)
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    Divider()
-                                }
-                            }
-                        }
-                    }
-
-                    StationOfficialHistoryCard(viewModel: viewModel, station: station)
-
-                    EnergiaCard {
-                        Text("Qualidade e Fiscalização (PMQC / ANP)")
-                            .font(.headline)
-                        Text("Dados de qualidade deste posto indisponíveis.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    EnergiaCard {
-                        Text("Comentários da comunidade · \(viewModel.snapshot.selectedFuel.displayNamePtBr)")
-                            .font(.headline)
-                        switch commentsReadState {
-                        case .loading:
-                            ProgressView()
-                        case .unavailable:
-                            Text("Não foi possível carregar os comentários.").foregroundStyle(.secondary)
-                        case .loaded:
-                            if publicComments.isEmpty {
-                                Text("Nenhum comentário publicado para este combustível.").foregroundStyle(.secondary)
-                            }
-                            ForEach(publicComments) { comment in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(comment.publicAlias).font(.caption.bold())
-                                    Text(comment.text)
-                                    StationCommentVoteBar(viewModel: viewModel, commentId: comment.id)
-                                }
-                            }
-                        }
-                    }
-
-                    StationCommentComposerCard(viewModel: viewModel, station: station)
                 }
                 .padding(16)
             }
-            .task(id: viewModel.snapshot.selectedFuel) {
-                publicComments = []
-                commentsReadState = .loading
-                do {
-                    let fuel = viewModel.snapshot.selectedFuel
-                    let loaded = try await viewModel.socialReadClient().fetchStationComments(stationId: station.id, fuel: fuel)
-                    guard !Task.isCancelled else { return }
-                    publicComments = loaded
-                    commentsReadState = .loaded
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    commentsReadState = .unavailable
-                }
-            }
-            .task(id: officialReadAttempt) {
-                officialPrices = []
-                officialSource = nil
-                officialReadState = .loading
-                do {
-                    let read = try await viewModel.officialPriceRead(for: station)
-                    guard !Task.isCancelled else { return }
-                    officialPrices = read.prices
-                    officialSource = read.source
-                    officialReadState = .loaded
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    officialReadState = .unavailable
-                }
+            .task(id: read) {
+                await dossier.load(station, on: viewModel)
             }
             .sheet(isPresented: $showRoute) {
+                let station = displayStation
                 NativeRouteSheetView(viewModel: viewModel, station: station)
             }
-            .navigationTitle("Detalhes do Posto")
+            .navigationTitle(String(localized: "station.details.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
+            }
+        }
+    }
+
+    private func retry() { readAttempt += 1 }
+
+    private func identityCard(_ displayStation: StationRecord, state: StationDossierModel.IdentityState) -> some View {
+        EnergiaCard {
+            if state == .loading { ProgressView() }
+            HStack {
+                Text(displayStation.pinTier.localizedLabel)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                let saved = viewModel.visibleSavedMap.hasStation(displayStation.id)
+                Button {
+                    viewModel.toggleSavedStation(displayStation)
+                } label: {
+                    Image(systemName: saved ? "bookmark.fill" : "bookmark")
+                }
+                .accessibilityLabel(saved ? String(localized: "station.dossier.remove_saved")
+                                    : String(localized: "station.dossier.save"))
+                .disabled(state == .notFound || viewModel.currentSavedMapScope == nil)
+            }
+            Text(displayStation.name)
+                .font(.title3.bold())
+                .accessibilityAddTraits(.isHeader)
+            let address = [displayStation.address, displayStation.neighborhood].filter { !$0.isEmpty }.joined(separator: " — ")
+            if !address.isEmpty {
+                Text(address).font(.subheadline).foregroundStyle(.secondary)
+            }
+            if state != .resolved, let cnpj = BrazilianCNPJ.normalized(displayStation.cnpj) {
+                Text(String(localized: "station.price.tax_id", defaultValue: "CNPJ: \(cnpj)"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let promotion = displayStation.ownerPromotionText {
+                Text(String(localized: "station.price.promotion", defaultValue: "Reported promotion: \(promotion)"))
+                    .font(.caption.bold())
+                    .foregroundStyle(AbastevoTheme.accentLight)
+            }
+            if state == .unavailable || state == .notFound {
+                Text(state == .notFound ? String(localized: "station.dossier.not_found")
+                     : String(localized: "android.station_profile_unavailable"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button(String(localized: "android.feed_retry"), action: retry)
+            }
+            HStack(spacing: 10) {
+                Button {
+                    viewModel.activeSheet = .capturePrice
+                } label: {
+                    Label(String(localized: "explore.capture_photo"), systemImage: "camera.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AbastevoTheme.accentLight)
+                .disabled(state != .resolved)
+
+                Button {
+                    showRoute = true
+                } label: {
+                    Label(String(localized: "android.stations_navigate_action"), systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(state == .notFound || !displayStation.pinTier.allowsMapPin)
             }
         }
     }
@@ -496,7 +478,7 @@ public struct LocationPickerSheetView: View {
             VStack(spacing: 12) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        Button("Todos") { selectedState = nil }
+                        Button(String(localized: "android.map_filter_all")) { selectedState = nil }
                             .buttonStyle(.bordered)
                         ForEach(BrazilianState.allCases) { uf in
                             Button(uf.rawValue) { selectedState = uf }
@@ -507,15 +489,15 @@ public struct LocationPickerSheetView: View {
                     .padding(.horizontal, 16)
                 }
 
-                TextField("Pesquisar município, UF ou código IBGE", text: $query)
+                TextField(String(localized: "city.search.filter"), text: $query)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal, 16)
 
                 let cities = viewModel.municipalityCatalog.search(query: query, state: selectedState)
                 if viewModel.municipalityCatalog.count == 0 {
-                    ContentUnavailableView("Catálogo de municípios indisponível", systemImage: "building.2")
+                    ContentUnavailableView(String(localized: "city.search.unavailable"), systemImage: "building.2")
                 } else if cities.isEmpty {
-                    ContentUnavailableView("Nenhum município encontrado", systemImage: "magnifyingglass")
+                    ContentUnavailableView(String(localized: "android.location_search_no_matches"), systemImage: "magnifyingglass")
                 } else {
                     List(cities) { city in
                         Button {
@@ -525,7 +507,7 @@ public struct LocationPickerSheetView: View {
                             HStack {
                                 VStack(alignment: .leading) {
                                     Text(city.name).font(.headline)
-                                    Text("\(city.state.fullName) · IBGE \(city.ibgeCode)")
+                                    Text(String(localized: "city.search.row", defaultValue: "\(city.state.fullName) · IBGE \(String(city.ibgeCode))"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -539,81 +521,10 @@ public struct LocationPickerSheetView: View {
                     }
                 }
             }
-            .navigationTitle("Escolher Cidade")
+            .navigationTitle(String(localized: "android.feed_choose_city"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct QualityReportsSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    public var body: some View {
-        NavigationStack {
-            ContentUnavailableView("Catálogo de qualidade indisponível", systemImage: "flask")
-            .navigationTitle("Qualidade & Ocorrências")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct SuggestStationSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AppStateViewModel
-    @State private var name = ""
-    @State private var brand = ""
-    @State private var address = ""
-    @State private var cnpj = ""
-    @State private var isEv = false
-    @State private var savedBanner: String?
-
-    public var body: some View {
-        NavigationStack {
-            Form {
-                Section("Dados do Posto ou Eletroposto") {
-                    TextField("Nome fantasia", text: $name)
-                    TextField("Bandeira ou rede", text: $brand)
-                    TextField("Endereço completo", text: $address)
-                    TextField("CNPJ (opcional)", text: $cnpj)
-                    Toggle("É ponto de recarga elétrica (EV)", isOn: $isEv)
-                }
-                if let banner = savedBanner {
-                    Section {
-                        Text(banner).foregroundStyle(AbastevoTheme.accentLight)
-                    }
-                }
-                Section {
-                    Button("Salvar rascunho") {
-                        guard let municipality = viewModel.selectedMunicipality else { return }
-                        let draft = StationSuggestionDraft(
-                            name: name,
-                            brand: brand,
-                            address: address,
-                            municipalityCode: municipality.ibgeCode,
-                            cnpj: cnpj,
-                            isEvSite: isEv,
-                            createdAtLabel: "Agora"
-                        )
-                        viewModel.snapshot.stationSuggestions.insert(draft, at: 0)
-                        viewModel.persist()
-                        savedBanner = "Rascunho salvo neste dispositivo. Envio indisponível."
-                        name = ""; brand = ""; address = ""; cnpj = ""
-                    }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.selectedMunicipality == nil)
-                }
-            }
-            .navigationTitle("Sugerir Posto")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -626,15 +537,15 @@ public struct MasterFaqSheetView: View {
     public var body: some View {
         NavigationStack {
             List {
-                faqRow(q: "Qual a diferença entre preço ANP e Comunidade?", a: "Os preços da ANP vêm da pesquisa semanal oficial (com atraso de publicação). Os preços da Comunidade são enviados por motoristas no posto, acompanhados de foto e confirmações.")
-                faqRow(q: "O abastevo aceita pagamento para destacar postos?", a: "Não. Pagamentos nunca alteram a ordem de menor preço nem aumentam a confiança de um posto ou usuário.")
-                faqRow(q: "Como o aplicativo funciona sem internet?", a: "A lista de cidades vem com o app. Seus rascunhos de preço e lançamentos do diário ficam neste aparelho. Consultas de preços e rotas precisam de conexão.")
-                faqRow(q: "As fotos que envio ficam armazenadas para sempre?", a: "Não. No celular, as fotos comprimidas em JPEG expiram em 24 horas e ficam fora do backup automático.")
+                faqRow(q: String(localized: "explore.faq.sources_question"), a: String(localized: "explore.faq.sources_answer"))
+                faqRow(q: String(localized: "explore.faq.payment_question"), a: String(localized: "explore.faq.payment_answer"))
+                faqRow(q: String(localized: "explore.faq.offline_question"), a: String(localized: "explore.faq.offline_answer"))
+                faqRow(q: String(localized: "explore.faq.photos_question"), a: String(localized: "explore.faq.photos_answer"))
             }
-            .navigationTitle("Perguntas Frequentes")
+            .navigationTitle(String(localized: "explore.faq"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }

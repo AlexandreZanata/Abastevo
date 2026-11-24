@@ -56,6 +56,10 @@ Grant target states: `ACTIVE`, `SUSPENDED`, `REVOKED`, `EXPIRED`, with query-tim
 - **P09 Erase/export/restore:** owner rights cover claim/proof/private identity with bounded audit exceptions explicitly defined. Account deletion revokes grants before background cleanup; restore cannot revive documents, grants or personalized exports. Other representatives' documents never enter an owner's export.
 - **P10 Operate and accept:** scoped staff process claims and urgent impersonation cases with actual capacity/response evidence; test load, outages, privacy/recovery and affected real-device flows on a pinned artifact. Automated checks do not replace staffing or real trust-provider proof.
 
+## Native iOS station owner entry
+
+The station dossier displays the public business profile only with a recognized operator source and the verified badge returned by the server. A signed-in applicant can open a claim, inspect its status and use the available reissue, cancellation and proof steps for that claim. Profile fields and replies use the scoped owner routes and their current revision. The interface preserves the server's integration-pending or unavailable state when any private route is closed. Proof intake stays within the existing signed PDF and storage contract.
+
 ## MVP and provider boundary
 
 Initial approval is human-reviewed, backed by independent signature and authority checks. Allow export/sign/import of a generated declaration; do not assume the private app can integrate directly with gov.br signing APIs. Use maintained verification tooling or a contracted permitted adapter after dependency/license/security review, not a homegrown PKI engine or unapproved scraping of VALIDAR. An operator may validate exact bytes directly with official tools under a documented permitted process; the applicant cannot submit a fabricated report as proof of validation.

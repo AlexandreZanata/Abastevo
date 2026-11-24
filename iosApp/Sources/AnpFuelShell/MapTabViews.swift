@@ -13,7 +13,10 @@ public struct MapRootView: View {
     @State private var showCombustionStations = true
     @State private var sourceFilter = "all"
     @State private var visibleRegion: MKCoordinateRegion?
-    @State private var selectedEvPoint: ChargingMapPoint?
+    @State private var selectedEvPlace: ChargingPlace?
+    @State private var showSearch = false
+    @State private var searchSelection: MapSearchSelection?
+    @State private var searchFocus: MapSearchSelection?
 
     public var body: some View {
         let pinStations = viewModel.sortedStations.filter { $0.pinTier.allowsMapPin }
@@ -46,7 +49,7 @@ public struct MapRootView: View {
                                 coordinate: CLLocationCoordinate2D(latitude: point.coordinate.latitude, longitude: point.coordinate.longitude)
                             ) {
                                 Button {
-                                    selectedEvPoint = point
+                                    selectedEvPlace = point.place
                                 } label: {
                                     VStack(spacing: 2) {
                                         Image(systemName: "bolt.car.fill")
@@ -55,7 +58,7 @@ public struct MapRootView: View {
                                             .padding(6)
                                             .background(AbastevoTheme.accentLight)
                                             .clipShape(Circle())
-                                        Text(point.place.maxPowerW.map(EvText.power) ?? "EV")
+                                        Text(point.place.maxPowerW.map(EvText.power) ?? String(localized: "map.electric"))
                                             .font(.system(size: 10, weight: .bold))
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 2)
@@ -66,6 +69,18 @@ public struct MapRootView: View {
                                 .accessibilityLabel(point.place.displayName)
                             }
                         }
+                        if let focus = searchFocus, let coordinate = focus.coordinate,
+                           !isVisible(focus, stations: pinStations, chargers: evPins) {
+                            let point = CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                            Annotation(focus.title, coordinate: point) {
+                                Button { showMapSearchSelection(focus) } label: {
+                                    Image(systemName: focus.icon)
+                                        .padding(9)
+                                        .background(.regularMaterial, in: Circle())
+                                }
+                                .accessibilityLabel(focus.title)
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onMapCameraChange(frequency: .onEnd) { context in
@@ -73,6 +88,12 @@ public struct MapRootView: View {
                     }
                     .onChange(of: viewModel.selectedMunicipality?.ibgeCode) { _, _ in
                         cameraPosition = .automatic
+                        searchFocus = nil
+                        searchSelection = nil
+                    }
+                    .onChange(of: viewModel.snapshot.apiEnvironment) { _, _ in
+                        searchFocus = nil
+                        searchSelection = nil
                     }
 
                     VStack(spacing: 8) {
@@ -92,7 +113,7 @@ public struct MapRootView: View {
                                 .background(.regularMaterial)
                                 .clipShape(Circle())
                         }
-                        .accessibilityLabel("Centralizar na minha localização")
+                        .accessibilityLabel(String(localized: "android.map_guidance_recenter"))
                     }
                     .padding(16)
                 }
@@ -101,10 +122,10 @@ public struct MapRootView: View {
                     HStack {
                         Image(systemName: "info.circle")
                             .font(.caption)
-                        Text("\(listOnlyStations.count) posto(s) sem pino exato permanecem acessíveis na lista.")
+                        Text(String(localized: "map.stations_without_pin", defaultValue: "Stations without a map pin: \(listOnlyStations.count.formatted()). Find them in the list."))
                             .font(.caption2)
                         Spacer()
-                        Button("Ver lista") {
+                        Button(String(localized: "map.show_list")) {
                             viewModel.selectedTab = .explore
                         }
                         .font(.caption2.bold())
@@ -114,9 +135,60 @@ public struct MapRootView: View {
                     .background(Color.secondary.opacity(0.12))
                 }
             }
-            .sheet(item: $selectedEvPoint) { point in
-                EvPlaceDetailSheet(place: point.place, snapshot: viewModel.evCatalog.snapshot)
+            .sheet(item: $selectedEvPlace) { place in
+                EvPlaceDetailSheet(place: place, snapshot: viewModel.evCatalog.snapshot)
             }
+            .sheet(isPresented: $showSearch, onDismiss: completeMapSearchSelection) {
+                MapDiscoverySearchSheet(
+                    viewModel: viewModel, showStations: showCombustionStations || !showEvSites,
+                    showCharging: showEvSites || !showCombustionStations,
+                    onFocus: focusMapSearchResult, onSelect: { result in
+                        searchSelection = result
+                        showSearch = false
+                    }
+                )
+            }
+        }
+    }
+
+    private func isVisible(_ match: MapSearchSelection, stations: [StationRecord], chargers: [ChargingMapPoint]) -> Bool {
+        switch match {
+        case .station(let station):
+            return showCombustionStations && stations.contains { $0.id == station.id } &&
+                (sourceFilter != "community" || viewModel.communityObservation(stationId: station.id, product: viewModel.snapshot.selectedFuel) != nil)
+        case .charging(let place):
+            return chargers.contains { $0.place.id == place.id }
+        case .apple:
+            return false
+        }
+    }
+
+    private func focusMapSearchResult(_ result: MapSearchSelection?) {
+        searchFocus = result
+        guard let point = result?.coordinate else { return }
+        cameraPosition = .region(MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude),
+            latitudinalMeters: 1000, longitudinalMeters: 1000
+        ))
+    }
+
+    private func completeMapSearchSelection() {
+        guard let result = searchSelection else { return }
+        searchSelection = nil
+        showMapSearchSelection(result)
+    }
+
+    private func showMapSearchSelection(_ result: MapSearchSelection) {
+        focusMapSearchResult(result)
+        switch result {
+        case .station(let station):
+            viewModel.selectedStation = station
+        case .charging(let place):
+            selectedEvPlace = place
+        case .apple(let title, let point):
+            viewModel.navigationDestination = NavigationDestination(
+                title: title, latitude: point.latitude, longitude: point.longitude
+            )
         }
     }
 
@@ -148,36 +220,46 @@ public struct MapRootView: View {
     private var mapToolbar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Picker("Fonte", selection: $sourceFilter) {
-                    Text("Todos").tag("all")
-                    Text("Comunidade").tag("community")
+                Button {
+                    showSearch = true
+                } label: {
+                    Label(String(localized: "android.map_search"), systemImage: "magnifyingglass")
+                }
+                .buttonStyle(.bordered)
+                Picker(String(localized: "android.map_filter_source"), selection: $sourceFilter) {
+                    Text(String(localized: "android.map_filter_all")).tag("all")
+                    Text(String(localized: "android.map_source_community")).tag("community")
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 170)
 
-                Toggle("Postos", isOn: $showCombustionStations)
+                Toggle(String(localized: "android.nav_stations"), isOn: $showCombustionStations)
                     .toggleStyle(.button)
-                Toggle("EV", isOn: $showEvSites)
+                Toggle(String(localized: "map.electric"), isOn: $showEvSites)
                     .toggleStyle(.button)
 
                 Button {
                     viewModel.activeSheet = .evTripPlanner
                 } label: {
-                    Label("Rota EV", systemImage: "bolt.horizontal.fill")
+                    Label(String(localized: "map.ev_route"), systemImage: "bolt.horizontal.fill")
                 }
                 .buttonStyle(.bordered)
 
                 Button {
                     viewModel.activeSheet = .savedPlaces
                 } label: {
-                    Label("Salvos", systemImage: "bookmark.fill")
+                    Label(String(localized: "map.saved"), systemImage: "bookmark.fill")
                 }
                 .buttonStyle(.bordered)
+
+                ActiveNavigationResumeButton(navigation: viewModel.navigation) {
+                    viewModel.navigationDestination = $0
+                }
 
                 Button {
                     viewModel.activeSheet = .mapDownloads
                 } label: {
-                    Label("Mapas Offline", systemImage: "arrow.down.circle")
+                    Label(String(localized: "map.offline.action"), systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.bordered)
             }
@@ -210,140 +292,28 @@ public struct NativeRouteSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
     let station: StationRecord
-    @State private var requestCount = 0
-    @State private var isCalculating = false
-    @State private var route: MKRoute?
-    @State private var routeMessage: String?
+    @State private var destination: NavigationDestination
+
+    init(viewModel: AppStateViewModel, station: StationRecord) {
+        self.viewModel = viewModel
+        self.station = station
+        _destination = State(initialValue: NavigationDestination(
+            title: station.name, latitude: station.latitude, longitude: station.longitude, allowsWaze: true
+        ))
+    }
 
     public var body: some View {
-        NavigationStack {
-            List {
-                if station.pinTier.allowsMapPin {
-                    Section("Destino") {
-                        Text(station.name).font(.headline)
-                        Text(station.address)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Button("Calcular rota de carro") { requestCount += 1 }
-                            .disabled(isCalculating)
-                        if isCalculating {
-                            ProgressView("Calculando rota…")
-                        } else if let routeMessage {
-                            Text(routeMessage).foregroundStyle(.secondary)
-                        }
+        if station.pinTier.allowsMapPin {
+            ActiveNavigationSheetView(viewModel: viewModel, destination: destination)
+        } else {
+            NavigationStack {
+                ContentUnavailableView(
+                    String(localized: "map.route.destination_unverified"), systemImage: "location.slash"
+                )
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(String(localized: "android.feed_close")) { dismiss() }
                     }
-
-                    if let route {
-                        Section("Prévia da rota") {
-                            Text("\((route.distance / 1_000).formatted(.number.precision(.fractionLength(1)))) km")
-                            Toggle("Ler instruções em voz alta", isOn: $viewModel.isVoiceGuidanceEnabled)
-                            ForEach(route.steps.indices, id: \.self) { index in
-                                let instruction = route.steps[index].instructions
-                                if !instruction.isEmpty {
-                                    Button {
-                                        viewModel.speakGuidanceStep(instruction)
-                                    } label: {
-                                        Label(instruction, systemImage: "speaker.wave.2")
-                                    }
-                                    .disabled(!viewModel.isVoiceGuidanceEnabled)
-                                }
-                            }
-                        }
-                    }
-
-                    Section("Navegação em tempo real") {
-                        Button("Abrir no Apple Maps") {
-                            let item = destination(for: station)
-                            item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
-                        }
-                        if let wazeUrl = URL(string: "https://waze.com/ul?ll=\(station.latitude),\(station.longitude)&navigate=yes") {
-                            Link("Abrir no Waze", destination: wazeUrl)
-                        }
-                    }
-                } else {
-                    ContentUnavailableView("Destino sem coordenadas verificadas", systemImage: "location.slash")
-                }
-            }
-            .navigationTitle("Rota para o posto")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-        .task(id: requestCount) {
-            if requestCount > 0, station.pinTier.allowsMapPin {
-                await calculateRoute(to: station)
-            }
-        }
-        .onDisappear { viewModel.stopGuidance() }
-    }
-
-    private func destination(for station: StationRecord) -> MKMapItem {
-        let coordinate = CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)
-        let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
-        item.name = station.name
-        return item
-    }
-
-    private func calculateRoute(to station: StationRecord) async {
-        isCalculating = true
-        route = nil
-        routeMessage = nil
-        defer { isCalculating = false }
-
-        guard let origin = await viewModel.requestRouteOrigin(), !Task.isCancelled else {
-            routeMessage = "Localização atual indisponível. Você pode abrir o destino em um aplicativo de navegação."
-            return
-        }
-        let request = MKDirections.Request()
-        request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin))
-        request.destination = destination(for: station)
-        request.transportType = .automobile
-        do {
-            let response = try await MKDirections(request: request).calculate()
-            guard !Task.isCancelled else { return }
-            route = response.routes.first
-            if route == nil {
-                routeMessage = "O Apple Maps não encontrou uma rota para este destino."
-            }
-        } catch {
-            guard !Task.isCancelled else { return }
-            routeMessage = "Não foi possível calcular a rota. Sem internet, toque em Abrir no Apple Maps para navegar com a região baixada nos Mapas Offline."
-        }
-    }
-}
-
-public struct SavedPlacesSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AppStateViewModel
-
-    public var body: some View {
-        NavigationStack {
-            List {
-                Section("Locais e Postos Salvos") {
-                    ForEach(viewModel.snapshot.savedPlaces) { place in
-                        VStack(alignment: .leading) {
-                            Text(place.title).font(.headline)
-                            Text(place.subtitle).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                Section("Viagens Planejadas") {
-                    ForEach(viewModel.snapshot.savedTrips) { trip in
-                        VStack(alignment: .leading) {
-                            Text(trip.title).font(.headline)
-                            Text("\(trip.originLabel) → \(trip.destinationLabel) (\(Int(trip.distanceKm)) km)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Salvos & Viagens")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
                 }
             }
         }

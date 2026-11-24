@@ -1,6 +1,7 @@
 name: AnpFuel
 options:
   bundleIdPrefix: com.anpfuel
+  developmentLanguage: en
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -17,6 +18,10 @@ targets:
     platform: iOS
     sources:
       - path: Sources/AnpFuelCore
+        excludes:
+          - Resources/Localizable.xcstrings
+      - path: Sources/AnpFuelCore/Resources/Localizable.xcstrings
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anpfuel.core
@@ -26,8 +31,14 @@ targets:
     platform: iOS
     sources:
       - path: Sources/AnpFuelShell
+        excludes:
+          - Localizable.xcstrings
+      - path: Sources/AnpFuelShell/Localizable.xcstrings
+        buildPhase: resources
       - path: Assets.xcassets
       - path: App/PrivacyInfo.xcprivacy
+      - path: App/InfoPlist.xcstrings
+        buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources
     dependencies:
@@ -46,6 +57,158 @@ targets:
     sources:
       - path: Tests/AnpFuelCoreTests
       - path: ../contracts/testdata/premium/energy-v1.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/feedback-comment-view-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/feedback-rating-receipt-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/feedback-rating-stats-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-comments-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-create-comment-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-comment-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-comment-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-topic-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-topic-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-feed-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-owner-topic-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-post-summary-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-remove-comment-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-remove-topic-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-replies-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-cast-invalid-choice.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-cast-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-tally-empty.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-tally-with-votes.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/moderation-disputed.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/retry-no-amplification.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/self-confirmation-excluded.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-rating-six.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-rating-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-rating-zero.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-revision-supersede.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-text-crlf.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/price-groups-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/station-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/registry/registry-api-sample.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/conflicting-prices-disputed.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/high-quorum.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/no-data-unknown.json
+        buildPhase: resources
+      - path: ../contracts/testdata/mobile-expansion/exploration-v1.json
+        buildPhase: resources
+      - path: ../contracts/testdata/map-discovery/cases-v1.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-appeal-invalid-revision.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-appeal-invalid-target.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-appeal-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-checked.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-document.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-edit-revision.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-empty.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-owner.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-invalid-withdraw-payload.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/quality-report-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/quality/enforcement-source-record-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-grant-stale-terms-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-grant-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-revoke-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/training-consent-status-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-grant-stale-terms.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-grant-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-status-granted.json
+        buildPhase: resources
+      - path: ../contracts/testdata/privacy-consent/consent-status-off.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/ledger-report-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/ledger-report-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/metrics-compare-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/metrics-compare-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/metrics-compare-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/alerts-commands-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/alerts-commands-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/alerts-inbox-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/http/receipt-200.json
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/http/auth-401.json
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/http/conflict-409.json
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/driver-manual-reference-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/planned-financial-v1.json
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/trip/trip-operations-v3.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/checklist/run-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/checklist/checklist-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/fueling/fueling-submit-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/agreement/voucher-limits-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-report-request-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-report-request-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-report-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-earnings-page-request-invalid.json
         buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources

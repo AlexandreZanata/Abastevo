@@ -74,8 +74,16 @@ final class FeedbackLifecycleTests: XCTestCase {
     }
 
     func testDiagnosticsCarryAliasesAndCountsNeverPII() {
-        let line = FeedbackDisplay.agreementLine(valid: 2, invalid: 1)
-        XCTAssertTrue(line.contains("2 valid / 1 invalid"))
+        let line = FeedbackDisplay.agreementLine(valid: 2, invalid: 1, locale: Locale(identifier: "en_US"))
+        let percentage = "66.6%"
+        let validVotes = "2"
+        let invalidVotes = "1"
+        let expected = String(
+            localized: "feedback.agreement.summary",
+            defaultValue: "\(percentage) · \(validVotes) valid / \(invalidVotes) invalid",
+            bundle: CoreLocalization.bundle
+        )
+        XCTAssertEqual(line, expected)
         XCTAssertFalse(line.contains("@"))
         XCTAssertFalse(FeedbackDisplay.rejectKindLabel(.gateRequired).contains("@"))
     }

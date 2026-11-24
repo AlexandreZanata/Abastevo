@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Register new Swift sources of iosApp/ in AnpFuel.xcodeproj without Xcode.
+"""Register iOS Swift sources, String Catalogs and contract fixtures without Xcode.
 
 The project file is maintained by hand on Linux hosts, where XcodeGen and
-Xcode are unavailable. For each source folder this adds a file reference,
-a build file, the group child and the matching target "Sources" phase entry
-for every *.swift file the project does not reference yet. Object IDs are
-derived from the relative path, so two hosts registering the same file
-produce identical entries.
+Xcode are unavailable. New files are included in the appropriate target's
+Sources or Resources phase. Relative paths determine their object IDs, so the
+Shell and Core catalogs may share the same filename.
 
 Usage:
   python3 scripts/ios_sync_xcodeproj.py          # rewrite the project
@@ -24,6 +22,13 @@ ROOT = Path(__file__).resolve().parents[1]
 IOS_ROOT = ROOT / "iosApp"
 PROJECT = IOS_ROOT / "AnpFuel.xcodeproj" / "project.pbxproj"
 FOLDERS = ("Sources/AnpFuelCore", "Sources/AnpFuelShell", "Tests/AnpFuelCoreTests")
+RESOURCE_FOLDERS = (
+    ("App", "App", "AnpFuel"),
+    ("Sources/AnpFuelCore", "Sources/AnpFuelCore", "AnpFuelCore"),
+    ("Sources/AnpFuelCore/Resources", "Sources/AnpFuelCore", "AnpFuelCore"),
+    ("Sources/AnpFuelShell", "Sources/AnpFuelShell", "AnpFuel"),
+    ("Tests/AnpFuelCoreTests", "Tests/AnpFuelCoreTests", "AnpFuelCoreTests"),
+)
 
 
 def object_id(kind: str, relative: str) -> str:
@@ -62,12 +67,125 @@ def insert_before(text: str, marker: str, line: str) -> str:
     return text[:index] + line + text[index:]
 
 
-def append_to_list(text: str, owner_id: str, entry: str) -> str:
-    """Append entry to the children/files list of the object owner_id."""
-    start = text.index(f"\t\t{owner_id} /*")
-    open_list = text.index("= (\n", text.index("{isa = ", start)) + len("= (\n")
-    close_list = text.index("\t\t);", open_list)
-    return text[:close_list] + f"\t\t\t{entry},\n" + text[close_list:]
+def list_bounds(text: str, owner_id: str, field: str) -> tuple[int, int]:
+    owner = re.search(rf"(?m)^\t\t{owner_id} /\* [^\n]* \*/ = \{{", text)
+    if owner is None:
+        raise SystemExit(f"object {owner_id} not found in project.pbxproj")
+    opening = f"{field} = (\n"
+    open_list = text.index(opening, owner.end()) + len(opening)
+    close_list = re.search(r"(?m)^\t+\);", text[open_list:])
+    if close_list is None:
+        raise SystemExit(f"{field} list not closed for {owner_id}")
+    return open_list, open_list + close_list.start()
+
+
+def append_to_list(text: str, owner_id: str, field: str, entry: str) -> str:
+    """Insert entry once in a group, build phase or target's list."""
+    start, end = list_bounds(text, owner_id, field)
+    identifier = entry.split()[0]
+    if re.search(rf"(?m)^\s*{identifier}(?:\s|,)", text[start:end]):
+        return text
+    indent = re.match(r"\t+", text[end:]).group()
+    return text[:end] + f"{indent}\t{entry},\n" + text[end:]
+
+
+def resources_phase_for(text: str, target_name: str) -> tuple[str, str]:
+    target = re.search(
+        rf"(?m)^\t\t([A-F0-9]{{24}}) /\* {re.escape(target_name)} \*/ = \{{\n\t\t\tisa = PBXNativeTarget;",
+        text,
+    )
+    if target is None:
+        raise SystemExit(f"target {target_name} not found in project.pbxproj")
+    start, end = list_bounds(text, target.group(1), "buildPhases")
+    phase_ids = set(re.findall(r"[A-F0-9]{24}", text[start:end]))
+    resources = re.findall(
+        r"(?m)^\t\t([A-F0-9]{24}) /\* Resources \*/ = \{isa = PBXResourcesBuildPhase;",
+        text,
+    )
+    for phase in resources:
+        if phase in phase_ids:
+            return text, phase
+
+    phase = object_id("resources", target_name)
+    if phase not in resources:
+        text = insert_before(
+            text,
+            "/* End PBXResourcesBuildPhase section */",
+            f"\t\t{phase} /* Resources */ = {{isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; "
+            "files = (\n\t\t); runOnlyForDeploymentPostprocessing = 0; };\n",
+        )
+    text = append_to_list(text, target.group(1), "buildPhases", f"{phase} /* Resources */")
+    return text, phase
+
+
+def register_catalog(text: str, catalog: Path, group_folder: Path, phase: str) -> str:
+    relative = catalog.relative_to(IOS_ROOT).as_posix()
+    file_ref = object_id("file", relative)
+    build = object_id("build", relative)
+    name = catalog.name
+    path = catalog.relative_to(group_folder).as_posix()
+    group = group_id(text, group_folder.name)
+    if not re.search(rf"(?m)^\t\t{file_ref} /\*", text):
+        text = insert_before(
+            text,
+            "/* End PBXFileReference section */",
+            f"\t\t{file_ref} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; "
+            f'name = "{name}"; path = "{path}"; sourceTree = "<group>"; }};\n',
+        )
+    if not re.search(rf"(?m)^\t\t{build} /\*", text):
+        text = insert_before(
+            text,
+            "/* End PBXBuildFile section */",
+            f"\t\t{build} /* {name} in Resources */ = {{isa = PBXBuildFile; fileRef = {file_ref} /* {name} */; }};\n",
+        )
+    text = append_to_list(text, group, "children", f"{file_ref} /* {name} */")
+    return append_to_list(text, phase, "files", f"{build} /* {name} in Resources */")
+
+
+def configured_contract_fixtures() -> list[str]:
+    project = (IOS_ROOT / "project.yml").read_text(encoding="utf-8")
+    test_target = re.search(r"(?ms)^  AnpFuelCoreTests:\n(.*?)(?=^\S|^  \S|\Z)", project)
+    if test_target is None:
+        raise SystemExit("AnpFuelCoreTests target is missing from project.yml")
+    paths = re.findall(r"(?m)^      - path: (\.\./contracts/testdata/[^\n]+)\n        buildPhase: resources$", test_target.group(1))
+    names: set[str] = set()
+    for relative in paths:
+        fixture = (IOS_ROOT / relative).resolve()
+        if not fixture.is_relative_to(ROOT / "contracts/testdata") or not fixture.is_file():
+            raise SystemExit(f"invalid contract fixture: {relative}")
+        if fixture.name in names:
+            raise SystemExit(f"duplicate XCTest resource name: {fixture.name}")
+        names.add(fixture.name)
+    return sorted(paths)
+
+
+def register_contract_fixture(text: str, relative: str, phase: str) -> str:
+    fixture = Path(relative)
+    name = fixture.name
+    existing = re.search(rf'(?m)^\t\t([A-F0-9]{{24}}) /\* {re.escape(name)} \*/ = .*path = "{re.escape(relative)}";', text)
+    if existing:
+        ref = existing.group(1)
+    else:
+        ref = object_id("file", relative)
+        file_type = "text.json" if fixture.suffix == ".json" else "text"
+        text = insert_before(
+            text,
+            "/* End PBXFileReference section */",
+            f'\t\t{ref} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = {file_type}; '
+            f'name = "{name}"; path = "{relative}"; sourceTree = SOURCE_ROOT; }};\n',
+        )
+    existing_build = re.search(rf"(?m)^\t\t([A-F0-9]{{24}}) /\* [^\n]+ in Resources \*/ = .*fileRef = {ref}\b", text)
+    if existing_build:
+        build = existing_build.group(1)
+    else:
+        build = object_id("build", relative)
+        text = insert_before(
+            text,
+            "/* End PBXBuildFile section */",
+            f"\t\t{build} /* {name} in Resources */ = {{isa = PBXBuildFile; fileRef = {ref} /* {name} */; }};\n",
+        )
+    text = append_to_list(text, group_id(text, "AnpFuelCoreTests"), "children", f"{ref} /* {name} */")
+    return append_to_list(text, phase, "files", f"{build} /* {name} in Resources */")
 
 
 def sync(text: str) -> tuple[str, list[str]]:
@@ -95,9 +213,23 @@ def sync(text: str) -> tuple[str, list[str]]:
                 "/* End PBXBuildFile section */",
                 f"\t\t{build} /* {swift.name} in Sources */ = {{isa = PBXBuildFile; fileRef = {file_ref} /* {swift.name} */; }};\n",
             )
-            text = append_to_list(text, group, file_ref)
-            text = append_to_list(text, phase, build)
+            text = append_to_list(text, group, "children", file_ref)
+            text = append_to_list(text, phase, "files", build)
             added.append(relative)
+    for relative_folder, relative_group, target in RESOURCE_FOLDERS:
+        folder = IOS_ROOT / relative_folder
+        for catalog in sorted(folder.glob("*.xcstrings")):
+            before = text
+            text, phase = resources_phase_for(text, target)
+            text = register_catalog(text, catalog, IOS_ROOT / relative_group, phase)
+            if text != before:
+                added.append(catalog.relative_to(IOS_ROOT).as_posix())
+    text, test_resources = resources_phase_for(text, "AnpFuelCoreTests")
+    for relative in configured_contract_fixtures():
+        updated = register_contract_fixture(text, relative, test_resources)
+        if updated != text:
+            added.append(relative)
+            text = updated
     return text, added
 
 

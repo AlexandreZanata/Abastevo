@@ -4,6 +4,15 @@ These rules apply to every enterprise module. A module specification references 
 
 Where a rule repeats an existing project rule, the existing identifier is cited and the existing rule remains the authority for the community product.
 
+## iOS driver scope
+
+The [iOS Empresas rules](../../iosApp/PARITY.md#b-br-ios-emp-trips--buc-ios-emp-trips--missions-trip-transitions-fueling-and-return)
+apply to the authenticated driver in the selected company. Mission assignment, trip
+lifecycle, fueling evidence and checklist results retain that account, API origin and
+organization. A local declaration, a server receipt and an approval are separate facts.
+Tracking remains off in iOS Empresas. A driver’s company membership grants no authority
+to issue fueling authorizations or confirm a station redemption.
+
 ## 1. Tenancy and ownership — `BR-TEN`
 
 - **BR-TEN-001 — One organization per record.** Every enterprise record belongs to exactly one organization. A record without an organization, or with two, cannot exist.

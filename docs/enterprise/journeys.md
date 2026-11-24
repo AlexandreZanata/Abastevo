@@ -86,6 +86,14 @@ Exceptions: a fourth fueling was recorded on Saturday (refused with `MEMBERSHIP_
 
 Exceptions: the phone restarts mid-trip (recording does not resume silently; Carla is asked; the gap is recorded); location permission is approximate only (the trip works; the track is marked insufficient for distance); the tank capacity is exceeded by the recorded volume (the fueling is accepted with a warning for review).
 
+**iOS driver journey.** The driver confirms the company while online, then uses the cached
+assignments and reference assets of that company. With eligible cached data, the driver can
+answer a mission, start a trip, pause, resume or cancel it, record a fueling with an optional
+receipt, and save a return checklist while offline. The trip can link a return run after the server accepts the
+checklist. Delivery sends the queued operations and then the receipt. Tracking stays off
+throughout the iOS journey. A checklist item that requires a photo keeps its draft and shows
+that photo submission is unavailable. See [iOS Empresas rules and acceptance](../../iosApp/PARITY.md#b-br-ios-emp-trips--buc-ios-emp-trips--missions-trip-transitions-fueling-and-return).
+
 ### JRN-07 — A supervisor closes a trip left open
 
 | Step | Who | What happens | Rules |
@@ -137,6 +145,11 @@ Result: the original stays visible with its history; nothing was edited in place
 | 7 | System | Creates the fueling for the fleet and the receivable for the station. The station sees only that transaction. | BR-TEN-005 |
 
 Exceptions: another person claims the same station (both are reviewed; neither gains access automatically); Posto Modelo's plan lapses (commercial features stop; the authority and its history remain); the code is tried a second time (refused: single use); Elisa leaves the company (her role ends; the authority stays with the organization).
+
+**iOS driver journey.** Announcing prices, issuing an authorization and confirming a
+redemption require their corresponding company or station roles. The iOS driver view shows
+that authorization notices are unavailable and explains that the participating station
+confirms redemption. See [the fueling module](modules/fuelings.md#ios-driver-recording).
 
 ### JRN-11 — A plan is downgraded below the number of active vehicles
 

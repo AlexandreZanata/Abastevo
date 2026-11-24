@@ -123,6 +123,182 @@
 		F57922C607471F6AAA9954B0 /* LedgerMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1661DDCB1B3C39962F1748 /* LedgerMathTests.swift */; };
 		8245A3F5FFA9FA3253DFEB4B /* LedgerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30750A091480D6A3A2C78EE2 /* LedgerModelsTests.swift */; };
 		816E2BC8ED6D605E934DCC41 /* LedgerSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B8D1395C1678213C90DFA9 /* LedgerSyncTests.swift */; };
+		B15F0B28694258453DAE68F3 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = D3EBDD8FEB0A64F5F946C8B4 /* InfoPlist.xcstrings */; };
+		AE75B8367BA59DFF0A4CAE94 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 2DC8C47995FCB139CAE873A4 /* Localizable.xcstrings */; };
+		D44FD1F6D2F1E6B454B2B913 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 5A94680613CC12950FE38AC8 /* Localizable.xcstrings */; };
+		43F6B74D7861B1E19E9D60FA /* CommunitySafetyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78B63414EF13F1C6D3FEB7D /* CommunitySafetyClient.swift */; };
+		E125720E23BF451E55E9818A /* ForumJourneys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C3BCBED1B831AAC2CE0F6C8 /* ForumJourneys.swift */; };
+		F017A34E9D276E02DFA9A188 /* ObservationActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95F7BED7B90A68295B96DBB8 /* ObservationActions.swift */; };
+		8D83FA3B8B62B2C2D5C6DD1B /* StationFeedbackJourney.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA16D8EDCDFFA6821F61302 /* StationFeedbackJourney.swift */; };
+		51EC766CF5B549370D5B6912 /* CommunityObservationActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C79C5DD0FAE274A713CA0 /* CommunityObservationActionsView.swift */; };
+		BE721D5319AC4738F12DF17A /* CommunitySafetyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE171E2013F6A954FAA9C16 /* CommunitySafetyViewModel.swift */; };
+		254F2283713420D0677B5A2F /* CommunitySafetyViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E76CDF4B79D6E6E039C061E6 /* CommunitySafetyViews.swift */; };
+		9E29671F4BDD4EE432171456 /* ForumDiscussionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDECA5E80820148452DF1CA /* ForumDiscussionModel.swift */; };
+		065B8C757685B3FCF8C0AE23 /* StationFeedbackCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D6298AEEB032DD8AEE3A6D /* StationFeedbackCard.swift */; };
+		5FA600BBD879C8E29EABCC33 /* CommunitySafetyClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E3DE4B7E9237E634FB90D7 /* CommunitySafetyClientTests.swift */; };
+		6688831D29198D62832DCAED /* ForumJourneysTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B263F5BC84F016DBD2C8BBEE /* ForumJourneysTests.swift */; };
+		70F717BE4311DC735FC4A238 /* ObservationActionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 512559937ECDAE503D90065D /* ObservationActionsTests.swift */; };
+		FB06169A65BD2989796D55C3 /* StationFeedbackJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A80240581E694CE1DFB16E02 /* StationFeedbackJourneyTests.swift */; };
+		48E5E1CF3577DB91B1B99F57 /* feedback-comment-view-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 8484FBC1ADE9A1E0DFF39BFE /* feedback-comment-view-valid.json */; };
+		063E1779A8D9E3DAD11B15FA /* feedback-rating-receipt-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 20AE756C28BFFB7AE262367A /* feedback-rating-receipt-valid.json */; };
+		7752B00AE03CAD34DE3ED58B /* feedback-rating-stats-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = ECF936112423DEDAFBB8CC75 /* feedback-rating-stats-valid.json */; };
+		13693919E3B22C632DFB2EA8 /* forum-comments-response-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = F16720D4E8D436190F6AA977 /* forum-comments-response-valid.json */; };
+		B59CBD29A624D76D092F41CD /* forum-create-comment-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = B540C8337A1E4E8B34264797 /* forum-create-comment-valid.json */; };
+		8CD0B5ED6556DA06A658803E /* forum-edit-comment-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = 8349FAF8027C2405BA5A3780 /* forum-edit-comment-invalid.json */; };
+		3BE8D925E041102C10D1E9D5 /* forum-edit-comment-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = D78DA3150B1FE95AE423A7D3 /* forum-edit-comment-valid.json */; };
+		41B3F10589C1A8A5FA825CEF /* forum-feed-response-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = B875C194BA340E53893EB6C2 /* forum-feed-response-valid.json */; };
+		1B7DD2B5D1BE6E202C395661 /* forum-owner-topic-response-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = AC93DD58E1C91866D1B0D438 /* forum-owner-topic-response-valid.json */; };
+		1C8008AB012BBFFA9A9B2B12 /* forum-post-summary-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 3EE6DF87A230C26425608F12 /* forum-post-summary-valid.json */; };
+		7DBA406F63102E23D7A8A052 /* forum-remove-comment-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 729161BF03CBECEA787FCCE5 /* forum-remove-comment-valid.json */; };
+		C0C7D4CFC0F33C9BB7E2C337 /* forum-replies-response-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = A20E0F32B52E23423217009E /* forum-replies-response-valid.json */; };
+		650EC339FC67CE69E4253EA2 /* helpful-cast-invalid-choice.json in Resources */ = {isa = PBXBuildFile; fileRef = 571761D72650300BB5DC6BAE /* helpful-cast-invalid-choice.json */; };
+		13A0D4939E3E4C347A1EF62F /* helpful-cast-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 6E577AF6CF55EF90109FE9E3 /* helpful-cast-valid.json */; };
+		408140E8CAF41C060C1D417E /* helpful-tally-empty.json in Resources */ = {isa = PBXBuildFile; fileRef = 6DC7912CF51C9268CDE67BA1 /* helpful-tally-empty.json */; };
+		B302394227F3B762283F4ECE /* helpful-tally-with-votes.json in Resources */ = {isa = PBXBuildFile; fileRef = C98C758C8D17F2DCB963B798 /* helpful-tally-with-votes.json */; };
+		590D8B72247DBCF42FA1D06F /* moderation-disputed.json in Resources */ = {isa = PBXBuildFile; fileRef = 5B910D82620EBA30EBACBBBC /* moderation-disputed.json */; };
+		5F01A1DA13276E60B85651B2 /* retry-no-amplification.json in Resources */ = {isa = PBXBuildFile; fileRef = B0F6EC2B54E4BF3709CDB36E /* retry-no-amplification.json */; };
+		07522FD46CEF86DC6833FBEE /* self-confirmation-excluded.json in Resources */ = {isa = PBXBuildFile; fileRef = 9FDD8B290B972D907E4E8AC8 /* self-confirmation-excluded.json */; };
+		77C6B6A107A956B5DAC4DD93 /* feedback-rating-six.json in Resources */ = {isa = PBXBuildFile; fileRef = BF1256FB18559D90A368A2C7 /* feedback-rating-six.json */; };
+		FFBFF9D99FEA60BDEB954231 /* feedback-rating-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = E312F4E2DD6BBED126ADD62F /* feedback-rating-valid.json */; };
+		A261EE2637177D378A05F612 /* feedback-rating-zero.json in Resources */ = {isa = PBXBuildFile; fileRef = E129121B83C2A8A237104C9E /* feedback-rating-zero.json */; };
+		060790CFB6C830FB35BA8E49 /* feedback-revision-supersede.json in Resources */ = {isa = PBXBuildFile; fileRef = 9F4F1B6FAC28BDCB56A829F2 /* feedback-revision-supersede.json */; };
+		CD5B598C0095B32DA168F0E8 /* feedback-text-crlf.json in Resources */ = {isa = PBXBuildFile; fileRef = ACA26348C8B4E076E5A445B7 /* feedback-text-crlf.json */; };
+		95F47D09C62EF75D087B7CA6 /* StationDossier.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF2C382DA1FF56DF2FC74EF /* StationDossier.swift */; };
+		D942BF085EEA7963E66F2992 /* StationIntake.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80D42CB33E4335324FA4AA6 /* StationIntake.swift */; };
+		B82074193B908FD3A18307D8 /* StationRepresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B9F2278E9571B7E942F795 /* StationRepresentation.swift */; };
+		BEB6C7284AFAA245C4320A64 /* StationBusinessProfileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461F32A77DA47A010B97F215 /* StationBusinessProfileViews.swift */; };
+		41667D8A6BB310AEB496A77B /* StationDossierModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9380DFC9B66D32F826361E /* StationDossierModel.swift */; };
+		4C214F0877EC562ADA02B558 /* StationDossierViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68801D57AC95A4FD9E531488 /* StationDossierViews.swift */; };
+		8BEE12438229D27F856735BE /* StationSuggestionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEBA407BCD172C370CD48B5 /* StationSuggestionViews.swift */; };
+		9AFA9A7756BEA726A6A16E94 /* StationDossierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C445C62963F93D6C307D5DEE /* StationDossierTests.swift */; };
+		68015E86CB1A4C7779678882 /* StationIntakeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A29642771BBCE645AF04098A /* StationIntakeTests.swift */; };
+		AF14E1DEDFB31C737F876324 /* StationRepresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530C6AF25A6EC6201990A378 /* StationRepresentationTests.swift */; };
+		AFEC1A4E3167842D58DE9A44 /* price-groups-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = A42EBFF1F7C1E4D0E671DB82 /* price-groups-valid.json */; };
+		E8C793591D81580D1D37F749 /* station-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C4518F44244344006EC7D93F /* station-valid.json */; };
+		9AC300EF0EE18B99799E70D9 /* conflicting-prices-disputed.json in Resources */ = {isa = PBXBuildFile; fileRef = D03A6CD428F50D55DFFD2216 /* conflicting-prices-disputed.json */; };
+		65A9DCC4D117C527DE41299B /* high-quorum.json in Resources */ = {isa = PBXBuildFile; fileRef = 5BE15656526AE5EBE412CB14 /* high-quorum.json */; };
+		061341CF772976E7BFEC5BC5 /* no-data-unknown.json in Resources */ = {isa = PBXBuildFile; fileRef = 6971BCD784A73950D0F60CA8 /* no-data-unknown.json */; };
+		E51FEE027611336CB3117D47 /* cases-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = AE261678A69777D524C738B3 /* cases-v1.json */; };
+		ED3E326FCA4BCFD67286371B /* exploration-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = 6D57642D69E7A986069B9621 /* exploration-v1.json */; };
+		FDC609A58EE30B59C87062DF /* registry-api-sample.json in Resources */ = {isa = PBXBuildFile; fileRef = 6D8D0A4A3E33D571D67DCEF5 /* registry-api-sample.json */; };
+		842A7B57BEAFC7F8991CFD6E /* OfficialOccurrences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C127528F90A35DA61760B2 /* OfficialOccurrences.swift */; };
+		E6EFAE25B9CE6F469B123623 /* OfficialQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43346FF21CFF11D9A712ABBE /* OfficialQuality.swift */; };
+		11F60DF6EB8C90D8E55F24CE /* QualityPublicRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919578572AE487DFD81A9C40 /* QualityPublicRead.swift */; };
+		929D9529035D438255CCC22C /* QualityReportJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = B058C3758D9F468186C568F7 /* QualityReportJournal.swift */; };
+		35E2B7FA4A471E113400DCDC /* QualityReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C6724417F0CDD1D395A39C /* QualityReports.swift */; };
+		6E1714F38938829562A31AED /* OccurrenceExplorerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5640E90E3ABC9E6B4DB306 /* OccurrenceExplorerViews.swift */; };
+		DE4A259D067E91825DDE9D8B /* QualityReportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D2A289C46E82E55B41F4C2F /* QualityReportViews.swift */; };
+		3BD45D6BECD6D99B971933BE /* StationQualityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7EF53E0645D36D11028424 /* StationQualityViews.swift */; };
+		F5AF7B2C2C2393DC8D9186B2 /* OfficialQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4652E461F7CDDA0FFE41837B /* OfficialQualityTests.swift */; };
+		117A6C5535DC4983B39F9328 /* quality-report-appeal-invalid-revision.json in Resources */ = {isa = PBXBuildFile; fileRef = 397EB7F906A232E4673013BB /* quality-report-appeal-invalid-revision.json */; };
+		D493237959A1AB84819DF373 /* quality-report-appeal-invalid-target.json in Resources */ = {isa = PBXBuildFile; fileRef = 6211B791E5CF7CFC5DFC0F83 /* quality-report-appeal-invalid-target.json */; };
+		6E2B11817B32EEAEA7507183 /* quality-report-appeal-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 475A7574F91DEF340E20A38C /* quality-report-appeal-valid.json */; };
+		C16AC2A5F315F652E2A6071F /* quality-report-invalid-checked.json in Resources */ = {isa = PBXBuildFile; fileRef = DABDCD2C0AE46E2F97CE95DA /* quality-report-invalid-checked.json */; };
+		B64EDD2DBB26029D00C5F827 /* quality-report-invalid-document.json in Resources */ = {isa = PBXBuildFile; fileRef = 3B1FB7209AD73A365780785A /* quality-report-invalid-document.json */; };
+		DD45211FB51FFDAC76DE53DB /* quality-report-invalid-edit-revision.json in Resources */ = {isa = PBXBuildFile; fileRef = A899C636AB73533FBA5585D9 /* quality-report-invalid-edit-revision.json */; };
+		74FFF1482B4D634DDA2AF6B3 /* quality-report-invalid-empty.json in Resources */ = {isa = PBXBuildFile; fileRef = DCCBA4B35B18317DE12E8559 /* quality-report-invalid-empty.json */; };
+		56E47F7AAA727FB24CF7BC91 /* quality-report-invalid-owner.json in Resources */ = {isa = PBXBuildFile; fileRef = 4069561F4CE4C4582E11A113 /* quality-report-invalid-owner.json */; };
+		1FD3FE3C302FD33CF2167C14 /* quality-report-invalid-withdraw-payload.json in Resources */ = {isa = PBXBuildFile; fileRef = B9F13938737475E1E32119C0 /* quality-report-invalid-withdraw-payload.json */; };
+		07BF00614E1A516365977DF0 /* quality-report-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = B1C2721762B8C558FC1D2C10 /* quality-report-valid.json */; };
+		74587C0AEBDA72C110CEC3EC /* enforcement-source-record-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 0FCCE4890E2A57E50704FDF7 /* enforcement-source-record-valid.json */; };
+		A8070473F8DDC3BFDB1F2EE9 /* QualityReportsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E958A16DE52CB96A3924ADC1 /* QualityReportsTests.swift */; };
+		DE3C762FD8407AB38019D16E /* AccountDataExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702A7A4AB140DBFFDC46F5FC /* AccountDataExport.swift */; };
+		A46A3ED8DEAD541033893796 /* TrainingConsent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DB36280B60508D0B103159 /* TrainingConsent.swift */; };
+		2F44A6E37DA3DA8A355C3BA9 /* AccountExportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF5416576026DA6F5D059612 /* AccountExportViews.swift */; };
+		E5A08B36B48B95FAA5E3BE7C /* TrainingConsentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6FFA308E5160B448BE5A52B /* TrainingConsentModel.swift */; };
+		218DA27554C71AFF78A8D87D /* TrainingConsentViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520CC7CE5EB77A3E01B529FF /* TrainingConsentViews.swift */; };
+		C86FD57437D174859242F59B /* AccountDataExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9B3F57694820A12F79EB30 /* AccountDataExportTests.swift */; };
+		C71BB3CA3F2B08FD8470F5D5 /* TrainingConsentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB263AFF37E2C985389921DC /* TrainingConsentTests.swift */; };
+		D90452F8DFD91725EC0472C0 /* training-consent-grant-stale-terms-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = D4CFA38647F54CAF8F6DDE02 /* training-consent-grant-stale-terms-invalid.json */; };
+		373A0BB3FEB4C1D0CB0CCCFD /* training-consent-grant-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = EF7252E26B0E8E24654945D2 /* training-consent-grant-valid.json */; };
+		5D3BB558C82D6CF5D3A00E5E /* training-consent-revoke-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 30C8AC2080DE602989052DE5 /* training-consent-revoke-valid.json */; };
+		B86A45BF10E342FF09BAF727 /* training-consent-status-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 2B03D9AD48B6F76D86C3A08F /* training-consent-status-valid.json */; };
+		1592B4D7EE830D4C652494F3 /* consent-grant-stale-terms.json in Resources */ = {isa = PBXBuildFile; fileRef = 9A4127DA27CEC7860FF6018A /* consent-grant-stale-terms.json */; };
+		90625ADCB70AF024879FF8BC /* consent-grant-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = DB05F49F29E032925DDACDD9 /* consent-grant-valid.json */; };
+		47A6305A94BE3F6CB0274F36 /* consent-status-granted.json in Resources */ = {isa = PBXBuildFile; fileRef = 97115DF10DBF79BAC52932BA /* consent-status-granted.json */; };
+		EE07CF93FA053F9A156BD951 /* consent-status-off.json in Resources */ = {isa = PBXBuildFile; fileRef = D757DBD651380F1C6E82C489 /* consent-status-off.json */; };
+		279D79333422494D1C5DDC14 /* MapSearchPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5829DCDFD46F5A7171F1005 /* MapSearchPolicy.swift */; };
+		5D702BE46096073B2918DAFA /* NavigationGuidance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D38498EAB8D451CAC6D33CF /* NavigationGuidance.swift */; };
+		31867B942E1D5E0B61B8C1AF /* ActiveNavigationLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFD2A5E7635903C1D3CD62CD /* ActiveNavigationLocation.swift */; };
+		6250822C886569D7B9369356 /* ActiveNavigationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86A2D39A34064F35DB1A721 /* ActiveNavigationViews.swift */; };
+		E4AD6E096D8041F92237116C /* MapDiscoverySearchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D9FCCBFBD99ECE85F017CD /* MapDiscoverySearchViews.swift */; };
+		A9DC860A16027B40E3C8A54A /* NavigationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26AFDA243130087CCBF444BA /* NavigationCoordinator.swift */; };
+		2FD000D4BC5555B817A6666D /* MapSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60E0EBFC742CF27699C5C950 /* MapSearchTests.swift */; };
+		DD19F1295840D36B361C5F3E /* NavigationGuidanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4FDF6A6B913E18FB3D80CE /* NavigationGuidanceTests.swift */; };
+		D911B8759F1DE03431A907D1 /* SavedGPX.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84DCF93D3AE2DA18AD549F8 /* SavedGPX.swift */; };
+		89C80311B4426AD6EAFAB222 /* SavedMapModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2518715874CC037D891522DD /* SavedMapModel.swift */; };
+		E3A02C9594C438E0A8A4F423 /* SavedMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D507AEF752F4494FB4E0639 /* SavedMapStore.swift */; };
+		AE947DA5648922B510FC0590 /* StrictSavedXML.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9315CCA0CF485CE5CC6A1D16 /* StrictSavedXML.swift */; };
+		98FCE2F28968DE4FF73EED8D /* SavedPlacesSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF753CCB0591DB965B01CB38 /* SavedPlacesSheetView.swift */; };
+		7AB2B1B43C782A7C433B7BEC /* SavedGPXTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CA86FE48BA79F244217BA0 /* SavedGPXTests.swift */; };
+		ADF10462ECD6B7945CDAFE5F /* SavedMapStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF691ABF23F4387208081A8 /* SavedMapStoreTests.swift */; };
+		5FD420B1F9692C6476257D3A /* AdvancedAlertStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A611051064F55477B300CD7 /* AdvancedAlertStore.swift */; };
+		F0E9C678BAC24DD0542F0DD0 /* AdvancedAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020FC870D6788BCEC2900F1A /* AdvancedAlerts.swift */; };
+		DCA050846FFB35655B6BC77C /* LedgerEstimatedEfficiency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB0E95C35A30F956C461851 /* LedgerEstimatedEfficiency.swift */; };
+		55CF4415829F4E61228A6943 /* LedgerMonthlyCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41729C6E2629EB7D4BC38116 /* LedgerMonthlyCSV.swift */; };
+		7253FF1BDE632D73BEC92BB1 /* LedgerServerAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ECB1ED1B83C2D189F13316B /* LedgerServerAnalysis.swift */; };
+		4F3598DD6A49B18661FD8BA8 /* VehicleEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7AE2FD4936C88D1BFF5B6 /* VehicleEditing.swift */; };
+		8A93A66394D0B77D37D3476D /* AdvancedAlertsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7312040CA9A4E5C208078518 /* AdvancedAlertsModel.swift */; };
+		E8F86B4380026F22EE8A6671 /* AdvancedAlertsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4BF887F41248A7A43B9ED5 /* AdvancedAlertsView.swift */; };
+		3C05A726F1F0983B74302FFD /* LedgerMonthlyExportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E620736E72ECA9E975BDF4B6 /* LedgerMonthlyExportViews.swift */; };
+		7D498FBF3A1AAA3A93DB8385 /* LedgerServerAnalysisViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69284659144956254B7EB5B /* LedgerServerAnalysisViews.swift */; };
+		78ED5D2287BA8347CF90578A /* VehicleEditorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9854575C743DBA791303C34 /* VehicleEditorViews.swift */; };
+		17B3B6797C4DF884635E0FE1 /* AdvancedAlertsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 394449B94FEEFADC03D0F7D8 /* AdvancedAlertsTests.swift */; };
+		3E4CB3F30542B79685971515 /* LedgerLocalAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626E5D44062F73A0B4DA8F1F /* LedgerLocalAnalysisTests.swift */; };
+		525E1EB6F5C21F389D8A8C2B /* LedgerServerAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A9FBF53C4656AF8901E3C0 /* LedgerServerAnalysisTests.swift */; };
+		632945014E2C337255DC7B11 /* VehicleEditingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E0F28FEC65287113404700 /* VehicleEditingTests.swift */; };
+		DB17F32038B7AAFDCE92E322 /* alerts-commands-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = 80423C12C9647305C2CF48DF /* alerts-commands-invalid.json */; };
+		BBC4E50EDDD11E8A57459C94 /* alerts-commands-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = CD5E6E5D66528DAE215814AB /* alerts-commands-valid.json */; };
+		093905E0FA352EAF371AA134 /* alerts-inbox-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 7C76BBAE8D4CBFFF4CBF25BC /* alerts-inbox-valid.json */; };
+		823A7BE50D7EE26029740F18 /* ledger-report-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = D53CF44EF7615DC1B7CF3393 /* ledger-report-invalid.json */; };
+		04FFD6A216886DE0B0053F9A /* ledger-report-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = E1F71A2642E95DF98029ECED /* ledger-report-valid.json */; };
+		774DA3E2633C3DD28C5540F1 /* metrics-compare-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = B588134E2FBC9D06DA22E959 /* metrics-compare-invalid.json */; };
+		C8EEF05F3705D4C43D813A38 /* metrics-compare-response-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = EAD4C6C8EB7860B0E5F12E4A /* metrics-compare-response-valid.json */; };
+		09FBE7368C7899D75EADA4F0 /* metrics-compare-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 2FDB529EE36A24F59E0FC36D /* metrics-compare-valid.json */; };
+		F82E7C094B5C1235B5CFD4A2 /* DriverAccounting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83742A9D9ED4D2C4C6EFF318 /* DriverAccounting.swift */; };
+		2F7FCF28CD7D7825531064F1 /* DriverAccountingOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94CD5F8815D64128C3B36FFD /* DriverAccountingOutbox.swift */; };
+		C3554F9FD161509AFEDDC5CA /* DriverCloudVehicle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572C840128F1E0E4BED49522 /* DriverCloudVehicle.swift */; };
+		91A3BE7D38398CBB00664035 /* DriverGpsDistance.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2DC6FE3BE7CABDE7EFAFE1D /* DriverGpsDistance.swift */; };
+		5BEF01FA7BD23E59E6B435D4 /* DriverServerReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6079D612982455E5B826DF5A /* DriverServerReports.swift */; };
+		B427C202A26658B1953A65C3 /* DriverAccountingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C635A9C2DFA145D11757B38E /* DriverAccountingModel.swift */; };
+		9638757AA0BC5351D1A00B4C /* DriverAccountingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97DAAA3C690FB7E1C9FCEF8 /* DriverAccountingViews.swift */; };
+		415429601A81F3CC96078EF9 /* DriverGpsControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFA33FE5206048A723CA6E0 /* DriverGpsControls.swift */; };
+		4648FC2DEA16A2071A14C068 /* DriverGpsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AA3676E3D225B538521D8CE /* DriverGpsCoordinator.swift */; };
+		C0631279DBC442757E5CBB48 /* DriverServerReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9665B7D04D7A734E1381F377 /* DriverServerReportsView.swift */; };
+		109B42020F1817677D1144D0 /* DriverAccountingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A95F18F8C21F516E19EAD9 /* DriverAccountingTests.swift */; };
+		4E98855873EAA3523B89C94A /* DriverCloudVehicleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 680DFBE2407972885A941DE9 /* DriverCloudVehicleTests.swift */; };
+		E85D772D287A7B7D93A0AC9A /* DriverGpsDistanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C48BD3D81B55919A3E6EB72 /* DriverGpsDistanceTests.swift */; };
+		4DB8A41023D3C8400A333581 /* DriverServerReportsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFA70CCEBCF53BB476A9B6BA /* DriverServerReportsTests.swift */; };
+		6C0935F929564319421435D7 /* driver-earnings-page-request-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = 67A3D7C3D37435414464036D /* driver-earnings-page-request-invalid.json */; };
+		890F3678A77B78C40BB9DEF7 /* driver-report-request-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = 397D5B482443952755D65FBC /* driver-report-request-invalid.json */; };
+		295DD17045C92652DD764BFE /* driver-report-request-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 6259138CBAE9DF71D0F0C023 /* driver-report-request-valid.json */; };
+		11F4562587BE23C770CB4CEE /* driver-report-response-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = D1AD3457D017F15A1C56F4F7 /* driver-report-response-valid.json */; };
+		0A1CC4DE8648FE8B5B934CB8 /* driver-manual-reference-v1.psv in Resources */ = {isa = PBXBuildFile; fileRef = B0F384A5B07C35E8009AFE53 /* driver-manual-reference-v1.psv */; };
+		351C9BE357FA1AEE5396D467 /* auth-401.json in Resources */ = {isa = PBXBuildFile; fileRef = 30876F4C12265A8543A5918E /* auth-401.json */; };
+		A80640FDA46C418E97AD2E57 /* conflict-409.json in Resources */ = {isa = PBXBuildFile; fileRef = B042FE1F11489B1FD45DB4F8 /* conflict-409.json */; };
+		D50167C84B835EA77FEAE665 /* receipt-200.json in Resources */ = {isa = PBXBuildFile; fileRef = 56BE283D03101129CB561F1B /* receipt-200.json */; };
+		D308123489FDB58478C25BB8 /* planned-financial-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = 78EB1A1948A4A5F22DB0868B /* planned-financial-v1.json */; };
+		58E5737923DEE64F4C54E489 /* EnterpriseFueling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A332D73B020F18C19F6B277 /* EnterpriseFueling.swift */; };
+		E724667014975D5B1C24111D /* EnterpriseMissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0CD74FED4BBF6BFFBA4242A /* EnterpriseMissions.swift */; };
+		4577B1AB2B710BEA71982C72 /* EnterpriseReturnChecklist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20FA3E0AC2141D2A105337CD /* EnterpriseReturnChecklist.swift */; };
+		B4776609466A2C861CFB747A /* EnterpriseTripLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B8CBAC865B94BE101DEB3FA /* EnterpriseTripLifecycle.swift */; };
+		84760D350BCB0D636499C50E /* EnterpriseFuelingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E7B2B0A273736797C0C4E7D /* EnterpriseFuelingsView.swift */; };
+		CFF2580DC4C1B22DBF77E439 /* EnterpriseMissionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1B9CDA1501FADA5FEF64B6 /* EnterpriseMissionViews.swift */; };
+		7953FC11606CEF9545C50E77 /* EnterpriseReturnChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE5E987F334435A4D79A51A /* EnterpriseReturnChecklistView.swift */; };
+		D8C04150CDB1046105A4EBDD /* EnterpriseTripLifecycleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F92329030440009A7A4406 /* EnterpriseTripLifecycleViews.swift */; };
+		B7D4E38B42A99F4C72D1E13B /* EnterpriseMissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600CECD30FCBE86F8128C59A /* EnterpriseMissionTests.swift */; };
+		6E0DF3E5C52D11E047B1DCE5 /* EnterpriseReturnChecklistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C01F6005F0FF850EEADE05 /* EnterpriseReturnChecklistTests.swift */; };
+		32A29F0A341B8D318192C383 /* EnterpriseTripLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B91F103ED3B8ACF0C680BC /* EnterpriseTripLifecycleTests.swift */; };
+		8CBACFFA3F2047081D47180A /* voucher-limits-v1.psv in Resources */ = {isa = PBXBuildFile; fileRef = 20DF047E8D28A0252769E01B /* voucher-limits-v1.psv */; };
+		E5604810003ED72841BB3336 /* checklist-v1.psv in Resources */ = {isa = PBXBuildFile; fileRef = 08DFF545D1C780C9B2916F96 /* checklist-v1.psv */; };
+		795768D9EA04CD44A052D034 /* run-v1.psv in Resources */ = {isa = PBXBuildFile; fileRef = 7E7D74C0DF16D9EC4BCB806E /* run-v1.psv */; };
+		A20BB05ED8E550644C7B49C2 /* fueling-submit-v1.psv in Resources */ = {isa = PBXBuildFile; fileRef = 6EB37CD6FCBF1195F1E489D3 /* fueling-submit-v1.psv */; };
+		43E4B0E0C9A7875B9DCA8677 /* trip-operations-v3.psv in Resources */ = {isa = PBXBuildFile; fileRef = F4269D95317B05ABACEDBD3D /* trip-operations-v3.psv */; };
+		13888AFFEC4B2A9966B091ED /* EnterpriseFuelingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29B10C3596C50FA5937F83C /* EnterpriseFuelingTests.swift */; };
+		14FA322E860983A5CD849686 /* ForumFilterAndTopicViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026424CE864F508912DE0646 /* ForumFilterAndTopicViews.swift */; };
+		30093909C89C8E57DB9DB998 /* forum-edit-topic-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */; };
+		F4C2CF46825CAF4BE4B6D99C /* forum-edit-topic-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */; };
+		BBBAB5AB081AD226EEF03B9E /* forum-remove-topic-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -275,6 +451,182 @@
 		DC1661DDCB1B3C39962F1748 /* LedgerMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerMathTests.swift; sourceTree = "<group>"; };
 		30750A091480D6A3A2C78EE2 /* LedgerModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModelsTests.swift; sourceTree = "<group>"; };
 		34B8D1395C1678213C90DFA9 /* LedgerSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerSyncTests.swift; sourceTree = "<group>"; };
+		D3EBDD8FEB0A64F5F946C8B4 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = "InfoPlist.xcstrings"; path = "InfoPlist.xcstrings"; sourceTree = "<group>"; };
+		2DC8C47995FCB139CAE873A4 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = "Localizable.xcstrings"; path = "Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
+		5A94680613CC12950FE38AC8 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = "Localizable.xcstrings"; path = "Localizable.xcstrings"; sourceTree = "<group>"; };
+		F78B63414EF13F1C6D3FEB7D /* CommunitySafetyClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunitySafetyClient.swift; sourceTree = "<group>"; };
+		4C3BCBED1B831AAC2CE0F6C8 /* ForumJourneys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForumJourneys.swift; sourceTree = "<group>"; };
+		95F7BED7B90A68295B96DBB8 /* ObservationActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationActions.swift; sourceTree = "<group>"; };
+		6AA16D8EDCDFFA6821F61302 /* StationFeedbackJourney.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationFeedbackJourney.swift; sourceTree = "<group>"; };
+		045C79C5DD0FAE274A713CA0 /* CommunityObservationActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityObservationActionsView.swift; sourceTree = "<group>"; };
+		EDE171E2013F6A954FAA9C16 /* CommunitySafetyViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunitySafetyViewModel.swift; sourceTree = "<group>"; };
+		E76CDF4B79D6E6E039C061E6 /* CommunitySafetyViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunitySafetyViews.swift; sourceTree = "<group>"; };
+		6DDECA5E80820148452DF1CA /* ForumDiscussionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForumDiscussionModel.swift; sourceTree = "<group>"; };
+		12D6298AEEB032DD8AEE3A6D /* StationFeedbackCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationFeedbackCard.swift; sourceTree = "<group>"; };
+		08E3DE4B7E9237E634FB90D7 /* CommunitySafetyClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunitySafetyClientTests.swift; sourceTree = "<group>"; };
+		B263F5BC84F016DBD2C8BBEE /* ForumJourneysTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForumJourneysTests.swift; sourceTree = "<group>"; };
+		512559937ECDAE503D90065D /* ObservationActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationActionsTests.swift; sourceTree = "<group>"; };
+		A80240581E694CE1DFB16E02 /* StationFeedbackJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationFeedbackJourneyTests.swift; sourceTree = "<group>"; };
+		8484FBC1ADE9A1E0DFF39BFE /* feedback-comment-view-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-comment-view-valid.json"; path = "../contracts/testdata/api/feedback-comment-view-valid.json"; sourceTree = SOURCE_ROOT; };
+		20AE756C28BFFB7AE262367A /* feedback-rating-receipt-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-rating-receipt-valid.json"; path = "../contracts/testdata/api/feedback-rating-receipt-valid.json"; sourceTree = SOURCE_ROOT; };
+		ECF936112423DEDAFBB8CC75 /* feedback-rating-stats-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-rating-stats-valid.json"; path = "../contracts/testdata/api/feedback-rating-stats-valid.json"; sourceTree = SOURCE_ROOT; };
+		F16720D4E8D436190F6AA977 /* forum-comments-response-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-comments-response-valid.json"; path = "../contracts/testdata/api/forum-comments-response-valid.json"; sourceTree = SOURCE_ROOT; };
+		B540C8337A1E4E8B34264797 /* forum-create-comment-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-create-comment-valid.json"; path = "../contracts/testdata/api/forum-create-comment-valid.json"; sourceTree = SOURCE_ROOT; };
+		8349FAF8027C2405BA5A3780 /* forum-edit-comment-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-comment-invalid.json"; path = "../contracts/testdata/api/forum-edit-comment-invalid.json"; sourceTree = SOURCE_ROOT; };
+		D78DA3150B1FE95AE423A7D3 /* forum-edit-comment-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-comment-valid.json"; path = "../contracts/testdata/api/forum-edit-comment-valid.json"; sourceTree = SOURCE_ROOT; };
+		B875C194BA340E53893EB6C2 /* forum-feed-response-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-feed-response-valid.json"; path = "../contracts/testdata/api/forum-feed-response-valid.json"; sourceTree = SOURCE_ROOT; };
+		AC93DD58E1C91866D1B0D438 /* forum-owner-topic-response-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-owner-topic-response-valid.json"; path = "../contracts/testdata/api/forum-owner-topic-response-valid.json"; sourceTree = SOURCE_ROOT; };
+		3EE6DF87A230C26425608F12 /* forum-post-summary-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-post-summary-valid.json"; path = "../contracts/testdata/api/forum-post-summary-valid.json"; sourceTree = SOURCE_ROOT; };
+		729161BF03CBECEA787FCCE5 /* forum-remove-comment-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-remove-comment-valid.json"; path = "../contracts/testdata/api/forum-remove-comment-valid.json"; sourceTree = SOURCE_ROOT; };
+		A20E0F32B52E23423217009E /* forum-replies-response-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-replies-response-valid.json"; path = "../contracts/testdata/api/forum-replies-response-valid.json"; sourceTree = SOURCE_ROOT; };
+		571761D72650300BB5DC6BAE /* helpful-cast-invalid-choice.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "helpful-cast-invalid-choice.json"; path = "../contracts/testdata/community-helpfulness/helpful-cast-invalid-choice.json"; sourceTree = SOURCE_ROOT; };
+		6E577AF6CF55EF90109FE9E3 /* helpful-cast-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "helpful-cast-valid.json"; path = "../contracts/testdata/community-helpfulness/helpful-cast-valid.json"; sourceTree = SOURCE_ROOT; };
+		6DC7912CF51C9268CDE67BA1 /* helpful-tally-empty.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "helpful-tally-empty.json"; path = "../contracts/testdata/community-helpfulness/helpful-tally-empty.json"; sourceTree = SOURCE_ROOT; };
+		C98C758C8D17F2DCB963B798 /* helpful-tally-with-votes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "helpful-tally-with-votes.json"; path = "../contracts/testdata/community-helpfulness/helpful-tally-with-votes.json"; sourceTree = SOURCE_ROOT; };
+		5B910D82620EBA30EBACBBBC /* moderation-disputed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "moderation-disputed.json"; path = "../contracts/testdata/consensus/moderation-disputed.json"; sourceTree = SOURCE_ROOT; };
+		B0F6EC2B54E4BF3709CDB36E /* retry-no-amplification.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "retry-no-amplification.json"; path = "../contracts/testdata/consensus/retry-no-amplification.json"; sourceTree = SOURCE_ROOT; };
+		9FDD8B290B972D907E4E8AC8 /* self-confirmation-excluded.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "self-confirmation-excluded.json"; path = "../contracts/testdata/consensus/self-confirmation-excluded.json"; sourceTree = SOURCE_ROOT; };
+		BF1256FB18559D90A368A2C7 /* feedback-rating-six.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-rating-six.json"; path = "../contracts/testdata/feedback/feedback-rating-six.json"; sourceTree = SOURCE_ROOT; };
+		E312F4E2DD6BBED126ADD62F /* feedback-rating-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-rating-valid.json"; path = "../contracts/testdata/feedback/feedback-rating-valid.json"; sourceTree = SOURCE_ROOT; };
+		E129121B83C2A8A237104C9E /* feedback-rating-zero.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-rating-zero.json"; path = "../contracts/testdata/feedback/feedback-rating-zero.json"; sourceTree = SOURCE_ROOT; };
+		9F4F1B6FAC28BDCB56A829F2 /* feedback-revision-supersede.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-revision-supersede.json"; path = "../contracts/testdata/feedback/feedback-revision-supersede.json"; sourceTree = SOURCE_ROOT; };
+		ACA26348C8B4E076E5A445B7 /* feedback-text-crlf.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "feedback-text-crlf.json"; path = "../contracts/testdata/feedback/feedback-text-crlf.json"; sourceTree = SOURCE_ROOT; };
+		CCF2C382DA1FF56DF2FC74EF /* StationDossier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossier.swift; sourceTree = "<group>"; };
+		D80D42CB33E4335324FA4AA6 /* StationIntake.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationIntake.swift; sourceTree = "<group>"; };
+		51B9F2278E9571B7E942F795 /* StationRepresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationRepresentation.swift; sourceTree = "<group>"; };
+		461F32A77DA47A010B97F215 /* StationBusinessProfileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationBusinessProfileViews.swift; sourceTree = "<group>"; };
+		2E9380DFC9B66D32F826361E /* StationDossierModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossierModel.swift; sourceTree = "<group>"; };
+		68801D57AC95A4FD9E531488 /* StationDossierViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossierViews.swift; sourceTree = "<group>"; };
+		0DEBA407BCD172C370CD48B5 /* StationSuggestionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationSuggestionViews.swift; sourceTree = "<group>"; };
+		C445C62963F93D6C307D5DEE /* StationDossierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDossierTests.swift; sourceTree = "<group>"; };
+		A29642771BBCE645AF04098A /* StationIntakeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationIntakeTests.swift; sourceTree = "<group>"; };
+		530C6AF25A6EC6201990A378 /* StationRepresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationRepresentationTests.swift; sourceTree = "<group>"; };
+		A42EBFF1F7C1E4D0E671DB82 /* price-groups-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "price-groups-valid.json"; path = "../contracts/testdata/api/price-groups-valid.json"; sourceTree = SOURCE_ROOT; };
+		C4518F44244344006EC7D93F /* station-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "station-valid.json"; path = "../contracts/testdata/api/station-valid.json"; sourceTree = SOURCE_ROOT; };
+		D03A6CD428F50D55DFFD2216 /* conflicting-prices-disputed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "conflicting-prices-disputed.json"; path = "../contracts/testdata/consensus/conflicting-prices-disputed.json"; sourceTree = SOURCE_ROOT; };
+		5BE15656526AE5EBE412CB14 /* high-quorum.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "high-quorum.json"; path = "../contracts/testdata/consensus/high-quorum.json"; sourceTree = SOURCE_ROOT; };
+		6971BCD784A73950D0F60CA8 /* no-data-unknown.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "no-data-unknown.json"; path = "../contracts/testdata/consensus/no-data-unknown.json"; sourceTree = SOURCE_ROOT; };
+		AE261678A69777D524C738B3 /* cases-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "cases-v1.json"; path = "../contracts/testdata/map-discovery/cases-v1.json"; sourceTree = SOURCE_ROOT; };
+		6D57642D69E7A986069B9621 /* exploration-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "exploration-v1.json"; path = "../contracts/testdata/mobile-expansion/exploration-v1.json"; sourceTree = SOURCE_ROOT; };
+		6D8D0A4A3E33D571D67DCEF5 /* registry-api-sample.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "registry-api-sample.json"; path = "../contracts/testdata/registry/registry-api-sample.json"; sourceTree = SOURCE_ROOT; };
+		47C127528F90A35DA61760B2 /* OfficialOccurrences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialOccurrences.swift; sourceTree = "<group>"; };
+		43346FF21CFF11D9A712ABBE /* OfficialQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialQuality.swift; sourceTree = "<group>"; };
+		919578572AE487DFD81A9C40 /* QualityPublicRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityPublicRead.swift; sourceTree = "<group>"; };
+		B058C3758D9F468186C568F7 /* QualityReportJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReportJournal.swift; sourceTree = "<group>"; };
+		68C6724417F0CDD1D395A39C /* QualityReports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReports.swift; sourceTree = "<group>"; };
+		AF5640E90E3ABC9E6B4DB306 /* OccurrenceExplorerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OccurrenceExplorerViews.swift; sourceTree = "<group>"; };
+		4D2A289C46E82E55B41F4C2F /* QualityReportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReportViews.swift; sourceTree = "<group>"; };
+		2F7EF53E0645D36D11028424 /* StationQualityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationQualityViews.swift; sourceTree = "<group>"; };
+		4652E461F7CDDA0FFE41837B /* OfficialQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialQualityTests.swift; sourceTree = "<group>"; };
+		397EB7F906A232E4673013BB /* quality-report-appeal-invalid-revision.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-appeal-invalid-revision.json"; path = "../contracts/testdata/api/quality-report-appeal-invalid-revision.json"; sourceTree = SOURCE_ROOT; };
+		6211B791E5CF7CFC5DFC0F83 /* quality-report-appeal-invalid-target.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-appeal-invalid-target.json"; path = "../contracts/testdata/api/quality-report-appeal-invalid-target.json"; sourceTree = SOURCE_ROOT; };
+		475A7574F91DEF340E20A38C /* quality-report-appeal-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-appeal-valid.json"; path = "../contracts/testdata/api/quality-report-appeal-valid.json"; sourceTree = SOURCE_ROOT; };
+		DABDCD2C0AE46E2F97CE95DA /* quality-report-invalid-checked.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-checked.json"; path = "../contracts/testdata/api/quality-report-invalid-checked.json"; sourceTree = SOURCE_ROOT; };
+		3B1FB7209AD73A365780785A /* quality-report-invalid-document.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-document.json"; path = "../contracts/testdata/api/quality-report-invalid-document.json"; sourceTree = SOURCE_ROOT; };
+		A899C636AB73533FBA5585D9 /* quality-report-invalid-edit-revision.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-edit-revision.json"; path = "../contracts/testdata/api/quality-report-invalid-edit-revision.json"; sourceTree = SOURCE_ROOT; };
+		DCCBA4B35B18317DE12E8559 /* quality-report-invalid-empty.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-empty.json"; path = "../contracts/testdata/api/quality-report-invalid-empty.json"; sourceTree = SOURCE_ROOT; };
+		4069561F4CE4C4582E11A113 /* quality-report-invalid-owner.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-owner.json"; path = "../contracts/testdata/api/quality-report-invalid-owner.json"; sourceTree = SOURCE_ROOT; };
+		B9F13938737475E1E32119C0 /* quality-report-invalid-withdraw-payload.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-invalid-withdraw-payload.json"; path = "../contracts/testdata/api/quality-report-invalid-withdraw-payload.json"; sourceTree = SOURCE_ROOT; };
+		B1C2721762B8C558FC1D2C10 /* quality-report-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "quality-report-valid.json"; path = "../contracts/testdata/api/quality-report-valid.json"; sourceTree = SOURCE_ROOT; };
+		0FCCE4890E2A57E50704FDF7 /* enforcement-source-record-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "enforcement-source-record-valid.json"; path = "../contracts/testdata/quality/enforcement-source-record-valid.json"; sourceTree = SOURCE_ROOT; };
+		E958A16DE52CB96A3924ADC1 /* QualityReportsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityReportsTests.swift; sourceTree = "<group>"; };
+		702A7A4AB140DBFFDC46F5FC /* AccountDataExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDataExport.swift; sourceTree = "<group>"; };
+		33DB36280B60508D0B103159 /* TrainingConsent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingConsent.swift; sourceTree = "<group>"; };
+		DF5416576026DA6F5D059612 /* AccountExportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountExportViews.swift; sourceTree = "<group>"; };
+		B6FFA308E5160B448BE5A52B /* TrainingConsentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingConsentModel.swift; sourceTree = "<group>"; };
+		520CC7CE5EB77A3E01B529FF /* TrainingConsentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingConsentViews.swift; sourceTree = "<group>"; };
+		0C9B3F57694820A12F79EB30 /* AccountDataExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDataExportTests.swift; sourceTree = "<group>"; };
+		EB263AFF37E2C985389921DC /* TrainingConsentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingConsentTests.swift; sourceTree = "<group>"; };
+		D4CFA38647F54CAF8F6DDE02 /* training-consent-grant-stale-terms-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "training-consent-grant-stale-terms-invalid.json"; path = "../contracts/testdata/api/training-consent-grant-stale-terms-invalid.json"; sourceTree = SOURCE_ROOT; };
+		EF7252E26B0E8E24654945D2 /* training-consent-grant-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "training-consent-grant-valid.json"; path = "../contracts/testdata/api/training-consent-grant-valid.json"; sourceTree = SOURCE_ROOT; };
+		30C8AC2080DE602989052DE5 /* training-consent-revoke-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "training-consent-revoke-valid.json"; path = "../contracts/testdata/api/training-consent-revoke-valid.json"; sourceTree = SOURCE_ROOT; };
+		2B03D9AD48B6F76D86C3A08F /* training-consent-status-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "training-consent-status-valid.json"; path = "../contracts/testdata/api/training-consent-status-valid.json"; sourceTree = SOURCE_ROOT; };
+		9A4127DA27CEC7860FF6018A /* consent-grant-stale-terms.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "consent-grant-stale-terms.json"; path = "../contracts/testdata/privacy-consent/consent-grant-stale-terms.json"; sourceTree = SOURCE_ROOT; };
+		DB05F49F29E032925DDACDD9 /* consent-grant-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "consent-grant-valid.json"; path = "../contracts/testdata/privacy-consent/consent-grant-valid.json"; sourceTree = SOURCE_ROOT; };
+		97115DF10DBF79BAC52932BA /* consent-status-granted.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "consent-status-granted.json"; path = "../contracts/testdata/privacy-consent/consent-status-granted.json"; sourceTree = SOURCE_ROOT; };
+		D757DBD651380F1C6E82C489 /* consent-status-off.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "consent-status-off.json"; path = "../contracts/testdata/privacy-consent/consent-status-off.json"; sourceTree = SOURCE_ROOT; };
+		D5829DCDFD46F5A7171F1005 /* MapSearchPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchPolicy.swift; sourceTree = "<group>"; };
+		5D38498EAB8D451CAC6D33CF /* NavigationGuidance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGuidance.swift; sourceTree = "<group>"; };
+		BFD2A5E7635903C1D3CD62CD /* ActiveNavigationLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveNavigationLocation.swift; sourceTree = "<group>"; };
+		F86A2D39A34064F35DB1A721 /* ActiveNavigationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveNavigationViews.swift; sourceTree = "<group>"; };
+		E2D9FCCBFBD99ECE85F017CD /* MapDiscoverySearchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapDiscoverySearchViews.swift; sourceTree = "<group>"; };
+		26AFDA243130087CCBF444BA /* NavigationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationCoordinator.swift; sourceTree = "<group>"; };
+		60E0EBFC742CF27699C5C950 /* MapSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchTests.swift; sourceTree = "<group>"; };
+		8F4FDF6A6B913E18FB3D80CE /* NavigationGuidanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGuidanceTests.swift; sourceTree = "<group>"; };
+		C84DCF93D3AE2DA18AD549F8 /* SavedGPX.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedGPX.swift; sourceTree = "<group>"; };
+		2518715874CC037D891522DD /* SavedMapModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedMapModel.swift; sourceTree = "<group>"; };
+		7D507AEF752F4494FB4E0639 /* SavedMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedMapStore.swift; sourceTree = "<group>"; };
+		9315CCA0CF485CE5CC6A1D16 /* StrictSavedXML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrictSavedXML.swift; sourceTree = "<group>"; };
+		DF753CCB0591DB965B01CB38 /* SavedPlacesSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlacesSheetView.swift; sourceTree = "<group>"; };
+		30CA86FE48BA79F244217BA0 /* SavedGPXTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedGPXTests.swift; sourceTree = "<group>"; };
+		EAF691ABF23F4387208081A8 /* SavedMapStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedMapStoreTests.swift; sourceTree = "<group>"; };
+		7A611051064F55477B300CD7 /* AdvancedAlertStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertStore.swift; sourceTree = "<group>"; };
+		020FC870D6788BCEC2900F1A /* AdvancedAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlerts.swift; sourceTree = "<group>"; };
+		6AB0E95C35A30F956C461851 /* LedgerEstimatedEfficiency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerEstimatedEfficiency.swift; sourceTree = "<group>"; };
+		41729C6E2629EB7D4BC38116 /* LedgerMonthlyCSV.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerMonthlyCSV.swift; sourceTree = "<group>"; };
+		2ECB1ED1B83C2D189F13316B /* LedgerServerAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerServerAnalysis.swift; sourceTree = "<group>"; };
+		64A7AE2FD4936C88D1BFF5B6 /* VehicleEditing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditing.swift; sourceTree = "<group>"; };
+		7312040CA9A4E5C208078518 /* AdvancedAlertsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertsModel.swift; sourceTree = "<group>"; };
+		EB4BF887F41248A7A43B9ED5 /* AdvancedAlertsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertsView.swift; sourceTree = "<group>"; };
+		E620736E72ECA9E975BDF4B6 /* LedgerMonthlyExportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerMonthlyExportViews.swift; sourceTree = "<group>"; };
+		A69284659144956254B7EB5B /* LedgerServerAnalysisViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerServerAnalysisViews.swift; sourceTree = "<group>"; };
+		E9854575C743DBA791303C34 /* VehicleEditorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorViews.swift; sourceTree = "<group>"; };
+		394449B94FEEFADC03D0F7D8 /* AdvancedAlertsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertsTests.swift; sourceTree = "<group>"; };
+		626E5D44062F73A0B4DA8F1F /* LedgerLocalAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerLocalAnalysisTests.swift; sourceTree = "<group>"; };
+		B6A9FBF53C4656AF8901E3C0 /* LedgerServerAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerServerAnalysisTests.swift; sourceTree = "<group>"; };
+		88E0F28FEC65287113404700 /* VehicleEditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditingTests.swift; sourceTree = "<group>"; };
+		80423C12C9647305C2CF48DF /* alerts-commands-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "alerts-commands-invalid.json"; path = "../contracts/testdata/api/alerts-commands-invalid.json"; sourceTree = SOURCE_ROOT; };
+		CD5E6E5D66528DAE215814AB /* alerts-commands-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "alerts-commands-valid.json"; path = "../contracts/testdata/api/alerts-commands-valid.json"; sourceTree = SOURCE_ROOT; };
+		7C76BBAE8D4CBFFF4CBF25BC /* alerts-inbox-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "alerts-inbox-valid.json"; path = "../contracts/testdata/api/alerts-inbox-valid.json"; sourceTree = SOURCE_ROOT; };
+		D53CF44EF7615DC1B7CF3393 /* ledger-report-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "ledger-report-invalid.json"; path = "../contracts/testdata/api/ledger-report-invalid.json"; sourceTree = SOURCE_ROOT; };
+		E1F71A2642E95DF98029ECED /* ledger-report-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "ledger-report-valid.json"; path = "../contracts/testdata/api/ledger-report-valid.json"; sourceTree = SOURCE_ROOT; };
+		B588134E2FBC9D06DA22E959 /* metrics-compare-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "metrics-compare-invalid.json"; path = "../contracts/testdata/api/metrics-compare-invalid.json"; sourceTree = SOURCE_ROOT; };
+		EAD4C6C8EB7860B0E5F12E4A /* metrics-compare-response-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "metrics-compare-response-valid.json"; path = "../contracts/testdata/api/metrics-compare-response-valid.json"; sourceTree = SOURCE_ROOT; };
+		2FDB529EE36A24F59E0FC36D /* metrics-compare-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "metrics-compare-valid.json"; path = "../contracts/testdata/api/metrics-compare-valid.json"; sourceTree = SOURCE_ROOT; };
+		83742A9D9ED4D2C4C6EFF318 /* DriverAccounting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverAccounting.swift; sourceTree = "<group>"; };
+		94CD5F8815D64128C3B36FFD /* DriverAccountingOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverAccountingOutbox.swift; sourceTree = "<group>"; };
+		572C840128F1E0E4BED49522 /* DriverCloudVehicle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverCloudVehicle.swift; sourceTree = "<group>"; };
+		D2DC6FE3BE7CABDE7EFAFE1D /* DriverGpsDistance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverGpsDistance.swift; sourceTree = "<group>"; };
+		6079D612982455E5B826DF5A /* DriverServerReports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverServerReports.swift; sourceTree = "<group>"; };
+		C635A9C2DFA145D11757B38E /* DriverAccountingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverAccountingModel.swift; sourceTree = "<group>"; };
+		C97DAAA3C690FB7E1C9FCEF8 /* DriverAccountingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverAccountingViews.swift; sourceTree = "<group>"; };
+		CDFA33FE5206048A723CA6E0 /* DriverGpsControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverGpsControls.swift; sourceTree = "<group>"; };
+		0AA3676E3D225B538521D8CE /* DriverGpsCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverGpsCoordinator.swift; sourceTree = "<group>"; };
+		9665B7D04D7A734E1381F377 /* DriverServerReportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverServerReportsView.swift; sourceTree = "<group>"; };
+		15A95F18F8C21F516E19EAD9 /* DriverAccountingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverAccountingTests.swift; sourceTree = "<group>"; };
+		680DFBE2407972885A941DE9 /* DriverCloudVehicleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverCloudVehicleTests.swift; sourceTree = "<group>"; };
+		7C48BD3D81B55919A3E6EB72 /* DriverGpsDistanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverGpsDistanceTests.swift; sourceTree = "<group>"; };
+		AFA70CCEBCF53BB476A9B6BA /* DriverServerReportsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverServerReportsTests.swift; sourceTree = "<group>"; };
+		67A3D7C3D37435414464036D /* driver-earnings-page-request-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "driver-earnings-page-request-invalid.json"; path = "../contracts/testdata/api/driver-earnings-page-request-invalid.json"; sourceTree = SOURCE_ROOT; };
+		397D5B482443952755D65FBC /* driver-report-request-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "driver-report-request-invalid.json"; path = "../contracts/testdata/api/driver-report-request-invalid.json"; sourceTree = SOURCE_ROOT; };
+		6259138CBAE9DF71D0F0C023 /* driver-report-request-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "driver-report-request-valid.json"; path = "../contracts/testdata/api/driver-report-request-valid.json"; sourceTree = SOURCE_ROOT; };
+		D1AD3457D017F15A1C56F4F7 /* driver-report-response-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "driver-report-response-valid.json"; path = "../contracts/testdata/api/driver-report-response-valid.json"; sourceTree = SOURCE_ROOT; };
+		B0F384A5B07C35E8009AFE53 /* driver-manual-reference-v1.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "driver-manual-reference-v1.psv"; path = "../contracts/testdata/driver-suite/driver-manual-reference-v1.psv"; sourceTree = SOURCE_ROOT; };
+		30876F4C12265A8543A5918E /* auth-401.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "auth-401.json"; path = "../contracts/testdata/driver-suite/http/auth-401.json"; sourceTree = SOURCE_ROOT; };
+		B042FE1F11489B1FD45DB4F8 /* conflict-409.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "conflict-409.json"; path = "../contracts/testdata/driver-suite/http/conflict-409.json"; sourceTree = SOURCE_ROOT; };
+		56BE283D03101129CB561F1B /* receipt-200.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "receipt-200.json"; path = "../contracts/testdata/driver-suite/http/receipt-200.json"; sourceTree = SOURCE_ROOT; };
+		78EB1A1948A4A5F22DB0868B /* planned-financial-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "planned-financial-v1.json"; path = "../contracts/testdata/driver-suite/planned-financial-v1.json"; sourceTree = SOURCE_ROOT; };
+		0A332D73B020F18C19F6B277 /* EnterpriseFueling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseFueling.swift; sourceTree = "<group>"; };
+		E0CD74FED4BBF6BFFBA4242A /* EnterpriseMissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseMissions.swift; sourceTree = "<group>"; };
+		20FA3E0AC2141D2A105337CD /* EnterpriseReturnChecklist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseReturnChecklist.swift; sourceTree = "<group>"; };
+		7B8CBAC865B94BE101DEB3FA /* EnterpriseTripLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseTripLifecycle.swift; sourceTree = "<group>"; };
+		1E7B2B0A273736797C0C4E7D /* EnterpriseFuelingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseFuelingsView.swift; sourceTree = "<group>"; };
+		6D1B9CDA1501FADA5FEF64B6 /* EnterpriseMissionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseMissionViews.swift; sourceTree = "<group>"; };
+		5CE5E987F334435A4D79A51A /* EnterpriseReturnChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseReturnChecklistView.swift; sourceTree = "<group>"; };
+		C8F92329030440009A7A4406 /* EnterpriseTripLifecycleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseTripLifecycleViews.swift; sourceTree = "<group>"; };
+		600CECD30FCBE86F8128C59A /* EnterpriseMissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseMissionTests.swift; sourceTree = "<group>"; };
+		70C01F6005F0FF850EEADE05 /* EnterpriseReturnChecklistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseReturnChecklistTests.swift; sourceTree = "<group>"; };
+		B1B91F103ED3B8ACF0C680BC /* EnterpriseTripLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseTripLifecycleTests.swift; sourceTree = "<group>"; };
+		20DF047E8D28A0252769E01B /* voucher-limits-v1.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "voucher-limits-v1.psv"; path = "../contracts/testdata/enterprise/agreement/voucher-limits-v1.psv"; sourceTree = SOURCE_ROOT; };
+		08DFF545D1C780C9B2916F96 /* checklist-v1.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "checklist-v1.psv"; path = "../contracts/testdata/enterprise/checklist/checklist-v1.psv"; sourceTree = SOURCE_ROOT; };
+		7E7D74C0DF16D9EC4BCB806E /* run-v1.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "run-v1.psv"; path = "../contracts/testdata/enterprise/checklist/run-v1.psv"; sourceTree = SOURCE_ROOT; };
+		6EB37CD6FCBF1195F1E489D3 /* fueling-submit-v1.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "fueling-submit-v1.psv"; path = "../contracts/testdata/enterprise/fueling/fueling-submit-v1.psv"; sourceTree = SOURCE_ROOT; };
+		F4269D95317B05ABACEDBD3D /* trip-operations-v3.psv */ = {isa = PBXFileReference; lastKnownFileType = text; name = "trip-operations-v3.psv"; path = "../contracts/testdata/enterprise/trip/trip-operations-v3.psv"; sourceTree = SOURCE_ROOT; };
+		B29B10C3596C50FA5937F83C /* EnterpriseFuelingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseFuelingTests.swift; sourceTree = "<group>"; };
+		026424CE864F508912DE0646 /* ForumFilterAndTopicViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForumFilterAndTopicViews.swift; sourceTree = "<group>"; };
+		BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-topic-invalid.json"; path = "../contracts/testdata/api/forum-edit-topic-invalid.json"; sourceTree = SOURCE_ROOT; };
+		AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-edit-topic-valid.json"; path = "../contracts/testdata/api/forum-edit-topic-valid.json"; sourceTree = SOURCE_ROOT; };
+		8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "forum-remove-topic-valid.json"; path = "../contracts/testdata/api/forum-remove-topic-valid.json"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -305,6 +657,7 @@
 			666AD20B1C9005A6726CA501,
 			799C92C8B67C5868F3D38727,
 			DC57EAABB38F68D74718337B,
+			D3EBDD8FEB0A64F5F946C8B4 /* InfoPlist.xcstrings */,
 		); path = App; sourceTree = "<group>"; };
 		8F91E2D59E4024DA7927DEE4 /* Sources */ = {isa = PBXGroup; children = (
 			34DF44F350687D839743EEA7,
@@ -360,6 +713,42 @@
 			F9B759DD9FC21D0AAD62EDBA,
 			2B71AE4C1631944F8FB4953B,
 			8CF4B1183E525244A69AC0AD,
+			2DC8C47995FCB139CAE873A4 /* Localizable.xcstrings */,
+			F78B63414EF13F1C6D3FEB7D,
+			4C3BCBED1B831AAC2CE0F6C8,
+			95F7BED7B90A68295B96DBB8,
+			6AA16D8EDCDFFA6821F61302,
+			CCF2C382DA1FF56DF2FC74EF,
+			D80D42CB33E4335324FA4AA6,
+			51B9F2278E9571B7E942F795,
+			47C127528F90A35DA61760B2,
+			43346FF21CFF11D9A712ABBE,
+			919578572AE487DFD81A9C40,
+			B058C3758D9F468186C568F7,
+			68C6724417F0CDD1D395A39C,
+			702A7A4AB140DBFFDC46F5FC,
+			33DB36280B60508D0B103159,
+			D5829DCDFD46F5A7171F1005,
+			5D38498EAB8D451CAC6D33CF,
+			C84DCF93D3AE2DA18AD549F8,
+			2518715874CC037D891522DD,
+			7D507AEF752F4494FB4E0639,
+			9315CCA0CF485CE5CC6A1D16,
+			7A611051064F55477B300CD7,
+			020FC870D6788BCEC2900F1A,
+			6AB0E95C35A30F956C461851,
+			41729C6E2629EB7D4BC38116,
+			2ECB1ED1B83C2D189F13316B,
+			64A7AE2FD4936C88D1BFF5B6,
+			83742A9D9ED4D2C4C6EFF318,
+			94CD5F8815D64128C3B36FFD,
+			572C840128F1E0E4BED49522,
+			D2DC6FE3BE7CABDE7EFAFE1D,
+			6079D612982455E5B826DF5A,
+			0A332D73B020F18C19F6B277,
+			E0CD74FED4BBF6BFFBA4242A,
+			20FA3E0AC2141D2A105337CD,
+			7B8CBAC865B94BE101DEB3FA,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -384,6 +773,42 @@
 			BDD16B7694540EE6489A9EFD,
 			1A5C25C23337593034D0BDD3,
 			3013762CA6B1A57282813B72,
+			5A94680613CC12950FE38AC8 /* Localizable.xcstrings */,
+			045C79C5DD0FAE274A713CA0,
+			EDE171E2013F6A954FAA9C16,
+			E76CDF4B79D6E6E039C061E6,
+			6DDECA5E80820148452DF1CA,
+			12D6298AEEB032DD8AEE3A6D,
+			461F32A77DA47A010B97F215,
+			2E9380DFC9B66D32F826361E,
+			68801D57AC95A4FD9E531488,
+			0DEBA407BCD172C370CD48B5,
+			AF5640E90E3ABC9E6B4DB306,
+			4D2A289C46E82E55B41F4C2F,
+			2F7EF53E0645D36D11028424,
+			DF5416576026DA6F5D059612,
+			B6FFA308E5160B448BE5A52B,
+			520CC7CE5EB77A3E01B529FF,
+			BFD2A5E7635903C1D3CD62CD,
+			F86A2D39A34064F35DB1A721,
+			E2D9FCCBFBD99ECE85F017CD,
+			26AFDA243130087CCBF444BA,
+			DF753CCB0591DB965B01CB38,
+			7312040CA9A4E5C208078518,
+			EB4BF887F41248A7A43B9ED5,
+			E620736E72ECA9E975BDF4B6,
+			A69284659144956254B7EB5B,
+			E9854575C743DBA791303C34,
+			C635A9C2DFA145D11757B38E,
+			C97DAAA3C690FB7E1C9FCEF8,
+			CDFA33FE5206048A723CA6E0,
+			0AA3676E3D225B538521D8CE,
+			9665B7D04D7A734E1381F377,
+			1E7B2B0A273736797C0C4E7D,
+			6D1B9CDA1501FADA5FEF64B6,
+			5CE5E987F334435A4D79A51A,
+			C8F92329030440009A7A4406,
+			026424CE864F508912DE0646,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -428,6 +853,109 @@
 			DC1661DDCB1B3C39962F1748,
 			30750A091480D6A3A2C78EE2,
 			34B8D1395C1678213C90DFA9,
+			08E3DE4B7E9237E634FB90D7,
+			B263F5BC84F016DBD2C8BBEE,
+			512559937ECDAE503D90065D,
+			A80240581E694CE1DFB16E02,
+			8484FBC1ADE9A1E0DFF39BFE /* feedback-comment-view-valid.json */,
+			20AE756C28BFFB7AE262367A /* feedback-rating-receipt-valid.json */,
+			ECF936112423DEDAFBB8CC75 /* feedback-rating-stats-valid.json */,
+			F16720D4E8D436190F6AA977 /* forum-comments-response-valid.json */,
+			B540C8337A1E4E8B34264797 /* forum-create-comment-valid.json */,
+			8349FAF8027C2405BA5A3780 /* forum-edit-comment-invalid.json */,
+			D78DA3150B1FE95AE423A7D3 /* forum-edit-comment-valid.json */,
+			B875C194BA340E53893EB6C2 /* forum-feed-response-valid.json */,
+			AC93DD58E1C91866D1B0D438 /* forum-owner-topic-response-valid.json */,
+			3EE6DF87A230C26425608F12 /* forum-post-summary-valid.json */,
+			729161BF03CBECEA787FCCE5 /* forum-remove-comment-valid.json */,
+			A20E0F32B52E23423217009E /* forum-replies-response-valid.json */,
+			571761D72650300BB5DC6BAE /* helpful-cast-invalid-choice.json */,
+			6E577AF6CF55EF90109FE9E3 /* helpful-cast-valid.json */,
+			6DC7912CF51C9268CDE67BA1 /* helpful-tally-empty.json */,
+			C98C758C8D17F2DCB963B798 /* helpful-tally-with-votes.json */,
+			5B910D82620EBA30EBACBBBC /* moderation-disputed.json */,
+			B0F6EC2B54E4BF3709CDB36E /* retry-no-amplification.json */,
+			9FDD8B290B972D907E4E8AC8 /* self-confirmation-excluded.json */,
+			BF1256FB18559D90A368A2C7 /* feedback-rating-six.json */,
+			E312F4E2DD6BBED126ADD62F /* feedback-rating-valid.json */,
+			E129121B83C2A8A237104C9E /* feedback-rating-zero.json */,
+			9F4F1B6FAC28BDCB56A829F2 /* feedback-revision-supersede.json */,
+			ACA26348C8B4E076E5A445B7 /* feedback-text-crlf.json */,
+			C445C62963F93D6C307D5DEE,
+			A29642771BBCE645AF04098A,
+			530C6AF25A6EC6201990A378,
+			A42EBFF1F7C1E4D0E671DB82 /* price-groups-valid.json */,
+			C4518F44244344006EC7D93F /* station-valid.json */,
+			D03A6CD428F50D55DFFD2216 /* conflicting-prices-disputed.json */,
+			5BE15656526AE5EBE412CB14 /* high-quorum.json */,
+			6971BCD784A73950D0F60CA8 /* no-data-unknown.json */,
+			AE261678A69777D524C738B3 /* cases-v1.json */,
+			6D57642D69E7A986069B9621 /* exploration-v1.json */,
+			6D8D0A4A3E33D571D67DCEF5 /* registry-api-sample.json */,
+			4652E461F7CDDA0FFE41837B,
+			397EB7F906A232E4673013BB /* quality-report-appeal-invalid-revision.json */,
+			6211B791E5CF7CFC5DFC0F83 /* quality-report-appeal-invalid-target.json */,
+			475A7574F91DEF340E20A38C /* quality-report-appeal-valid.json */,
+			DABDCD2C0AE46E2F97CE95DA /* quality-report-invalid-checked.json */,
+			3B1FB7209AD73A365780785A /* quality-report-invalid-document.json */,
+			A899C636AB73533FBA5585D9 /* quality-report-invalid-edit-revision.json */,
+			DCCBA4B35B18317DE12E8559 /* quality-report-invalid-empty.json */,
+			4069561F4CE4C4582E11A113 /* quality-report-invalid-owner.json */,
+			B9F13938737475E1E32119C0 /* quality-report-invalid-withdraw-payload.json */,
+			B1C2721762B8C558FC1D2C10 /* quality-report-valid.json */,
+			0FCCE4890E2A57E50704FDF7 /* enforcement-source-record-valid.json */,
+			E958A16DE52CB96A3924ADC1,
+			0C9B3F57694820A12F79EB30,
+			EB263AFF37E2C985389921DC,
+			D4CFA38647F54CAF8F6DDE02 /* training-consent-grant-stale-terms-invalid.json */,
+			EF7252E26B0E8E24654945D2 /* training-consent-grant-valid.json */,
+			30C8AC2080DE602989052DE5 /* training-consent-revoke-valid.json */,
+			2B03D9AD48B6F76D86C3A08F /* training-consent-status-valid.json */,
+			9A4127DA27CEC7860FF6018A /* consent-grant-stale-terms.json */,
+			DB05F49F29E032925DDACDD9 /* consent-grant-valid.json */,
+			97115DF10DBF79BAC52932BA /* consent-status-granted.json */,
+			D757DBD651380F1C6E82C489 /* consent-status-off.json */,
+			60E0EBFC742CF27699C5C950,
+			8F4FDF6A6B913E18FB3D80CE,
+			30CA86FE48BA79F244217BA0,
+			EAF691ABF23F4387208081A8,
+			394449B94FEEFADC03D0F7D8,
+			626E5D44062F73A0B4DA8F1F,
+			B6A9FBF53C4656AF8901E3C0,
+			88E0F28FEC65287113404700,
+			80423C12C9647305C2CF48DF /* alerts-commands-invalid.json */,
+			CD5E6E5D66528DAE215814AB /* alerts-commands-valid.json */,
+			7C76BBAE8D4CBFFF4CBF25BC /* alerts-inbox-valid.json */,
+			D53CF44EF7615DC1B7CF3393 /* ledger-report-invalid.json */,
+			E1F71A2642E95DF98029ECED /* ledger-report-valid.json */,
+			B588134E2FBC9D06DA22E959 /* metrics-compare-invalid.json */,
+			EAD4C6C8EB7860B0E5F12E4A /* metrics-compare-response-valid.json */,
+			2FDB529EE36A24F59E0FC36D /* metrics-compare-valid.json */,
+			15A95F18F8C21F516E19EAD9,
+			680DFBE2407972885A941DE9,
+			7C48BD3D81B55919A3E6EB72,
+			AFA70CCEBCF53BB476A9B6BA,
+			67A3D7C3D37435414464036D /* driver-earnings-page-request-invalid.json */,
+			397D5B482443952755D65FBC /* driver-report-request-invalid.json */,
+			6259138CBAE9DF71D0F0C023 /* driver-report-request-valid.json */,
+			D1AD3457D017F15A1C56F4F7 /* driver-report-response-valid.json */,
+			B0F384A5B07C35E8009AFE53 /* driver-manual-reference-v1.psv */,
+			30876F4C12265A8543A5918E /* auth-401.json */,
+			B042FE1F11489B1FD45DB4F8 /* conflict-409.json */,
+			56BE283D03101129CB561F1B /* receipt-200.json */,
+			78EB1A1948A4A5F22DB0868B /* planned-financial-v1.json */,
+			600CECD30FCBE86F8128C59A,
+			70C01F6005F0FF850EEADE05,
+			B1B91F103ED3B8ACF0C680BC,
+			20DF047E8D28A0252769E01B /* voucher-limits-v1.psv */,
+			08DFF545D1C780C9B2916F96 /* checklist-v1.psv */,
+			7E7D74C0DF16D9EC4BCB806E /* run-v1.psv */,
+			6EB37CD6FCBF1195F1E489D3 /* fueling-submit-v1.psv */,
+			F4269D95317B05ABACEDBD3D /* trip-operations-v3.psv */,
+			B29B10C3596C50FA5937F83C,
+			BFF088A159F0DF9D98150CC6 /* forum-edit-topic-invalid.json */,
+			AF7A3B1CBD1B16DC31C8910C /* forum-edit-topic-valid.json */,
+			8C41E21C5C978B431B8C8FB6 /* forum-remove-topic-valid.json */,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -456,6 +984,7 @@
 			buildPhases = (
 				0CFD22AF9DE4828679DAC33F,
 				77C48D39C57760F779963160,
+				3FFCD466740B080059039756 /* Resources */,
 			);
 			buildRules = ();
 			dependencies = ();
@@ -489,9 +1018,9 @@
 			attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; };
 			buildConfigurationList = B0D3B7D22269663DD77FCD84;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = "pt-BR";
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
-			knownRegions = ("pt-BR", en, es, de, fr, ja, ru, "zh-Hans", Base);
+			knownRegions = (en, "pt-BR", es, de, fr, ja, ru, "zh-Hans", Base);
 			mainGroup = 0C54F0470E2253EA01E96383;
 			productRefGroup = B40202C75D4FB44D8C59CFA5;
 			projectDirPath = "";
@@ -508,11 +1037,92 @@
 		63D3C43CBC8448E58527B63E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 			6F6ECEB8A6F8477B9F15E9C4 /* energy-v1.json in Resources */,
 			57C83211AA244FD4988AB321 /* ibge_municipalities.json in Resources */,
+			48E5E1CF3577DB91B1B99F57 /* feedback-comment-view-valid.json in Resources */,
+			063E1779A8D9E3DAD11B15FA /* feedback-rating-receipt-valid.json in Resources */,
+			7752B00AE03CAD34DE3ED58B /* feedback-rating-stats-valid.json in Resources */,
+			13693919E3B22C632DFB2EA8 /* forum-comments-response-valid.json in Resources */,
+			B59CBD29A624D76D092F41CD /* forum-create-comment-valid.json in Resources */,
+			8CD0B5ED6556DA06A658803E /* forum-edit-comment-invalid.json in Resources */,
+			3BE8D925E041102C10D1E9D5 /* forum-edit-comment-valid.json in Resources */,
+			41B3F10589C1A8A5FA825CEF /* forum-feed-response-valid.json in Resources */,
+			1B7DD2B5D1BE6E202C395661 /* forum-owner-topic-response-valid.json in Resources */,
+			1C8008AB012BBFFA9A9B2B12 /* forum-post-summary-valid.json in Resources */,
+			7DBA406F63102E23D7A8A052 /* forum-remove-comment-valid.json in Resources */,
+			C0C7D4CFC0F33C9BB7E2C337 /* forum-replies-response-valid.json in Resources */,
+			650EC339FC67CE69E4253EA2 /* helpful-cast-invalid-choice.json in Resources */,
+			13A0D4939E3E4C347A1EF62F /* helpful-cast-valid.json in Resources */,
+			408140E8CAF41C060C1D417E /* helpful-tally-empty.json in Resources */,
+			B302394227F3B762283F4ECE /* helpful-tally-with-votes.json in Resources */,
+			590D8B72247DBCF42FA1D06F /* moderation-disputed.json in Resources */,
+			5F01A1DA13276E60B85651B2 /* retry-no-amplification.json in Resources */,
+			07522FD46CEF86DC6833FBEE /* self-confirmation-excluded.json in Resources */,
+			77C6B6A107A956B5DAC4DD93 /* feedback-rating-six.json in Resources */,
+			FFBFF9D99FEA60BDEB954231 /* feedback-rating-valid.json in Resources */,
+			A261EE2637177D378A05F612 /* feedback-rating-zero.json in Resources */,
+			060790CFB6C830FB35BA8E49 /* feedback-revision-supersede.json in Resources */,
+			CD5B598C0095B32DA168F0E8 /* feedback-text-crlf.json in Resources */,
+			AFEC1A4E3167842D58DE9A44 /* price-groups-valid.json in Resources */,
+			E8C793591D81580D1D37F749 /* station-valid.json in Resources */,
+			9AC300EF0EE18B99799E70D9 /* conflicting-prices-disputed.json in Resources */,
+			65A9DCC4D117C527DE41299B /* high-quorum.json in Resources */,
+			061341CF772976E7BFEC5BC5 /* no-data-unknown.json in Resources */,
+			E51FEE027611336CB3117D47 /* cases-v1.json in Resources */,
+			ED3E326FCA4BCFD67286371B /* exploration-v1.json in Resources */,
+			FDC609A58EE30B59C87062DF /* registry-api-sample.json in Resources */,
+			117A6C5535DC4983B39F9328 /* quality-report-appeal-invalid-revision.json in Resources */,
+			D493237959A1AB84819DF373 /* quality-report-appeal-invalid-target.json in Resources */,
+			6E2B11817B32EEAEA7507183 /* quality-report-appeal-valid.json in Resources */,
+			C16AC2A5F315F652E2A6071F /* quality-report-invalid-checked.json in Resources */,
+			B64EDD2DBB26029D00C5F827 /* quality-report-invalid-document.json in Resources */,
+			DD45211FB51FFDAC76DE53DB /* quality-report-invalid-edit-revision.json in Resources */,
+			74FFF1482B4D634DDA2AF6B3 /* quality-report-invalid-empty.json in Resources */,
+			56E47F7AAA727FB24CF7BC91 /* quality-report-invalid-owner.json in Resources */,
+			1FD3FE3C302FD33CF2167C14 /* quality-report-invalid-withdraw-payload.json in Resources */,
+			07BF00614E1A516365977DF0 /* quality-report-valid.json in Resources */,
+			74587C0AEBDA72C110CEC3EC /* enforcement-source-record-valid.json in Resources */,
+			D90452F8DFD91725EC0472C0 /* training-consent-grant-stale-terms-invalid.json in Resources */,
+			373A0BB3FEB4C1D0CB0CCCFD /* training-consent-grant-valid.json in Resources */,
+			5D3BB558C82D6CF5D3A00E5E /* training-consent-revoke-valid.json in Resources */,
+			B86A45BF10E342FF09BAF727 /* training-consent-status-valid.json in Resources */,
+			1592B4D7EE830D4C652494F3 /* consent-grant-stale-terms.json in Resources */,
+			90625ADCB70AF024879FF8BC /* consent-grant-valid.json in Resources */,
+			47A6305A94BE3F6CB0274F36 /* consent-status-granted.json in Resources */,
+			EE07CF93FA053F9A156BD951 /* consent-status-off.json in Resources */,
+			DB17F32038B7AAFDCE92E322 /* alerts-commands-invalid.json in Resources */,
+			BBC4E50EDDD11E8A57459C94 /* alerts-commands-valid.json in Resources */,
+			093905E0FA352EAF371AA134 /* alerts-inbox-valid.json in Resources */,
+			823A7BE50D7EE26029740F18 /* ledger-report-invalid.json in Resources */,
+			04FFD6A216886DE0B0053F9A /* ledger-report-valid.json in Resources */,
+			774DA3E2633C3DD28C5540F1 /* metrics-compare-invalid.json in Resources */,
+			C8EEF05F3705D4C43D813A38 /* metrics-compare-response-valid.json in Resources */,
+			09FBE7368C7899D75EADA4F0 /* metrics-compare-valid.json in Resources */,
+			6C0935F929564319421435D7 /* driver-earnings-page-request-invalid.json in Resources */,
+			890F3678A77B78C40BB9DEF7 /* driver-report-request-invalid.json in Resources */,
+			295DD17045C92652DD764BFE /* driver-report-request-valid.json in Resources */,
+			11F4562587BE23C770CB4CEE /* driver-report-response-valid.json in Resources */,
+			0A1CC4DE8648FE8B5B934CB8 /* driver-manual-reference-v1.psv in Resources */,
+			351C9BE357FA1AEE5396D467 /* auth-401.json in Resources */,
+			A80640FDA46C418E97AD2E57 /* conflict-409.json in Resources */,
+			D50167C84B835EA77FEAE665 /* receipt-200.json in Resources */,
+			D308123489FDB58478C25BB8 /* planned-financial-v1.json in Resources */,
+			8CBACFFA3F2047081D47180A /* voucher-limits-v1.psv in Resources */,
+			E5604810003ED72841BB3336 /* checklist-v1.psv in Resources */,
+			795768D9EA04CD44A052D034 /* run-v1.psv in Resources */,
+			A20BB05ED8E550644C7B49C2 /* fueling-submit-v1.psv in Resources */,
+			43E4B0E0C9A7875B9DCA8677 /* trip-operations-v3.psv in Resources */,
+			30093909C89C8E57DB9DB998 /* forum-edit-topic-invalid.json in Resources */,
+			F4C2CF46825CAF4BE4B6D99C /* forum-edit-topic-valid.json in Resources */,
+			BBBAB5AB081AD226EEF03B9E /* forum-remove-topic-valid.json in Resources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		81B4DC0F6E7E97037B63B86E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 			1228440DDBCFF603473E79E6 /* Assets.xcassets in Resources */,
 			F49879C4F16F82BEE5490E90 /* PrivacyInfo.xcprivacy in Resources */,
 			6817AB20D0A048A490CBD235 /* ibge_municipalities.json in Resources */,
+			B15F0B28694258453DAE68F3 /* InfoPlist.xcstrings in Resources */,
+			D44FD1F6D2F1E6B454B2B913 /* Localizable.xcstrings in Resources */,
+		); runOnlyForDeploymentPostprocessing = 0; };
+		3FFCD466740B080059039756 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+			AE75B8367BA59DFF0A4CAE94 /* Localizable.xcstrings in Resources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
@@ -567,6 +1177,41 @@
 			3129149072F3F47A04F18F40,
 			8BFE9047B20A0F055B47337F,
 			932DA70EA8E3FCDDAF6A6C2B,
+			43F6B74D7861B1E19E9D60FA,
+			E125720E23BF451E55E9818A,
+			F017A34E9D276E02DFA9A188,
+			8D83FA3B8B62B2C2D5C6DD1B,
+			95F47D09C62EF75D087B7CA6,
+			D942BF085EEA7963E66F2992,
+			B82074193B908FD3A18307D8,
+			842A7B57BEAFC7F8991CFD6E,
+			E6EFAE25B9CE6F469B123623,
+			11F60DF6EB8C90D8E55F24CE,
+			929D9529035D438255CCC22C,
+			35E2B7FA4A471E113400DCDC,
+			DE3C762FD8407AB38019D16E,
+			A46A3ED8DEAD541033893796,
+			279D79333422494D1C5DDC14,
+			5D702BE46096073B2918DAFA,
+			D911B8759F1DE03431A907D1,
+			89C80311B4426AD6EAFAB222,
+			E3A02C9594C438E0A8A4F423,
+			AE947DA5648922B510FC0590,
+			5FD420B1F9692C6476257D3A,
+			F0E9C678BAC24DD0542F0DD0,
+			DCA050846FFB35655B6BC77C,
+			55CF4415829F4E61228A6943,
+			7253FF1BDE632D73BEC92BB1,
+			4F3598DD6A49B18661FD8BA8,
+			F82E7C094B5C1235B5CFD4A2,
+			2F7FCF28CD7D7825531064F1,
+			C3554F9FD161509AFEDDC5CA,
+			91A3BE7D38398CBB00664035,
+			5BEF01FA7BD23E59E6B435D4,
+			58E5737923DEE64F4C54E489,
+			E724667014975D5B1C24111D,
+			4577B1AB2B710BEA71982C72,
+			B4776609466A2C861CFB747A,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -591,6 +1236,41 @@
 			6AB148630145DD1045E2595A,
 			D678B8CC22C596908C4C5477,
 			D395D2E6C7E507C2C6EC44CB,
+			51EC766CF5B549370D5B6912,
+			BE721D5319AC4738F12DF17A,
+			254F2283713420D0677B5A2F,
+			9E29671F4BDD4EE432171456,
+			065B8C757685B3FCF8C0AE23,
+			BEB6C7284AFAA245C4320A64,
+			41667D8A6BB310AEB496A77B,
+			4C214F0877EC562ADA02B558,
+			8BEE12438229D27F856735BE,
+			6E1714F38938829562A31AED,
+			DE4A259D067E91825DDE9D8B,
+			3BD45D6BECD6D99B971933BE,
+			2F44A6E37DA3DA8A355C3BA9,
+			E5A08B36B48B95FAA5E3BE7C,
+			218DA27554C71AFF78A8D87D,
+			31867B942E1D5E0B61B8C1AF,
+			6250822C886569D7B9369356,
+			E4AD6E096D8041F92237116C,
+			A9DC860A16027B40E3C8A54A,
+			98FCE2F28968DE4FF73EED8D,
+			8A93A66394D0B77D37D3476D,
+			E8F86B4380026F22EE8A6671,
+			3C05A726F1F0983B74302FFD,
+			7D498FBF3A1AAA3A93DB8385,
+			78ED5D2287BA8347CF90578A,
+			B427C202A26658B1953A65C3,
+			9638757AA0BC5351D1A00B4C,
+			415429601A81F3CC96078EF9,
+			4648FC2DEA16A2071A14C068,
+			C0631279DBC442757E5CBB48,
+			84760D350BCB0D636499C50E,
+			CFF2580DC4C1B22DBF77E439,
+			7953FC11606CEF9545C50E77,
+			D8C04150CDB1046105A4EBDD,
+			14FA322E860983A5CD849686,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -631,6 +1311,33 @@
 			F57922C607471F6AAA9954B0,
 			8245A3F5FFA9FA3253DFEB4B,
 			816E2BC8ED6D605E934DCC41,
+			5FA600BBD879C8E29EABCC33,
+			6688831D29198D62832DCAED,
+			70F717BE4311DC735FC4A238,
+			FB06169A65BD2989796D55C3,
+			9AFA9A7756BEA726A6A16E94,
+			68015E86CB1A4C7779678882,
+			AF14E1DEDFB31C737F876324,
+			F5AF7B2C2C2393DC8D9186B2,
+			A8070473F8DDC3BFDB1F2EE9,
+			C86FD57437D174859242F59B,
+			C71BB3CA3F2B08FD8470F5D5,
+			2FD000D4BC5555B817A6666D,
+			DD19F1295840D36B361C5F3E,
+			7AB2B1B43C782A7C433B7BEC,
+			ADF10462ECD6B7945CDAFE5F,
+			17B3B6797C4DF884635E0FE1,
+			3E4CB3F30542B79685971515,
+			525E1EB6F5C21F389D8A8C2B,
+			632945014E2C337255DC7B11,
+			109B42020F1817677D1144D0,
+			4E98855873EAA3523B89C94A,
+			E85D772D287A7B7D93A0AC9A,
+			4DB8A41023D3C8400A333581,
+			B7D4E38B42A99F4C72D1E13B,
+			6E0DF3E5C52D11E047B1DCE5,
+			32A29F0A341B8D318192C383,
+			13888AFFEC4B2A9966B091ED,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

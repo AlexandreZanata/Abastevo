@@ -3,6 +3,17 @@ import Combine
 import SwiftUI
 import AnpFuelCore
 
+/// One driver-safe trip field read, kept in memory for the exact company session that asked for it.
+struct EnterpriseTripFieldState: Equatable {
+    let partition: EnterprisePartition
+    let membershipId: String
+    let enrollmentId: String
+    let tripId: String
+    /// Nil when the server lists no field for this member's trip.
+    let field: EnterpriseTripField?
+    let receivedAtMillis: Int64
+}
+
 /// The company selected in this app session after a server read and an ACTIVE device contact.
 public struct EnterpriseActiveCompany: Equatable {
     public let partition: EnterprisePartition
@@ -33,6 +44,12 @@ public final class EnterpriseCoordinator: ObservableObject {
     @Published public private(set) var snapshot: EnterprisePartitionSnapshot?
     @Published public private(set) var isDelivering = false
     @Published public private(set) var isRefreshingAssets = false
+    @Published private(set) var isRefreshingMissions = false
+    @Published private(set) var missionAccessError: EnterpriseAccessError?
+    /// The open trip's driver-safe field read; memory only, bound to the exact company session and trip.
+    @Published private(set) var tripField: EnterpriseTripFieldState?
+    @Published private(set) var isRefreshingTripField = false
+    @Published private(set) var tripFieldError: String?
 
     @Published public private(set) var invitationPreview: EnterpriseInvitationPreview?
     @Published public private(set) var invitationResult: EnterpriseInvitationAcknowledgement?
@@ -50,6 +67,10 @@ public final class EnterpriseCoordinator: ObservableObject {
     private let companyExchange: UrlSessionSignedExchange
     private var company: EnterpriseCompanyClient
     private var generation = UUID()
+    private var missionTask: Task<Void, Never>?
+    private var tripFieldTask: Task<Void, Never>?
+    private var tripFieldRequest: UUID?
+    private static let missionProcessID = UUID()
     private var deliveryTask: Task<Void, Never>?
     private var deliveryToken: UUID?
     private var wakeTask: Task<Void, Never>?
@@ -103,6 +124,8 @@ public final class EnterpriseCoordinator: ObservableObject {
 
     /// Logout, account deletion or an origin switch: all company data leaves this device.
     public func purgeOwnedData() {
+        cancelMissionRefresh()
+        clearTripField()
         stopDelivery()
         generation = UUID()
         active = nil
@@ -192,6 +215,8 @@ public final class EnterpriseCoordinator: ObservableObject {
                     held.membershipId = summary.membershipId
                     held.enrollment = nil
                     held.reference = nil
+                    held.missionInbox = nil
+                    held.returnChecklists = nil
                 }
                 let known = held.enrollment
                 let outcome: EnterpriseContactOutcome
@@ -217,15 +242,18 @@ public final class EnterpriseCoordinator: ObservableObject {
 
     private func applyContact(_ outcome: EnterpriseContactOutcome, detail: EnterpriseContextDetail, held: EnterprisePartitionSnapshot) {
         var snapshot = held
+        // A re-enrolled device or another membership starts a new mission inbox and return checklist book.
+        snapshot.dropForeignBindings(membershipId: detail.summary.membershipId, enrollmentId: outcome.enrollment.enrollmentId,
+                                     employeeId: detail.employeeId)
         switch outcome.verdict {
         case .erase:
             store.erase(snapshot.partition)
-            notice = String(localized: "O servidor informou que este aparelho foi perdido ou comprometido. Os dados desta empresa foram apagados deste aparelho.")
+            notice = String(localized: "enterprise.custody.erased")
             return
         case .lock:
             snapshot.locked = true
             snapshot.enrollment = outcome.enrollment
-            notice = String(localized: "Seu acesso a esta empresa terminou. Registros ainda não enviados continuam guardados e serão oferecidos ao servidor; nenhum registro novo é aceito.")
+            notice = String(localized: "enterprise.custody.locked_delivery")
         case .active:
             snapshot.locked = false
             snapshot.enrollment = outcome.enrollment
@@ -248,6 +276,8 @@ public final class EnterpriseCoordinator: ObservableObject {
 
     /// Back to the personal context; company work stays in its own partition.
     public func leaveCompany() {
+        cancelMissionRefresh()
+        clearTripField()
         stopDelivery()
         generation = UUID()
         active = nil
@@ -314,38 +344,289 @@ public final class EnterpriseCoordinator: ObservableObject {
 
     private func writableCompany() throws -> EnterpriseActiveCompany {
         revalidate()
-        guard let current = active else { throw AppValidationError(String(localized: "Escolha uma empresa antes de registrar.")) }
+        guard let current = active else { throw AppValidationError(String(localized: "enterprise.context.choose_before_recording")) }
         if current.locked {
-            throw AppValidationError(String(localized: "Seu acesso a esta empresa terminou. Nenhum registro novo é aceito."))
+            throw AppValidationError(String(localized: "enterprise.custody.locked_new"))
         }
         return current
     }
 
+    // MARK: - Missions
+
+    private func cancelMissionRefresh() {
+        missionTask?.cancel()
+        missionTask = nil
+        isRefreshingMissions = false
+        missionAccessError = nil
+    }
+
+    private var boundMissionInbox: EnterpriseMissionInbox? {
+        guard let current = active, !current.locked, current.partition.accountId == accountId,
+              current.partition.origin == origin, let held = snapshot, held.partition == current.partition,
+              let employee = current.employeeId, let inbox = held.missionInbox,
+              inbox.matches(membershipId: current.summary.membershipId, enrollmentId: current.enrollment.enrollmentId, employeeId: employee) else {
+            return nil
+        }
+        return inbox
+    }
+
+    var missionRows: [EnterpriseMissionRow] {
+        guard let inbox = boundMissionInbox, let held = snapshot else { return [] }
+        return inbox.rows(queue: held.queue, trips: held.trips)
+    }
+
+    var missionsLoaded: Bool { boundMissionInbox != nil }
+    var missionAgeMillis: Int64? {
+        guard let inbox = boundMissionInbox else { return nil }
+        return Self.missionClock().age(of: inbox.received)
+    }
+    var missionsTruncated: Bool { boundMissionInbox?.page.truncated == true }
+    var canRefreshMissions: Bool {
+        !isRefreshingMissions && !isOfflineProbe() && active?.locked == false && active?.employeeId != nil
+    }
+
+    func missionAssetId(_ id: String) -> String? {
+        boundMissionInbox?.page.items.first { $0.id == id }?.assetId
+    }
+
+    private static func missionClock() -> EnterpriseMissionClock {
+        EnterpriseMissionClock(
+            processID: missionProcessID, elapsedMillis: Int64(ProcessInfo.processInfo.systemUptime * 1000),
+            wallMillis: nowMillis()
+        )
+    }
+
+    func refreshMissions() {
+        revalidate()
+        guard canRefreshMissions, let current = active, let employee = current.employeeId else { return }
+        let token = generation
+        let selected = companyClient()
+        isRefreshingMissions = true
+        missionAccessError = nil
+        missionTask = Task { [weak self] in
+            let result: Result<EnterpriseMissionPage, Error>
+            do {
+                result = .success(try await selected.missions(partition: current.partition, employeeId: employee))
+            } catch {
+                result = .failure(error)
+            }
+            guard let self, generation == token else { return }
+            isRefreshingMissions = false
+            missionTask = nil
+            guard !Task.isCancelled, !isOfflineProbe(), let selected = active, !selected.locked,
+                  selected.partition == current.partition, selected.summary.membershipId == current.summary.membershipId,
+                  selected.enrollment.enrollmentId == current.enrollment.enrollmentId, selected.employeeId == employee,
+                  current.partition.accountId == accountId, current.partition.origin == origin,
+                  var held = snapshot, held.partition == current.partition else { return }
+            do {
+                let page = try result.get()
+                let received = Self.missionClock()
+                if var inbox = boundMissionInbox {
+                    try inbox.refresh(page, received: received)
+                    held.missionInbox = inbox
+                } else {
+                    held.missionInbox = try EnterpriseMissionInbox(
+                        membershipId: current.summary.membershipId, enrollmentId: current.enrollment.enrollmentId,
+                        employeeId: employee, page: page, received: received
+                    )
+                }
+                guard store.save(held) else { throw EnterpriseAccessError.unavailable }
+                snapshot = held
+            } catch {
+                missionAccessError = Self.accessError(error)
+            }
+        }
+    }
+
+    func respondToMission(_ id: String, response: EnterpriseMissionResponse, reason: String?) -> Result<Void, AppValidationError> {
+        do {
+            let current = try writableCompany()
+            guard var inbox = boundMissionInbox, let item = inbox.page.items.first(where: { $0.id == id }) else {
+                throw EnterpriseMissionError.notAnswerable
+            }
+            let now = Self.nowMillis()
+            let operation = try EnterpriseOperationBuilder.respondToMission(
+                envelope: makeEnvelope(current, now: now), missionId: id, revision: item.revision, response: response, reason: reason
+            )
+            try inbox.addAnswer(missionId: id, operationId: operation.operationId, revision: item.revision, response: response)
+            let summary = response == .accept
+                ? String(localized: "android.enterprise_missions_accept")
+                : String(localized: "android.enterprise_missions_decline")
+            try enqueue(
+                EnterpriseQueueItem(operation: operation, kind: .missionResponse, summary: summary, createdAtMillis: now),
+                partition: current.partition
+            ) { held in
+                held.missionInbox = inbox
+            }
+            return .success(())
+        } catch let error as EnterpriseMissionError {
+            return .failure(Self.missionValidation(error))
+        } catch EnterpriseOperationError.malformed {
+            return .failure(AppValidationError(String(localized: "enterprise.meter.reason_invalid")))
+        } catch {
+            return .failure(Self.validation(error))
+        }
+    }
+
+    private static func missionValidation(_ error: EnterpriseMissionError) -> AppValidationError {
+        let message: String
+        switch error {
+        case .notAccepted: message = String(localized: "android.enterprise_missions_start_not_confirmed")
+        case .alreadyStarted: message = String(localized: "android.enterprise_missions_start_already")
+        case .wrongAsset: message = String(localized: "android.enterprise_missions_refusal_wrong_vehicle")
+        case .notAnswerable: message = String(localized: "android.enterprise_missions_refusal_not_answerable")
+        case .alreadyAnswered: message = String(localized: "android.enterprise_missions_refusal_answered")
+        case .invalidPage, .foreignBinding: message = String(localized: "android.enterprise_missions_unavailable")
+        }
+        return AppValidationError(message)
+    }
+
+    // MARK: - Trip field
+
+    private func clearTripField() {
+        tripFieldTask?.cancel()
+        tripFieldTask = nil
+        tripFieldRequest = nil
+        tripField = nil
+        isRefreshingTripField = false
+        tripFieldError = nil
+    }
+
+    /// The server lists a trip only after its start was ACCEPTED; a start receipt dismissed later was accepted.
+    func tripFieldAvailable(tripId: String) -> Bool {
+        guard let current = active, !current.locked, let held = snapshot, held.partition == current.partition,
+              let trip = held.openTrip, trip.id == tripId else { return false }
+        let start = held.queue.first { $0.id == trip.startOperationId }
+        return start == nil || start?.status == .accepted
+    }
+
+    var canRefreshTripField: Bool { !isRefreshingTripField && !isOfflineProbe() }
+
+    /// The read of this exact open trip, company session and enrollment, if any.
+    func tripFieldState(tripId: String) -> EnterpriseTripFieldState? {
+        guard let state = tripField, let current = active, !current.locked, state.partition == current.partition,
+              state.membershipId == current.summary.membershipId, state.enrollmentId == current.enrollment.enrollmentId,
+              state.tripId == tripId, snapshot?.openTrip?.id == tripId else { return nil }
+        return state
+    }
+
+    /// Reads the open trip's driver-safe projection, at most every five minutes unless forced.
+    func refreshTripField(tripId: String, force: Bool = false) {
+        revalidate()
+        guard tripFieldTask == nil, canRefreshTripField, tripFieldAvailable(tripId: tripId), let current = active,
+              current.partition.accountId == accountId, current.partition.origin == origin else { return }
+        if !force, let held = tripFieldState(tripId: tripId), Self.nowMillis() - held.receivedAtMillis < 300_000 { return }
+        let token = generation
+        let request = UUID()
+        let sync = syncClient
+        tripFieldRequest = request
+        isRefreshingTripField = true
+        tripFieldError = nil
+        tripFieldTask = Task { [weak self] in
+            let result: Result<EnterpriseTripField?, Error>
+            do {
+                result = .success(try await sync.tripField(partition: current.partition, enrollment: current.enrollment, tripId: tripId))
+            } catch {
+                result = .failure(error)
+            }
+            guard let self, self.generation == token, self.tripFieldRequest == request else { return }
+            self.tripFieldRequest = nil
+            self.isRefreshingTripField = false
+            self.tripFieldTask = nil
+            guard !Task.isCancelled, let selected = self.active, !selected.locked, selected.partition == current.partition,
+                  selected.summary.membershipId == current.summary.membershipId, selected.enrollment == current.enrollment,
+                  current.partition.accountId == self.accountId, self.snapshot?.openTrip?.id == tripId else { return }
+            switch result {
+            case .success(let field):
+                self.tripField = EnterpriseTripFieldState(
+                    partition: current.partition, membershipId: current.summary.membershipId,
+                    enrollmentId: current.enrollment.enrollmentId, tripId: tripId, field: field, receivedAtMillis: Self.nowMillis()
+                )
+            case .failure(let error):
+                self.tripFieldError = Self.syncMessage(error)
+            }
+        }
+    }
+
     /// `trip.start` for an assigned asset with a reading or a written reason.
-    public func startTrip(assetId: String, evidence: EnterpriseMeterEvidence, departureRunId: String?) -> Result<Void, AppValidationError> {
+    public func startTrip(
+        assetId: String, evidence: EnterpriseMeterEvidence, departureRunId: String?, missionId: String? = nil
+    ) -> Result<Void, AppValidationError> {
         do {
             let current = try writableCompany()
             guard let employee = current.employeeId else {
-                throw AppValidationError(String(localized: "O servidor não informou seu cadastro de motorista nesta empresa. Atualize o acesso."))
+                throw AppValidationError(String(localized: "enterprise.driver.unknown"))
             }
-            guard let asset = findAsset(assetId) else { throw AppValidationError(String(localized: "Escolha um ativo da sua lista.")) }
+            guard let asset = findAsset(assetId) else { throw AppValidationError(String(localized: "enterprise.assets.choose_from_list")) }
             if snapshot?.openTrip != nil {
-                throw AppValidationError(String(localized: "Encerre a viagem em andamento antes de iniciar outra."))
+                throw AppValidationError(String(localized: "enterprise.trip.already_open"))
+            }
+            if let missionId {
+                guard let held = snapshot, let inbox = boundMissionInbox else { throw EnterpriseMissionError.notAccepted }
+                try inbox.readyTrip(missionId: missionId, assetId: assetId, queue: held.queue, trips: held.trips)
             }
             let now = Self.nowMillis()
             let tripId = EnterpriseValues.newId()
             let operation = try EnterpriseOperationBuilder.startTrip(
                 envelope: makeEnvelope(current, now: now), tripId: tripId, assetId: asset.id, driverEmployeeId: employee,
-                evidence: evidence, departureRunId: departureRunId
+                evidence: evidence, departureRunId: departureRunId, missionId: missionId
             )
             let label = Self.assetLabel(asset)
             var meterId: String?
             if case .reading(let id, _, _, _, _, _) = evidence { meterId = id }
-            try enqueue(EnterpriseQueueItem(operation: operation, kind: .tripStart, summary: String(localized: "Início de viagem · \(label)"),
+            try enqueue(EnterpriseQueueItem(operation: operation, kind: .tripStart, summary: String(localized: "enterprise.queue.trip_start", defaultValue: "Trip start · \(label)"),
                                             createdAtMillis: now), partition: current.partition) { snapshot in
                 snapshot.trips.append(EnterpriseTripRecord(id: tripId, assetId: asset.id, assetLabel: label,
                                                            startOperationId: operation.operationId, startedAtMillis: now,
-                                                           startMeterId: meterId))
+                                                           startMeterId: meterId, missionId: missionId,
+                                                           departureRunId: departureRunId))
+            }
+            return .success(())
+        } catch let error as EnterpriseMissionError {
+            return .failure(Self.missionValidation(error))
+        } catch {
+            return .failure(Self.validation(error))
+        }
+    }
+
+    /// `trip.finish` of the open trip; it depends on the start until the server received it.
+    func finishTrip(
+        evidence: EnterpriseMeterEvidence, tripId: String, returnRunId: String?,
+        expectedBinding: EnterpriseReturnChecklistBinding
+    ) -> Result<Void, AppValidationError> {
+        do {
+            let current = try writableCompany()
+            guard let trip = snapshot?.openTrip, trip.id == tripId,
+                  returnChecklistBinding(tripId: trip.id) == expectedBinding else {
+                throw AppValidationError(String(localized: "enterprise.trip.none_open"))
+            }
+            if let returnRunId {
+                guard let completed = returnChecklistCompletion(tripId: trip.id, runId: returnRunId),
+                      snapshot?.queue.first(where: { $0.id == completed.operationId })?.status == .accepted else {
+                    throw AppValidationError(String(localized: "enterprise.trip_transition.wait_return"))
+                }
+            }
+            let startItem = snapshot?.queue.first { $0.id == trip.startOperationId }
+            if startItem?.status == .rejected {
+                throw AppValidationError(String(localized: "enterprise.trip.start_refused"))
+            }
+            // Only an ACCEPTED start is a trip on the server; a held or dismissed one keeps the dependency.
+            let dependency: String? = startItem?.status == .accepted ? nil : trip.startOperationId
+            let now = Self.nowMillis()
+            guard now >= (trip.lifecycle?.last?.declaredAtMillis ?? trip.startedAtMillis) else {
+                throw AppValidationError(String(localized: "enterprise.trip_transition.changed"))
+            }
+            let operation = try EnterpriseOperationBuilder.finishTrip(
+                envelope: makeEnvelope(current, now: now), tripId: trip.id, evidence: evidence,
+                startOperationId: dependency, returnRunId: returnRunId
+            )
+            try enqueue(EnterpriseQueueItem(operation: operation, kind: .tripFinish,
+                                            summary: String(localized: "enterprise.queue.trip_finish", defaultValue: "Trip end · \(trip.assetLabel)"), createdAtMillis: now),
+                        partition: current.partition) { snapshot in
+                if let index = snapshot.trips.firstIndex(where: { $0.id == trip.id }) {
+                    snapshot.trips[index].finishOperationId = operation.operationId
+                    snapshot.trips[index].finishedAtMillis = now
+                }
             }
             return .success(())
         } catch {
@@ -353,26 +634,37 @@ public final class EnterpriseCoordinator: ObservableObject {
         }
     }
 
-    /// `trip.finish` of the open trip; it depends on the start until the server received it.
-    public func finishTrip(evidence: EnterpriseMeterEvidence) -> Result<Void, AppValidationError> {
+    public func transitionTrip(
+        _ action: EnterpriseTripTransitionAction, tripId: String, reasonText: String,
+        expectedPartition: EnterprisePartition
+    ) -> Result<Void, AppValidationError> {
         do {
             let current = try writableCompany()
-            guard let trip = snapshot?.openTrip else { throw AppValidationError(String(localized: "Nenhuma viagem em andamento.")) }
-            let startItem = snapshot?.queue.first { $0.id == trip.startOperationId }
-            if startItem?.status == .rejected {
-                throw AppValidationError(String(localized: "O servidor recusou o início desta viagem. Remova-a da lista."))
+            guard current.partition == expectedPartition, let original = snapshot?.openTrip,
+                  original.id == tripId, original.admits(action) else {
+                throw AppValidationError(String(localized: "enterprise.trip_transition.changed"))
             }
-            let dependency: String? = startItem?.status.isReceived == true ? nil : trip.startOperationId
+            let start = snapshot?.queue.first { $0.id == original.startOperationId }
+            if start?.status == .rejected {
+                throw AppValidationError(String(localized: "enterprise.trip.start_refused"))
+            }
+            let reason = reasonText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if action == .cancel && reason.isEmpty {
+                throw AppValidationError(String(localized: "enterprise.trip_transition.reason_required"))
+            }
             let now = Self.nowMillis()
-            let operation = try EnterpriseOperationBuilder.finishTrip(
-                envelope: makeEnvelope(current, now: now), tripId: trip.id, evidence: evidence, startOperationId: dependency
+            let operation = try EnterpriseOperationBuilder.transitionTrip(
+                envelope: makeEnvelope(current, now: now), tripId: tripId, action: action,
+                expectedRevision: original.nextLifecycleRevision, reason: reason.isEmpty ? nil : reason,
+                startOperationId: start?.status == .accepted ? nil : original.startOperationId
             )
-            try enqueue(EnterpriseQueueItem(operation: operation, kind: .tripFinish,
-                                            summary: String(localized: "Fim de viagem · \(trip.assetLabel)"), createdAtMillis: now),
+            var changed = original
+            try changed.recordTransition(action, operationId: operation.operationId, declaredAtMillis: now)
+            let label = EnterpriseTripLifecycleLabels.action(action)
+            try enqueue(EnterpriseQueueItem(operation: operation, kind: .tripLifecycle, summary: label, createdAtMillis: now),
                         partition: current.partition) { snapshot in
-                if let index = snapshot.trips.firstIndex(where: { $0.id == trip.id }) {
-                    snapshot.trips[index].finishOperationId = operation.operationId
-                    snapshot.trips[index].finishedAtMillis = now
+                if let index = snapshot.trips.firstIndex(where: { $0.id == tripId }) {
+                    snapshot.trips[index] = changed
                 }
             }
             return .success(())
@@ -388,6 +680,8 @@ public final class EnterpriseCoordinator: ObservableObject {
             return
         }
         mutate(current.partition) { snapshot in
+            // Its unsent steps become final first, so removing the trip never releases them to the server.
+            EnterpriseQueue.refuseCommandsOfRejectedStarts(in: &snapshot)
             snapshot.trips.removeAll { $0.id == tripId }
         }
     }
@@ -397,9 +691,9 @@ public final class EnterpriseCoordinator: ObservableObject {
                               payer: EnterpriseExpensePayer, receipt: Data?) -> Result<Void, AppValidationError> {
         do {
             let current = try writableCompany()
-            guard let asset = findAsset(assetId) else { throw AppValidationError(String(localized: "Escolha um ativo da sua lista.")) }
+            guard let asset = findAsset(assetId) else { throw AppValidationError(String(localized: "enterprise.assets.choose_from_list")) }
             guard let paid = try? PortableMoney.parseBrlCentavos(paidText) else {
-                throw AppValidationError(String(localized: "Informe o valor pago, por exemplo 12,50."))
+                throw AppValidationError(String(localized: "android.enterprise_expenses_capture_invalid"))
             }
             let trimmedCompany = companyText.trimmingCharacters(in: .whitespacesAndNewlines)
             let companyAmount: Int64
@@ -408,13 +702,13 @@ public final class EnterpriseCoordinator: ObservableObject {
             } else if let parsed = try? PortableMoney.parseBrlCentavos(trimmedCompany) {
                 companyAmount = parsed
             } else {
-                throw AppValidationError(String(localized: "Informe o valor da empresa, por exemplo 12,50."))
+                throw AppValidationError(String(localized: "android.enterprise_expenses_capture_invalid"))
             }
             if companyAmount > paid {
-                throw AppValidationError(String(localized: "O valor da empresa não pode ser maior que o valor pago."))
+                throw AppValidationError(String(localized: "android.enterprise_expenses_capture_invalid"))
             }
             if let receipt, receipt.isEmpty || receipt.count > EnterpriseAttachmentWire.maxBytes {
-                throw AppValidationError(String(localized: "A foto do comprovante precisa ter até 5 MB."))
+                throw AppValidationError(String(localized: "android.enterprise_receipts_refused_too_large"))
             }
             let now = Self.nowMillis()
             let expenseId = EnterpriseValues.newId()
@@ -426,7 +720,7 @@ public final class EnterpriseCoordinator: ObservableObject {
             if let receipt {
                 let documentId = EnterpriseValues.newId()
                 guard store.saveReceipt(receipt, partition: current.partition, documentId: documentId) else {
-                    throw AppValidationError(String(localized: "Não foi possível guardar a foto neste aparelho."))
+                    throw AppValidationError(String(localized: "android.enterprise_receipts_local_invalid"))
                 }
                 attachment = EnterpriseAttachmentItem(
                     documentId: documentId, declarationId: EnterpriseValues.newId(), linkId: EnterpriseValues.newId(),
@@ -436,7 +730,7 @@ public final class EnterpriseCoordinator: ObservableObject {
             }
             let label = "\(Self.categoryLabel(category)) · \(AbastevoTheme.formatCentavos(paid))"
             do {
-                try enqueue(EnterpriseQueueItem(operation: operation, kind: .expense, summary: String(localized: "Despesa · \(label)"),
+                try enqueue(EnterpriseQueueItem(operation: operation, kind: .expense, summary: String(localized: "enterprise.queue.expense", defaultValue: "Expense · \(label)"),
                                                 createdAtMillis: now), partition: current.partition) { snapshot in
                     if let attachment { snapshot.attachments.append(attachment) }
                 }
@@ -450,10 +744,109 @@ public final class EnterpriseCoordinator: ObservableObject {
         }
     }
 
+    /// Writes the fueling and its optional, separate receipt target before delivery.
+    func submitFueling(
+        partition: EnterprisePartition, membershipId: String, assetId: String, form: EnterpriseFuelingFormInput,
+        evidence: EnterpriseMeterEvidence, receipt: Data?
+    ) -> Result<Void, AppValidationError> {
+        do {
+            let current = try writableCompany()
+            guard current.partition == partition, current.summary.membershipId == membershipId,
+                  let responsibleId = current.employeeId else {
+                throw AppValidationError(String(localized: "android.enterprise_fuelings_responsible_unknown"))
+            }
+            guard let asset = findAsset(assetId) else {
+                throw AppValidationError(String(localized: "enterprise.assets.choose_from_list"))
+            }
+            let input = try form.makeInput(asset: asset, responsibleId: responsibleId, evidence: evidence)
+            let now = Self.nowMillis()
+            let id = EnterpriseValues.newId()
+            let operation = try EnterpriseFuelingOperations.build(
+                envelope: makeEnvelope(current, now: now), fuelingId: id, input: input
+            )
+            let attachment = try receipt.map {
+                try prepareFuelingReceipt($0, partition: partition, operation: operation)
+            }
+            let label = Self.assetLabel(asset)
+            do {
+                try enqueue(EnterpriseQueueItem(
+                    operation: operation, kind: .fueling,
+                    summary: String(localized: "enterprise.fueling.queue_title", defaultValue: "Fueling · \(label)"),
+                    createdAtMillis: now
+                ), partition: current.partition) { snapshot in
+                    if let attachment { snapshot.attachments.append(attachment) }
+                }
+            } catch {
+                if let attachment { store.deleteReceipt(partition: partition, documentId: attachment.documentId) }
+                throw error
+            }
+            return .success(())
+        } catch is EnterpriseOperationError {
+            return .failure(AppValidationError(String(localized: "android.enterprise_fuelings_capture_invalid")))
+        } catch {
+            return .failure(Self.validation(error))
+        }
+    }
+
+    func attachFuelingReceipt(
+        _ bytes: Data, operationId: String, partition: EnterprisePartition, membershipId: String
+    ) -> Result<Void, AppValidationError> {
+        do {
+            let current = try writableCompany()
+            guard current.partition == partition, current.summary.membershipId == membershipId,
+                  var held = snapshot, let owner = held.queue.first(where: { $0.id == operationId && $0.kind == .fueling }),
+                  owner.status != .rejected else {
+                throw AppValidationError(String(localized: "android.enterprise_receipts_local_unknown_record"))
+            }
+            var attachment = try prepareFuelingReceipt(bytes, partition: partition, operation: owner.operation)
+            if owner.status.isReceived { attachment.status = .pending }
+            held.attachments.append(attachment)
+            guard store.save(held) else {
+                store.deleteReceipt(partition: partition, documentId: attachment.documentId)
+                throw AppValidationError(String(localized: "android.enterprise_receipts_local_invalid"))
+            }
+            snapshot = held
+            deliverNow()
+            return .success(())
+        } catch {
+            return .failure(Self.validation(error))
+        }
+    }
+
+    private func prepareFuelingReceipt(
+        _ receipt: Data, partition: EnterprisePartition, operation: EnterpriseSealedOperation
+    ) throws -> EnterpriseAttachmentItem {
+        guard !receipt.isEmpty, receipt.count <= EnterpriseAttachmentWire.maxBytes else {
+            throw AppValidationError(String(localized: "android.enterprise_receipts_refused_too_large"))
+        }
+        guard receipt.count >= 4, receipt.starts(with: [0xff, 0xd8, 0xff]), receipt.suffix(2).elementsEqual([0xff, 0xd9]) else {
+            throw AppValidationError(String(localized: "android.enterprise_receipts_refused_unsupported"))
+        }
+        let attachments = snapshot?.attachments ?? []
+        guard attachments.count < 500 else {
+            throw AppValidationError(String(localized: "android.enterprise_receipts_local_full"))
+        }
+        let pendingBytes = attachments.filter {
+            $0.status == .waitingOwner || $0.status == .pending || $0.status == .exhausted
+        }.reduce(Int64(0)) { total, item in total + item.bytes }
+        guard pendingBytes + Int64(receipt.count) <= 16 * 1024 * 1024 else {
+            throw AppValidationError(String(localized: "android.enterprise_receipts_local_budget"))
+        }
+        let documentId = EnterpriseValues.newId()
+        guard store.saveReceipt(receipt, partition: partition, documentId: documentId) else {
+            throw AppValidationError(String(localized: "android.enterprise_receipts_local_invalid"))
+        }
+        return EnterpriseAttachmentItem(
+            documentId: documentId, declarationId: EnterpriseValues.newId(), linkId: EnterpriseValues.newId(),
+            sha256: EnterpriseCanonicalJson.sha256Hex(receipt), bytes: Int64(receipt.count),
+            targetKind: "FUELING", targetId: operation.entityId, ownerOperationId: operation.operationId
+        )
+    }
+
     /// Reads the applicable departure checklist of an asset on the company channel.
     public func loadChecklist(assetId: String, context: String) async -> Result<EnterpriseChecklistApplicable, AppValidationError> {
         guard let current = active, !isOfflineProbe() else {
-            return .failure(AppValidationError(String(localized: "Conecte-se para consultar o checklist.")))
+            return .failure(AppValidationError(String(localized: "enterprise.checklist.connect")))
         }
         do {
             let applicable = try await companyClient().applicableChecklist(
@@ -472,11 +865,11 @@ public final class EnterpriseCoordinator: ObservableObject {
             let current = try writableCompany()
             guard applicable.required, let templateId = applicable.templateId, let version = applicable.version,
                   let revision = applicable.policyRevision, let mode = applicable.policyMode, notes.count == answers.count else {
-                throw AppValidationError(String(localized: "Não há checklist obrigatório para este ativo."))
+                throw AppValidationError(String(localized: "android.enterprise_checklists_none_required"))
             }
             let evaluation = try EnterpriseChecklistRules.evaluate(items: applicable.items, policyMode: mode, answers: answers)
             if evaluation.acknowledgementRequired && !acknowledged {
-                throw AppValidationError(String(localized: "Confirme que está ciente dos itens críticos com problema."))
+                throw AppValidationError(String(localized: "android.enterprise_checklists_refusal_ack"))
             }
             let responses = zip(answers, notes).map { pair -> EnterpriseOperationBuilder.ChecklistResponse in
                 EnterpriseOperationBuilder.ChecklistResponse(
@@ -492,39 +885,213 @@ public final class EnterpriseCoordinator: ObservableObject {
                 responses: responses, outcome: evaluation.outcome, acknowledged: evaluation.acknowledgementRequired && acknowledged
             )
             let label = findAsset(applicable.assetId).map { Self.assetLabel($0) } ?? (applicable.name ?? "")
-            try enqueue(EnterpriseQueueItem(operation: operation, kind: .checklist, summary: String(localized: "Checklist de saída · \(label)"),
+            try enqueue(EnterpriseQueueItem(operation: operation, kind: .checklist, summary: String(localized: "enterprise.queue.checklist", defaultValue: "Departure checklist · \(label)"),
                                             createdAtMillis: now), partition: current.partition) { _ in }
             return .success((runId, evaluation.outcome))
         } catch let failure as EnterpriseChecklistFailure {
             switch failure {
             case .photoRequired:
-                return .failure(AppValidationError(String(localized: "Um item com problema exige foto, que ainda não pode ser enviada pelo iOS. Fale com o gestor da frota.")))
+                return .failure(AppValidationError(String(localized: "enterprise.checklist.photo_contact_fleet")))
             case .answerNotAllowed:
-                return .failure(AppValidationError(String(localized: "Somente itens opcionais podem ser marcados como não se aplica.")))
+                return .failure(AppValidationError(String(localized: "android.enterprise_checklists_refusal_not_allowed")))
             case .incomplete:
-                return .failure(AppValidationError(String(localized: "Responda todos os itens do checklist.")))
+                return .failure(AppValidationError(String(localized: "android.enterprise_checklists_refusal_incomplete")))
             case .invalid:
-                return .failure(AppValidationError(String(localized: "Checklist inválido. Consulte novamente.")))
+                return .failure(AppValidationError(String(localized: "enterprise.checklist.invalid")))
             }
         } catch {
             return .failure(Self.validation(error))
         }
     }
 
+    func returnChecklistBinding(tripId: String) -> EnterpriseReturnChecklistBinding? {
+        guard let current = active, current.partition.accountId == accountId, current.partition.origin == origin,
+              !current.locked, snapshot?.partition == current.partition, let trip = snapshot?.openTrip, trip.id == tripId else { return nil }
+        return EnterpriseReturnChecklistBinding(partition: current.partition, membershipId: current.summary.membershipId,
+                                                enrollmentId: current.enrollment.enrollmentId, tripId: trip.id,
+                                                assetId: trip.assetId, generation: generation)
+    }
+
+    func returnChecklistBook(_ binding: EnterpriseReturnChecklistBinding) -> EnterpriseReturnChecklistBook? {
+        guard returnChecklistBinding(tripId: binding.tripId) == binding,
+              let book = snapshot?.returnChecklists, book.matches(membershipId: binding.membershipId, enrollmentId: binding.enrollmentId) else {
+            return nil
+        }
+        return book
+    }
+
+    func refreshReturnChecklist(_ binding: EnterpriseReturnChecklistBinding) async -> Result<Void, AppValidationError> {
+        guard returnChecklistBinding(tripId: binding.tripId) == binding, !isOfflineProbe() else {
+            return .failure(AppValidationError(String(localized: "enterprise.checklist.connect")))
+        }
+        do {
+            let applicable = try await companyClient().applicableChecklist(organizationId: binding.partition.organizationId,
+                                                                           assetId: binding.assetId, context: "RETURN")
+            guard !Task.isCancelled else { return .success(()) }
+            try changeReturnChecklist(binding) { book, _ in try book.remember(applicable) }
+            return .success(())
+        } catch {
+            if !Task.isCancelled { return .failure(returnChecklistFailure(error)) }
+            return .success(())
+        }
+    }
+
+    func startReturnChecklist(_ binding: EnterpriseReturnChecklistBinding) -> Result<Void, AppValidationError> {
+        do {
+            let rejected = (returnChecklistBook(binding)?.draft?.completion).flatMap { completed in
+                snapshot?.queue.first(where: { $0.id == completed.operationId })?.status == .rejected ? completed.runId : nil
+            }
+            try changeReturnChecklist(binding) { book, trip in
+                _ = try book.start(trip: trip, nowMillis: Self.nowMillis(), rejectedRunId: rejected)
+            }
+            return .success(())
+        } catch { return .failure(returnChecklistFailure(error)) }
+    }
+
+    func updateReturnChecklist(_ binding: EnterpriseReturnChecklistBinding, draftId: String,
+                               position: Int, answer: EnterpriseChecklistAnswer?, note: String) -> Result<Void, AppValidationError> {
+        do {
+            try changeReturnChecklist(binding) { book, trip in
+                guard var draft = book.draft, draft.id == draftId else { throw EnterpriseReturnChecklistError.binding }
+                try draft.update(position: position, answer: answer, note: note, nowMillis: Self.nowMillis())
+                try book.replace(draft, trip: trip)
+            }
+            return .success(())
+        } catch { return .failure(returnChecklistFailure(error)) }
+    }
+
+    func acknowledgeReturnChecklist(_ binding: EnterpriseReturnChecklistBinding, draftId: String,
+                                    acknowledged: Bool) -> Result<Void, AppValidationError> {
+        do {
+            try changeReturnChecklist(binding) { book, trip in
+                guard var draft = book.draft, draft.id == draftId else { throw EnterpriseReturnChecklistError.binding }
+                try draft.acknowledge(acknowledged, nowMillis: Self.nowMillis())
+                try book.replace(draft, trip: trip)
+            }
+            return .success(())
+        } catch { return .failure(returnChecklistFailure(error)) }
+    }
+
+    func completeReturnChecklist(_ binding: EnterpriseReturnChecklistBinding, draftId: String) -> Result<Void, AppValidationError> {
+        do {
+            let company = try writableCompany()
+            guard returnChecklistBinding(tripId: binding.tripId) == binding, let trip = snapshot?.openTrip,
+                  var book = returnChecklistBook(binding), var draft = book.draft, draft.id == draftId, draft.matches(trip) else {
+                throw EnterpriseReturnChecklistError.binding
+            }
+            let now = Self.nowMillis()
+            let operation = try draft.complete(envelope: makeEnvelope(company, now: now), nowMillis: now)
+            try book.replace(draft, trip: trip)
+            try enqueue(EnterpriseQueueItem(operation: operation, kind: .checklist,
+                                            summary: String(localized: "enterprise.checklist.return_title"), createdAtMillis: now),
+                        partition: binding.partition) { snapshot in
+                snapshot.returnChecklists = book
+            }
+            return .success(())
+        } catch { return .failure(returnChecklistFailure(error)) }
+    }
+
+    public func returnChecklistCompletion(tripId: String, runId: String) -> EnterpriseReturnChecklistCompletion? {
+        guard let binding = returnChecklistBinding(tripId: tripId), let trip = snapshot?.openTrip,
+              let draft = returnChecklistBook(binding)?.draft, draft.matches(trip),
+              let completed = draft.completion, completed.tripId == trip.id, completed.runId == runId,
+              completed.completedAtMillis >= trip.startedAtMillis, completed.completedAtMillis <= Self.nowMillis(),
+              let item = snapshot?.queue.first(where: { $0.id == completed.operationId }), item.kind == .checklist,
+              item.operation.entityId == completed.runId, item.operation.type == EnterpriseOperationBuilder.checklistComplete,
+              item.status != .rejected,
+              let fields = try? EnterpriseCanonicalJson.parse(item.operation.canonical).objectValue,
+              fields["membership_id"]?.textValue == binding.membershipId,
+              fields["enrollment_id"]?.textValue == binding.enrollmentId,
+              fields["owner_account_id"]?.textValue == binding.partition.accountId,
+              fields["api_origin"]?.textValue == binding.partition.origin,
+              fields["org_id"]?.textValue == binding.partition.organizationId,
+              let payload = fields["payload"]?.objectValue, payload["context"]?.textValue == "RETURN",
+              payload["asset_id"]?.textValue == trip.assetId else { return nil }
+        return completed
+    }
+
+    func refreshReturnChecklistRun(_ binding: EnterpriseReturnChecklistBinding,
+                                   completion: EnterpriseReturnChecklistCompletion) async -> Result<Void, AppValidationError> {
+        guard !isOfflineProbe(), returnChecklistCompletion(tripId: binding.tripId, runId: completion.runId) == completion,
+              snapshot?.queue.first(where: { $0.id == completion.operationId })?.status == .accepted else {
+            return .failure(AppValidationError(String(localized: "enterprise.checklist.connect")))
+        }
+        do {
+            let run = try await companyClient().returnChecklistRun(organizationId: binding.partition.organizationId,
+                                                                  assetId: binding.assetId, runId: completion.runId)
+            guard !Task.isCancelled else { return .success(()) }
+            try changeReturnChecklist(binding) { book, _ in try book.rememberRun(run) }
+            return .success(())
+        } catch {
+            if !Task.isCancelled { return .failure(returnChecklistFailure(error)) }
+            return .success(())
+        }
+    }
+
+    private func changeReturnChecklist(_ binding: EnterpriseReturnChecklistBinding,
+                                       _ change: (inout EnterpriseReturnChecklistBook, EnterpriseTripRecord) throws -> Void) throws {
+        _ = try writableCompany()
+        guard returnChecklistBinding(tripId: binding.tripId) == binding, var held = snapshot, let trip = held.openTrip else {
+            throw EnterpriseReturnChecklistError.binding
+        }
+        var book = held.returnChecklists ?? EnterpriseReturnChecklistBook(membershipId: binding.membershipId, enrollmentId: binding.enrollmentId)
+        guard book.matches(membershipId: binding.membershipId, enrollmentId: binding.enrollmentId) else {
+            throw EnterpriseReturnChecklistError.binding
+        }
+        try change(&book, trip)
+        held.returnChecklists = book
+        guard store.save(held) else { throw EnterpriseReturnChecklistError.unavailable }
+        snapshot = held
+    }
+
+    private func returnChecklistFailure(_ error: Error) -> AppValidationError {
+        if let validation = error as? AppValidationError { return validation }
+        if let issue = error as? EnterpriseReturnChecklistError {
+            switch issue {
+            case .binding, .unavailable:
+                return AppValidationError(String(localized: "android.enterprise_checklists_save_failed"))
+            case .notRequired:
+                return AppValidationError(String(localized: "android.enterprise_checklists_none_required"))
+            case .expired:
+                return AppValidationError(String(localized: "android.enterprise_checklists_expired"))
+            case .beforeStart:
+                return AppValidationError(String(localized: "android.enterprise_checklists_refusal_before_start"))
+            case .acknowledgementRequired:
+                return AppValidationError(String(localized: "android.enterprise_checklists_refusal_ack"))
+            case .invalid:
+                return AppValidationError(String(localized: "android.enterprise_checklists_refusal_invalid"))
+            }
+        }
+        if let issue = error as? EnterpriseChecklistFailure {
+            switch issue {
+            case .photoRequired:
+                return AppValidationError(String(localized: "enterprise.checklist.photo_contact_fleet"))
+            case .answerNotAllowed:
+                return AppValidationError(String(localized: "android.enterprise_checklists_refusal_not_allowed"))
+            case .incomplete:
+                return AppValidationError(String(localized: "android.enterprise_checklists_refusal_incomplete"))
+            case .invalid:
+                return AppValidationError(String(localized: "android.enterprise_checklists_refusal_invalid"))
+            }
+        }
+        if error is EnterpriseAccessError { return AppValidationError(Self.accessMessage(Self.accessError(error))) }
+        return Self.validation(error)
+    }
+
     private func enqueue(_ item: EnterpriseQueueItem, partition: EnterprisePartition,
                          update: (inout EnterprisePartitionSnapshot) -> Void) throws {
         guard var current = snapshot, current.partition == partition else {
-            throw AppValidationError(String(localized: "Escolha uma empresa antes de registrar."))
+            throw AppValidationError(String(localized: "enterprise.context.choose_before_recording"))
         }
         do {
             try EnterpriseQueue.enqueue(item, into: &current)
         } catch EnterpriseQueueError.full {
-            throw AppValidationError(String(localized: "Muitos registros aguardando envio. Conecte-se para enviá-los antes de criar outros."))
+            throw AppValidationError(String(localized: "enterprise.queue.full"))
         } catch EnterpriseQueueError.locked {
-            throw AppValidationError(String(localized: "Seu acesso a esta empresa terminou. Nenhum registro novo é aceito."))
+            throw AppValidationError(String(localized: "enterprise.custody.locked_new"))
         }
         update(&current)
-        store.save(current)
+        guard store.save(current) else { throw AppValidationError(Self.accessMessage(.unavailable)) }
         snapshot = current
         deliverNow()
     }
@@ -592,8 +1159,10 @@ public final class EnterpriseCoordinator: ObservableObject {
             if batch.isEmpty { break }
             do {
                 let acks = try await sync.deliver(partition: current.partition, operations: batch.map { $0.operation })
+                guard deliveryToken == token, !Task.isCancelled else { return }
                 mutate(current.partition) { EnterpriseQueue.apply(acks, to: &$0, nowMillis: Self.nowMillis()) }
             } catch {
+                guard deliveryToken == token, !Task.isCancelled else { return }
                 let failure = EnterpriseSyncError(errorValue: error)
                 let ids = batch.map { $0.id }
                 switch failure {
@@ -604,7 +1173,7 @@ public final class EnterpriseCoordinator: ObservableObject {
                     }
                     return
                 case .signInRequired:
-                    notice = String(localized: "Entre novamente na sua conta para enviar os registros da empresa.")
+                    notice = String(localized: "enterprise.queue.sign_in")
                     return
                 case .refused(let status, let code, let retryAfter):
                     mutate(current.partition) {
@@ -632,7 +1201,7 @@ public final class EnterpriseCoordinator: ObservableObject {
     private func deliverAttachments(_ current: EnterpriseActiveCompany, token: UUID) async {
         let sync = syncClient
         for _ in 0..<5 {
-            guard deliveryToken == token, !Task.isCancelled, !isOfflineProbe(), !current.locked,
+            guard attachmentDeliveryIsCurrent(current, token: token),
                   let held = store.load(current.partition),
                   let item = EnterpriseQueue.dueAttachment(held, nowMillis: Self.nowMillis()) else { return }
             guard let content = store.loadReceipt(partition: current.partition, documentId: item.documentId),
@@ -640,29 +1209,34 @@ public final class EnterpriseCoordinator: ObservableObject {
                 finishAttachment(item, partition: current.partition, storage: nil, refused: "LOCAL_COPY_MISSING", failure: nil, retryAfter: nil)
                 continue
             }
+            var refusalSource = EnterpriseAttachmentWire.RefusalSource.signedSession
             do {
                 let session = try await sync.openAttachment(
                     partition: current.partition, enrollment: current.enrollment, declarationId: item.declarationId,
                     documentId: item.documentId, linkId: item.linkId, sha256: item.sha256, bytes: item.bytes,
                     targetKind: item.targetKind, targetId: item.targetId
                 )
+                guard attachmentDeliveryIsCurrent(current, token: token) else { return }
                 var storage = session.storage
                 if storage == .uploading {
                     guard let capability = session.capability else {
                         finishAttachment(item, partition: current.partition, storage: nil, refused: nil, failure: "UPLOAD_WINDOW_CLOSED", retryAfter: nil)
                         continue
                     }
+                    refusalSource = .capabilityUpload
                     storage = try await sync.upload(partition: current.partition, documentId: item.documentId,
                                                     capability: capability, content: content)
                 }
+                guard attachmentDeliveryIsCurrent(current, token: token) else { return }
                 finishAttachment(item, partition: current.partition, storage: storage, refused: nil, failure: nil, retryAfter: nil)
             } catch {
+                guard attachmentDeliveryIsCurrent(current, token: token) else { return }
                 let failure = EnterpriseSyncError(errorValue: error)
                 switch failure {
                 case .offline, .signInRequired:
                     return
                 case .refused(let status, let code, let retryAfter):
-                    let isFinalRefusal = EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code)
+                    let isFinalRefusal = EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code, source: refusalSource)
                     finishAttachment(item, partition: current.partition, storage: nil, refused: isFinalRefusal ? (code ?? "REFUSED") : nil,
                                      failure: code ?? "HTTP_\(status)", retryAfter: retryAfter.map { $0 * 1000 })
                 case .unavailable, .invalidResponse:
@@ -672,15 +1246,23 @@ public final class EnterpriseCoordinator: ObservableObject {
         }
     }
 
+    private func attachmentDeliveryIsCurrent(_ current: EnterpriseActiveCompany, token: UUID) -> Bool {
+        guard let active else { return false }
+        return deliveryToken == token && !Task.isCancelled && !isOfflineProbe() && !active.locked &&
+            accountId == current.partition.accountId && active.partition == current.partition &&
+            active.enrollment.enrollmentId == current.enrollment.enrollmentId &&
+            active.enrollment.membershipId == current.enrollment.membershipId
+    }
+
     private func finishAttachment(_ item: EnterpriseAttachmentItem, partition: EnterprisePartition, storage: EnterpriseAttachmentStorage?,
                                   refused: String?, failure: String?, retryAfter: Int64?) {
-        mutate(partition) {
-            EnterpriseQueue.applyAttachment(id: item.id, storage: storage, refusedCode: refused, failureCode: failure, to: &$0,
-                                            nowMillis: Self.nowMillis(), retryAfterMillis: retryAfter)
-        }
-        let holder = snapshot?.partition == partition ? snapshot : store.load(partition)
-        let updated = holder?.attachments.first(where: { $0.id == item.id })
-        if let status = updated?.status, status == .delivered || status == .refused {
+        let isSelected = snapshot?.partition == partition
+        guard var held = isSelected ? snapshot : store.load(partition) else { return }
+        EnterpriseQueue.applyAttachment(id: item.id, storage: storage, refusedCode: refused, failureCode: failure, to: &held,
+                                        nowMillis: Self.nowMillis(), retryAfterMillis: retryAfter)
+        guard store.save(held) else { return }
+        if isSelected { snapshot = held }
+        if let status = held.attachments.first(where: { $0.id == item.id })?.status, status == .delivered || status == .refused {
             store.deleteReceipt(partition: partition, documentId: item.documentId)
         }
     }
@@ -696,16 +1278,20 @@ public final class EnterpriseCoordinator: ObservableObject {
             case .active:
                 break
             case .lock:
+                cancelMissionRefresh()
+                clearTripField()
                 mutate(current.partition) { $0.locked = true }
                 active = EnterpriseActiveCompany(partition: current.partition, summary: current.summary, employeeId: current.employeeId,
                                                  enrollment: outcome.enrollment, confirmedAtMillis: Self.nowMillis(), locked: true)
-                notice = String(localized: "Seu acesso a esta empresa terminou. Registros ainda não enviados continuam guardados; nenhum registro novo é aceito.")
+                notice = String(localized: "enterprise.custody.locked_retained")
             case .erase:
+                cancelMissionRefresh()
+                clearTripField()
                 stopDelivery()
                 store.erase(current.partition)
                 active = nil
                 snapshot = nil
-                notice = String(localized: "O servidor informou que este aparelho foi perdido ou comprometido. Os dados desta empresa foram apagados deste aparelho.")
+                notice = String(localized: "enterprise.custody.erased")
             }
         } catch {
             // Generic refusals, outages and malformed answers never become an erase or lock.
@@ -832,30 +1418,30 @@ public final class EnterpriseCoordinator: ObservableObject {
         if let validation = error as? AppValidationError { return validation }
         if let operation = error as? EnterpriseOperationError {
             switch operation {
-            case .malformed: return AppValidationError(String(localized: "Confira os dados: valores, leitura ou motivo inválidos."))
-            case .unsupported: return AppValidationError(String(localized: "Este tipo de registro ainda não é aceito pelo servidor."))
+            case .malformed: return AppValidationError(String(localized: "android.enterprise_trips_capture_invalid"))
+            case .unsupported: return AppValidationError(String(localized: "enterprise.queue.unsupported"))
             }
         }
-        return AppValidationError(String(localized: "Não foi possível salvar o registro neste aparelho."))
+        return AppValidationError(String(localized: "enterprise.queue.save_failed"))
     }
 
     public static func accessMessage(_ error: EnterpriseAccessError) -> String {
         switch error {
-        case .signInRequired: return String(localized: "Entre na sua conta pessoal do Abastevo para continuar.")
-        case .freshAuthRequired: return String(localized: "Confirme seu acesso entrando novamente na sua conta.")
-        case .invalidCode: return String(localized: "Código inválido ou expirado. Peça um novo ao responsável.")
-        case .unavailable: return String(localized: "Não foi possível confirmar a operação. Confira sua conexão e tente novamente.")
-        case .conflict: return String(localized: "O servidor recusou por conflito com o estado atual. Consulte novamente.")
-        case .alreadyMember: return String(localized: "Sua conta já tem um vínculo com esta empresa. Consulte seu acesso.")
-        case .managedRestricted: return String(localized: "Esta conta gerenciada não pode realizar esta ação.")
-        case .rateLimited: return String(localized: "Muitas tentativas. Aguarde antes de tentar novamente.")
-        case .stale: return String(localized: "Esta consulta deixou de ser válida. Consulte novamente.")
-        case .accessDenied: return String(localized: "Este acesso não está disponível. Atualize suas empresas.")
-        case .offline: return String(localized: "Sem conexão. A seleção de empresa e os convites exigem confirmação online.")
-        case .entitlementRequired: return String(localized: "O plano desta empresa não inclui este recurso.")
-        case .membershipSuspended: return String(localized: "Seu vínculo com esta empresa está suspenso ou encerrado.")
-        case .organizationSuspended: return String(localized: "Esta empresa está suspensa ou arquivada.")
-        case .deviceRevoked: return String(localized: "Este aparelho foi desvinculado da empresa.")
+        case .signInRequired: return String(localized: "enterprise.access.sign_in")
+        case .freshAuthRequired: return String(localized: "android.enterprise_invitation_fresh_required")
+        case .invalidCode: return String(localized: "android.enterprise_invitation_invalid")
+        case .unavailable: return String(localized: "android.enterprise_invitation_unavailable")
+        case .conflict: return String(localized: "enterprise.access.conflict")
+        case .alreadyMember: return String(localized: "android.enterprise_invitation_already_member")
+        case .managedRestricted: return String(localized: "enterprise.access.managed")
+        case .rateLimited: return String(localized: "android.enterprise_invitation_limited")
+        case .stale: return String(localized: "enterprise.access.stale")
+        case .accessDenied: return String(localized: "android.enterprise_context_denied")
+        case .offline: return String(localized: "enterprise.access.offline")
+        case .entitlementRequired: return String(localized: "enterprise.access.plan_required")
+        case .membershipSuspended: return String(localized: "enterprise.access.membership_ended")
+        case .organizationSuspended: return String(localized: "enterprise.access.company_suspended")
+        case .deviceRevoked: return String(localized: "android.enterprise_sync_reason_device")
         }
     }
 
@@ -866,83 +1452,84 @@ public final class EnterpriseCoordinator: ObservableObject {
     public static func statusLabel(_ item: EnterpriseQueueItem) -> String {
         switch item.status {
         case .pending:
-            if item.attempts == 0 { return String(localized: "Guardado neste aparelho · aguardando envio") }
-            return String(localized: "Aguardando nova tentativa (\(item.attempts)) · \(codeLabel(item.lastCode))")
+            if item.attempts == 0 { return String(localized: "android.enterprise_sync_saved") }
+            return String(localized: "enterprise.queue.waiting_retry", defaultValue: "Waiting to retry (attempts: \(item.attempts.formatted())) · \(codeLabel(item.lastCode))")
         case .accepted:
-            return String(localized: "Recebido e aceito pelo servidor")
+            return String(localized: "enterprise.queue.accepted")
         case .inReview:
-            return String(localized: "Recebido · em revisão pela empresa (\(codeLabel(item.lastCode)))")
+            return String(localized: "enterprise.queue.review", defaultValue: "Received · under company review (\(codeLabel(item.lastCode)))")
         case .rejected:
-            return String(localized: "Recusado pelo servidor · \(codeLabel(item.lastCode))")
+            return String(localized: "enterprise.queue.rejected", defaultValue: "Rejected by the server · \(codeLabel(item.lastCode))")
         case .exhausted:
-            return String(localized: "Envio pausado após \(item.attempts) tentativas · \(codeLabel(item.lastCode))")
+            return String(localized: "enterprise.queue.paused", defaultValue: "Sending paused. Attempts: \(item.attempts.formatted()) · \(codeLabel(item.lastCode))")
         }
     }
 
     public static func attachmentLabel(_ item: EnterpriseAttachmentItem) -> String {
         switch item.status {
-        case .waitingOwner: return String(localized: "Foto aguardando o recebimento da despesa")
-        case .pending: return item.attempts == 0 ? String(localized: "Foto aguardando envio") : String(localized: "Foto aguardando nova tentativa (\(item.attempts))")
-        case .delivered: return String(localized: "Foto recebida pelo servidor")
-        case .refused: return String(localized: "Foto recusada · \(codeLabel(item.lastCode))")
-        case .exhausted: return String(localized: "Envio da foto pausado após \(item.attempts) tentativas")
+        case .waitingOwner: return String(localized: "enterprise.receipt.waiting_for_expense")
+        case .pending: return item.attempts == 0 ? String(localized: "enterprise.receipt.waiting") : String(localized: "enterprise.receipt.retrying", defaultValue: "Photo waiting to retry (attempts: \(item.attempts.formatted()))")
+        case .delivered: return String(localized: "enterprise.receipt.delivered")
+        case .refused: return String(localized: "enterprise.receipt.rejected", defaultValue: "Photo rejected · \(codeLabel(item.lastCode))")
+        case .exhausted: return String(localized: "enterprise.receipt.paused", defaultValue: "Photo upload paused. Attempts: \(item.attempts.formatted())")
         }
     }
 
     public static func codeLabel(_ code: String?) -> String {
         switch code ?? "" {
-        case "OFFLINE": return String(localized: "sem conexão")
-        case "UNAVAILABLE": return String(localized: "serviço indisponível")
-        case "DEPENDENCY_PENDING": return String(localized: "aguardando o registro anterior")
-        case "MALFORMED": return String(localized: "dados inválidos")
-        case "FORBIDDEN": return String(localized: "sem permissão")
-        case "DEVICE_REVOKED": return String(localized: "aparelho desvinculado")
-        case "MEMBERSHIP_ENDED": return String(localized: "vínculo encerrado")
-        case "INTAKE_WINDOW_CLOSED": return String(localized: "prazo de envio encerrado")
-        case "ORG_SUSPENDED": return String(localized: "empresa suspensa")
-        case "OPERATION_ID_REUSED": return String(localized: "registro duplicado")
-        case "ENTITLEMENT_REQUIRED": return String(localized: "recurso fora do plano")
-        case "ASSET_UNAVAILABLE": return String(localized: "ativo indisponível")
-        case "ASSET_BUSY": return String(localized: "ativo em uso")
-        case "TRIP_ALREADY_CLOSED": return String(localized: "viagem já encerrada")
-        case "PERMISSION_CHANGED": return String(localized: "permissão alterada")
-        case "PERIOD_LOCKED": return String(localized: "período fechado")
-        case "STALE_REVISION": return String(localized: "versão desatualizada")
-        case "ORPHAN_REFERENCE": return String(localized: "referência não encontrada")
-        case "OWNER_REJECTED": return String(localized: "a despesa foi recusada")
-        case "LOCAL_COPY_MISSING": return String(localized: "cópia local indisponível")
-        case "UPLOAD_WINDOW_CLOSED": return String(localized: "janela de envio encerrada")
-        case "": return String(localized: "sem detalhe")
+        case "OFFLINE": return String(localized: "enterprise.code.offline")
+        case "UNAVAILABLE": return String(localized: "enterprise.code.unavailable")
+        case "DEPENDENCY_PENDING": return String(localized: "enterprise.code.dependency_pending")
+        case "MALFORMED": return String(localized: "android.enterprise_sync_reason_malformed")
+        case "FORBIDDEN": return String(localized: "android.enterprise_assets_forbidden_title")
+        case "DEVICE_REVOKED": return String(localized: "android.enterprise_sync_reason_device")
+        case "MEMBERSHIP_ENDED": return String(localized: "android.enterprise_sync_reason_membership")
+        case "INTAKE_WINDOW_CLOSED": return String(localized: "android.enterprise_sync_reason_window")
+        case "ORG_SUSPENDED": return String(localized: "android.enterprise_sync_reason_suspended")
+        case "OPERATION_ID_REUSED": return String(localized: "android.enterprise_sync_reason_reused")
+        case "ENTITLEMENT_REQUIRED": return String(localized: "enterprise.code.entitlement_required")
+        case "ASSET_UNAVAILABLE": return String(localized: "android.enterprise_sync_reason_asset_unavailable")
+        case "ASSET_BUSY": return String(localized: "android.enterprise_sync_reason_asset_busy")
+        case "TRIP_ALREADY_CLOSED": return String(localized: "android.enterprise_sync_reason_trip_closed")
+        case "PERMISSION_CHANGED": return String(localized: "android.enterprise_sync_reason_permission_changed")
+        case "PERIOD_LOCKED": return String(localized: "android.enterprise_sync_reason_period_locked")
+        case "STALE_REVISION": return String(localized: "android.enterprise_sync_reason_revision")
+        case "ORPHAN_REFERENCE": return String(localized: "android.enterprise_sync_reason_orphan")
+        case "OWNER_REJECTED": return String(localized: "android.enterprise_receipts_refusal_owner")
+        case EnterpriseQueue.startRejectedCode: return String(localized: "enterprise.code.start_rejected")
+        case "LOCAL_COPY_MISSING": return String(localized: "android.enterprise_sync_file_missing")
+        case "UPLOAD_WINDOW_CLOSED": return String(localized: "android.enterprise_sync_reason_window")
+        case "": return String(localized: "enterprise.code.none")
         default: return code ?? ""
         }
     }
 
     public static func categoryLabel(_ category: String) -> String {
         switch category {
-        case "FINE": return String(localized: "Multa")
-        case "INSURANCE": return String(localized: "Seguro")
-        case "LEASE": return String(localized: "Locação")
-        case "MAINTENANCE": return String(localized: "Manutenção")
-        case "OTHER": return String(localized: "Outros")
-        case "PARKING": return String(localized: "Estacionamento")
-        case "TOLL": return String(localized: "Pedágio")
+        case "FINE": return String(localized: "android.enterprise_expenses_category_fine")
+        case "INSURANCE": return String(localized: "android.enterprise_expenses_category_insurance")
+        case "LEASE": return String(localized: "android.enterprise_expenses_category_lease")
+        case "MAINTENANCE": return String(localized: "android.enterprise_expenses_category_maintenance")
+        case "OTHER": return String(localized: "android.enterprise_expenses_category_other")
+        case "PARKING": return String(localized: "android.enterprise_expenses_category_parking")
+        case "TOLL": return String(localized: "android.enterprise_expenses_category_toll")
         default: return category
         }
     }
 
     public static func roleLabel(_ role: String) -> String {
         switch role {
-        case "OWNER": return String(localized: "Proprietário")
-        case "ADMIN": return String(localized: "Administrador")
-        case "FLEET_MANAGER": return String(localized: "Gestor de frota")
-        case "SUPERVISOR": return String(localized: "Supervisor")
-        case "FINANCE": return String(localized: "Financeiro")
-        case "APPROVER": return String(localized: "Aprovador")
-        case "DRIVER": return String(localized: "Motorista")
-        case "OPERATIONS_STAFF": return String(localized: "Equipe de operação")
-        case "AUDITOR": return String(localized: "Auditor")
-        case "DATA_MANAGER": return String(localized: "Gestor de dados")
-        default: return String(localized: "Papel não identificado")
+        case "OWNER": return String(localized: "android.enterprise_role_owner")
+        case "ADMIN": return String(localized: "android.enterprise_role_admin")
+        case "FLEET_MANAGER": return String(localized: "android.enterprise_role_fleet_manager")
+        case "SUPERVISOR": return String(localized: "android.enterprise_role_supervisor")
+        case "FINANCE": return String(localized: "android.enterprise_role_finance")
+        case "APPROVER": return String(localized: "android.enterprise_role_approver")
+        case "DRIVER": return String(localized: "android.enterprise_role_driver")
+        case "OPERATIONS_STAFF": return String(localized: "android.enterprise_role_operations_staff")
+        case "AUDITOR": return String(localized: "android.enterprise_role_auditor")
+        case "DATA_MANAGER": return String(localized: "android.enterprise_role_data_manager")
+        default: return String(localized: "android.enterprise_role_unknown")
         }
     }
 

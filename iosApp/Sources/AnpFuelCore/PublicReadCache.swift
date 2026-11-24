@@ -27,6 +27,7 @@ public struct CachedCommunityFeed: Codable, Equatable, Sendable {
     public let origin: String
     public let municipalityCode: String
     public let fuel: FuelProduct
+    public let sort: FeedSortOrder?
     public let savedAtEpochSeconds: Int64
     public let items: [CachedCommunityItem]
 
@@ -131,17 +132,26 @@ public final class PublicReadCache: @unchecked Sendable {
         }
     }
 
-    public func communityFeed(origin: String, municipalityCode: String, fuel: FuelProduct) -> CachedCommunityFeed? {
-        read().communityFeeds.first { $0.origin == origin && $0.municipalityCode == municipalityCode && $0.fuel == fuel }
+    public func communityFeed(
+        origin: String, municipalityCode: String, fuel: FuelProduct, sort: FeedSortOrder = .recent
+    ) -> CachedCommunityFeed? {
+        read().communityFeeds.first {
+            $0.origin == origin && $0.municipalityCode == municipalityCode && $0.fuel == fuel && ($0.sort ?? .recent) == sort
+        }
     }
 
-    public func saveCommunityFeed(origin: String, municipalityCode: String, fuel: FuelProduct, items: [CachedCommunityItem], now: Date = Date()) {
+    public func saveCommunityFeed(
+        origin: String, municipalityCode: String, fuel: FuelProduct, sort: FeedSortOrder = .recent,
+        items: [CachedCommunityItem], now: Date = Date()
+    ) {
         let nowSeconds = Int64(now.timeIntervalSince1970)
         mutate { state in
-            state.communityFeeds.removeAll { $0.origin == origin && $0.municipalityCode == municipalityCode && $0.fuel == fuel }
+            state.communityFeeds.removeAll {
+                $0.origin == origin && $0.municipalityCode == municipalityCode && $0.fuel == fuel && ($0.sort ?? .recent) == sort
+            }
             state.communityFeeds.insert(CachedCommunityFeed(
-                origin: origin, municipalityCode: municipalityCode, fuel: fuel, savedAtEpochSeconds: nowSeconds,
-                items: items.filter { $0.isLive(nowEpochSeconds: nowSeconds) }
+                origin: origin, municipalityCode: municipalityCode, fuel: fuel, sort: sort,
+                savedAtEpochSeconds: nowSeconds, items: items.filter { $0.isLive(nowEpochSeconds: nowSeconds) }
             ), at: 0)
             state.communityFeeds = Array(state.communityFeeds.prefix(Self.maxCommunityFeeds))
         }
@@ -214,49 +224,88 @@ private struct CommunityFeedItemsWire: Decodable {
         let updatedAt: String
         let expiresAt: String
         let confirmations: Int
+        let contribution: CommunityContributionReference?
     }
 
     let items: [Item]
     let state: String
     let municipalityCode: String
     let fuelProduct: String
+    let sort: String?
+    let generatedAt: String?
+    let nextCursor: String?
+}
+
+public struct CommunityFeedPage: Equatable, Sendable {
+    public let items: [CachedCommunityItem]
+    public let nextCursor: String?
 }
 
 public extension AbastevoHttpClient {
-    /// The scoped community feed with each row's server expiry, for display and offline caching.
+    /// The scoped community feed with each row's server expiry and its public, opaque action reference.
     func fetchCommunityFeedItems(
         state: BrazilianState,
         municipalityCode: String,
         fuel: FuelProduct,
         sort: FeedSortOrder
     ) async throws -> [CachedCommunityItem] {
-        let query = [
+        try await fetchCommunityFeedPage(state: state, municipalityCode: municipalityCode, fuel: fuel, sort: sort).items
+    }
+
+    func fetchCommunityFeedPage(
+        state: BrazilianState,
+        municipalityCode: String,
+        fuel: FuelProduct,
+        sort: FeedSortOrder,
+        after cursor: String? = nil
+    ) async throws -> CommunityFeedPage {
+        let sortWire = sort == .cheapest ? "cheapest" : "recent"
+        var query = [
             URLQueryItem(name: "state", value: state.rawValue),
             URLQueryItem(name: "municipality_code", value: municipalityCode),
             URLQueryItem(name: "fuel_product", value: fuel.wireCode),
-            URLQueryItem(name: "sort", value: sort == .cheapest ? "cheapest" : "recent"),
+            URLQueryItem(name: "sort", value: sortWire),
             URLQueryItem(name: "limit", value: "20"),
         ]
-        let data = try await publicRead(path: "/v1/community/feed", query: query)
-        return try Self.decodeCommunityFeedItems(data, state: state, municipalityCode: municipalityCode, fuel: fuel)
+        if let cursor {
+            guard Self.isCommunityFeedCursor(cursor) else { throw HttpClientError.invalidRequest }
+            query.append(URLQueryItem(name: "cursor", value: cursor))
+        }
+        let data = try await publicRead(path: Self.communityFeedPath, query: query)
+        return try Self.decodeCommunityFeedPage(data, state: state, municipalityCode: municipalityCode, fuel: fuel, sort: sortWire)
     }
 
-    /// Same validation as `decodeCommunityFeed`, keeping expired rows with their expiry.
     static func decodeCommunityFeedItems(
         _ data: Data,
         state: BrazilianState,
         municipalityCode: String,
         fuel: FuelProduct
     ) throws -> [CachedCommunityItem] {
+        try decodeCommunityFeedPage(data, state: state, municipalityCode: municipalityCode, fuel: fuel).items
+    }
+
+    static func decodeCommunityFeedPage(
+        _ data: Data,
+        state: BrazilianState,
+        municipalityCode: String,
+        fuel: FuelProduct,
+        sort: String? = nil
+    ) throws -> CommunityFeedPage {
         let page = try publicDecoder().decode(CommunityFeedItemsWire.self, from: data)
-        guard page.state == state.rawValue, page.municipalityCode == municipalityCode, page.fuelProduct == fuel.wireCode else {
+        let generatedAt = page.generatedAt.flatMap(readIsoDate)
+        guard page.state == state.rawValue, page.municipalityCode == municipalityCode, page.fuelProduct == fuel.wireCode,
+              page.items.count <= 20, page.nextCursor.map(isCommunityFeedCursor) ?? true,
+              (sort == nil || page.sort == sort && generatedAt != nil),
+              Set(page.items.map(\.stationId)).count == page.items.count else {
             throw HttpClientError.invalidJson
         }
-        return try page.items.map { row in
+        let items = try page.items.map { row in
             guard UUID(uuidString: row.stationId) != nil, row.source == "COMMUNITY", row.currency == "BRL",
                   row.fuelProduct == fuel.wireCode, row.unit == fuel.unitWire, row.amountMilliBrl > 0,
-                  let condition = PriceConditionKind(rawValue: row.condition),
-                  let updatedAt = readIsoDate(row.updatedAt), let expiresAt = readIsoDate(row.expiresAt) else {
+                  row.confirmations >= 0, let condition = PriceConditionKind(rawValue: row.condition),
+                  row.contribution.map({ $0.isValid && condition == .standard }) ?? true,
+                  let updatedAt = readIsoDate(row.updatedAt), let expiresAt = readIsoDate(row.expiresAt),
+                  generatedAt.map({ updatedAt <= $0 }) ?? true else {
                 throw HttpClientError.invalidJson
             }
             let observation = CommunityPriceObservation(
@@ -273,9 +322,15 @@ public extension AbastevoHttpClient {
                 notHelpfulCount: 0,
                 observedAtLabel: row.updatedAt,
                 observedEpochSeconds: Int64(updatedAt.timeIntervalSince1970),
-                hasPhotoEvidence: false
+                hasPhotoEvidence: false,
+                contribution: row.contribution
             )
             return CachedCommunityItem(observation: observation, expiresAtEpochSeconds: Int64(expiresAt.timeIntervalSince1970))
         }
+        return CommunityFeedPage(items: items, nextCursor: page.nextCursor)
+    }
+
+    private static func isCommunityFeedCursor(_ cursor: String) -> Bool {
+        !cursor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && cursor.utf8.count <= 4_096
     }
 }

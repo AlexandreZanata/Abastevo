@@ -165,11 +165,7 @@ public final class IosImageIoPhotoCodec: PhotoDecoder, PhotoEncoder {
     }
 
     public func encode(source: Data, request: PhotoEncodeRequest) -> Data? {
-        #if canImport(ImageIO) && canImport(CoreGraphics)
-        guard let cgSource = CGImageSourceCreateWithData(source as CFData, nil),
-              let dims = probeDims(bytes: source) else {
-            return nil
-        }
+        guard let dims = probeDims(bytes: source) else { return nil }
         let maxSide = max(
             1,
             min(
@@ -177,6 +173,13 @@ public final class IosImageIoPhotoCodec: PhotoDecoder, PhotoEncoder {
                 max(dims.width, dims.height) / max(1, request.sampleSize)
             )
         )
+        let stepIndex = max(0, min(Self.qualitySteps.count - 1, request.attempt - 1))
+        return Self.encodeJpeg(source: source, maxSide: maxSide, quality: Self.qualitySteps[stepIndex])
+    }
+
+    static func encodeJpeg(source: Data, maxSide: Int, quality: Double) -> Data? {
+        #if canImport(ImageIO) && canImport(CoreGraphics)
+        guard let cgSource = CGImageSourceCreateWithData(source as CFData, nil) else { return nil }
         let thumbOptions: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceShouldCacheImmediately: true,
@@ -186,8 +189,6 @@ public final class IosImageIoPhotoCodec: PhotoDecoder, PhotoEncoder {
         guard let cgImage = CGImageSourceCreateThumbnailAtIndex(cgSource, 0, thumbOptions as CFDictionary) else {
             return nil
         }
-        let stepIndex = max(0, min(Self.qualitySteps.count - 1, request.attempt - 1))
-        let quality = Self.qualitySteps[stepIndex]
         let outData = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(
             outData as CFMutableData,

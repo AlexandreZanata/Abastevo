@@ -208,3 +208,7 @@ never to make a failing test pass. Executable mirror:
 - Versioning: new account routes and fields are additive. The old email
   login route has an explicit retirement verdict. Legacy key sign-up and
   existing provider linking remain compatible.
+
+## Native iOS account data export
+
+The account export uses the active owner, session family and API origin. It gathers the available owner-scoped cloud, subscription, ledger, community, station, privacy and other private projections in one shareable JSON document. Each paginated route uses its server cursor. When a route is unavailable, incomplete or bounded before the end of the data, the export names that section and explains the limit. Fields are allowlisted and authentication credentials, proof material and precise capture data are excluded. The existing local JSON export remains available. The native share interface only receives data after the user requests the export.

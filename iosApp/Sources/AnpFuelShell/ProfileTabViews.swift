@@ -14,7 +14,7 @@ public struct ProfileRootView: View {
                     accountHeaderCard
                     driverAndVehiclesSection
                     enterpriseAndGamesSection
-                    appearanceAndLanguageSection
+                    appearanceSection
                     expertAndPrivacySection
                 }
                 .padding(16)
@@ -31,34 +31,41 @@ public struct ProfileRootView: View {
                         .foregroundStyle(AbastevoTheme.accentLight)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(alias).font(.headline)
-                        Text("Conta gratuita ativa · Participação independente de pagamento")
+                        Text(String(localized: "profile.free_account"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
-                Button("Gerenciar conta, exportação e bloqueios") {
+                Button(String(localized: "profile.account_management")) {
                     viewModel.activeSheet = .accountManagement
                 }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Button {
+                    viewModel.activeSheet = .qualityReportHistory
+                } label: {
+                    Label(String(localized: "quality.reports.history"), systemImage: "flask")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+                Button {
                     viewModel.activeSheet = .premium
                 } label: {
-                    Label("Abastevo Premium", systemImage: "crown.fill")
+                    Label(String(localized: "premium.title"), systemImage: "crown.fill")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)
             } else {
-                Text("Exploração como Convidado")
+                Text(String(localized: "android.profile_guest_title"))
                     .font(.headline)
-                Text("Você pode consultar preços ANP, mapas e veículos offline sem conta. Entre gratuitamente para sincronizar e comentar.")
+                Text(String(localized: "profile.guest_summary"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Button {
                     viewModel.activeSheet = .auth
                 } label: {
-                    Text("Entrar ou criar conta gratuita")
+                    Text(String(localized: "android.profile_action_sign_in"))
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -69,80 +76,76 @@ public struct ProfileRootView: View {
 
     private var driverAndVehiclesSection: some View {
         EnergiaCard {
-            Text("Motorista, Veículos & Energia")
+            Text(String(localized: "profile.driver_vehicles_energy"))
                 .font(.headline)
-            profileNavRow(icon: "car.fill", title: "Meus Veículos & Livro de Abastecimentos", subtitle: "Abastecimentos, recargas, despesas, indicadores e nuvem") {
+            profileNavRow(icon: "car.fill", title: String(localized: "profile.vehicles_ledger"), subtitle: String(localized: "profile.vehicles_ledger_summary")) {
                 viewModel.activeSheet = .vehiclesLedger
             }
             Divider()
-            profileNavRow(icon: "steeringwheel", title: "Central do Motorista (Driver Hub)", subtitle: "Turnos, distância, ganho bruto vs combustível e lucro líquido") {
+            profileNavRow(icon: "steeringwheel", title: String(localized: "android.driver_hub_title"), subtitle: String(localized: "android.driver_hub_profile_subtitle")) {
                 viewModel.activeSheet = .driverHub
             }
             Divider()
-            profileNavRow(icon: "chart.line.uptrend.xyaxis", title: "Histórico Semanal & Alertas de Queda", subtitle: "Série oficial da ANP por combustível") {
+            profileNavRow(icon: "chart.line.uptrend.xyaxis", title: String(localized: "profile.history_alerts"), subtitle: String(localized: "profile.official_fuel_series")) {
                 viewModel.activeSheet = .priceHistory
+            }
+            Divider()
+            profileNavRow(icon: "bell.badge", title: String(localized: "alerts.title"), subtitle: String(localized: "alerts.inbox")) {
+                viewModel.activeSheet = .advancedAlerts
             }
         }
     }
 
     private var enterpriseAndGamesSection: some View {
         EnergiaCard {
-            Text("Empresas & Minijogos")
+            Text(String(localized: "profile.enterprises_arcade"))
                 .font(.headline)
-            profileNavRow(icon: "building.2.fill", title: "Abastevo Empresas", subtitle: "Convites, viagens e despesas da empresa") {
+            profileNavRow(icon: "building.2.fill", title: String(localized: "enterprise.title"), subtitle: String(localized: "enterprise.profile_subtitle")) {
                 viewModel.activeSheet = .enterpriseHub
             }
             Divider()
-            profileNavRow(icon: "gamecontroller.fill", title: "Minijogos (Corrida & Voo Econômico)", subtitle: "Recordes: \(viewModel.snapshot.bestFuelRunScore) / \(viewModel.snapshot.bestFuelFlightScore) pts") {
+            profileNavRow(icon: "gamecontroller.fill", title: String(localized: "profile.games_title"), subtitle: String(localized: "profile.game_records", defaultValue: "High scores: \(viewModel.snapshot.bestFuelRunScore.formatted()) / \(viewModel.snapshot.bestFuelFlightScore.formatted()) pts")) {
                 viewModel.activeSheet = .arcadeGames
             }
         }
     }
 
-    private var appearanceAndLanguageSection: some View {
+    private var appearanceSection: some View {
         EnergiaCard {
-            Text("Aparência e Idioma")
+            Text(String(localized: "profile.appearance"))
                 .font(.headline)
-            Toggle("Tema escuro", isOn: Binding(
+            Toggle(String(localized: "android.profile_dark_theme_title"), isOn: Binding(
                 get: { viewModel.snapshot.darkThemeEnabled ?? false },
                 set: { viewModel.setTheme(dark: $0) }
             ))
-            Picker("Idioma", selection: Binding(
-                get: { viewModel.currentLocale },
-                set: { viewModel.setLocale($0) }
-            )) {
-                ForEach(SupportedAppLocale.allCases) { loc in
-                    Text("\(loc.flagEmoji) \(loc.nativeName)").tag(loc)
-                }
-            }
         }
     }
 
     private var expertAndPrivacySection: some View {
         EnergiaCard {
-            Text("Ferramentas, Privacidade & Cache")
+            Text(String(localized: "profile.tools_privacy_cache"))
                 .font(.headline)
-            profileNavRow(icon: "camera.badge.ellipsis", title: "Consentimento para Treinamento de OCR", subtitle: "Coleta desativada") {
+            profileNavRow(icon: "camera.badge.ellipsis", title: String(localized: "privacy.ocr_consent"), subtitle: String(localized: "privacy.collection_off")) {
                 viewModel.activeSheet = .trainingConsent
             }
             Divider()
-            profileNavRow(icon: "calendar", title: "Semanas da Pesquisa ANP", subtitle: viewModel.surveyWeekLabel) {
+            profileNavRow(icon: "calendar", title: String(localized: "android.week_picker_title"), subtitle: viewModel.surveyWeekLabel) {
                 viewModel.activeSheet = .weekPicker
             }
             Divider()
-            profileNavRow(icon: "map.fill", title: "Mapas Offline Regionais", subtitle: "Indisponível no iOS") {
+            profileNavRow(icon: "map.fill", title: String(localized: "profile.regional_offline_maps"), subtitle: String(localized: "profile.ios_unavailable")) {
                 viewModel.activeSheet = .mapDownloads
             }
             Divider()
-            profileNavRow(icon: "gearshape.fill", title: "Configurações & Ambiente de Rede", subtitle: viewModel.snapshot.apiEnvironment.labelPtBr) {
+            profileNavRow(icon: "gearshape.fill", title: String(localized: "profile.network_settings"), subtitle: viewModel.snapshot.apiEnvironment.localizedLabel) {
                 viewModel.activeSheet = .settings
             }
             Divider()
-            profileNavRow(icon: "lock.shield.fill", title: "Privacidade, LGPD & Termos", subtitle: "Direitos do titular e regras comunitárias") {
+            profileNavRow(icon: "lock.shield.fill", title: String(localized: "profile.privacy_lgpd_terms"), subtitle: String(localized: "profile.privacy_rights")) {
                 viewModel.activeSheet = .privacy
             }
             Divider()
-            profileNavRow(icon: "questionmark.circle", title: "Ajuda & Regras da Comunidade", subtitle: "Transparência ANP vs Comunidade") {
+            profileNavRow(icon: "questionmark.circle", title: String(localized: "android.profile_tool_help_title"), subtitle: String(localized: "profile.source_transparency")) {
                 viewModel.activeSheet = .help
             }
         }
@@ -184,40 +187,40 @@ public struct AuthSheetView: View {
             Form {
                 AppleSignInSection(viewModel: viewModel)
 
-                Section("E-mail + Código de 6 dígitos") {
-                    TextField("seu@email.com", text: $email)
-                    Button("Enviar código") {
+                Section(String(localized: "auth.email_code")) {
+                    TextField(String(localized: "auth.email_example"), text: $email)
+                    Button(String(localized: "auth.send_code")) {
                         viewModel.requestEmailOtp(email: email)
                     }
-                    TextField("Código (6 dígitos)", text: $code)
-                    Button("Validar código e entrar") {
+                    TextField(String(localized: "android.auth_code_label"), text: $code)
+                    Button(String(localized: "auth.verify_code")) {
                         viewModel.verifyEmailOtp(email: email, code: code)
                     }
                 }
 
-                Section("Conta Anônima com Chave de Recuperação") {
-                    TextField("Apelido (3 a 20 letras/números)", text: $username)
-                    Button("Gerar nova conta com chave") {
+                Section(String(localized: "auth.recovery_account")) {
+                    TextField(String(localized: "auth.alias_hint"), text: $username)
+                    Button(String(localized: "auth.create_with_key")) {
                         Task {
                             issuedKey = await viewModel.createAnonymousKeyAccount(username: username)
                         }
                     }
                     if let issued = issuedKey {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Usuário: \(issued.username)").font(.subheadline.bold())
-                            Text("Chave única (salve agora): \(issued.accountKey)")
+                            Text(String(localized: "android.profile_backup_username", defaultValue: "Username: \(issued.username)")).font(.subheadline.bold())
+                            Text(String(localized: "auth.key_save_now", defaultValue: "Unique key (save it now): \(issued.accountKey)"))
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.orange)
                         }
                     }
-                    TextField("Ou entrar com chave existente", text: $accountKeyInput)
-                    Button("Desbloquear com chave") {
+                    TextField(String(localized: "auth.key_sign_in_hint"), text: $accountKeyInput)
+                    Button(String(localized: "android.auth_key_login")) {
                         viewModel.loginWithAccountKey(accountKeyInput)
                     }
                 }
 
                 if viewModel.isAuthWorking || viewModel.authStatusMessage != nil {
-                    Section("Status") {
+                    Section(String(localized: "auth.status")) {
                         if viewModel.isAuthWorking {
                             ProgressView()
                         }
@@ -228,10 +231,10 @@ public struct AuthSheetView: View {
                 }
             }
             .disabled(viewModel.isAuthWorking)
-            .navigationTitle("Conta Gratuita")
+            .navigationTitle(String(localized: "android.auth_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -241,49 +244,26 @@ public struct AuthSheetView: View {
 public struct AccountManagementSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
-    @State private var exportedJson: String?
     @State private var confirmDelete = false
 
     public var body: some View {
         NavigationStack {
             List {
                 if let alias = viewModel.signedInAlias {
-                    Section("Identidade Conectada") {
-                        Text(alias)
-                        Button("Exportar dados locais deste aparelho (JSON)") {
-                            exportedJson = viewModel.exportMyDataJson()
-                        }
-                        if let json = exportedJson {
-                            Text(String(json.prefix(500)) + (json.count > 500 ? "..." : ""))
-                                .font(.caption2.monospaced())
-                        }
-                    }
+                    AccountExportSection(viewModel: viewModel, alias: alias)
                 }
 
-                Section("Usuários Bloqueados (\(viewModel.snapshot.blockedUsers.count))") {
-                    if viewModel.snapshot.blockedUsers.isEmpty {
-                        Text("Nenhum usuário bloqueado.").foregroundStyle(.secondary)
-                    } else {
-                        ForEach(viewModel.snapshot.blockedUsers) { user in
-                            HStack {
-                                Text(user.displayAlias)
-                                Spacer()
-                                Button("Desbloquear") {
-                                    viewModel.unblockUser(userId: user.id)
-                                }
-                                .font(.caption)
-                            }
-                        }
-                    }
+                CommunityBlockedUsersSection(model: viewModel.communitySafety) {
+                    viewModel.activeSheet = .auth
                 }
 
                 if viewModel.currentAccountIdOrNil != nil {
-                    Section("Sessão e Exclusão") {
-                        Button("Sair e limpar dados locais privados") {
+                    Section(String(localized: "account.session_deletion")) {
+                        Button(String(localized: "account.logout_and_purge")) {
                             viewModel.logout()
                             dismiss()
                         }
-                        Button("Solicitar exclusão da conta", role: .destructive) {
+                        Button(String(localized: "account.request_deletion"), role: .destructive) {
                             confirmDelete = true
                         }
                     }
@@ -294,18 +274,18 @@ public struct AccountManagementSheetView: View {
                     }
                 }
             }
-            .navigationTitle("Gerenciar Conta")
-            .alert("Excluir conta?", isPresented: $confirmDelete) {
-                Button("Solicitar exclusão", role: .destructive) {
+            .navigationTitle(String(localized: "android.account_screen_title"))
+            .alert(String(localized: "android.auth_delete_title"), isPresented: $confirmDelete) {
+                Button(String(localized: "account.request_deletion_action"), role: .destructive) {
                     viewModel.deleteAccountAndPurge()
                 }
-                Button("Cancelar", role: .cancel) {}
+                Button(String(localized: "android.action_cancel"), role: .cancel) {}
             } message: {
-                Text("A solicitação encerra seu acesso. Após a confirmação do servidor, o app limpará os dados privados locais da conta.")
+                Text(String(localized: "account.deletion_notice"))
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -319,44 +299,54 @@ public struct DriverHubSheetView: View {
     @State private var driverVehicleId: String?
     @State private var startKmText = ""
     @State private var endKmText = ""
+    @State private var distanceBasis: DriverShiftDistanceBasis = .odometer
     @State private var grossReaisText = ""
     @State private var fuelReaisText = ""
     @State private var minutesText = ""
     @State private var shiftError: String?
 
     public var body: some View {
-        let activeShift = viewModel.snapshot.driverShifts.first(where: { $0.isActive })
-        let closedShifts = viewModel.snapshot.driverShifts.filter { !$0.isActive }
+        let activeShift = viewModel.driverVisibleShifts.first(where: { $0.isActive })
+        let closedShifts = viewModel.driverVisibleShifts.filter { !$0.isActive }
         NavigationStack {
             List {
-                Section("Turno manual neste aparelho") {
+                Section(String(localized: "driver.manual_shift")) {
                     if let active = activeShift {
-                        Text("Turno em andamento · Início Km \(active.startOdometerKm)")
+                        Text(String(localized: "driver.active_shift", defaultValue: "Shift in progress · Starting odometer \(active.startOdometerKm.formatted()) km"))
                             .font(.headline)
                             .foregroundStyle(AbastevoTheme.accentLight)
                         if let started = formattedDate(active.startedAtLabel) {
-                            Text("Início em \(started)").foregroundStyle(.secondary)
+                            Text(String(localized: "driver.started", defaultValue: "Started \(started)")).foregroundStyle(.secondary)
                         }
-                        TextField("Km final", text: $endKmText)
-                        TextField("Ganho bruto (R$)", text: $grossReaisText)
-                        TextField("Combustível gasto (R$)", text: $fuelReaisText)
-                        TextField("Duração informada (minutos)", text: $minutesText)
-                        Button("Encerrar turno") {
+                        DriverGpsControls(viewModel: viewModel, shiftId: active.id)
+                        if availableGpsDistance(for: active) != nil {
+                            Picker(String(localized: "driver.distance_source"), selection: $distanceBasis) {
+                                Text(String(localized: "driver.odometer_source")).tag(DriverShiftDistanceBasis.odometer)
+                                Text(String(localized: "driver.gps_source")).tag(DriverShiftDistanceBasis.gpsEstimate)
+                            }
+                        }
+                        if distanceBasis == .odometer || availableGpsDistance(for: active) == nil {
+                            TextField(String(localized: "driver.end_odometer"), text: $endKmText)
+                        }
+                        TextField(String(localized: "driver.gross_earnings"), text: $grossReaisText)
+                        TextField(String(localized: "driver.fuel_cost"), text: $fuelReaisText)
+                        TextField(String(localized: "driver.declared_duration"), text: $minutesText)
+                        Button(String(localized: "driver.end_shift")) {
                             finishShift(active)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(AbastevoTheme.ink)
                     } else if viewModel.snapshot.vehicles.isEmpty {
-                        Text("Cadastre um veículo para iniciar um turno.").foregroundStyle(.secondary)
+                        Text(String(localized: "driver.vehicle_required")).foregroundStyle(.secondary)
                     } else {
-                        Picker("Veículo", selection: $driverVehicleId) {
-                            Text("Selecione um veículo").tag(nil as String?)
+                        Picker(String(localized: "driver.vehicle"), selection: $driverVehicleId) {
+                            Text(String(localized: "driver.select_vehicle")).tag(nil as String?)
                             ForEach(viewModel.snapshot.vehicles) { vehicle in
                                 Text(vehicle.name).tag(Optional(vehicle.id))
                             }
                         }
-                        TextField("Hodômetro inicial (km)", text: $startKmText)
-                        Button("Iniciar turno de trabalho", action: startShift)
+                        TextField(String(localized: "driver.start_odometer"), text: $startKmText)
+                        Button(String(localized: "driver.start_shift"), action: startShift)
                         .buttonStyle(.borderedProminent)
                         .tint(AbastevoTheme.accentLight)
                         .disabled(driverVehicleId == nil)
@@ -366,31 +356,55 @@ public struct DriverHubSheetView: View {
                     }
                 }
 
-                Section("Turnos Encerrados") {
+                Section(String(localized: "driver.finished_shifts")) {
                     ForEach(closedShifts) { s in
                         VStack(alignment: .leading, spacing: 4) {
                             if let balance = s.netEarningsCentavos {
-                                Text("Saldo registrado \(AbastevoTheme.formatCentavos(balance))").font(.headline)
+                                Text(String(localized: "driver.saved_balance", defaultValue: "Recorded balance \(AbastevoTheme.formatCentavos(balance))")).font(.headline)
                             } else {
-                                Text("Saldo indisponível").font(.headline)
+                                Text(String(localized: "driver.balance_unavailable")).font(.headline)
                             }
-                            if let distance = s.distanceKm {
-                                Text("\(distance) km rodados")
+                            if let metres = s.distanceMetres {
+                                if s.distanceBasis == .gpsEstimate {
+                                    Text(DriverGpsEstimateText.label(metres: metres, incomplete: s.isGpsEstimateIncomplete))
+                                } else {
+                                    let distance = LedgerFormat.kilometres(metres)
+                                    Text(String(localized: "driver.odometer_distance_value", defaultValue: "Odometer · \(distance)"))
+                                }
                             }
                             if let ended = formattedDate(s.endedAtLabel) {
-                                Text("Encerrado em \(ended)")
+                                Text(String(localized: "driver.ended", defaultValue: "Ended \(ended)"))
                             }
-                            Text("Bruto \(AbastevoTheme.formatCentavos(s.grossEarningsCentavos)) · Combustível \(AbastevoTheme.formatCentavos(s.fuelCostCentavos))")
+                            Text(String(localized: "driver.gross_and_fuel", defaultValue: "Gross \(AbastevoTheme.formatCentavos(s.grossEarningsCentavos)) · Fuel \(AbastevoTheme.formatCentavos(s.fuelCostCentavos))"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
+                Section {
+                    NavigationLink {
+                        DriverAccountingView(viewModel: viewModel)
+                    } label: {
+                        Label(String(localized: "driver.sync.title"), systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    NavigationLink {
+                        DriverServerReportsView(viewModel: viewModel)
+                    } label: {
+                        Label(String(localized: "driver.server.title"), systemImage: "chart.bar.doc.horizontal")
+                    }
+                }
             }
-            .navigationTitle("Central do Motorista")
+            .task(id: activeShift?.id) {
+                distanceBasis = .odometer
+                viewModel.loadDriverGps(shiftId: activeShift?.id)
+            }
+            .onChange(of: viewModel.driverGPS.stoppedMetres) { _, distance in
+                if distance == nil { distanceBasis = .odometer }
+            }
+            .navigationTitle(String(localized: "android.driver_hub_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -399,7 +413,7 @@ public struct DriverHubSheetView: View {
     private func startShift() {
         guard let vehicleId = driverVehicleId,
               let startKm = Int64(startKmText.trimmingCharacters(in: .whitespacesAndNewlines)) else {
-            shiftError = "Informe o hodômetro inicial em quilômetros."
+            shiftError = String(localized: "driver.invalid_start")
             return
         }
         switch viewModel.startDriverShift(vehicleId: vehicleId, startOdometerKm: startKm) {
@@ -411,15 +425,24 @@ public struct DriverHubSheetView: View {
         }
     }
 
+    private func availableGpsDistance(for shift: DriverShiftRecord) -> Int64? {
+        let gps = viewModel.driverGPS
+        return gps.shiftId == shift.id ? gps.stoppedMetres : nil
+    }
+
     private func finishShift(_ active: DriverShiftRecord) {
-        guard let endKm = Int64(endKmText.trimmingCharacters(in: .whitespacesAndNewlines)),
+        let endKm = Int64(endKmText.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard distanceBasis != .odometer || endKm != nil,
               let minutes = Int(minutesText.trimmingCharacters(in: .whitespacesAndNewlines)),
               let gross = try? PortableMoney.parseBrlCentavos(grossReaisText),
               let fuel = try? PortableMoney.parseBrlCentavos(fuelReaisText) else {
-            shiftError = "Confira o hodômetro, a duração e os valores do turno."
+            shiftError = String(localized: "driver.invalid_end")
             return
         }
-        switch viewModel.finishActiveDriverShift(shiftId: active.id, endOdometerKm: endKm, grossCentavos: gross, fuelCentavos: fuel, minutes: minutes) {
+        switch viewModel.finishActiveDriverShift(
+            shiftId: active.id, endOdometerKm: endKm, grossCentavos: gross, fuelCentavos: fuel,
+            minutes: minutes, distanceBasis: distanceBasis
+        ) {
         case .success:
             endKmText = ""
             grossReaisText = ""
@@ -451,18 +474,18 @@ public struct ArcadeGamesSheetView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Picker("Jogo", selection: $gameKind) {
+                Picker(String(localized: "arcade.game"), selection: $gameKind) {
                     ForEach(ArcadeGameKind.allCases) { kind in
-                        Text(kind.titlePtBr).tag(kind)
+                        Text(kind.localizedTitle).tag(kind)
                     }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
 
                 HStack {
-                    Text("Pontos: \(gameState.score)").font(.headline)
+                    Text(String(localized: "arcade.score", defaultValue: "Score: \(gameState.score.formatted())")).font(.headline)
                     Spacer()
-                    Text("Combustível: \(Int(gameState.fuelPercent))%").font(.subheadline.bold())
+                    Text(String(localized: "arcade.fuel", defaultValue: "Fuel: \((gameState.fuelPercent / 100).formatted(.percent.precision(.fractionLength(0))))")).font(.subheadline.bold())
                         .foregroundStyle(gameState.fuelPercent < 25 ? .red : AbastevoTheme.accentLight)
                 }
                 .padding(.horizontal, 20)
@@ -474,11 +497,11 @@ public struct ArcadeGamesSheetView: View {
 
                     VStack {
                         HStack {
-                            Text(gameKind == .fuelRun ? "Pista 1" : "Alto").font(.caption2)
+                            Text(gameKind == .fuelRun ? String(localized: "arcade.lane", defaultValue: "Lane \(1.formatted())") : String(localized: "arcade.high")).font(.caption2)
                             Spacer()
-                            Text(gameKind == .fuelRun ? "Pista 2" : "Médio").font(.caption2)
+                            Text(gameKind == .fuelRun ? String(localized: "arcade.lane", defaultValue: "Lane \(2.formatted())") : String(localized: "arcade.middle")).font(.caption2)
                             Spacer()
-                            Text(gameKind == .fuelRun ? "Pista 3" : "Baixo").font(.caption2)
+                            Text(gameKind == .fuelRun ? String(localized: "arcade.lane", defaultValue: "Lane \(3.formatted())") : String(localized: "arcade.low")).font(.caption2)
                         }
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 24)
@@ -514,19 +537,19 @@ public struct ArcadeGamesSheetView: View {
                 .padding(.horizontal, 16)
 
                 if gameState.isGameOver {
-                    Text("Fim de jogo! Pontuação final: \(gameState.score)")
+                    Text(String(localized: "arcade.game_over", defaultValue: "Game over! Final score: \(gameState.score.formatted())"))
                         .font(.headline)
                         .foregroundStyle(.orange)
                 }
 
                 HStack(spacing: 16) {
-                    Button("◀ Esquerda") {
+                    Button(String(localized: "arcade.left")) {
                         gameState.lane = max(0, gameState.lane - 1)
                         gameState.altitude = min(0.9, gameState.altitude + 0.18)
                     }
                     .buttonStyle(.bordered)
 
-                    Button(isPlaying && !gameState.isGameOver ? "Pausar" : "Jogar / Reiniciar") {
+                    Button(isPlaying && !gameState.isGameOver ? String(localized: "arcade.pause") : String(localized: "arcade.play_restart")) {
                         if gameState.isGameOver {
                             gameState = ArcadeState()
                         }
@@ -535,7 +558,7 @@ public struct ArcadeGamesSheetView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.accentLight)
 
-                    Button("Direita ▶") {
+                    Button(String(localized: "arcade.right")) {
                         gameState.lane = min(2, gameState.lane + 1)
                         gameState.altitude = max(0.1, gameState.altitude - 0.15)
                     }
@@ -545,7 +568,7 @@ public struct ArcadeGamesSheetView: View {
                 Spacer()
             }
             .padding(.top, 12)
-            .navigationTitle("Minijogos Abastevo")
+            .navigationTitle(String(localized: "arcade.title"))
             .onReceive(timer) { _ in
                 guard isPlaying && !gameState.isGameOver else { return }
                 tick += 1
@@ -562,33 +585,7 @@ public struct ArcadeGamesSheetView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-public struct TrainingConsentSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    public var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Text("A coleta para treinamento está desativada. O gerenciamento dessa preferência ainda está indisponível no iOS.")
-                }
-                if TrainingTermsContract.verifiedDigestMatches() {
-                    Section("Termo de consentimento") {
-                        Text(TrainingTermsContract.fullTextPtBr)
-                            .font(.footnote)
-                    }
-                }
-            }
-            .navigationTitle("Treinamento de OCR")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -599,44 +596,52 @@ public struct SettingsSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
 
+    /// Reads the shipped version from Info.plist so the label never drifts from the build.
+    private func bundleValue(_ key: String) -> String {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "—"
+    }
+
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Rede e Servidor") {
-                    Picker("Ambiente API", selection: Binding(
+                Section(String(localized: "settings.network_server")) {
+                    Picker(String(localized: "settings.api_environment"), selection: Binding(
                         get: { viewModel.snapshot.apiEnvironment },
                         set: { viewModel.setApiEnvironment($0) }
                     )) {
                         ForEach(ApiEnvironment.allCases, id: \.self) { env in
-                            Text(env.labelPtBr).tag(env)
+                            Text(env.localizedLabel).tag(env)
                         }
                     }
                     .disabled(!viewModel.canSwitchApiEnvironment)
                     if !viewModel.canSwitchApiEnvironment {
-                        Text("Encerre a sessão para trocar de servidor.")
+                        Text(String(localized: "settings.sign_out_to_switch"))
                             .font(.caption)
                     }
-                    Toggle("Simular modo offline", isOn: $viewModel.isOfflineSimulation)
+                    if let error = viewModel.apiEnvironmentError {
+                        Text(error).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Toggle(String(localized: "settings.offline_simulation"), isOn: $viewModel.isOfflineSimulation)
                 }
 
-                Section("Armazenamento Offline & Privacidade") {
-                    Text("Uso aproximado em disco: \(viewModel.estimatedStorageKb()) KB (fora do backup iCloud)")
+                Section(String(localized: "settings.offline_storage")) {
+                    Text(String(localized: "settings.disk_use", defaultValue: "Approximate disk usage: \((viewModel.estimatedStorageKb() * 1_024).formatted(.byteCount(style: .file))) (excluded from iCloud backups)"))
                         .font(.caption)
-                    Button("Limpar cache local, incluindo fotos temporárias", role: .destructive) {
+                    Button(String(localized: "settings.clear_cache_and_photos"), role: .destructive) {
                         viewModel.clearOfflineCache()
                     }
                 }
 
-                Section("Versão iOS") {
-                    Text("abastevo iOS · Versão 3.1.18 (build 30118)")
+                Section(String(localized: "settings.ios_version")) {
+                    Text(String(localized: "settings.build_version", defaultValue: "Abastevo iOS · Version \(bundleValue("CFBundleShortVersionString")) (build \(bundleValue("CFBundleVersion")))"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Configurações")
+            .navigationTitle(String(localized: "android.settings_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }
@@ -649,20 +654,20 @@ public struct HelpSheetView: View {
     public var body: some View {
         NavigationStack {
             List {
-                Section("Como o abastevo funciona") {
-                    Text("1. Explore preços oficiais da ANP e compare com relatos com foto da comunidade.")
-                    Text("2. Contribua fotografando a placa do posto: o OCR roda localmente no iPhone.")
-                    Text("3. Nunca há ranking pago ou venda de confiança.")
+                Section(String(localized: "help.about")) {
+                    Text(String(localized: "help.compare_prices"))
+                    Text(String(localized: "help.device_ocr"))
+                    Text(String(localized: "help.no_paid_ranking"))
                 }
-                Section("Contato & Código Aberto") {
-                    Text("Operador: ZAFLAS INOVA SIMPLES (I.S.) — CNPJ 67.852.667/0001-93")
+                Section(String(localized: "help.contact_source")) {
+                    Text(String(localized: "help.operator"))
                         .font(.caption)
                 }
             }
-            .navigationTitle("Ajuda & Regras")
+            .navigationTitle(String(localized: "android.profile_tool_help_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }

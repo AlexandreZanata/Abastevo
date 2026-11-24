@@ -31,6 +31,12 @@ These additions document intended presentation. Existing feedback/media/consensu
 - **BUC-C04:** user follows a favorite station and opts into useful price/activity alerts; revoke permission/unfollow/delete account stops owned subscriptions. New alerts never expose private contribution data or guarantee unavailable prices.
 - **BUC-C05:** moderator reviews reports with bounded access, resolves/removes/appeals according to recorded policy and leaves auditable non-PII outcomes. Reports do not automatically delete competitors' content.
 
+## Native iOS community journeys
+
+The Community feed pages within the selected city and fuel and shows the publication state and recency returned by the server. Confirmation and dispute use the canonical observation reference, its decision sequence and device proof. The helpfulness sheet allows a helpful or unhelpful vote and removal, with a public tally and a private selection. Station ratings use one to five stars. An empty rating set has no mean.
+
+Signed-in owners can edit and remove their verified station comments. Edits use the current revision and one level of replies is available. Station comment creation has no server operation id. A comment or reply whose creation may have reached the server is never resent automatically: it waits until the user reloads the comments and explicitly sends it again. The forum opens its own paged feed, threads and reactions. Location remains optional for browsing and price contributions select a station explicitly. [Community safety](safety.md) covers reporting and blocking.
+
 ## Screens and states
 
 Station detail prioritizes current community fuel cards, time/condition, route and update action. Discussions/ratings and a collapsed dated ANP reference follow. The contribution flow is capture → review/edit → submit → status; registration/permission interruptions restore the draft without duplication or exceeding retention.

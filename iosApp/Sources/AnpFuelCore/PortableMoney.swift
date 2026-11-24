@@ -23,6 +23,12 @@ public enum PortableMoney {
     public static let maxBatteryCapacityWh: Int64 = 1_000_000_000
     public static let maxRecordCentavos: Int64 = 1_000_000_000_000
 
+    /// Converts the keyboard's decimal separator to the comma used by the exact parser.
+    public static func canonicalUserInput(_ text: String, locale: Locale = .current) -> String {
+        guard let separator = locale.decimalSeparator, separator != "," else { return text }
+        return text.replacingOccurrences(of: separator, with: ",")
+    }
+
     /// Parses ANP price text into integer milli-BRL. Throws with a stable
     /// quarantine-style code (`missing-price`, `negative-price`,
     /// `zero-price`, `over-precision`, `invalid-price`, `over-range`).

@@ -49,6 +49,11 @@ final class FakeCommunityGateway: CommunityWriteGateway, @unchecked Sendable {
         record("forum-comment", item)
         return try receipt.get()
     }
+
+    func submitStationSuggestion(_ item: CommunityOutboxItem) async throws -> CommunityWriteReceipt {
+        record("station-suggestion", item)
+        return try receipt.get()
+    }
 }
 
 final class CommunityOutboxTests: XCTestCase {
@@ -246,6 +251,96 @@ final class CommunityOutboxTests: XCTestCase {
         let comment = CommunityOutboxItem(id: "c", kind: .stationComment, ownerScope: scope, origin: origin, createdAtMillis: 0, text: CommunityTextDraft(text: "ok"))
         let waiting = await CommunityOutboxDispatcher.run(comment, context: context(hasAccount: true), gateway: expiredSession, clock: { 0 })
         XCTAssertEqual(waiting.status, .draft)
+    }
+
+    private func stationComment() -> CommunityOutboxItem {
+        CommunityOutboxItem(
+            id: "c0000000-0000-4000-8000-0000000000c1", kind: .stationComment, ownerScope: scope, origin: origin,
+            createdAtMillis: 0,
+            text: CommunityTextDraft(text: "ok", stationId: "d6c74c23-63db-4c24-a2e5-408cb23bad26", product: .ethanol)
+        )
+    }
+
+    func testStationCommentWithUnknownOutcomeWaitsForReloadAndExplicitResend() async {
+        let ambiguous: [Error] = [
+            SignedDeliveryUncertain(),
+            SignedTransportError.invalidResponse,
+            SignedTransportError.oversizedResponse,
+            CommunityWriteError.invalidReceipt,
+            SignedTransportError.refused(status: 500, code: nil, retryAfterSeconds: nil),
+            SignedTransportError.refused(status: 503, code: "feedback.unavailable", retryAfterSeconds: 30),
+        ]
+        for error in ambiguous {
+            let gateway = FakeCommunityGateway()
+            gateway.receipt = .failure(error)
+            let comment = stationComment()
+            let parked = await CommunityOutboxDispatcher.run(comment, context: context(hasAccount: true), gateway: gateway, clock: { 5_000 })
+            XCTAssertEqual(parked.status, .unconfirmed, "\(error)")
+            XCTAssertEqual(parked.lastCode, CommunityOutbox.outcomeUnknownCode)
+            XCTAssertEqual(parked.id, comment.id)
+            XCTAssertEqual(parked.text, comment.text)
+            XCTAssertFalse(parked.status.isTerminal)
+            XCTAssertNil(CommunityOutbox.nextEligible([parked], nowMillis: Int64.max))
+            XCTAssertNil(CommunityOutbox.nextWakeMillis([parked], nowMillis: 0))
+            XCTAssertEqual(CommunityOutbox.resumeAfterSignIn([parked], ownerScope: scope, origin: origin), [parked])
+            XCTAssertEqual(CommunityOutbox.prune([parked]), [parked])
+
+            let untouched = await CommunityOutboxDispatcher.run(parked, context: context(hasAccount: true), gateway: gateway, clock: { 6_000 })
+            XCTAssertEqual(untouched, parked)
+            XCTAssertEqual(gateway.callLog, ["station-comment"])
+
+            let resent = CommunityOutbox.retryNow([parked], id: parked.id)
+            XCTAssertEqual(resent.first?.status, .pending)
+            XCTAssertEqual(resent.first?.nextEligibleMillis, 0)
+            XCTAssertNil(resent.first?.lastCode)
+            XCTAssertEqual(CommunityOutbox.nextEligible(resent, nowMillis: 0)?.id, comment.id)
+        }
+    }
+
+    func testStationCommentFailuresThatProveNothingWasAppliedKeepTheirHandling() async {
+        let cases: [(Error, CommunityItemStatus)] = [
+            (SignedTransportError.offline, .pending),
+            (SignedTransportError.refused(status: 401, code: "feedback.auth-required", retryAfterSeconds: nil), .pending),
+            (SignedTransportError.refused(status: 408, code: nil, retryAfterSeconds: nil), .pending),
+            (SignedTransportError.refused(status: 429, code: "feedback.quota-exceeded", retryAfterSeconds: 60), .pending),
+            (SignedTransportError.refused(status: 400, code: "feedback.text-invalid", retryAfterSeconds: nil), .refused),
+            (CommunityWriteError.signInRequired, .draft),
+        ]
+        for (error, status) in cases {
+            let gateway = FakeCommunityGateway()
+            gateway.receipt = .failure(error)
+            let result = await CommunityOutboxDispatcher.run(stationComment(), context: context(hasAccount: true), gateway: gateway, clock: { 5_000 })
+            XCTAssertEqual(result.status, status, "\(error)")
+            XCTAssertNotEqual(result.lastCode, CommunityOutbox.outcomeUnknownCode)
+        }
+    }
+
+    func testOtherKindsKeepAutomaticRetryAfterAmbiguousFailures() async {
+        let failure = SignedTransportError.refused(status: 503, code: nil, retryAfterSeconds: nil)
+        let priceGateway = FakeCommunityGateway()
+        priceGateway.receipt = .failure(failure)
+        let price = await CommunityOutboxDispatcher.run(priceItem(), context: context(), gateway: priceGateway, clock: { 5_000 })
+        XCTAssertEqual(price.status, .pending)
+        XCTAssertGreaterThan(price.nextEligibleMillis, 5_000)
+
+        let forumGateway = FakeCommunityGateway()
+        forumGateway.receipt = .failure(CommunityWriteError.invalidReceipt)
+        let forum = CommunityOutboxItem(
+            id: "c0000000-0000-4000-8000-0000000000f1", kind: .forumComment, ownerScope: scope, origin: origin,
+            createdAtMillis: 0, text: CommunityTextDraft(text: "ok", postId: "d6c74c23-63db-4c24-a2e5-408cb23bad26")
+        )
+        let retried = await CommunityOutboxDispatcher.run(forum, context: context(hasAccount: true), gateway: forumGateway, clock: { 5_000 })
+        XCTAssertEqual(retried.status, .pending)
+        XCTAssertEqual(retried.lastCode, "community.invalid-receipt")
+    }
+
+    func testOnlyUnsentConnectionFailuresProveTheRequestStayedLocal() {
+        for code in [URLError.Code.notConnectedToInternet, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed, .secureConnectionFailed] {
+            XCTAssertTrue(SignedRequestProfile.provesRequestNotSent(URLError(code)), "\(code)")
+        }
+        for code in [URLError.Code.timedOut, .networkConnectionLost, .badServerResponse, .cannotParseResponse, .cancelled, .unknown] {
+            XCTAssertFalse(SignedRequestProfile.provesRequestNotSent(URLError(code)), "\(code)")
+        }
     }
 
     func testStoreRoundTripsAndPurges() throws {

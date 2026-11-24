@@ -1,3 +1,5 @@
+import Foundation
+
 /// Portable feedback presentation (P17-T03, B-BR-F03/F06).
 ///
 /// Swift port of the Kotlin `FeedbackDisplay` (itself rendering the frozen
@@ -35,15 +37,19 @@ public enum FeedbackDisplay {
     }
 
     /// One-line agreement with valid/invalid/total counts.
-    public static func agreementLine(valid: Int64, invalid: Int64) -> String {
-        let total = valid + invalid
-        if total <= 0 { return "No votes" }
+    public static func agreementLine(valid: Int64, invalid: Int64, locale: Locale = .current) -> String {
         guard let basisPoints = PortableFeedback.agreementBasisPoints(valid: valid, invalid: invalid) else {
-            return "No votes"
+            return String(localized: "feedback.agreement.noVotes", bundle: CoreLocalization.bundle)
         }
-        let whole = basisPoints / 100
-        let tenth = (basisPoints % 100) / 10
-        return "\(whole).\(tenth)% · \(valid) valid / \(invalid) invalid"
+        let rate = (Decimal(basisPoints / 10) / 1_000)
+            .formatted(.percent.precision(.fractionLength(1)).locale(locale))
+        let validCount = valid.formatted(.number.locale(locale))
+        let invalidCount = invalid.formatted(.number.locale(locale))
+        return String(
+            localized: "feedback.agreement.summary",
+            defaultValue: "\(rate) · \(validCount) valid / \(invalidCount) invalid",
+            bundle: CoreLocalization.bundle
+        )
     }
 
     public static func rejectKindLabel(_ kind: FeedbackRejectKind) -> String {

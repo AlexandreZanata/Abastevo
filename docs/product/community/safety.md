@@ -132,3 +132,7 @@ envelope with codes `safety.bad-request` (400), `safety.self-target` (400),
 
 Reporting a forum topic itself uses the existing
 `POST /v1/forum/posts/{post_id}/report`.
+
+## Native iOS safety controls
+
+The forum and station-comment views use signed account actions for reports, blocks and the hidden-content check. A user action supplies a public content reference. The server resolves that reference and returns only the hidden subset needed by the current account. The iOS view allows up to five seconds for this check, presents the public content if the service is unavailable, and checks again after a block change or on the next load. Logout, account deletion and API-origin changes clear the private view state.

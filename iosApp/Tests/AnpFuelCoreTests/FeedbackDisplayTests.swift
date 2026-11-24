@@ -11,14 +11,16 @@ import XCTest
 /// `swift test` / `xcodebuild test` on macOS (Xcode 26.4); see iosApp/README.md.
 final class FeedbackDisplayTests: XCTestCase {
     func testAgreementTruncatesToOneDecimalWithCounts() {
-        let line = FeedbackDisplay.agreementLine(valid: 2, invalid: 1)
+        let line = FeedbackDisplay.agreementLine(valid: 2, invalid: 1, locale: Locale(identifier: "en_US"))
         XCTAssertTrue(line.contains("66.6%"))
         XCTAssertTrue(line.contains("2"))
         XCTAssertTrue(line.contains("1"))
     }
 
     func testZeroVotesRendersNoVotes() {
-        XCTAssertEqual(FeedbackDisplay.agreementLine(valid: 0, invalid: 0), "No votes")
+        let expected = String(localized: "feedback.agreement.noVotes", bundle: CoreLocalization.bundle)
+        XCTAssertNotEqual(expected, "feedback.agreement.noVotes")
+        XCTAssertEqual(FeedbackDisplay.agreementLine(valid: 0, invalid: 0), expected)
     }
 
     func testCharsRemainingFollows280Rule() {

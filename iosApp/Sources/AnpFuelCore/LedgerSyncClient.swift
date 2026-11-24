@@ -290,3 +290,70 @@ public final class LedgerSyncClient: LedgerSyncGateway, @unchecked Sendable {
         guard LedgerSyncWire.decodeErase(response.body) else { throw LedgerSyncError.invalidReceipt }
     }
 }
+
+// The report paths share the ledger client, exact owner/family scope, and the existing transport.
+extension LedgerSyncClient {
+    public func buildMonthlyReport(
+        _ period: LedgerReportPeriod, accountId: String, scope: AccountDataExportScope, operationId: String
+    ) async throws -> LedgerServerReport {
+        let data = try await analysis(.build, accountId: accountId, scope: scope, operationId: operationId) {
+            LedgerAnalysisWire.periodBody(session: $0, period: period)
+        }
+        return try LedgerAnalysisWire.report(data, period: period)
+    }
+
+    public func monthlyReport(
+        _ period: LedgerReportPeriod, accountId: String, scope: AccountDataExportScope
+    ) async throws -> LedgerServerReport {
+        let data = try await analysis(.get, accountId: accountId, scope: scope) {
+            LedgerAnalysisWire.periodBody(session: $0, period: period)
+        }
+        return try LedgerAnalysisWire.report(data, period: period)
+    }
+
+    public func monthlyReportCsv(
+        _ period: LedgerReportPeriod, accountId: String, scope: AccountDataExportScope, operationId: String
+    ) async throws -> Data {
+        let data = try await analysis(.csv, accountId: accountId, scope: scope, operationId: operationId) {
+            LedgerAnalysisWire.periodBody(session: $0, period: period)
+        }
+        return try LedgerAnalysisWire.csv(data, period: period)
+    }
+
+    public func compare(
+        baseline: LedgerComparisonSide, current: LedgerComparisonSide, accountId: String, scope: AccountDataExportScope
+    ) async throws -> LedgerServerComparison {
+        let data = try await analysis(.compare, accountId: accountId, scope: scope) {
+            LedgerAnalysisWire.comparisonBody(session: $0, baseline: baseline, current: current)
+        }
+        return try LedgerAnalysisWire.comparison(data)
+    }
+
+    private func analysis(
+        _ route: LedgerAnalysisWire.Route, accountId: String, scope: AccountDataExportScope, operationId: String? = nil,
+        buildBody: (PortableAuth.Session) -> Data?
+    ) async throws -> Data {
+        guard origin == scope.origin, scope.ownerScope.hasPrefix("account:\(accountId):") else {
+            throw LedgerSyncError.ownerMismatch
+        }
+        if let operationId, !CommunityWire.isUuid(operationId) { throw LedgerSyncError.invalidCommand }
+        try transport.requireOwnerScope(scope.ownerScope)
+        let live = try await session(for: accountId)
+        guard live.familyId == scope.sessionFamilyId else { throw LedgerSyncError.ownerMismatch }
+        guard let body = buildBody(live) else { throw LedgerSyncError.invalidCommand }
+        let response: SignedHttpResponse
+        if route.requiresDeviceProof {
+            response = try await transport.signedRequest(
+                method: "POST", path: route.rawValue, body: body, idempotencyKey: operationId,
+                expectedOwnerScope: scope.ownerScope, expectedSessionFamilyId: scope.sessionFamilyId
+            )
+        } else {
+            response = try await transport.plainPost(
+                path: route.rawValue, body: body, expectedOwnerScope: scope.ownerScope,
+                expectedSessionFamilyId: scope.sessionFamilyId
+            )
+        }
+        guard response.status == 200 else { throw LedgerSyncError.invalidReceipt }
+        return response.body
+    }
+}

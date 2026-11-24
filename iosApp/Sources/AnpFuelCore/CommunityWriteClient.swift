@@ -510,6 +510,57 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         self.nowMillis = nowMillis
     }
 
+    /// The current session after a refresh attempt. Nil means no account is stored or the refresh failed.
+    func refreshedSession() async -> PortableAuth.Session? {
+        await sessions.liveSession()
+    }
+
+    func ownerSession(
+        expectedScope: String, expectedFamilyId: String? = nil
+    ) async throws -> PortableAuth.Session {
+        guard expectedScope.hasPrefix("account:") else { throw CommunityWriteError.signInRequired }
+        try transport.requireOwnerScope(expectedScope)
+        guard let session = await sessions.liveSession(),
+              expectedScope.hasPrefix("account:\(session.accountId):"),
+              expectedFamilyId == nil || session.familyId == expectedFamilyId else {
+            throw CommunityWriteError.signInRequired
+        }
+        try transport.requireOwnerScope(expectedScope)
+        return session
+    }
+
+    func signedOwnerGet(
+        path: String, expectedScope: String, query: String = "", expectedFamilyId: String? = nil
+    ) async throws -> SignedHttpResponse {
+        let session = try await ownerSession(expectedScope: expectedScope, expectedFamilyId: expectedFamilyId)
+        return try await transport.signedRequest(
+            method: "GET", path: path, query: query, body: nil, expectedOwnerScope: expectedScope,
+            expectedSessionFamilyId: session.familyId
+        )
+    }
+
+    func ownerPost(
+        path: String,
+        expectedScope: String,
+        requiresDeviceProof: Bool,
+        idempotencyKey: String? = nil,
+        requiresSameSessionFamily: Bool = false,
+        buildBody: (PortableAuth.Session) -> Data?
+    ) async throws -> SignedHttpResponse {
+        let session = try await ownerSession(expectedScope: expectedScope)
+        guard let body = buildBody(session) else { throw CommunityWriteError.invalid("community.invalid-request") }
+        if requiresDeviceProof {
+            return try await transport.signedRequest(
+                method: "POST", path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope,
+                expectedSessionFamilyId: requiresSameSessionFamily ? session.familyId : nil
+            )
+        }
+        return try await transport.plainPost(
+            path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope,
+            expectedSessionFamilyId: requiresSameSessionFamily ? session.familyId : nil
+        )
+    }
+
     // MARK: Price observations and evidence
 
     public func authorizePhotoCapture(stationId: String, clientCaptureId: String) async throws -> PhotoCaptureGrant {
@@ -680,7 +731,10 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         ) else {
             throw CommunityWriteError.invalid("feedback.text-invalid")
         }
-        let response = try await transport.plainPost(path: CommunityWire.stationCommentsPath, body: body)
+        // The feedback create carries no operation id, so a connection lost after sending must not look offline.
+        let response = try await transport.plainPost(
+            path: CommunityWire.stationCommentsPath, body: body, reportsUncertainDelivery: true
+        )
         guard let receipt = CommunityWire.decodeStationCommentReceipt(response.body) else {
             throw CommunityWriteError.invalidReceipt
         }

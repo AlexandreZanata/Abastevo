@@ -39,10 +39,29 @@ public struct AbastevoRootView: View {
         .sheet(item: $viewModel.activeSheet) { sheet in
             sheetDestination(sheet)
         }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { viewModel.anpSurvey.automaticSyncIfDue() }
+        .sheet(item: $viewModel.navigationDestination) { destination in
+            ActiveNavigationSheetView(viewModel: viewModel, destination: destination)
         }
-        .task { viewModel.anpSurvey.automaticSyncIfDue() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                viewModel.driverGPS.verifyOwner()
+                viewModel.navigation.foregrounded()
+                viewModel.driverAccounting.foregrounded()
+                viewModel.configureTrainingConsent()
+                viewModel.trainingConsent.foregrounded()
+                viewModel.anpSurvey.automaticSyncIfDue()
+            } else {
+                viewModel.trainingConsent.backgrounded()
+                viewModel.driverAccounting.backgrounded()
+            }
+        }
+        .task {
+            if scenePhase == .active {
+                viewModel.trainingConsent.foregrounded()
+                viewModel.driverAccounting.foregrounded()
+            }
+            viewModel.anpSurvey.automaticSyncIfDue()
+        }
     }
 
     private var mainFourTabShell: some View {
@@ -74,7 +93,6 @@ public struct AbastevoRootView: View {
 
             AbastevoBottomTabBar(
                 selectedTab: viewModel.selectedTab,
-                locale: viewModel.currentLocale,
                 onSelectTab: { viewModel.selectTab($0) }
             )
         }
@@ -92,7 +110,9 @@ public struct AbastevoRootView: View {
         case .evExplore:
             EvChargingExploreSheetView(viewModel: viewModel)
         case .qualityReports:
-            QualityReportsSheetView()
+            OfficialOccurrenceExplorerView(viewModel: viewModel)
+        case .qualityReportHistory:
+            QualityReportHistoryView(viewModel: viewModel)
         case .suggestStation:
             SuggestStationSheetView(viewModel: viewModel)
         case .masterFaq:
@@ -119,6 +139,8 @@ public struct AbastevoRootView: View {
             PremiumStoreSheetView(model: viewModel.premiumStore)
         case .vehiclesLedger:
             VehiclesAndLedgerSheetView(viewModel: viewModel)
+        case .advancedAlerts:
+            AdvancedAlertsView(viewModel: viewModel)
         case .driverHub:
             DriverHubSheetView(viewModel: viewModel)
         case .enterpriseHub:
@@ -126,7 +148,7 @@ public struct AbastevoRootView: View {
         case .arcadeGames:
             ArcadeGamesSheetView(viewModel: viewModel)
         case .trainingConsent:
-            TrainingConsentSheetView()
+            TrainingConsentSheetView(model: viewModel.trainingConsent, onSignIn: { viewModel.activeSheet = .auth })
         case .settings:
             SettingsSheetView(viewModel: viewModel)
         case .help:
@@ -149,11 +171,8 @@ struct TankFillViewModel {
     }
 
     var totalText: String {
-        guard let result = result,
-              let text = try? PortableMoney.format(result.totalMilli) else {
-            return "—"
-        }
-        return "R$ \(text)"
+        guard let result else { return "—" }
+        return AbastevoTheme.formatBrlMilli(result.totalMilli)
     }
 }
 
@@ -162,12 +181,12 @@ struct TankFillView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Cheapest tank fill").font(.headline)
+            Text(String(localized: "tankFill.cheapest")).font(.headline)
             if let result = viewModel.result {
                 Text(result.station)
                 Text(viewModel.totalText).font(.title)
             } else {
-                Text("No prices").foregroundStyle(.secondary)
+                Text(String(localized: "tankFill.noPrices")).foregroundStyle(.secondary)
             }
         }
         .padding()

@@ -79,7 +79,7 @@ public struct EnterpriseInvitationAcknowledgement: Equatable, Sendable {
 }
 
 /// One ordered checklist question; its identity is its 1-based position.
-public struct EnterpriseChecklistItem: Equatable, Sendable, Identifiable {
+public struct EnterpriseChecklistItem: Codable, Equatable, Sendable, Identifiable {
     public let position: Int
     public let label: String
     public let critical: Bool
@@ -90,7 +90,7 @@ public struct EnterpriseChecklistItem: Equatable, Sendable, Identifiable {
 }
 
 /// The EMP-CHECK-001 applicable read for one asset and moment.
-public struct EnterpriseChecklistApplicable: Equatable, Sendable {
+public struct EnterpriseChecklistApplicable: Codable, Equatable, Sendable {
     public let assetId: String
     public let context: String
     public let required: Bool
@@ -100,6 +100,8 @@ public struct EnterpriseChecklistApplicable: Equatable, Sendable {
     public let items: [EnterpriseChecklistItem]
     public let policyRevision: Int64?
     public let policyMode: String?
+    public let evaluatedAtMillis: Int64
+    public let validitySeconds: Int64?
 }
 
 /// Pure wire rules of the company account cookie plane (Android `CompanyAccessClient`,
@@ -325,37 +327,100 @@ public enum EnterpriseCompanyWire {
 
     /// `checklists/assets/{asset}/applicable`: bound to the asked asset and moment.
     public static func checklistApplicable(_ json: [String: Any], assetId: String, context: String) -> EnterpriseChecklistApplicable? {
-        guard json["asset_id"] as? String == assetId, json["context"] as? String == context,
+        let keys: Set<String> = ["asset_id", "context", "required", "match", "evaluated_at", "data_mode"]
+        guard EnterpriseValues.isId(assetId), ["DEPARTURE", "RETURN", "AD_HOC"].contains(context),
+              json["asset_id"] as? String == assetId, json["context"] as? String == context,
               json["data_mode"] as? String == "SYNTHETIC", let required = bool(json["required"]),
+              let evaluated = canonicalChecklistTime(json["evaluated_at"]),
+              let ticks = EnterpriseValues.parseInstantMillis(evaluated),
               let match = json["match"] as? String, ["ASSET", "CATEGORY", "ORGANIZATION", "NONE"].contains(match),
-              required == (match != "NONE") else {
+              required == (match != "NONE"), Set(json.keys) == (required ? keys.union(["template", "policy"]) : keys) else {
             return nil
         }
         guard required else {
             return EnterpriseChecklistApplicable(assetId: assetId, context: context, required: false, templateId: nil, name: nil,
-                                                 version: nil, items: [], policyRevision: nil, policyMode: nil)
+                                                 version: nil, items: [], policyRevision: nil, policyMode: nil,
+                                                 evaluatedAtMillis: ticks, validitySeconds: nil)
         }
         guard let template = json["template"] as? [String: Any], let policy = json["policy"] as? [String: Any],
+              Set(template.keys) == ["template_id", "name", "version", "published_at", "items"],
+              Set(policy.keys) == ["revision", "mode", "validity_seconds", "effective_at"],
               let templateId = template["template_id"] as? String, EnterpriseValues.isId(templateId),
-              let name = template["name"] as? String, let version = integer(template["version"]), version >= 1,
-              let rawItems = template["items"] as? [Any], rawItems.count >= 1, rawItems.count <= 40,
-              let revision = integer(policy["revision"]), revision >= 1,
+              let name = template["name"] as? String, EnterpriseValues.isValidText(name, maxScalars: 80),
+              let version = checklistCounter(template["version"]), canonicalChecklistTime(template["published_at"]) != nil,
+              let rawItems = template["items"] as? [Any], (1...40).contains(rawItems.count),
+              let revision = checklistCounter(policy["revision"]), canonicalChecklistTime(policy["effective_at"]) != nil,
+              let validity = integer(policy["validity_seconds"]), (3_600...259_200).contains(validity),
               let mode = policy["mode"] as? String, mode == "BLOCK" || mode == "WARN" else {
             return nil
         }
         var items: [EnterpriseChecklistItem] = []
         for (index, raw) in rawItems.enumerated() {
-            guard let item = raw as? [String: Any], integer(item["position"]) == Int64(index + 1),
+            guard let item = raw as? [String: Any], Set(item.keys) == ["position", "label", "critical", "optional", "photo_on_not_ok"],
+                  integer(item["position"]) == Int64(index + 1),
                   let label = item["label"] as? String, EnterpriseValues.isValidText(label, maxScalars: 120),
                   let critical = bool(item["critical"]), let optional = bool(item["optional"]),
-                  let photo = bool(item["photo_on_not_ok"]), !(critical && optional) else {
-                return nil
-            }
+                  let photo = bool(item["photo_on_not_ok"]), !(critical && optional) else { return nil }
             items.append(EnterpriseChecklistItem(position: index + 1, label: label, critical: critical, optional: optional, photoOnNotOk: photo))
         }
         return EnterpriseChecklistApplicable(assetId: assetId, context: context, required: true, templateId: templateId, name: name,
-                                             version: version, items: items, policyRevision: revision, policyMode: mode)
+                                             version: version, items: items, policyRevision: revision, policyMode: mode,
+                                             evaluatedAtMillis: ticks, validitySeconds: validity)
     }
+
+    public static func checklistRun(_ json: [String: Any], assetId: String, runId: String) -> EnterpriseChecklistRunResult? {
+        let keys: Set<String> = ["run_id", "asset_id", "template_id", "context", "template_version", "policy_revision",
+                                 "server_policy_revision", "revision", "started_at", "completed_at", "received_at",
+                                 "device_outcome", "recheck_outcome", "outcome", "outcome_differs", "review_required",
+                                 "template_superseded", "acknowledged", "issues", "critical_issues", "data_mode"]
+        guard EnterpriseValues.isId(assetId), EnterpriseValues.isId(runId),
+              Set(json.keys) == keys || Set(json.keys) == keys.union(["released_at"]),
+              json["run_id"] as? String == runId, json["asset_id"] as? String == assetId,
+              json["data_mode"] as? String == "SYNTHETIC", let context = json["context"] as? String, context == "RETURN",
+              let template = json["template_id"] as? String, EnterpriseValues.isId(template),
+              let version = checklistCounter(json["template_version"]), let policy = checklistCounter(json["policy_revision"]),
+              let currentPolicy = checklistCounter(json["server_policy_revision"]), let revision = integer(json["revision"]),
+              (1...2).contains(revision), (json["released_at"] != nil) == (revision == 2),
+              json["released_at"].map({ canonicalChecklistTime($0) != nil }) ?? true,
+              let start = canonicalChecklistTime(json["started_at"]), let end = canonicalChecklistTime(json["completed_at"]),
+              let started = EnterpriseValues.parseInstantMillis(start), let ended = EnterpriseValues.parseInstantMillis(end), ended >= started,
+              let received = canonicalChecklistTime(json["received_at"]),
+              let device = checklistOutcome(json["device_outcome"]), let recheck = checklistOutcome(json["recheck_outcome"]),
+              let outcome = checklistOutcome(json["outcome"]), let differs = bool(json["outcome_differs"]),
+              differs == (device != recheck), bool(json["review_required"]) == differs,
+              let acknowledged = bool(json["acknowledged"]), !acknowledged || device == .completedWithIssues,
+              let superseded = bool(json["template_superseded"]),
+              let issues = checklistPositions(json["issues"]), let critical = checklistPositions(json["critical_issues"]),
+              Set(critical).isSubset(of: Set(issues)) else { return nil }
+        return EnterpriseChecklistRunResult(runId: runId, assetId: assetId, templateId: template, context: context,
+                                            templateVersion: version, policyRevision: policy, serverPolicyRevision: currentPolicy,
+                                            revision: revision, receivedAt: received, deviceOutcome: device, recheckOutcome: recheck,
+                                            outcome: outcome, outcomeDiffers: differs, templateSuperseded: superseded,
+                                            issues: issues, criticalIssues: critical)
+    }
+
+    private static func canonicalChecklistTime(_ value: Any?) -> String? {
+        guard let value = value as? String, EnterpriseValues.isCanonicalInstant(value) else { return nil }
+        return value
+    }
+
+    private static func checklistCounter(_ value: Any?) -> Int64? {
+        guard let value = integer(value), (1...2_147_483_647).contains(value) else { return nil }
+        return value
+    }
+
+    private static func checklistOutcome(_ value: Any?) -> EnterpriseChecklistOutcome? {
+        (value as? String).flatMap(EnterpriseChecklistOutcome.init(rawValue:))
+    }
+
+    private static func checklistPositions(_ value: Any?) -> [Int]? {
+        guard let raw = value as? [Any], raw.count <= 40 else { return nil }
+        let positions = raw.compactMap { integer($0) }
+        guard positions.count == raw.count, positions.allSatisfy({ (1...40).contains($0) }),
+              zip(positions, positions.dropFirst()).allSatisfy({ $0.0 < $0.1 }) else { return nil }
+        return positions.map(Int.init)
+    }
+
 }
 
 /// The company account cookie plane: memory-only channel, no cookie storage, no redirects.
@@ -467,13 +532,50 @@ public actor EnterpriseCompanyClient {
         return applicable
     }
 
+    public func returnChecklistRun(organizationId: String, assetId: String, runId: String) async throws -> EnterpriseChecklistRunResult {
+        guard [organizationId, assetId, runId].allSatisfy(EnterpriseValues.isId) else { throw EnterpriseAccessError.unavailable }
+        let path = "/v1/orgs/\(organizationId)/checklists/assets/\(assetId)/runs/\(runId)/read"
+        let (json, _) = try await post(path, body: [:])
+        guard let run = EnterpriseCompanyWire.checklistRun(json, assetId: assetId, runId: runId) else {
+            throw EnterpriseAccessError.unavailable
+        }
+        return run
+    }
+
+    /// The account channel is bound to this owner. Device-signed intake remains the only response path.
+    public func missions(partition: EnterprisePartition, employeeId: String) async throws -> EnterpriseMissionPage {
+        guard partition.origin == origin, EnterpriseValues.isId(employeeId),
+              let session = await sessions.liveSession(), session.accountId == partition.accountId else {
+            throw EnterpriseAccessError.accessDenied
+        }
+        let path = "/v1/orgs/\(partition.organizationId)/missions/mine/list"
+        let (page, accountId) = try await post(
+            path, body: ["limit": EnterpriseMissionWire.pageSize], expectedSession: session
+        )
+        guard accountId == partition.accountId,
+              let current = await sessions.liveSession(), current.accountId == session.accountId,
+              current.familyId == session.familyId else { throw EnterpriseAccessError.stale }
+        do {
+            return try EnterpriseMissionWire.page(page, employeeId: employeeId)
+        } catch EnterpriseMissionError.foreignBinding {
+            throw EnterpriseAccessError.accessDenied
+        } catch {
+            throw EnterpriseAccessError.unavailable
+        }
+    }
+
     // MARK: - Channel
 
     /// Posts on the current channel, opening it first; a channel the server forgot is reopened once.
-    private func post(_ path: String, body: [String: Any]) async throws -> ([String: Any], String) {
+    private func post(
+        _ path: String, body: [String: Any], expectedSession: PortableAuth.Session? = nil
+    ) async throws -> ([String: Any], String) {
         guard let session = await sessions.liveSession() else {
             channel = nil
             throw EnterpriseAccessError.signInRequired
+        }
+        if let expectedSession, expectedSession.accountId != session.accountId || expectedSession.familyId != session.familyId {
+            throw EnterpriseAccessError.stale
         }
         var current = try await ensureChannel(session: session)
         do {

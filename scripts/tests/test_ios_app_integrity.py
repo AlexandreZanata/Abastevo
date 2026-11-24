@@ -159,7 +159,7 @@ class IosAppIntegrityTests(unittest.TestCase):
         ]:
             self.assertTrue((IOS_ROOT / rel).is_file(), rel)
 
-    def test_no_force_unwrap_in_core_and_no_background_location_in_sources(self):
+    def test_no_force_unwrap_in_core_and_background_location_is_session_scoped(self):
         force_unwrap = re.compile(r"[A-Za-z0-9_\)\]]!(?![=])")
         for swift in sorted((IOS_ROOT / "Sources/AnpFuelCore").glob("*.swift")):
             text = swift.read_text(encoding="utf-8")
@@ -169,11 +169,27 @@ class IosAppIntegrityTests(unittest.TestCase):
                     f"Forbidden force-unwrap pattern in {swift.name}:{idx}: {line}",
                 )
 
-        banned = ("startUpdatingLocation", "allowsBackgroundLocationUpdates")
+        continuous = (
+            "startUpdatingLocation", "allowsBackgroundLocationUpdates", "showsBackgroundLocationIndicator",
+            "startMonitoringSignificantLocationChanges", "CLBackgroundActivitySession",
+            "CLLocationUpdate", "liveUpdates", "CLMonitor",
+        )
+        allowed = {
+            "Sources/AnpFuelShell/ActiveNavigationLocation.swift",
+        }
         for swift in sorted((IOS_ROOT / "Sources").rglob("*.swift")):
             text = swift.read_text(encoding="utf-8")
-            for token in banned:
-                self.assertNotIn(token, text, f"Forbidden location token {token} in {swift}")
+            self.assertNotIn("requestAlwaysAuthorization", text, f"Always authorization in {swift}")
+            if swift.relative_to(IOS_ROOT).as_posix() not in allowed:
+                for token in continuous:
+                    self.assertNotIn(token, text, f"Forbidden location token {token} in {swift}")
+
+        adapter = (IOS_ROOT / "Sources/AnpFuelShell/ActiveNavigationLocation.swift").read_text(encoding="utf-8")
+        for token in (
+            "requestWhenInUseAuthorization()", "applicationState == .active", "allowsBackgroundLocationUpdates = true",
+            "showsBackgroundLocationIndicator = true", "stopUpdatingLocation()", "allowsBackgroundLocationUpdates = false",
+        ):
+            self.assertIn(token, adapter)
 
     def test_swift_files_have_balanced_braces_and_parens(self):
         for swift in sorted((IOS_ROOT / "Sources").rglob("*.swift")) + sorted((IOS_ROOT / "Tests").rglob("*.swift")):
@@ -241,7 +257,8 @@ class IosAppIntegrityTests(unittest.TestCase):
         sync = (core / "EnterpriseDeviceSync.swift").read_text(encoding="utf-8")
         # Every device-plane command and read goes through SignedRequestTransport.
         self.assertEqual(sync.count("transport.signedRequest("), 1)
-        self.assertIn('transport.signedRequest(method: "POST", path: path, body: body)', sync)
+        self.assertIn('method: "POST", path: path, body: body, expectedOwnerScope: ownerScope, expectedSessionFamilyId: sessionFamilyId', sync)
+        self.assertIn('body: body, ownerScope: ownerScope, sessionFamilyId: session.familyId', sync)
         for route in ("/sync/operations", "/sync/reference", "/sync/attachments", "devices/", '"check"', '"enroll"', '"contact"'):
             self.assertIn(route, sync)
         # The only unsigned request is the capability-bound content ingress of a saved receipt.
@@ -273,12 +290,19 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertGreaterEqual(len(enterprise_sources), 8)
         for path in enterprise_sources:
             text = path.read_text(encoding="utf-8")
-            for token in ("fuelingAuthCode", "fueling-authorizations/issue", "joinSampleEnterprise", "voucher", "sampleCompany"):
+            for token in (
+                "fuelingAuthCode", "fueling-authorizations/issue", "redemptions/confirm",
+                "voucherCode", "/vouchers/issue", "joinSampleEnterprise", "sampleCompany",
+            ):
                 self.assertNotIn(token, text, f"{token} in {path.name}")
+            self.assertNotRegex(
+                text, r"(?i)(?:mint|issue|create|generate)[_\s]*(?:fueling[_\s]*)?(?:authorization|voucher)",
+                f"Field-side authorization issuance in {path.name}",
+            )
             # Tracking stays off on iOS: no location API in company mode.
             for token in ("CLLocationManager", "requestAlwaysAuthorization", "startMonitoring", "CoreLocation"):
                 self.assertNotIn(token, text, f"{token} in {path.name}")
-        self.assertIn("Rastreamento desligado no iOS", views)
+        self.assertRegex(views, r'Text\(\s*String\(localized:\s*"enterprise\.tracking_off"')
 
         state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
         self.assertNotIn("joinSampleEnterprise", state)
@@ -293,7 +317,12 @@ class IosAppIntegrityTests(unittest.TestCase):
         # The hub is the real flow, wired to the coordinator; the placeholder is gone.
         profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
         self.assertNotIn("struct EnterpriseHubSheetView", profile)
-        self.assertIn('title: "Abastevo Empresas", subtitle: "Convites, viagens e despesas da empresa"', profile)
+        self.assertRegex(
+            profile,
+            r'profileNavRow\(\s*icon:\s*"building\.2\.fill",\s*'
+            r'title:\s*String\(localized:\s*"enterprise\.title"[^\n]*\),\s*'
+            r'subtitle:\s*String\(localized:\s*"enterprise\.profile_subtitle"',
+        )
         self.assertIn("public struct EnterpriseHubSheetView: View", views)
         self.assertIn("enterprise: viewModel.enterprise", views)
         self.assertNotIn("ContentUnavailableView", views)
@@ -371,7 +400,10 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertEqual(views.count("public struct VehiclesAndLedgerSheetView: View {"), 1)
         editor = views.split("struct LedgerEntryEditorView: View {", 1)[1].split("struct LedgerIndicatorsSection", 1)[0]
         self.assertIn("selection: $ledgerVehicleId", editor)
-        self.assertIn('Text("Selecione um veículo").tag(nil as String?)', editor)
+        self.assertRegex(
+            editor,
+            r'Text\(\s*String\(localized:\s*"ledger\.select_vehicle"[^\n]*\)\)\s*\.tag\(nil as String\?\)',
+        )
         self.assertIn("self._ledgerVehicleId = State(initialValue: existing?.vehicleId)", editor)
         self.assertIn(".disabled(ledgerVehicleId == nil)", editor)
         self.assertNotIn('?? "default"', views)
@@ -393,8 +425,10 @@ class IosAppIntegrityTests(unittest.TestCase):
 
         state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
         vehicle = state.split("func addVehicle(", 1)[1].split("func removeVehicle", 1)[0]
-        self.assertIn("PortableMoney.parseBatteryCapacityWh", vehicle)
-        self.assertNotIn("Double(batteryKwhText", vehicle)
+        editor = (core / "VehicleEditing.swift").read_text(encoding="utf-8")
+        self.assertIn("draft.build(existing:", vehicle)
+        self.assertIn("PortableMoney.parseBatteryCapacityWh", editor)
+        self.assertNotIn("Double(batteryKwh", vehicle + editor)
         self.assertIn("ledger.admissionForNewVehicle()", vehicle)
         self.assertNotIn("VehicleRecord.maxFreeVehicles", vehicle)
         self.assertNotIn("func addLedgerEntry(", state)
@@ -459,6 +493,35 @@ class IosAppIntegrityTests(unittest.TestCase):
         models = (tests / "LedgerModelsTests.swift").read_text(encoding="utf-8")
         self.assertIn("LedgerFixtures.financialWire", models)
 
+    def test_vehicle_photos_stay_local_and_purge_with_vehicle_and_owner(self):
+        views = (IOS_ROOT / "Sources/AnpFuelShell/VehicleEditorViews.swift").read_text(encoding="utf-8")
+        self.assertIn("PhotosPicker(", views)
+        self.assertIn("VehicleLocalPhoto(sanitizing: bytes)", views)
+        self.assertNotIn("URLSession", views)
+
+        vehicle = (IOS_ROOT / "Sources/AnpFuelCore/VehicleEditing.swift").read_text(encoding="utf-8")
+        self.assertIn("scope.storageKey", vehicle)
+        self.assertIn("options.isExcludedFromBackup = true", vehicle)
+        self.assertIn("data.write(to: file, options: [.atomic, .completeFileProtection])", vehicle)
+
+        state = (IOS_ROOT / "Sources/AnpFuelShell/AppStateViewModel.swift").read_text(encoding="utf-8")
+        # Logout and account deletion purge the departing owner; an origin switch every owner there.
+        for function, call in (
+            ("setApiEnvironment", "purgeVehiclePreferences(previousOrigin: snapshot.apiEnvironment.origin)"),
+            ("logout", "purgeVehiclePreferences()"),
+            ("finishAccountDeletion", "purgeVehiclePreferences()"),
+        ):
+            start = state.index(f"func {function}(")
+            end = state.index("\n    }", start)
+            self.assertIn(call, state[start:end], function)
+        start = state.index("func purgeVehiclePreferences(")
+        end = state.index("\n    }", start)
+        self.assertIn("vehicleDetails.purge(scope: departing)", state[start:end])
+        self.assertNotIn("vehicleDetails.purge()", state)
+        start = state.index("func removeVehicles(")
+        end = state.index("\n    }", start)
+        self.assertIn("vehicleDetails.remove(id: id)", state[start:end])
+
     def test_manual_shift_uses_selected_vehicle_exact_money_and_clock(self):
         shell = IOS_ROOT / "Sources/AnpFuelShell"
         profile = (shell / "ProfileTabViews.swift").read_text(encoding="utf-8")
@@ -474,14 +537,48 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("startedAtLabel: Date().ISO8601Format()", state)
         self.assertIn("endedAtLabel: Date().ISO8601Format()", state)
 
+    def test_driver_gps_uses_shared_location_and_only_persists_aggregate(self):
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        self.assertIn("NavigationCoordinator(location: continuousLocation)", state)
+        self.assertIn("DriverGpsCoordinator(location: continuousLocation)", state)
+        # Logout and account deletion purge the departing owner; an origin switch every owner there.
+        for function, call in (
+            ("setApiEnvironment", "purgeDriverGps(previousOrigin: snapshot.apiEnvironment.origin)"),
+            ("logout", "purgeDriverGps()"),
+            ("finishAccountDeletion", "purgeDriverGps()"),
+        ):
+            start = state.index(f"func {function}(")
+            end = state.index("\n    }", start)
+            self.assertIn(call, state[start:end], function)
+        start = state.index("func purgeDriverGps(")
+        end = state.index("\n    }", start)
+        self.assertIn("driverGPS.purge(scope: driverGpsScope)", state[start:end])
+
+        gps = (shell / "DriverGpsCoordinator.swift").read_text(encoding="utf-8")
+        self.assertLess(gps.index("store.begin("), gps.index("location.start(consumer: .driver)"))
+        self.assertIn("location.stop(consumer: .driver)", gps)
+        self.assertNotIn("CLLocationManager", gps)
+        self.assertNotIn("URLSession", gps)
+
+        journal = (IOS_ROOT / "Sources/AnpFuelCore/DriverGpsDistance.swift").read_text(encoding="utf-8")
+        self.assertIn("scope.storageKey", journal)
+        self.assertIn("exclusion.isExcludedFromBackup = true", journal)
+        self.assertIn(".completeFileProtection", journal)
+        for coordinate in ("latitude", "longitude", "CLLocation"):
+            self.assertNotIn(coordinate, journal)
+
     def test_info_plist_privacy_manifest_and_entitlements_are_valid_and_safe(self):
         with (IOS_ROOT / "App/Info.plist").open("rb") as fh:
             info = plistlib.load(fh)
         self.assertEqual(info["CFBundleDisplayName"], "abastevo")
+        self.assertEqual(info["CFBundleDevelopmentRegion"], "en")
         self.assertEqual(info["CFBundleShortVersionString"], "3.1.18")
         self.assertEqual(info["CFBundleVersion"], "30118")
         self.assertIn("NSLocationWhenInUseUsageDescription", info)
+        self.assertNotIn("NSLocationAlwaysUsageDescription", info)
         self.assertNotIn("NSLocationAlwaysAndWhenInUseUsageDescription", info)
+        self.assertCountEqual(info["UIBackgroundModes"], ["location", "audio"])
         self.assertIn("NSCameraUsageDescription", info)
         self.assertIn("NSPhotoLibraryUsageDescription", info)
         self.assertFalse(info["NSAppTransportSecurity"]["NSAllowsArbitraryLoads"])
@@ -510,6 +607,13 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;", pbx)
         self.assertIn("PRODUCT_BUNDLE_IDENTIFIER = com.anpfuel.app;", pbx)
         self.assertIn("PrivacyInfo.xcprivacy", pbx)
+        self.assertIn("developmentRegion = en;", pbx)
+        known_regions = re.search(r"knownRegions = \(([^)]+)\);", pbx)
+        self.assertIsNotNone(known_regions)
+        self.assertEqual(
+            {name.strip().strip('"') for name in known_regions.group(1).split(",")},
+            {"Base", "en", "pt-BR", "es", "de", "fr", "ja", "ru", "zh-Hans"},
+        )
         self.assertEqual(re.findall(r"SWIFT_VERSION = ([^;]+);", pbx), ["5.0", "5.0"])
         self.assertIn('SWIFT_VERSION: "5.0"', (IOS_ROOT / "project.yml").read_text())
         self.assertIn("ENABLE_TESTABILITY = YES;", pbx)
@@ -520,7 +624,7 @@ class IosAppIntegrityTests(unittest.TestCase):
         for entry in icon_catalog["images"]:
             self.assertTrue((IOS_ROOT / "Assets.xcassets/AppIcon.appiconset" / entry["filename"]).is_file(), entry["filename"])
 
-    def test_xcode_project_registers_every_swift_source(self):
+    def test_xcode_project_registers_every_swift_source_and_catalog(self):
         import subprocess
         import sys
 
@@ -541,11 +645,20 @@ class IosAppIntegrityTests(unittest.TestCase):
         http_text = (IOS_ROOT / "Sources/AnpFuelCore/AbastevoBackendClient.swift").read_text(encoding="utf-8")
         self.assertIn("https://abastevo.com.br", http_text)
         self.assertIn("/v1/community/feed", http_text)
-        profile = (IOS_ROOT / "Sources/AnpFuelShell/ProfileTabViews.swift").read_text(encoding="utf-8")
-        consent = profile.split("public struct TrainingConsentSheetView", 1)[1].split("public struct SettingsSheetView", 1)[0]
-        self.assertIn("TrainingTermsContract.verifiedDigestMatches()", consent)
-        self.assertNotIn("grantTrainingConsent", consent)
-        self.assertNotIn("revokeTrainingConsentImmediately", consent)
+        canonical_text = models_text.split('public static let fullTextPtBr = """\n', 1)[1].split('\n"""', 1)[0]
+        self.assertEqual(canonical_text.encode("utf-8") + b"\n", backend_terms)
+        self.assertIn('Data((fullTextPtBr + "\\n").utf8)', models_text)
+
+        views = (IOS_ROOT / "Sources/AnpFuelShell/TrainingConsentViews.swift").read_text(encoding="utf-8")
+        self.assertIn("TrainingTermsContract.verifiedDigestMatches()", views)
+        self.assertIn("android.privacy_training_unavailable", views)
+        self.assertIn("android.privacy_rights_body", views)
+        consent_wire = (IOS_ROOT / "Sources/AnpFuelCore/TrainingConsent.swift").read_text(encoding="utf-8")
+        self.assertIn('statusPath = "/v1/privacy/training-consent"', consent_wire)
+        self.assertIn("signedOwnerGet(", consent_wire)
+        self.assertIn("requiresDeviceProof: true", consent_wire)
+        for source in IOS_ROOT.glob("Sources/**/*Photo*.swift"):
+            self.assertNotIn("TrainingConsent", source.read_text(encoding="utf-8"), source.name)
 
         energy_fixture = json.loads((ROOT / "contracts/testdata/premium/energy-v1.json").read_text(encoding="utf-8"))
         self.assertEqual(energy_fixture["cases"][0]["expected_wh_per_km"], "800/3")
@@ -629,14 +742,25 @@ class IosAppIntegrityTests(unittest.TestCase):
         maps = (shell / "MapTabViews.swift").read_text(encoding="utf-8")
         self.assertIn("NativeRouteSheetView(viewModel: viewModel, station: station)", explore)
         self.assertIn("station.pinTier.allowsMapPin", maps)
-        self.assertIn("await viewModel.requestRouteOrigin()", maps)
-        self.assertIn("await MKDirections(request: request).calculate()", maps)
-        self.assertIn("MKLaunchOptionsDirectionsModeDriving", maps)
+        view = (shell / "ActiveNavigationViews.swift").read_text(encoding="utf-8")
+        guidance = (shell / "NavigationCoordinator.swift").read_text(encoding="utf-8")
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        audio = (IOS_ROOT / "Sources/AnpFuelCore/IosPlatformServices.swift").read_text(encoding="utf-8")
+        self.assertIn("await viewModel.requestRouteOrigin()", view)
+        self.assertIn("MKDirections(request: request)", guidance)
+        self.assertIn("try await directions.calculate()", guidance)
+        self.assertIn("MKLaunchOptionsDirectionsModeDriving", view)
+        self.assertIn("location.start {", guidance)
+        self.assertIn("location.stop()", guidance)
+        self.assertIn("NavigationGuidancePolicy.nativeLocaleFor", guidance)
+        self.assertIn("AVSpeechSynthesizer()", audio)
+        self.assertIn(".duckOthers", audio)
+        self.assertGreaterEqual(state.count("navigation.stop()"), 3)
         offline = (shell / "OfflineNavigationViews.swift").read_text(encoding="utf-8")
         # B-BR-IOS-01: offline navigation hands off to Apple Maps offline maps;
         # the app never claims its own regional package is available.
-        self.assertIn("Mapas regionais indisponíveis", offline)
-        self.assertIn("Mapas Offline", offline)
+        self.assertRegex(offline, r'Text\(\s*String\(localized:\s*"map\.offline\.unavailable"')
+        self.assertRegex(offline, r'Label\(\s*String\(localized:\s*"map\.offline\.apple_maps"')
         self.assertIn("https://maps.apple.com/", offline)
         self.assertNotIn("FileManager", offline)
         store = (IOS_ROOT / "Sources/AnpFuelCore/IosLocalStore.swift").read_text(encoding="utf-8")

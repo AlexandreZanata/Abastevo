@@ -6,13 +6,18 @@ import PackageDescription
 // are BLOCKED until Mac access is available. See iosApp/README.md.
 let package = Package(
     name: "AnpFuel",
+    defaultLocalization: "en",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(name: "AnpFuelCore", targets: ["AnpFuelCore"]),
     ],
     targets: [
-        .target(name: "AnpFuelCore"),
-        .target(name: "AnpFuelShell", dependencies: ["AnpFuelCore"]),
+        .target(name: "AnpFuelCore", resources: [.process("Resources")]),
+        .target(
+            name: "AnpFuelShell",
+            dependencies: ["AnpFuelCore"],
+            resources: [.process("Localizable.xcstrings")]
+        ),
         .testTarget(name: "AnpFuelCoreTests", dependencies: ["AnpFuelCore"]),
     ]
 )

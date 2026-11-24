@@ -44,7 +44,14 @@ final class EvCatalogTests: XCTestCase {
         XCTAssertEqual(place.publicAccess, .publicAccess)
         XCTAssertEqual(place.maxPowerW, 150_000)
         let unnamed = try XCTUnwrap(page.items.last)
-        XCTAssertEqual(unnamed.displayName, "Ponto de recarga")
+        let label = "android.charging_place_unnamed"
+        let resources = CoreLocalization.bundle
+        XCTAssertEqual(unnamed.displayName, resources.localizedString(forKey: label, value: nil, table: nil))
+        for (locale, expected) in [("en", "Unnamed charging site"), ("pt-BR", "Eletroposto sem nome")] {
+            let url = try XCTUnwrap(resources.url(forResource: locale, withExtension: "lproj"))
+            let localization = try XCTUnwrap(Bundle(url: url))
+            XCTAssertEqual(localization.localizedString(forKey: label, value: nil, table: nil), expected)
+        }
         XCTAssertEqual(unnamed.publicAccess, .unknown)
         XCTAssertTrue(ChargingRules.isInCity(place, city: Municipality(ibgeCode: "3550308", name: "SÃO PAULO", state: .SP)))
     }

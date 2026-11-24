@@ -181,19 +181,16 @@ public enum LedgerRational {
         return rounded
     }
 
-    /// Display text with a comma separator, e.g. `266,67`.
-    public static func displayText(_ rational: String, fractionDigits: Int, divideBy: Decimal = 1) -> String? {
-        guard var value = decimal(rational, fractionDigits: 6), divideBy != 0 else { return nil }
+
+    /// Round qualified ratios for display without changing the exact stored value.
+    public static func displayText(
+        _ rational: String, fractionDigits: Int, divideBy: Decimal = 1, locale: Locale = Locale(identifier: "pt_BR")
+    ) -> String? {
+        guard fractionDigits >= 0, var value = decimal(rational, fractionDigits: 6), divideBy != 0 else { return nil }
         value = value / divideBy
         var rounded = Decimal()
         NSDecimalRound(&rounded, &value, fractionDigits, .plain)
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "pt_BR")
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = fractionDigits
-        return formatter.string(from: NSDecimalNumber(decimal: rounded))
+        return rounded.formatted(.number.precision(.fractionLength(0...fractionDigits)).locale(locale))
     }
 }
 

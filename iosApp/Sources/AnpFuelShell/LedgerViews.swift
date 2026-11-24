@@ -22,45 +22,58 @@ enum LedgerFormat {
     }
 
     static func quantity(_ milli: Int64, unit: LedgerUnit?) -> String {
-        return LedgerUnits.formatScaled(milli, fractionDigits: 3) + " " + (unit?.shortLabel ?? "")
+        let value = LedgerUnits.formatScaled(milli, fractionDigits: 3, locale: .current)
+        guard let unit else { return value }
+        return String(localized: "ledger.quantity_value", defaultValue: "\(value) \(unit.shortLabel)")
     }
 
     static func kilometres(_ metres: Int64?) -> String {
-        guard let metres else { return "sem hodômetro" }
-        return LedgerUnits.formatScaled(metres, fractionDigits: 3) + " km"
+        guard let metres else { return String(localized: "ledger.odometer_absent") }
+        let value = LedgerUnits.formatScaled(metres, fractionDigits: 3, locale: .current)
+        return String(localized: "ledger.distance_kilometres", defaultValue: "\(value) km")
     }
 
     static func kwh(_ wh: Int64?) -> String {
-        guard let wh else { return "energia não informada" }
-        return LedgerUnits.formatScaled(wh, fractionDigits: 3) + " kWh"
+        guard let wh else { return String(localized: "ledger.charge_energy_absent") }
+        let value = LedgerUnits.formatScaled(wh, fractionDigits: 3, locale: .current)
+        return String(localized: "ledger.energy_kwh", defaultValue: "\(value) kWh")
     }
 
     static func monthLabel(year: Int, month: Int) -> String {
-        let names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
-                     "setembro", "outubro", "novembro", "dezembro"]
-        let name = (1...12).contains(month) ? names[month - 1] : String(month)
-        return "\(name) de \(year)"
+        let calendar = Calendar(identifier: .gregorian)
+        guard let date = calendar.date(from: DateComponents(year: year, month: month, day: 1)) else { return "—" }
+        var style = Date.FormatStyle().month(.wide).year()
+        style.calendar = calendar
+        return date.formatted(style)
+    }
+
+    static func dateTime(millis: Int64, timeZone: TimeZone) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(millis) / 1_000)
+        var style = Date.FormatStyle(date: .abbreviated, time: .shortened)
+        style.timeZone = timeZone
+        return date.formatted(style)
     }
 
     /// One-line summary of a record (also used for conflict versions).
     static func summary(_ record: LedgerEntryRecord, vehicles: [VehicleRecord]) -> String {
         let vehicle = vehicles.first(where: { $0.id == record.vehicleId })?.name
-            ?? String(localized: "veículo não cadastrado neste aparelho")
-        var parts: [String] = [vehicle, record.dateLabel]
+            ?? String(localized: "ledger.vehicle_absent")
+        let timeZone = TimeZone(identifier: record.timezone) ?? .gmt
+        var parts = [vehicle, dateTime(millis: record.occurredAtMillis, timeZone: timeZone)]
         switch record.kind {
         case .refuel:
-            parts.append(record.fuel?.labelPtBr ?? String(localized: "combustível a revisar"))
+            parts.append(record.fuel?.localizedLabel ?? String(localized: "ledger.review_fuel"))
             parts.append(quantity(record.quantityMilli, unit: record.fuel?.unit))
-            parts.append(record.fill.labelPtBr)
+            parts.append(record.fill.localizedLabel)
             parts.append(money(record.totalCentavos))
         case .expense:
-            parts.append(record.category?.labelPtBr ?? "")
+            parts.append(record.category?.localizedLabel ?? "")
             parts.append(money(record.totalCentavos))
         case .charge:
             parts.append(kwh(record.energyWh))
             parts.append(money(record.totalCentavos))
             if let start = record.socStartPercent, let end = record.socEndPercent {
-                parts.append("\(start)% → \(end)%")
+                parts.append(String(localized: "ledger.charge_range", defaultValue: "\((Double(start) / 100).formatted(.percent)) → \((Double(end) / 100).formatted(.percent))"))
             }
         case .odometer:
             break
@@ -72,8 +85,35 @@ enum LedgerFormat {
         return parts.joined(separator: " · ")
     }
 
-    static func rational(_ value: String, fractionDigits: Int, divideBy: Decimal = 1) -> String {
-        return LedgerRational.displayText(value, fractionDigits: fractionDigits, divideBy: divideBy) ?? value
+    static func fuelEfficiency(_ rational: String) -> String? {
+        guard let value = LedgerRational.displayText(rational, fractionDigits: 2, locale: .current) else { return nil }
+        return String(localized: "ledger.efficiency_km_per_litre", defaultValue: "\(value) km/L")
+    }
+
+    static func costPerKilometre(_ centavos: String) -> String? {
+        guard let cost = LedgerRational.decimal(centavos, fractionDigits: 6) else { return nil }
+        var reais = cost / 100
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &reais, 3, .plain)
+        let value = rounded.formatted(.currency(code: "BRL").precision(.fractionLength(0...3)))
+        return String(localized: "ledger.cost_per_kilometre", defaultValue: "\(value)/km")
+    }
+
+    static func exactCostPerKilometre(_ centavos: String) -> String {
+        guard !centavos.isEmpty else { return "" }
+        return String(localized: "ledger.centavos_per_kilometre", defaultValue: "\(centavos) centavos/km")
+    }
+
+    static func energyPerKilometre(_ rational: String) -> String? {
+        guard let value = LedgerRational.displayText(rational, fractionDigits: 1, locale: .current) else { return nil }
+        return String(localized: "ledger.energy_wh_per_kilometre", defaultValue: "\(value) Wh/km")
+    }
+
+    static func percent(_ rational: String) -> String? {
+        guard var value = LedgerRational.decimal(rational, fractionDigits: 6) else { return nil }
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &value, 1, .plain)
+        return (rounded / 100).formatted(.percent.precision(.fractionLength(0...1)))
     }
 }
 
@@ -82,12 +122,6 @@ struct LedgerHomeView: View {
     @ObservedObject var ledger: LedgerCoordinator
     let close: () -> Void
 
-    @State private var name = ""
-    @State private var propulsion: Propulsion = .flex
-    @State private var primaryFuel: FuelProduct = .gasolineRegular
-    @State private var tankLiters = "50"
-    @State private var batteryKwh = "52"
-    @State private var vehicleError: String?
     @State private var pendingDelete: LedgerEntryRecord?
 
     var body: some View {
@@ -97,62 +131,72 @@ struct LedgerHomeView: View {
         }
         NavigationStack {
             List {
-                Section("Meus veículos") {
+                Section(String(localized: "android.profile_tool_vehicles_title")) {
                     if vehicles.isEmpty {
-                        Text("Nenhum veículo cadastrado.").foregroundStyle(.secondary)
+                        Text(String(localized: "android.vehicle_empty_message")).foregroundStyle(.secondary)
                     }
                     ForEach(vehicles) { vehicle in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(vehicle.name).font(.headline)
-                                Spacer()
-                                Text(vehicle.propulsion.labelPtBr).font(.caption).foregroundStyle(.secondary)
+                        NavigationLink {
+                            VehicleEditorView(viewModel: viewModel, existing: vehicle)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(vehicle.name).font(.headline)
+                                    Spacer()
+                                    Text(vehicle.propulsion.localizedLabel).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Text(vehicleDetail(vehicle)).font(.caption).foregroundStyle(.secondary)
                             }
-                            Text(vehicleDetail(vehicle)).font(.caption).foregroundStyle(.secondary)
                         }
+                        .accessibilityHint(String(localized: "android.vehicle_edit"))
                     }
                     .onDelete { offsets in
                         let ids = Set(offsets.map { vehicles[$0].id })
                         viewModel.removeVehicles(ids)
                     }
-                    Text("Remover um veículo mantém os lançamentos dele neste aparelho.")
+                    Text(String(localized: "ledger.vehicle_delete_retention"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
                 addVehicleSection
 
-                Section("Diário") {
+                Section(String(localized: "ledger.section")) {
                     NavigationLink {
                         LedgerEntryEditorView(viewModel: viewModel, ledger: ledger, existing: nil)
                     } label: {
-                        Label("Novo lançamento", systemImage: "plus.circle")
+                        Label(String(localized: "android.ledger_entry_add_title"), systemImage: "plus.circle")
                     }
                     .disabled(vehicles.isEmpty)
                     if vehicles.isEmpty {
-                        Text("Cadastre um veículo para registrar lançamentos.").foregroundStyle(.secondary)
+                        Text(String(localized: "ledger.no_vehicle_for_entries")).foregroundStyle(.secondary)
                     }
                 }
 
                 LedgerIndicatorsSection(viewModel: viewModel, ledger: ledger)
 
-                Section("Nuvem e exportação") {
+                Section(String(localized: "ledger.cloud_export")) {
+                    NavigationLink {
+                        LedgerServerAnalysisView(viewModel: viewModel, ledger: ledger)
+                    } label: {
+                        Label(String(localized: "ledger.server.analysis"), systemImage: "chart.bar.xaxis")
+                    }
                     NavigationLink {
                         LedgerSyncView(viewModel: viewModel, ledger: ledger)
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Sincronização do diário").font(.subheadline.weight(.semibold))
+                            Text(String(localized: "android.ledger_sync_title")).font(.subheadline.weight(.semibold))
                             Text(syncSubtitle).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     ShareLink(item: ledger.exportCsv()) {
-                        Label("Exportar diário (CSV)", systemImage: "square.and.arrow.up")
+                        Label(String(localized: "android.monthly_export"), systemImage: "square.and.arrow.up")
                     }
                 }
 
-                Section("Lançamentos (\(entries.count))") {
+                Section(String(localized: "ledger.entries_count", defaultValue: "Entries (\(entries.count.formatted()))")) {
                     if entries.isEmpty {
-                        Text("Nenhum lançamento registrado.").foregroundStyle(.secondary)
+                        Text(String(localized: "ledger.no_entries")).foregroundStyle(.secondary)
                     }
                     ForEach(entries) { entry in
                         if entry.kind == .odometer {
@@ -170,56 +214,56 @@ struct LedgerHomeView: View {
                     }
                 }
             }
-            .navigationTitle("Veículos & Diário")
+            .navigationTitle(String(localized: "ledger.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar", action: close)
+                    Button(String(localized: "android.feed_close"), action: close)
                 }
             }
             .onAppear { ledger.refresh() }
             .task { await ledger.refreshPremiumProof() }
             .alert(
-                "Excluir lançamento?",
+                String(localized: "android.ledger_entry_delete_confirm"),
                 isPresented: Binding(
                     get: { pendingDelete != nil },
                     set: { if !$0 { pendingDelete = nil } }
                 )
             ) {
-                Button("Excluir", role: .destructive) {
+                Button(String(localized: "android.vehicle_delete"), role: .destructive) {
                     if let record = pendingDelete {
                         ledger.delete(record)
                     }
                     pendingDelete = nil
                 }
-                Button("Cancelar", role: .cancel) {
+                Button(String(localized: "android.action_cancel"), role: .cancel) {
                     pendingDelete = nil
                 }
             } message: {
-                Text("O lançamento sai deste aparelho. Se já foi enviado, a exclusão gratuita também é enviada à nuvem.")
+                Text(String(localized: "ledger.delete_sync_message"))
             }
         }
     }
 
     private var syncSubtitle: String {
         guard viewModel.currentAccountIdOrNil != nil else {
-            return String(localized: "Somente neste aparelho · entre para sincronizar")
+            return String(localized: "ledger.status.local_sign_in")
         }
-        guard let state = ledger.syncState else { return String(localized: "Somente neste aparelho") }
-        if !state.enabled { return String(localized: "Desativada · registros somente neste aparelho") }
-        if !state.conflicts.isEmpty { return String(localized: "Conflitos aguardando sua decisão") }
-        if state.paidUploadsPaused { return String(localized: "Envios pausados: Premium necessário") }
-        if state.pendingCount > 0 { return String(localized: "Envios pendentes: \(state.pendingCount)") }
-        return String(localized: "Ativada")
+        guard let state = ledger.syncState else { return String(localized: "ledger.status.local_only") }
+        if !state.enabled { return String(localized: "ledger.status.sync_disabled") }
+        if !state.conflicts.isEmpty { return String(localized: "ledger.status.conflicts_awaiting") }
+        if state.paidUploadsPaused { return String(localized: "ledger.status.uploads_paused") }
+        if state.pendingCount > 0 { return String(localized: "ledger.status.pending_count", defaultValue: "Pending uploads: \(state.pendingCount.formatted())") }
+        return String(localized: "ledger.status.sync_enabled")
     }
 
     private func vehicleDetail(_ vehicle: VehicleRecord) -> String {
         var parts: [String] = []
         if vehicle.propulsion.supportsFuel {
-            parts.append(vehicle.primaryFuel.displayNamePtBr)
-            parts.append(String(localized: "Tanque: \(LedgerUnits.formatScaled(vehicle.tankCapacityMilliLiters, fractionDigits: 3)) L"))
+            parts.append(vehicle.primaryFuel.localizedName)
+            parts.append(String(localized: "ledger.tank", defaultValue: "Tank: \(LedgerUnits.formatScaled(vehicle.tankCapacityMilliLiters, fractionDigits: 3, locale: .current)) L"))
         }
         if vehicle.propulsion.supportsElectric {
-            parts.append(String(localized: "Bateria: \(LedgerUnits.formatScaled(vehicle.batteryCapacityWh, fractionDigits: 3)) kWh"))
+            parts.append(String(localized: "ledger.battery", defaultValue: "Battery: \(LedgerUnits.formatScaled(vehicle.batteryCapacityWh, fractionDigits: 3, locale: .current)) kWh"))
         }
         return parts.joined(separator: " · ")
     }
@@ -227,57 +271,21 @@ struct LedgerHomeView: View {
     @ViewBuilder
     private var addVehicleSection: some View {
         let admission = ledger.admissionForNewVehicle()
-        Section("Adicionar veículo") {
+        Section(String(localized: "android.vehicle_add")) {
             switch admission {
             case .accept:
-                TextField("Apelido do carro / moto", text: $name)
-                Picker("Propulsão", selection: $propulsion) {
-                    ForEach(Propulsion.allCases) { option in
-                        Text(option.labelPtBr).tag(option)
-                    }
-                }
-                if propulsion.supportsFuel {
-                    Picker("Combustível principal", selection: $primaryFuel) {
-                        ForEach(FuelProduct.allCases) { fuel in
-                            Text(fuel.displayNamePtBr).tag(fuel)
-                        }
-                    }
-                    TextField("Tanque (litros, ex.: 50)", text: $tankLiters)
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
-                }
-                if propulsion.supportsElectric {
-                    TextField("Bateria (kWh, ex.: 52)", text: $batteryKwh)
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
-                }
-                if let vehicleError {
-                    Text(vehicleError).font(.caption).foregroundStyle(.red)
-                }
-                Button("Salvar veículo") {
-                    switch viewModel.addVehicle(
-                        name: name,
-                        propulsion: propulsion,
-                        primaryFuel: primaryFuel,
-                        tankLitersText: tankLiters,
-                        batteryKwhText: batteryKwh
-                    ) {
-                    case .success:
-                        name = ""
-                        vehicleError = nil
-                    case .failure(let error):
-                        vehicleError = error.localizedDescription
-                    }
+                NavigationLink {
+                    VehicleEditorView(viewModel: viewModel, existing: nil)
+                } label: {
+                    Label(String(localized: "android.vehicle_add"), systemImage: "plus.circle")
                 }
             case .premiumRequired, .hostedAuthorityRequired:
                 Text(LedgerCoordinator.admissionMessage(admission)).font(.caption)
                 if viewModel.currentAccountIdOrNil == nil {
-                    Button("Entrar na conta gratuita") { viewModel.activeSheet = .auth }
+                    Button(String(localized: "ledger.sign_in_free")) { viewModel.activeSheet = .auth }
                 } else {
-                    Button("Conhecer o Abastevo Premium") { viewModel.activeSheet = .premium }
-                    Button("Verificar assinatura novamente") {
+                    Button(String(localized: "ledger.explore_premium")) { viewModel.activeSheet = .premium }
+                    Button(String(localized: "android.premium_refresh_status")) {
                         Task { await ledger.refreshPremiumProof() }
                     }
                 }
@@ -296,7 +304,7 @@ struct LedgerEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(entry.kind.labelPtBr).font(.subheadline.bold())
+                Text(entry.kind.localizedLabel).font(.subheadline.bold())
                 Spacer()
                 if entry.kind != .odometer {
                     Text(LedgerFormat.money(entry.totalCentavos)).font(.subheadline.bold())
@@ -305,7 +313,7 @@ struct LedgerEntryRow: View {
             Text(LedgerFormat.summary(entry, vehicles: vehicles))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(entry.kind == .odometer ? String(localized: "Leitura antiga de hodômetro · somente neste aparelho") : LedgerCoordinator.statusLabel(status))
+            Text(entry.kind == .odometer ? String(localized: "ledger.odometer_legacy_local") : LedgerCoordinator.statusLabel(status))
                 .font(.caption2)
                 .foregroundStyle(statusColor)
         }
@@ -354,27 +362,27 @@ struct LedgerEntryEditorView: View {
         Form {
             if existing?.reviewRequired == true {
                 Section {
-                    Text("Registro migrado da versão anterior: confira data e hora, combustível, tipo de enchimento e hodômetro, e salve para concluir a revisão. Até lá ele não é sincronizado.")
+                    Text(String(localized: "ledger.migrated_review"))
                         .font(.caption)
                 }
             }
-            Section("Veículo e tipo") {
-                Picker("Veículo", selection: $ledgerVehicleId) {
-                    Text("Selecione um veículo").tag(nil as String?)
+            Section(String(localized: "ledger.vehicle_and_type")) {
+                Picker(String(localized: "ledger.vehicle"), selection: $ledgerVehicleId) {
+                    Text(String(localized: "ledger.select_vehicle")).tag(nil as String?)
                     ForEach(viewModel.snapshot.vehicles) { vehicle in
                         Text(vehicle.name).tag(Optional(vehicle.id))
                     }
                 }
                 if existing == nil {
-                    Picker("Tipo", selection: $form.kind) {
+                    Picker(String(localized: "android.occurrence_filter_type"), selection: $form.kind) {
                         ForEach(LedgerEntryKind.recordable, id: \.self) { kind in
-                            Text(kind.labelPtBr).tag(kind)
+                            Text(kind.localizedLabel).tag(kind)
                         }
                     }
                 } else {
-                    LabeledContent("Tipo", value: form.kind.labelPtBr)
+                    LabeledContent(String(localized: "android.occurrence_filter_type"), value: form.kind.localizedLabel)
                 }
-                DatePicker("Data e hora", selection: $occurredAt, displayedComponents: [.date, .hourAndMinute])
+                DatePicker(String(localized: "ledger.date_time"), selection: $occurredAt, displayedComponents: [.date, .hourAndMinute])
             }
 
             switch form.kind {
@@ -386,21 +394,21 @@ struct LedgerEntryEditorView: View {
                 chargeSection
             case .odometer:
                 Section {
-                    Text("Leituras antigas de hodômetro não podem ser editadas.").foregroundStyle(.secondary)
+                    Text(String(localized: "ledger.odometer_legacy_read_only")).foregroundStyle(.secondary)
                 }
             }
 
-            Section("Hodômetro e intervalos") {
-                decimalField("Hodômetro (km, opcional)", text: $form.odometerKmText)
-                Toggle("Hodômetro zerado ou trocado antes desta leitura", isOn: $form.opensOdometerSegment)
-                Toggle("Houve abastecimento ou recarga não registrado antes deste", isOn: $form.missedFillBefore)
-                Text("Essas marcações ficam neste aparelho e tornam indisponível o consumo do período afetado.")
+            Section(String(localized: "ledger.odometer_and_gaps")) {
+                decimalField(String(localized: "ledger.odometer_optional"), text: $form.odometerKmText)
+                Toggle(String(localized: "ledger.odometer_reset"), isOn: $form.opensOdometerSegment)
+                Toggle(String(localized: "ledger.unrecorded_fill"), isOn: $form.missedFillBefore)
+                Text(String(localized: "ledger.gaps_effect"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Observação") {
-                TextField("Observação (até 280 caracteres)", text: $form.note)
+            Section(String(localized: "ledger.note")) {
+                TextField(String(localized: "ledger.note_limit"), text: $form.note)
             }
 
             if let errorText {
@@ -410,70 +418,70 @@ struct LedgerEntryEditorView: View {
             }
 
             Section {
-                Button(existing == nil ? "Registrar lançamento" : "Salvar alterações", action: save)
+                Button(existing == nil ? String(localized: "ledger.add_entry") : String(localized: "android.forum_edit_save"), action: save)
                     .disabled(ledgerVehicleId == nil)
                 if existing != nil {
-                    Button("Excluir lançamento", role: .destructive) {
+                    Button(String(localized: "ledger.delete_entry"), role: .destructive) {
                         confirmDelete = true
                     }
                 }
             }
         }
-        .navigationTitle(existing == nil ? "Novo lançamento" : "Editar lançamento")
-        .alert("Excluir lançamento?", isPresented: $confirmDelete) {
-            Button("Excluir", role: .destructive) {
+        .navigationTitle(existing == nil ? String(localized: "android.ledger_entry_add_title") : String(localized: "android.ledger_entry_edit_title"))
+        .alert(String(localized: "android.ledger_entry_delete_confirm"), isPresented: $confirmDelete) {
+            Button(String(localized: "android.vehicle_delete"), role: .destructive) {
                 if let existing {
                     ledger.delete(existing)
                 }
                 dismiss()
             }
-            Button("Cancelar", role: .cancel) {}
+            Button(String(localized: "android.action_cancel"), role: .cancel) {}
         } message: {
-            Text("A exclusão é gratuita e não pode ser desfeita neste aparelho.")
+            Text(String(localized: "ledger.delete_irreversible"))
         }
     }
 
     private var refuelSection: some View {
-        Section("Abastecimento") {
-            Picker("Combustível", selection: $form.fuel) {
+        Section(String(localized: "android.ledger_entry_add_refuel")) {
+            Picker(String(localized: "android.history_fuel_product_label"), selection: $form.fuel) {
                 Text(defaultFuelLabel).tag(nil as LedgerFuel?)
                 ForEach(LedgerFuel.allCases, id: \.self) { fuel in
-                    Text(fuel.labelPtBr).tag(Optional(fuel))
+                    Text(fuel.localizedLabel).tag(Optional(fuel))
                 }
             }
-            decimalField("Quantidade (\(unitLabel), ex.: 40,5)", text: $form.quantityText)
-            decimalField("Valor pago (R$)", text: $form.totalText)
-            decimalField("Preço por \(unitLabel) (opcional, ex.: 5,899)", text: $form.unitPriceText)
-            Picker("Enchimento", selection: $form.fill) {
+            decimalField(String(localized: "ledger.quantity", defaultValue: "Quantity (\(unitLabel), e.g. \((40.5).formatted(.number)))"), text: $form.quantityText)
+            decimalField(String(localized: "ledger.paid_amount"), text: $form.totalText)
+            decimalField(String(localized: "ledger.unit_price", defaultValue: "Price per \(unitLabel) (optional, e.g. \((5.899).formatted(.number)))"), text: $form.unitPriceText)
+            Picker(String(localized: "ledger.fill"), selection: $form.fill) {
                 ForEach(LedgerFill.allCases, id: \.self) { fill in
-                    Text(fill.labelPtBr).tag(fill)
+                    Text(fill.localizedLabel).tag(fill)
                 }
             }
-            Text("O consumo usa dois abastecimentos de tanque cheio consecutivos; o valor pago é o total real, sem recalcular pelo preço.")
+            Text(String(localized: "ledger.refuel_calculation"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var expenseSection: some View {
-        Section("Despesa") {
-            decimalField("Valor (R$)", text: $form.totalText)
-            Picker("Categoria", selection: $form.category) {
+        Section(String(localized: "android.ledger_entry_add_expense")) {
+            decimalField(String(localized: "ledger.amount"), text: $form.totalText)
+            Picker(String(localized: "android.forum_topic_category_label"), selection: $form.category) {
                 ForEach(LedgerExpenseCategory.allCases, id: \.self) { category in
-                    Text(category.labelPtBr).tag(category)
+                    Text(category.localizedLabel).tag(category)
                 }
             }
         }
     }
 
     private var chargeSection: some View {
-        Section("Recarga elétrica") {
-            decimalField("Energia (kWh, opcional)", text: $form.energyKwhText)
-            decimalField("Valor pago (R$, opcional)", text: $form.totalText)
-            decimalField("Carga inicial (%, opcional)", text: $form.socStartText)
-            decimalField("Carga final (%, opcional)", text: $form.socEndText)
-            decimalField("Taxas (R$, opcional)", text: $form.feesText)
-            Text("Taxas são mostradas à parte e nunca somadas automaticamente ao valor da recarga.")
+        Section(String(localized: "android.ledger_entry_add_charge")) {
+            decimalField(String(localized: "ledger.charge_energy_optional"), text: $form.energyKwhText)
+            decimalField(String(localized: "ledger.charge_amount_optional"), text: $form.totalText)
+            decimalField(String(localized: "ledger.charge_start_optional"), text: $form.socStartText)
+            decimalField(String(localized: "ledger.charge_end_optional"), text: $form.socEndText)
+            decimalField(String(localized: "ledger.charge_fees_optional"), text: $form.feesText)
+            Text(String(localized: "ledger.charge_fees_separate"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -486,9 +494,9 @@ struct LedgerEntryEditorView: View {
 
     private var defaultFuelLabel: String {
         guard let vehicle = selectedVehicle, let fuel = LedgerFuel.from(vehicleFuel: vehicle.primaryFuel) else {
-            return String(localized: "Combustível do veículo")
+            return String(localized: "ledger.vehicle_fuel")
         }
-        return String(localized: "Do veículo (\(fuel.labelPtBr))")
+        return String(localized: "ledger.vehicle_fuel_specific", defaultValue: "Vehicle fuel (\(fuel.localizedLabel))")
     }
 
     @ViewBuilder
@@ -517,17 +525,22 @@ struct LedgerIndicatorsSection: View {
     @ObservedObject var viewModel: AppStateViewModel
     @ObservedObject var ledger: LedgerCoordinator
 
+    private struct EstimateEditorID: Hashable {
+        let scope: LedgerEstimateScope
+        let vehicleId: String
+    }
+
     @State private var indicatorVehicleId: String?
-    @State private var year = Calendar.current.component(.year, from: Date())
-    @State private var month = Calendar.current.component(.month, from: Date())
+    @State private var year = Calendar(identifier: .gregorian).component(.year, from: Date())
+    @State private var month = Calendar(identifier: .gregorian).component(.month, from: Date())
 
     var body: some View {
-        Section("Indicadores do mês") {
+        Section(String(localized: "android.monthly_title")) {
             if viewModel.snapshot.vehicles.isEmpty {
-                Text("Cadastre um veículo para ver indicadores.").foregroundStyle(.secondary)
+                Text(String(localized: "ledger.no_vehicle_for_metrics")).foregroundStyle(.secondary)
             } else {
-                Picker("Veículo", selection: $indicatorVehicleId) {
-                    Text("Selecione um veículo").tag(nil as String?)
+                Picker(String(localized: "ledger.vehicle"), selection: $indicatorVehicleId) {
+                    Text(String(localized: "ledger.select_vehicle")).tag(nil as String?)
                     ForEach(viewModel.snapshot.vehicles) { vehicle in
                         Text(vehicle.name).tag(Optional(vehicle.id))
                     }
@@ -539,7 +552,7 @@ struct LedgerIndicatorsSection: View {
                         Image(systemName: "chevron.left")
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityLabel("Mês anterior")
+                    .accessibilityLabel(String(localized: "android.monthly_previous"))
                     Spacer()
                     Text(LedgerFormat.monthLabel(year: year, month: month)).font(.subheadline.weight(.semibold))
                     Spacer()
@@ -549,18 +562,28 @@ struct LedgerIndicatorsSection: View {
                         Image(systemName: "chevron.right")
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityLabel("Próximo mês")
+                    .accessibilityLabel(String(localized: "android.monthly_next"))
                 }
-                if let vehicle = viewModel.snapshot.vehicles.first(where: { $0.id == indicatorVehicleId }) {
+                if let scope = ledger.estimateScope,
+                   let vehicle = viewModel.snapshot.vehicles.first(where: { $0.id == indicatorVehicleId }) {
+                    LedgerEstimateEditor(ledger: ledger, vehicleId: vehicle.id, scope: scope)
+                        .id(EstimateEditorID(scope: scope, vehicleId: vehicle.id))
                     switch ledger.indicators(vehicle: vehicle, year: year, month: month) {
                     case .success(let result):
                         LedgerIndicatorsContent(result: result)
+                        if let estimate = ledger.estimatedEfficiency(for: vehicle.id, in: scope)?.fallback(for: result) {
+                            let value = estimate.formatted(locale: .current)
+                            Text(String(localized: "android.monthly_estimated", defaultValue: "Estimated efficiency: \(value) km/L"))
+                                .font(.subheadline)
+                        }
+                        LedgerMonthlyExportLink(report: result)
                     case .failure(let error):
                         Text(LedgerCoordinator.reasonLabel(error.rawValue)).foregroundStyle(.secondary)
                     }
                 }
             }
         }
+        .onChange(of: ledger.estimateScope) { _, _ in indicatorVehicleId = nil }
     }
 
     private func shiftMonth(_ delta: Int) {
@@ -584,68 +607,69 @@ struct LedgerIndicatorsContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Registros no mês: \(result.recordCount)").font(.caption).foregroundStyle(.secondary)
-            LabeledContent("Combustível (compras)", value: LedgerFormat.money(result.purchaseCentavos))
-            LabeledContent("Despesas", value: LedgerFormat.money(result.expenseCentavos))
+            Text(String(localized: "ledger.metrics.records_count", defaultValue: "Entries this month: \(result.recordCount.formatted())")).font(.caption).foregroundStyle(.secondary)
+            LabeledContent(String(localized: "ledger.metrics.fuel_purchases"), value: LedgerFormat.money(result.purchaseCentavos))
+            LabeledContent(String(localized: "android.ledger_sync_expense"), value: LedgerFormat.money(result.expenseCentavos))
             ForEach(LedgerExpenseCategory.allCases.filter { result.byCategory[$0] != nil }, id: \.self) { category in
-                LabeledContent("  \(category.labelPtBr)", value: LedgerFormat.money(result.byCategory[category]))
+                LabeledContent(category.localizedLabel, value: LedgerFormat.money(result.byCategory[category]))
                     .font(.caption)
+                    .padding(.leading, 6)
             }
             if result.chargeCostCentavos > 0 || result.chargeEnergyWh > 0 || result.chargeFeesCentavos > 0 {
-                LabeledContent("Recargas", value: LedgerFormat.money(result.chargeCostCentavos))
-                LabeledContent("Energia comprada", value: LedgerFormat.kwh(result.chargeEnergyWh))
-                LabeledContent("Taxas de recarga (à parte)", value: LedgerFormat.money(result.chargeFeesCentavos))
+                LabeledContent(String(localized: "android.ledger_sync_charge"), value: LedgerFormat.money(result.chargeCostCentavos))
+                LabeledContent(String(localized: "ledger.metrics.energy_bought"), value: LedgerFormat.kwh(result.chargeEnergyWh))
+                LabeledContent(String(localized: "ledger.metrics.charge_fees"), value: LedgerFormat.money(result.chargeFeesCentavos))
             }
             Divider()
             metric(
-                title: String(localized: "Consumo medido"),
+                title: String(localized: "ledger.metrics.measured"),
                 value: result.measured.unknown.isEmpty
-                    ? LedgerFormat.rational(result.measured.kmPerUnit, fractionDigits: 2) + " km/L"
+                    ? LedgerFormat.fuelEfficiency(result.measured.kmPerUnit)
                     : nil,
                 exact: result.measured.kmPerUnit,
                 reason: result.measured.unknown
             )
             metric(
-                title: String(localized: "Custo de combustível por km (intervalo de compras)"),
+                title: String(localized: "ledger.metrics.fuel_cost"),
                 value: result.cost.unknown.isEmpty
-                    ? "R$ " + LedgerFormat.rational(result.cost.centavosPerKm, fractionDigits: 3, divideBy: 100) + "/km"
+                    ? LedgerFormat.costPerKilometre(result.cost.centavosPerKm)
                     : nil,
-                exact: result.cost.centavosPerKm.isEmpty ? "" : result.cost.centavosPerKm + " centavos/km",
+                exact: LedgerFormat.exactCostPerKilometre(result.cost.centavosPerKm),
                 reason: result.cost.unknown
             )
             metric(
-                title: String(localized: "Custo combinado por km (combustível + recarga)"),
+                title: String(localized: "ledger.metrics.combined_cost"),
                 value: result.combined.unknown.isEmpty
-                    ? "R$ " + LedgerFormat.rational(result.combined.centavosPerKm, fractionDigits: 3, divideBy: 100) + "/km"
+                    ? LedgerFormat.costPerKilometre(result.combined.centavosPerKm)
                     : nil,
-                exact: result.combined.centavosPerKm.isEmpty ? "" : result.combined.centavosPerKm + " centavos/km",
+                exact: LedgerFormat.exactCostPerKilometre(result.combined.centavosPerKm),
                 reason: result.combined.unknown
             )
             metric(
-                title: String(localized: "Energia medida"),
+                title: String(localized: "ledger.metrics.energy_measured"),
                 value: result.energyMeasured.unknown.isEmpty
-                    ? LedgerFormat.rational(result.energyMeasured.whPerKm, fractionDigits: 1) + " Wh/km"
+                    ? LedgerFormat.energyPerKilometre(result.energyMeasured.whPerKm)
                     : nil,
                 exact: result.energyMeasured.whPerKm,
                 reason: result.energyMeasured.unknown
             )
             metric(
-                title: String(localized: "Referência de energia (histórico)"),
+                title: String(localized: "ledger.metrics.energy_reference"),
                 value: result.energyReference.unknown.isEmpty
-                    ? LedgerFormat.rational(result.energyReference.whPerKm, fractionDigits: 1) + " Wh/km"
+                    ? LedgerFormat.energyPerKilometre(result.energyReference.whPerKm)
                     : nil,
                 exact: result.energyReference.whPerKm,
                 reason: result.energyReference.unknown
             )
             metric(
-                title: String(localized: "Variação de eficiência vs. mês anterior"),
+                title: String(localized: "ledger.metrics.efficiency_change"),
                 value: result.comparison.unknown.isEmpty
-                    ? LedgerFormat.rational(result.comparison.changePercent, fractionDigits: 1) + "%"
+                    ? LedgerFormat.percent(result.comparison.changePercent)
                     : nil,
                 exact: result.comparison.changePercent,
                 reason: result.comparison.unknown
             )
-            Text("Distância elegível: \(LedgerFormat.kilometres(result.windowNote.distanceMetres)) · cálculo v\(LedgerBounds.calculationVersion). Estimativas de compra, não medição de estoque; lançamentos esquecidos alteram o resultado.")
+            Text(String(localized: "ledger.metrics.basis", defaultValue: "Eligible distance: \(LedgerFormat.kilometres(result.windowNote.distanceMetres)) · calculation v\(String(LedgerBounds.calculationVersion)). Based on purchases rather than fuel inventory. Missing entries affect the result."))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -658,10 +682,10 @@ struct LedgerIndicatorsContent: View {
             if let value {
                 Text(value).font(.subheadline)
                 if !exact.isEmpty {
-                    Text("Exato: \(exact)").font(.caption2.monospaced()).foregroundStyle(.secondary)
+                    Text(String(localized: "ledger.metrics.exact", defaultValue: "Exact: \(exact)")).font(.caption2.monospaced()).foregroundStyle(.secondary)
                 }
             } else {
-                Text("Indisponível: \(LedgerCoordinator.reasonLabel(reason))")
+                Text(String(localized: "ledger.metrics.unavailable", defaultValue: "Unavailable: \(LedgerCoordinator.reasonLabel(reason))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -681,14 +705,14 @@ struct LedgerSyncView: View {
         List {
             if viewModel.currentAccountIdOrNil == nil {
                 Section {
-                    Text("Os registros ficam somente neste aparelho. Entre na conta gratuita para ativar a sincronização Premium.")
-                    Button("Entrar ou criar conta gratuita") { viewModel.activeSheet = .auth }
+                    Text(String(localized: "ledger.sync.signed_out"))
+                    Button(String(localized: "android.profile_action_sign_in")) { viewModel.activeSheet = .auth }
                 }
             } else if let state = ledger.syncState {
                 statusSection(state)
                 pullSection
                 if !state.conflicts.isEmpty {
-                    Section("Conflitos (\(state.conflicts.count))") {
+                    Section(String(localized: "ledger.sync.conflicts_count", defaultValue: "Conflicts (\(state.conflicts.count.formatted()))")) {
                         ForEach(state.conflicts) { conflict in
                             NavigationLink {
                                 LedgerConflictView(viewModel: viewModel, ledger: ledger, conflictKey: conflict.key)
@@ -700,15 +724,15 @@ struct LedgerSyncView: View {
                 }
                 let refused = state.commands.filter { $0.status == .refused }
                 if !refused.isEmpty {
-                    Section("Recusados pelo servidor (\(refused.count))") {
+                    Section(String(localized: "ledger.sync.refused_count", defaultValue: "Refused by server (\(refused.count.formatted()))")) {
                         ForEach(refused) { command in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(command.isDelete ? String(localized: "Exclusão") : command.dataset.labelPtBr)
+                                Text(command.isDelete ? String(localized: "ledger.sync.deletion") : command.dataset.localizedLabel)
                                     .font(.subheadline)
                                 Text(LedgerCoordinator.codeLabel(command.lastCode)).font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        Text("Corrija o registro e salve de novo, ou tente novamente após resolver a causa.")
+                        Text(String(localized: "ledger.sync.refused_next_steps"))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -718,30 +742,30 @@ struct LedgerSyncView: View {
             if let notice = ledger.notice {
                 Section {
                     Text(notice)
-                    Button("Ok") { ledger.dismissNotice() }
+                    Button(String(localized: "android.map_downloads_ok")) { ledger.dismissNotice() }
                 }
             }
         }
-        .navigationTitle("Nuvem do diário")
+        .navigationTitle(String(localized: "android.ledger_sync_title"))
         .onAppear { ledger.refresh() }
-        .alert("Ativar a sincronização?", isPresented: $confirmEnable) {
-            Button("Ativar") { ledger.setSyncEnabled(true) }
-            Button("Cancelar", role: .cancel) {}
+        .alert(String(localized: "ledger.sync.enable_prompt"), isPresented: $confirmEnable) {
+            Button(String(localized: "android.map_activate")) { ledger.setSyncEnabled(true) }
+            Button(String(localized: "android.action_cancel"), role: .cancel) {}
         } message: {
-            Text("Os \(viewModel.snapshot.ledgerEntries.count) lançamentos deste aparelho passam a ser enviados para esta conta, sem fotos nem localização. Exige o Premium (professional.write); exclusão e exportação continuam gratuitas.")
+            Text(String(localized: "ledger.sync.enable_explanation", defaultValue: "Entries to upload to this account: \(viewModel.snapshot.ledgerEntries.count.formatted()). Photos and location are excluded. Premium (professional.write) is required. Deleting and exporting are still free."))
         }
-        .alert("Apagar o diário da nuvem?", isPresented: $confirmErase) {
-            Button("Apagar da nuvem", role: .destructive) { ledger.eraseCloudLedger() }
-            Button("Cancelar", role: .cancel) {}
+        .alert(String(localized: "ledger.sync.erase_prompt"), isPresented: $confirmErase) {
+            Button(String(localized: "ledger.sync.erase_action"), role: .destructive) { ledger.eraseCloudLedger() }
+            Button(String(localized: "android.action_cancel"), role: .cancel) {}
         } message: {
-            Text("Apaga gratuitamente os lançamentos desta conta no servidor e revoga o consentimento. Os registros continuam neste aparelho.")
+            Text(String(localized: "ledger.sync.erase_explanation"))
         }
     }
 
     private func statusSection(_ state: LedgerSyncState) -> some View {
-        Section("Sincronização") {
+        Section(String(localized: "ledger.sync.section")) {
             Toggle(
-                "Enviar lançamentos para a nuvem",
+                String(localized: "ledger.sync.upload_toggle"),
                 isOn: Binding(
                     get: { state.enabled },
                     set: { value in
@@ -755,42 +779,42 @@ struct LedgerSyncView: View {
             )
             .disabled(ledger.isWorking)
             if state.enabled {
-                Text("Conjuntos autorizados: \(state.consentedDatasets.map { $0.labelPtBr }.joined(separator: ", "))")
+                Text(String(localized: "ledger.sync.consented_datasets", defaultValue: "Authorized datasets: \(state.consentedDatasets.map(\.localizedLabel).formatted(.list(type: .and)))"))
                     .font(.caption)
             }
-            Text("Pendentes: \(state.pendingCount) · Conflitos: \(state.conflicts.count) · Recusados: \(state.refusedCount)")
+            Text(String(localized: "ledger.sync.counts", defaultValue: "Pending: \(state.pendingCount.formatted()) · Conflicts: \(state.conflicts.count.formatted()) · Refused: \(state.refusedCount.formatted())"))
                 .font(.caption)
             if state.paidUploadsPaused {
-                Text("Envios pausados: o servidor exige o Premium (professional.write) ou o consentimento. Os registros continuam aqui, e exclusões seguem gratuitas.")
+                Text(String(localized: "ledger.sync.paused_explanation"))
                     .font(.caption)
                     .foregroundStyle(AbastevoTheme.warningLight)
-                Button("Conhecer o Abastevo Premium") { viewModel.activeSheet = .premium }
+                Button(String(localized: "ledger.explore_premium")) { viewModel.activeSheet = .premium }
             }
             if let last = state.lastSuccessAtMillis {
-                Text("Último envio confirmado: \(LedgerTime.label(millis: last, timezone: TimeZone.current.identifier))")
+                Text(String(localized: "ledger.sync.last_upload", defaultValue: "Last confirmed upload: \(LedgerFormat.dateTime(millis: last, timeZone: .current))"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            Button(ledger.isSyncing ? "Sincronizando..." : "Sincronizar agora") { ledger.syncNow() }
+            Button(ledger.isSyncing ? String(localized: "ledger.sync.syncing") : String(localized: "android.onboarding_action_sync_now")) { ledger.syncNow() }
                 .disabled(!state.enabled || ledger.isSyncing)
-            Text("Hodômetro zerado e abastecimentos esquecidos ficam neste aparelho: o servidor ainda não recebe essas marcações.")
+            Text(String(localized: "ledger.sync.local_markers"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var pullSection: some View {
-        Section("Baixar da conta") {
-            Text("Traz lançamentos da conta que faltam neste aparelho e versões mais novas de registros sem edição pendente. Nada local é apagado ou sobrescrito com edições pendentes.")
+        Section(String(localized: "ledger.sync.pull_section")) {
+            Text(String(localized: "ledger.sync.pull_explanation"))
                 .font(.caption)
-            Button(ledger.isPulling ? "Baixando..." : "Baixar lançamentos da conta") { ledger.pull() }
+            Button(ledger.isPulling ? String(localized: "ledger.sync.downloading") : String(localized: "ledger.sync.pull_action")) { ledger.pull() }
                 .disabled(ledger.isPulling)
             if let report = ledger.lastPullReport {
-                Text("Novos: \(report.added) · Atualizados: \(report.updated) · Iguais: \(report.unchanged) · Mantidos com edição local: \(report.skippedHeld) · Excluídos aqui: \(report.skippedDeleted) · Anulados: \(report.skippedVoided) · Ilegíveis: \(report.undecodable)")
+                Text(String(localized: "ledger.sync.pull_counts", defaultValue: "New: \(report.added.formatted()) · Updated: \(report.updated.formatted()) · Unchanged: \(report.unchanged.formatted()) · Local edits kept: \(report.skippedHeld.formatted()) · Deleted here: \(report.skippedDeleted.formatted()) · Voided: \(report.skippedVoided.formatted()) · Unreadable: \(report.undecodable.formatted())"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 if report.truncated {
-                    Text("Ainda há páginas; toque de novo para continuar de onde parou.")
+                    Text(String(localized: "ledger.sync.more_pages"))
                         .font(.caption2)
                 }
             }
@@ -798,19 +822,25 @@ struct LedgerSyncView: View {
     }
 
     private var exitSection: some View {
-        Section("Seus dados (gratuito)") {
+        Section(String(localized: "ledger.sync.your_data")) {
             ShareLink(item: ledger.exportCsv()) {
-                Label("Exportar diário (CSV)", systemImage: "square.and.arrow.up")
+                Label(String(localized: "android.monthly_export"), systemImage: "square.and.arrow.up")
             }
-            Button("Apagar diário da nuvem", role: .destructive) { confirmErase = true }
+            Button(String(localized: "ledger.sync.erase_ledger_action"), role: .destructive) { confirmErase = true }
                 .disabled(ledger.isWorking)
         }
     }
 
     private func conflictTitle(_ conflict: LedgerConflict) -> String {
-        let record = LedgerWire.decodePayload(json: conflict.proposedPayloadJson, dataset: conflict.dataset)
-        let date = record?.dateLabel ?? ""
-        return conflict.dataset.labelPtBr + (date.isEmpty ? "" : " · " + date)
+        let dataset = conflict.dataset.localizedLabel
+        guard let record = LedgerWire.decodePayload(json: conflict.proposedPayloadJson, dataset: conflict.dataset) else {
+            return dataset
+        }
+        let date = LedgerFormat.dateTime(
+            millis: record.occurredAtMillis,
+            timeZone: TimeZone(identifier: record.timezone) ?? .gmt
+        )
+        return dataset + " · " + date
     }
 }
 
@@ -823,49 +853,53 @@ struct LedgerConflictView: View {
     var body: some View {
         List {
             if let conflict = ledger.syncState?.conflicts.first(where: { $0.key == conflictKey }) {
-                Section("Base: última versão confirmada neste aparelho") {
-                    versionText(conflict.basePayloadJson, dataset: conflict.dataset, empty: String(localized: "Sem envio confirmado anterior."))
+                Section(String(localized: "ledger.conflict.base")) {
+                    versionText(conflict.basePayloadJson, dataset: conflict.dataset, empty: String(localized: "ledger.conflict.no_base"))
                 }
-                Section("Atual: versão no servidor") {
+                Section(String(localized: "ledger.conflict.current")) {
                     switch conflict.current.state {
                     case .unknown:
-                        Text("Ainda não lida. Atualize para comparar.").foregroundStyle(.secondary)
+                        Text(String(localized: "ledger.conflict.current_not_loaded")).foregroundStyle(.secondary)
                     case .missing:
-                        Text("O servidor não tem mais este registro (excluído em outro aparelho).")
+                        Text(String(localized: "ledger.conflict.deleted_elsewhere"))
                     case .present:
                         if conflict.current.voided {
-                            Text("Anulado no servidor.")
+                            Text(String(localized: "ledger.conflict.voided"))
                         }
-                        versionText(conflict.current.payloadJson, dataset: conflict.dataset, empty: String(localized: "Versão do servidor ilegível neste aparelho."))
-                        Text("Revisão \(String(conflict.current.revision ?? 0))").font(.caption2).foregroundStyle(.secondary)
+                        versionText(conflict.current.payloadJson, dataset: conflict.dataset, empty: String(localized: "ledger.conflict.unreadable"))
+                        if let revision = conflict.current.revision {
+                            Text(String(localized: "ledger.conflict.revision", defaultValue: "Revision \(revision.formatted())"))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-                Section("Proposta: sua versão neste aparelho") {
+                Section(String(localized: "ledger.conflict.proposed")) {
                     versionText(conflict.proposedPayloadJson, dataset: conflict.dataset, empty: "")
                 }
-                Section("Decisão") {
-                    Button("Manter a minha versão") {
+                Section(String(localized: "ledger.conflict.decision")) {
+                    Button(String(localized: "android.ledger_sync_keep_mine")) {
                         ledger.resolveConflict(conflict, choice: .keepMine)
                         dismiss()
                     }
                     .disabled(conflict.current.state != .present || conflict.current.voided)
-                    Button("Usar a versão do servidor") {
+                    Button(String(localized: "android.ledger_sync_take_server")) {
                         ledger.resolveConflict(conflict, choice: .takeServer)
                         dismiss()
                     }
                     .disabled(conflict.current.state == .unknown)
-                    Button("Atualizar a versão do servidor") { ledger.refreshConflictCurrent(conflict) }
+                    Button(String(localized: "ledger.conflict.refresh")) { ledger.refreshConflictCurrent(conflict) }
                         .disabled(ledger.isWorking)
-                    Button("Decidir depois") { dismiss() }
-                    Text("Manter a sua versão envia uma nova alteração sobre a revisão atual. Nada é decidido pela ordem de chegada.")
+                    Button(String(localized: "ledger.conflict.decide_later")) { dismiss() }
+                    Text(String(localized: "ledger.conflict.keep_explanation"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Text("Conflito já resolvido.").foregroundStyle(.secondary)
+                Text(String(localized: "ledger.conflict.resolved")).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Conflito")
+        .navigationTitle(String(localized: "android.ledger_entry_state_conflict"))
     }
 
     @ViewBuilder

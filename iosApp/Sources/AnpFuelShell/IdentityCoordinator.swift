@@ -87,6 +87,7 @@ public final class IdentityCoordinator: ObservableObject {
     /// The signed transport of the current origin, for other owner-signed
     /// commands such as Premium purchase verification.
     public var signedTransport: SignedRequestTransport { transport }
+    var communityGateway: CommunityWriteClient { client }
 
     /// Loads the queue, observes app activation and resumes pending writes.
     public func start() {
@@ -107,6 +108,8 @@ public final class IdentityCoordinator: ObservableObject {
     public func updateEnvironment(_ environment: ApiEnvironment) {
         guard environment.origin != origin else { return }
         stopDispatch()
+        outboxItems.removeAll { $0.kind == .stationSuggestion }
+        persist()
         origin = environment.origin
         let pair = IdentityCoordinator.makeClient(
             origin: environment.origin,
@@ -209,6 +212,54 @@ public final class IdentityCoordinator: ObservableObject {
 
     public func items(of kind: CommunityWriteKind) -> [CommunityOutboxItem] {
         outboxItems.filter { $0.kind == kind }
+    }
+
+    var stationSuggestionItems: [CommunityOutboxItem] {
+        guard hasAccount, let scope = transport.ownerScope() else { return [] }
+        return outboxItems.filter { $0.kind == .stationSuggestion && $0.ownerScope == scope && $0.origin == origin }
+    }
+
+    func enqueueStationSuggestion(_ proposal: StationIntakeProposal) -> CommunityOutboxItem? {
+        guard hasAccount, let scope = transport.ownerScope() else { return nil }
+        if let pending = stationSuggestionItems.first(where: { !$0.status.isTerminal && $0.stationProposal == proposal }) {
+            return pending
+        }
+        let item = CommunityOutboxItem(
+            id: UUID().uuidString.lowercased(), kind: .stationSuggestion, ownerScope: scope,
+            origin: origin, createdAtMillis: Self.nowMillis(), stationProposal: proposal
+        )
+        outboxItems = CommunityOutbox.enqueue(item, into: outboxItems)
+        persist()
+        dispatchPending()
+        return item
+    }
+
+    func ownedStationComments(stationId: String, fuel: FuelProduct) -> Set<String> {
+        guard hasAccount, let ownerScope = transport.ownerScope() else { return [] }
+        return CommunityOutbox.ownedStationCommentIds(outboxItems, ownerScope: ownerScope, origin: origin, stationId: stationId, fuel: fuel)
+    }
+
+    func recordStationReply(
+        _ reply: PublicStationComment, fuel: FuelProduct, text: String, ownerScope: String, operationId: String
+    ) {
+        guard hasAccount, transport.ownerScope() == ownerScope else { return }
+        let item = CommunityOutboxItem(
+            id: operationId, kind: .stationComment, ownerScope: ownerScope, origin: origin,
+            createdAtMillis: Self.nowMillis(),
+            text: CommunityTextDraft(text: text, stationId: reply.stationId, product: fuel, parentId: reply.parentId),
+            status: .accepted, receiptId: reply.id, serverState: "PUBLISHED"
+        )
+        outboxItems = CommunityOutbox.enqueue(item, into: outboxItems)
+        persist()
+    }
+
+    func forgetStationCommentReceipt(_ id: String, ownerScope: String) {
+        guard hasAccount, transport.ownerScope() == ownerScope else { return }
+        outboxItems.removeAll {
+            $0.kind == .stationComment && $0.origin == origin && $0.ownerScope == ownerScope
+                && $0.receiptId?.lowercased() == id.lowercased()
+        }
+        persist()
     }
 
     public func dispatchPending() {
@@ -344,7 +395,7 @@ public final class IdentityCoordinator: ObservableObject {
 
     public func voteStationComment(commentId: String, valid: Bool) async -> Result<StationCommentTally, AppValidationError> {
         guard !isOfflineProbe() else {
-            return .failure(AppValidationError(String(localized: "Conecte-se para votar.")))
+            return .failure(AppValidationError(String(localized: "identity.vote_sign_in")))
         }
         do {
             let tally = try await client.voteStationComment(commentId: commentId, valid: valid)
@@ -363,45 +414,59 @@ public final class IdentityCoordinator: ObservableObject {
     public static func statusLabel(for item: CommunityOutboxItem) -> String {
         switch item.status {
         case .draft:
-            return String(localized: "Rascunho: entre na conta gratuita para publicar")
+            return String(localized: "identity.outbox_draft")
         case .pending:
             if item.attempts == 0 {
-                return String(localized: "Pendente de envio")
+                return String(localized: "android.profile_contributions_state_queued")
             }
-            return String(localized: "Pendente: nova tentativa automática (\(item.attempts))")
+            return String(localized: "identity.outbox_retry", defaultValue: "Pending: automatic retry (\(item.attempts.formatted()))")
         case .accepted:
-            return String(localized: "Aceito pelo servidor · \(serverStateLabel(item.serverState))")
+            return String(localized: "identity.outbox_accepted", defaultValue: "Accepted by the server · \(serverStateLabel(item.serverState))")
         case .refused:
-            return String(localized: "Recusado pelo servidor · \(codeLabel(item.lastCode))")
+            return String(localized: "identity.outbox_refused", defaultValue: "Refused by the server · \(codeLabel(item.lastCode))")
         case .expired:
-            return String(localized: "Expirado · \(codeLabel(item.lastCode))")
+            return String(localized: "identity.outbox_expired", defaultValue: "Expired · \(codeLabel(item.lastCode))")
+        case .unconfirmed:
+            return String(
+                localized: "identity.outbox_unconfirmed",
+                defaultValue: "This might have reached the server. Reload the comments and send it again only if it is missing."
+            )
         }
     }
 
     public static func serverStateLabel(_ state: String?) -> String {
         switch state ?? "" {
-        case "RECEIVED": return String(localized: "recebido, aguardando validação")
-        case "VALIDATING": return String(localized: "em validação")
-        case "VALIDATED": return String(localized: "validado")
-        case "REJECTED": return String(localized: "rejeitado na validação")
-        case "PENDING_REVIEW": return String(localized: "em moderação")
-        case "PUBLISHED": return String(localized: "publicado")
-        default: return state ?? String(localized: "recibo registrado")
+        case "RECEIVED": return String(localized: "identity.received")
+        case "VALIDATING": return String(localized: "identity.validating")
+        case "VALIDATED": return String(localized: "identity.validated")
+        case "REJECTED": return String(localized: "identity.rejected")
+        case "PENDING_REVIEW": return String(localized: "identity.moderation")
+        case "PUBLISHED": return String(localized: "android.map_published")
+        case "pending": return String(localized: "station.suggestion.pending")
+        case "cancelled": return String(localized: "station.suggestion.cancelled")
+        case "approved": return String(localized: "station.suggestion.approved")
+        case "rejected": return String(localized: "station.suggestion.rejected")
+        default: return String(localized: "identity.recorded")
         }
     }
 
     public static func codeLabel(_ code: String?) -> String {
         switch code ?? "" {
-        case CommunityOutbox.ownerChangedCode: return String(localized: "criado em outra conta ou ambiente")
-        case CommunityOutbox.attemptsExhaustedCode: return String(localized: "limite de tentativas atingido")
-        case "contribution.photo-expired": return String(localized: "a foto passou do prazo de 24 horas")
-        case "contribution.photo-rejected": return String(localized: "a foto foi recusada")
-        case "community.quota-exceeded", "feedback.quota-exceeded": return String(localized: "limite de envios atingido")
-        case "community.capture-ineligible": return String(localized: "foto fora da janela autorizada")
-        case "community.account-blocked": return String(localized: "conta suspensa ou excluída")
-        case "feedback.text-too-long", "feedback.text-invalid": return String(localized: "texto inválido ou acima de 280 caracteres")
-        case "account.binding-cross-account-refused": return String(localized: "este aparelho já está vinculado a outra conta")
-        case "": return String(localized: "sem detalhe")
+        case CommunityOutbox.ownerChangedCode: return String(localized: "identity.other_owner")
+        case CommunityOutbox.attemptsExhaustedCode: return String(localized: "identity.attempts_exhausted")
+        case "contribution.photo-expired": return String(localized: "identity.photo_expired")
+        case "contribution.photo-rejected": return String(localized: "identity.photo_refused")
+        case "community.quota-exceeded", "feedback.quota-exceeded": return String(localized: "identity.quota_exceeded")
+        case "community.capture-ineligible": return String(localized: "identity.capture_ineligible")
+        case "community.account-blocked": return String(localized: "identity.account_blocked")
+        case "feedback.text-too-long", "feedback.text-invalid": return String(localized: "identity.invalid_text")
+        case "intake.session-invalid": return String(localized: "android.suggest_signin")
+        case "intake.author-forbidden": return String(localized: "station.suggestion.author_forbidden")
+        case "intake.quota-exceeded": return String(localized: "android.suggest_quota")
+        case "intake.idempotency-conflict": return String(localized: "android.suggest_conflict")
+        case "intake.bad-request", "intake.invalid": return String(localized: "android.suggest_invalid")
+        case "account.binding-cross-account-refused": return String(localized: "identity.cross_account")
+        case "": return String(localized: "identity.no_detail")
         default: return code ?? ""
         }
     }
@@ -409,26 +474,26 @@ public final class IdentityCoordinator: ObservableObject {
     public static func describe(_ error: Error) -> String {
         if let write = error as? CommunityWriteError {
             switch write {
-            case .signInRequired: return String(localized: "Entre na conta gratuita para continuar.")
-            case .photoExpired: return String(localized: "A foto passou do prazo de 24 horas.")
-            case .photoRejected: return String(localized: "A foto foi recusada pelo servidor.")
-            case .mediaPending: return String(localized: "A foto ainda está em processamento.")
-            case .invalidReceipt: return String(localized: "O servidor respondeu com um recibo inválido.")
-            case .invalid(let code): return String(localized: "Dados recusados (\(code)).")
+            case .signInRequired: return String(localized: "identity.sign_in_required")
+            case .photoExpired: return String(localized: "identity.photo_expired_message")
+            case .photoRejected: return String(localized: "identity.photo_refused_message")
+            case .mediaPending: return String(localized: "identity.photo_pending")
+            case .invalidReceipt: return String(localized: "identity.invalid_receipt")
+            case .invalid(let code): return String(localized: "identity.invalid", defaultValue: "Data refused (\(code)).")
             }
         }
         if let transport = error as? SignedTransportError {
             switch transport {
-            case .offline: return String(localized: "Sem conexão com o servidor.")
-            case .identityUnavailable, .signingUnavailable: return String(localized: "Chave do dispositivo indisponível.")
-            case .sessionRequired: return String(localized: "Entre na conta gratuita para continuar.")
-            case .originUnavailable, .invalidRequest: return String(localized: "Ambiente de rede inválido.")
-            case .oversizedResponse, .invalidResponse: return String(localized: "Resposta inválida do servidor.")
+            case .offline: return String(localized: "identity.offline")
+            case .identityUnavailable, .signingUnavailable: return String(localized: "identity.key_unavailable")
+            case .sessionRequired: return String(localized: "identity.sign_in_required")
+            case .originUnavailable, .invalidRequest: return String(localized: "identity.origin_invalid")
+            case .oversizedResponse, .invalidResponse: return String(localized: "identity.response_invalid")
             case .refused(let status, let code, _):
                 let label = codeLabel(code ?? ("http-" + String(status)))
-                return String(localized: "Servidor recusou (\(label)).")
+                return String(localized: "identity.server_refused", defaultValue: "The server refused the request (\(label)).")
             }
         }
-        return String(localized: "Serviço indisponível no momento.")
+        return String(localized: "identity.unavailable")
     }
 }

@@ -2,7 +2,23 @@
 
 This file designs the information architecture, the shared screen states, the flows and the visual rules of enterprise mode in the Android app. It is the home of what every app screen shares ([00-conventions](conventions.md) §4). Individual screens are specified in section 11 of each module file and indexed in §7. The web surfaces are in [13-ux-web](ux-web.md).
 
-Evidence. The app today is the personal product only. Its shell is four tabs, Explorar | Comunidade | Mapa | Perfil (`app/src/main/kotlin/com/anpfuel/app/navigation/AbastevoBottomBar.kt`, `TabNavigation.kt`, `AnpNavGraph.kt`), `IMPLEMENTED`. The visual identity is described in `docs/android/design-system.md` and `docs/android/ui-containers.md` and lives in `app/src/main/kotlin/com/anpfuel/app/ui/theme/` and `ui/designsystem/`, `IMPLEMENTED`; rendered light, dark and 200 % font checks are recorded there as `VISUAL_VALIDATION_PENDING`. Pieces this design reuses exist: the header (`ui/header/AbastevoHeader.kt`), the state components (`ui/components/LoadingState.kt`, `EmptyState.kt`, `ErrorState.kt`, `Skeleton.kt`, `SyncStatusBanner.kt`, `SourceTimeBadge.kt`), the map, route sheet and turn-by-turn guidance (`ui/map/MapScreen.kt`, `NativeRouteSheet.kt`, `GuidanceControls.kt`, `GuidanceService.kt`, `MapDownloadsScreen.kt`), camera capture (`capture/CaptureScreen.kt`), the personal ledger screens (`ui/ledger/LedgerEntriesScreen.kt`, `ui/sync/LedgerSyncScreen.kt`) and the semantics helpers (`ui/accessibility/AccessibilitySemantics.kt`). No enterprise mode, context switcher, organization header or organization queue exists; everything below is `PROPOSED`, in a package `com.anpfuel.app.ui.enterprise` (proposed, [09-architecture](architecture.md) §2).
+Evidence. The personal app uses four tabs, Explorar | Comunidade | Mapa | Perfil (`app/src/main/kotlin/com/anpfuel/app/navigation/AbastevoBottomBar.kt`, `TabNavigation.kt`, `AnpNavGraph.kt`), `IMPLEMENTED`. The visual identity is described in `docs/android/design-system.md` and `docs/android/ui-containers.md` and lives in `app/src/main/kotlin/com/anpfuel/app/ui/theme/` and `ui/designsystem/`, `IMPLEMENTED`; rendered light, dark and 200 % font checks are recorded there as `VISUAL_VALIDATION_PENDING`. Pieces this design reuses exist: the header (`ui/header/AbastevoHeader.kt`), the state components (`ui/components/LoadingState.kt`, `EmptyState.kt`, `ErrorState.kt`, `Skeleton.kt`, `SyncStatusBanner.kt`, `SourceTimeBadge.kt`), the map, route sheet and turn-by-turn guidance (`ui/map/MapScreen.kt`, `NativeRouteSheet.kt`, `GuidanceControls.kt`, `GuidanceService.kt`, `MapDownloadsScreen.kt`), camera capture (`capture/CaptureScreen.kt`), the personal ledger screens (`ui/ledger/LedgerEntriesScreen.kt`, `ui/sync/LedgerSyncScreen.kt`) and the semantics helpers (`ui/accessibility/AccessibilitySemantics.kt`). The flows below describe the Android design. The iOS driver screens are listed under [iOS enterprise mode](#ios-enterprise-mode).
+
+## iOS enterprise mode
+
+Profile opens Abastevo Empresas and the selected company shows its mission inbox, trip
+controls, Fuelings and pending sync. Mission answers and trip changes show local and server
+status separately. Fuelings opens the driver's scoped history and a form for the assigned
+asset, product, quantity, payment and meter evidence. Camera and photo library are optional
+ways to attach a receipt to a fueling. The app prepares a JPEG with metadata removed before
+saving it to the company partition.
+
+Finishing a trip offers the applicable return checklist and links an accepted run. The
+finish form asks for confirmation before a close without a linked run. If a checklist answer
+requires a photo, the checklist keeps the draft and shows that photo submission is
+unavailable. The Fuelings screen shows the authorization and station redemption boundary.
+The company trip screen always shows that tracking is off. See [iOS parity](../../iosApp/PARITY.md)
+for the staging and device evidence still needed.
 
 ## 1. Principles
 

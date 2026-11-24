@@ -9,7 +9,8 @@
 # Test override: MOBILE_ROOT=<dir> points at a fixture tree (see test-gate).
 set -euo pipefail
 
-ROOT="${MOBILE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+SCRIPT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="${MOBILE_ROOT:-$SCRIPT_ROOT}"
 MODE="full"
 if [[ "${1:-}" == "--static-only" ]]; then
     MODE="static"
@@ -168,10 +169,26 @@ if [[ -n "$tracking_block" || -f "$tracking" ]]; then
         fail "OrganizationTrackingService must stay a non-exported location foreground service"
     fi
 fi
-if grep -rn "startUpdatingLocation\|allowsBackgroundLocationUpdates" "$ROOT/iosApp/Sources" 2>/dev/null; then
-    fail "background location tracking found in shipped iOS sources (one-shot only)"
+ios_location_sources="$(grep -rnE --include='*.swift' 'requestAlwaysAuthorization|startUpdatingLocation|allowsBackgroundLocationUpdates|showsBackgroundLocationIndicator|startMonitoringSignificantLocationChanges|CLBackgroundActivitySession|CLLocationUpdate|liveUpdates|CLMonitor' "$ROOT/iosApp/Sources" 2>/dev/null || true)"
+while IFS= read -r match; do
+    case "$match" in
+        '') ;;
+        *requestAlwaysAuthorization*) fail "Always authorization found in shipped iOS sources" ;;
+        "$ROOT/iosApp/Sources/AnpFuelShell/ActiveNavigationLocation.swift:"*) ;;
+        *) fail "continuous location found outside active iOS navigation and driver sessions" ;;
+    esac
+done <<< "$ios_location_sources"
+pass "iOS location updates are limited to active navigation and driver sessions"
+
+# MOBILE_ROOT may point to a synthetic tree for the shell guards. The Python
+# suites require the complete repository and run when checking the real tree.
+if [[ "$ROOT" -ef "$SCRIPT_ROOT" ]]; then
+    (
+        cd "$ROOT"
+        python3 -m unittest -v scripts.tests.test_ios_app_integrity scripts.tests.test_ios_localization
+    ) || fail "iOS integrity or localization checks failed"
+    pass "iOS project integrity and localization catalogs"
 fi
-pass "no background location tracking in shipped sources"
 
 if [[ "$MODE" == "static" ]]; then
     echo "check-mobile: static-only ok"

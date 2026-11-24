@@ -91,3 +91,13 @@ actual SQLite upgrade/reopen/concurrency/rollback and retained-data compatibilit
 Both must consume this version before activation. Applied SQL/Room migrations
 and current limits remain unchanged by MEX-01. Future EE contracts extend
 vehicle capabilities without resetting identities or counting a hybrid twice.
+
+## Native iOS vehicle edits and local preferences
+
+The iOS vehicle editor corrects an existing registration in place, keeps its ID and retains its history. It validates the propulsion, admitted fuel and exact battery capacity. A new vehicle starts with empty tank and battery fields. As on Android, a propulsion change clears the inputs the new propulsion cannot use: BEV clears the tank, the specific station and the price-drop alert, and ICE, flex and HEV clear the battery and connector. The editor saves only capacities the person typed.
+
+A selected photo is decoded within bounded dimensions and re-encoded as a local JPEG with source metadata removed. The photo and local estimate and alert preferences are protected by the current owner and origin. Vehicle removal clears that vehicle's local preferences and photo in every scope. Logout and account deletion purge only the departing owner's scope at that origin; the device's guest data stays. An origin switch purges every owner's scope at the previous origin, the guest's included.
+
+Registering a vehicle in the cloud vehicles dataset for driver accounting requires a tank capacity in 10 mL steps. The app refuses another value before any request, explains it, and never rounds.
+
+A per-vehicle weekly ANP price-drop alert requires explicit opt-in and uses the current and previous admitted survey weeks for the vehicle's fuel. The app requests notification permission through that opt-in and deduplicates notices by vehicle and week. Configured efficiency stays labeled as an estimate. Device acceptance covers local photo handling and notification delivery.

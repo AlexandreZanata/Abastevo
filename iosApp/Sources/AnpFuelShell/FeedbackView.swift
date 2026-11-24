@@ -25,34 +25,34 @@ public struct FeedbackView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(commentsRemaining) characters left")
+            Text(String(localized: "feedback.remaining", defaultValue: "\(commentsRemaining.formatted()) characters left"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(agreementText)
                 .font(.subheadline)
             switch state {
             case .disabled:
-                Text("Feedback unavailable").foregroundStyle(.secondary)
+                Text(String(localized: "feedback.unavailable")).foregroundStyle(.secondary)
             case .signInRequired:
-                Text("Sign in to participate").font(.headline)
+                Text(String(localized: "android.forum_sign_in_to_participate")).font(.headline)
             case .submitting:
                 ProgressView()
             case .rejected(let kindLabel, let message):
                 Text("\(kindLabel): \(message)").foregroundStyle(.red)
             case .queued(let opId):
-                Text("Queued \(opId)").foregroundStyle(.secondary)
+                Text(String(localized: "feedback.queued", defaultValue: "Queued \(opId)")).foregroundStyle(.secondary)
             case .saved(let commentId, let revision):
-                Text("Saved \(commentId) rev \(revision)")
+                Text(String(localized: "feedback.saved", defaultValue: "Saved \(commentId), revision \(revision.formatted())"))
             case .voted(let valid, let invalid):
                 Text(FeedbackDisplay.agreementLine(valid: valid, invalid: invalid))
             case .voteRemoved:
-                Text("Vote removed")
+                Text(String(localized: "feedback.vote_removed"))
             case .reported:
-                Text("Reported")
+                Text(String(localized: "feedback.reported"))
             case .commentDeleted:
-                Text("Deleted")
+                Text(String(localized: "feedback.deleted"))
             case .idle:
-                Text("Share station feedback").foregroundStyle(.secondary)
+                Text(String(localized: "feedback.invitation")).foregroundStyle(.secondary)
             }
         }
         .padding()

@@ -240,8 +240,20 @@ final class EnterpriseAccessWireTests: XCTestCase {
         XCTAssertThrowsError(try EnterpriseAttachmentWire.parseSession(Data(Vectors.response_foreign_document_id.utf8), request: request)) {
             XCTAssertEqual($0 as? EnterpriseProtocolFailure, .binding)
         }
-        XCTAssertTrue(EnterpriseAttachmentWire.isFinalRefusal(status: 422, code: "VALIDATION_FAILED"))
-        XCTAssertFalse(EnterpriseAttachmentWire.isFinalRefusal(status: 403, code: "DEVICE_REVOKED"))
+    }
+
+    func testCapabilityUploadRefusalNeverSettlesTheSignedReceipt() {
+        let finalSessionRefusals = [(403, "FORBIDDEN"), (409, "CONFLICT"), (409, "OPERATION_ID_REUSED"), (422, "VALIDATION_FAILED")]
+        for (status, code) in finalSessionRefusals {
+            XCTAssertTrue(EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code, source: .signedSession))
+            XCTAssertFalse(EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code, source: .capabilityUpload))
+        }
+        let transient = [(401, "UNAUTHENTICATED"), (403, "DEVICE_REVOKED"), (404, "NOT_FOUND"), (408, "TIMEOUT"),
+                         (429, "RATE_LIMITED"), (503, "UNAVAILABLE")]
+        for (status, code) in transient {
+            XCTAssertFalse(EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code, source: .signedSession))
+            XCTAssertFalse(EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code, source: .capabilityUpload))
+        }
     }
 
     // MARK: - Vectors

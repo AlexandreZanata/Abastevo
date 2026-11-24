@@ -35,16 +35,16 @@ public enum ChargingConnector: String, CaseIterable, Codable, Identifiable, Send
     public var label: String {
         switch self {
         case .ccs2: return "CCS2"
-        case .type2: return "Tipo 2"
+        case .type2: return String(localized: "ev.connector.type2", bundle: CoreLocalization.bundle)
         case .chademo: return "CHAdeMO"
         case .nacs: return "NACS"
-        case .unknown: return "Desconhecido"
-        case .type1: return "Tipo 1"
+        case .unknown: return String(localized: "ev.connector.unknown", bundle: CoreLocalization.bundle)
+        case .type1: return String(localized: "ev.connector.type1", bundle: CoreLocalization.bundle)
         case .ccs1: return "CCS1"
         case .gbtAc: return "GB/T AC"
         case .gbtDc: return "GB/T DC"
         case .nbr14136: return "NBR 14136"
-        case .teslaLegacy: return "Tesla (legado)"
+        case .teslaLegacy: return String(localized: "ev.connector.teslaLegacy", bundle: CoreLocalization.bundle)
         }
     }
 }
@@ -166,7 +166,7 @@ public struct ChargingPlace: Codable, Equatable, Identifiable, Sendable {
     public var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { return trimmed }
-        return operatorName ?? "Ponto de recarga"
+        return operatorName ?? String(localized: "android.charging_place_unnamed", bundle: CoreLocalization.bundle)
     }
 
     public var maxPowerW: Int64? { groups.compactMap(\.powerW).max() }

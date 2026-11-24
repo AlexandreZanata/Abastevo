@@ -25,34 +25,34 @@ public struct MapDownloadsSheetView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("No iPhone, a navegação curva a curva sem internet usa os mapas offline do Apple Maps (iOS 17 ou posterior). Baixe a sua região uma vez e abra as rotas do abastevo no Apple Maps.")
-                    Label("Abra a cidade no Apple Maps pelo botão abaixo.", systemImage: "1.circle")
-                    Label("No Apple Maps, toque na sua foto ou iniciais, depois em Mapas Offline e Baixar Novo Mapa.", systemImage: "2.circle")
-                    Label("Ajuste a área da região e toque em Baixar.", systemImage: "3.circle")
-                    Label("Sem internet, escolha um posto no abastevo e toque em Abrir no Apple Maps.", systemImage: "4.circle")
+                    Text(String(localized: "map.offline.description"))
+                    Label(String(localized: "map.offline.open_city_instruction"), systemImage: "1.circle")
+                    Label(String(localized: "map.offline.apple_maps"), systemImage: "2.circle")
+                    Label(String(localized: "map.offline.download_area"), systemImage: "3.circle")
+                    Label(String(localized: "map.offline.station_instruction"), systemImage: "4.circle")
                     if let url = Self.appleMapsURL(for: viewModel.selectedMunicipality) {
                         Link(destination: url) {
-                            Label("Abrir \(viewModel.municipalityLabel) no Apple Maps", systemImage: "map")
+                            Label(String(localized: "map.offline.open_city", defaultValue: "Open \(viewModel.municipalityLabel) in Apple Maps"), systemImage: "map")
                         }
                     }
                 } header: {
-                    Text("Navegar sem internet")
+                    Text(String(localized: "map.offline.navigate"))
                 }
 
                 Section {
-                    Text("Mapas regionais indisponíveis")
+                    Text(String(localized: "map.offline.unavailable"))
                         .font(.headline)
-                    Text("Os pacotes de mapa do abastevo usam o motor de mapas do Android. No iOS, o app não baixa pacotes próprios e não indica disponibilidade offline que não consegue verificar.")
+                    Text(String(localized: "map.offline.region_description"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } header: {
-                    Text("Pacotes regionais do abastevo")
+                    Text(String(localized: "map.offline.region_packages"))
                 }
             }
-            .navigationTitle("Navegação offline")
+            .navigationTitle(String(localized: "map.offline.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fechar") { dismiss() }
+                    Button(String(localized: "android.feed_close")) { dismiss() }
                 }
             }
         }

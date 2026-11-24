@@ -231,7 +231,8 @@ public enum EnterpriseOperationBuilder {
         assetId: String,
         driverEmployeeId: String,
         evidence: EnterpriseMeterEvidence,
-        departureRunId: String?
+        departureRunId: String?,
+        missionId: String? = nil
     ) throws -> EnterpriseSealedOperation {
         guard EnterpriseValues.isId(assetId), EnterpriseValues.isId(driverEmployeeId) else {
             throw EnterpriseOperationError.malformed
@@ -241,6 +242,10 @@ public enum EnterpriseOperationBuilder {
         if let run = departureRunId {
             guard EnterpriseValues.isId(run) else { throw EnterpriseOperationError.malformed }
             references.append((type: "checklist_run", id: run))
+        }
+        if let missionId {
+            guard EnterpriseValues.isId(missionId) else { throw EnterpriseOperationError.malformed }
+            references.append((type: "mission", id: missionId))
         }
         return try seal(
             envelope: envelope,
@@ -265,7 +270,8 @@ public enum EnterpriseOperationBuilder {
         envelope: EnterpriseEnvelope,
         tripId: String,
         evidence: EnterpriseMeterEvidence,
-        startOperationId: String?
+        startOperationId: String?,
+        returnRunId: String? = nil
     ) throws -> EnterpriseSealedOperation {
         let parts = try evidencePayload(evidence)
         return try seal(
@@ -275,7 +281,7 @@ public enum EnterpriseOperationBuilder {
             entityId: tripId,
             expectedRevision: nil,
             dependsOn: startOperationId.map { [$0] } ?? [],
-            softReferences: [],
+            softReferences: returnRunId.map { [(type: "checklist_run", id: $0)] } ?? [],
             payload: [
                 "missing_reading_reason": parts.reason,
                 "reading": parts.reading,
@@ -348,8 +354,10 @@ public enum EnterpriseOperationBuilder {
         acknowledged: Bool
     ) throws -> EnterpriseSealedOperation {
         guard EnterpriseValues.isId(assetId), EnterpriseValues.isId(templateId), ["DEPARTURE", "RETURN", "AD_HOC"].contains(context),
-              templateVersion >= 1, policyRevision >= 1, EnterpriseValues.isCanonicalInstant(startedAt),
-              !responses.isEmpty, responses.count <= 40,
+              (1...2_147_483_647).contains(templateVersion), (1...2_147_483_647).contains(policyRevision),
+              EnterpriseValues.isCanonicalInstant(startedAt), let started = EnterpriseValues.parseInstantMillis(startedAt),
+              let completed = EnterpriseValues.parseInstantMillis(envelope.declared.occurredAt), started <= completed,
+              !acknowledged || outcome == .completedWithIssues, !responses.isEmpty, responses.count <= 40,
               responses.allSatisfy({ EnterpriseValues.isValidText($0.note, maxScalars: 140, required: false) }) else {
             throw EnterpriseOperationError.malformed
         }

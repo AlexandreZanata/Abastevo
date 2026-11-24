@@ -1,6 +1,6 @@
 # Forum Abastevo product contract
 
-Owner: maintainer. Scope: Android and the existing Go backend only.
+Owner: maintainer. Scope: the Android and iOS clients and the existing Go backend.
 
 The execution plan owns task order;
 the [architecture](../../backend/forum/architecture.md) owns proposed
@@ -160,6 +160,12 @@ deferred extensions. Their absence is not a reason to delay editorial reading.
   [community safety contract](../community/safety.md)
   (B-BR-SAFE-01…09); a block hides content for the blocker only and never
   changes moderation outcome (B-BR-FOR-08).
+
+## Native iOS forum
+
+The Community entry opens the published feed with opaque server cursors. Like Android, it filters on the server by category, publication type, state, a seven-digit IBGE municipality inside that state, the forum fuel code and a station UUID. Text search covers the posts already loaded on the device, and the screen labels that scope. The detail view keeps the server-ranked top-level comments and loads replies by parent and depth.
+
+Author edits and removals of comments and topics use the private owner read and the matching revision. A topic edit changes the category, title, text, region and fuel and keeps the public alias and station link. An edited comment or topic returns to review. After a comment edit the thread reloads, and the comment reappears when the server publishes it. Reactions use the account session and bound device proof and keep one `LIKE`, `DISLIKE` or `NONE` per target. The server supplies the public tally and the private owner choice. Retrying the same write reuses its operation identifier. The shared [community safety controls](../community/safety.md) govern reports and blocks.
 
 ## Use cases and observable acceptance
 
