@@ -409,15 +409,24 @@ public actor SignedRequestTransport {
 
     /// Unsigned JSON POST for session-only routes (station comments and votes).
     public func plainPost(
-        path: String, body: Data, idempotencyKey: String? = nil, expectedOwnerScope: String? = nil
+        path: String, body: Data, idempotencyKey: String? = nil, expectedOwnerScope: String? = nil,
+        expectedSessionFamilyId: String? = nil
     ) async throws -> SignedHttpResponse {
         guard SignedRequestProfile.isSignablePath(path) else { throw SignedTransportError.invalidRequest }
         if let key = idempotencyKey, key.isEmpty || key.count > 128 {
             throw SignedTransportError.invalidRequest
         }
+        try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
         try requireOwnerScope(expectedOwnerScope)
         let headers = idempotencyKey.map { [SignedRequestProfile.headerIdempotencyKey: $0] } ?? [:]
-        let response = try await send(method: "POST", path: path, query: "", body: body, headers: headers)
+        let response: SignedHttpResponse
+        do {
+            response = try await send(method: "POST", path: path, query: "", body: body, headers: headers)
+        } catch {
+            try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
+            throw error
+        }
+        try await requireSessionFamily(expectedSessionFamilyId, ownerScope: expectedOwnerScope)
         try requireOwnerScope(expectedOwnerScope)
         return response
     }

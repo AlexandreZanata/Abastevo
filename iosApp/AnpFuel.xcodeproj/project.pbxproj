@@ -232,6 +232,29 @@
 		98FCE2F28968DE4FF73EED8D /* SavedPlacesSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF753CCB0591DB965B01CB38 /* SavedPlacesSheetView.swift */; };
 		7AB2B1B43C782A7C433B7BEC /* SavedGPXTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CA86FE48BA79F244217BA0 /* SavedGPXTests.swift */; };
 		ADF10462ECD6B7945CDAFE5F /* SavedMapStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF691ABF23F4387208081A8 /* SavedMapStoreTests.swift */; };
+		5FD420B1F9692C6476257D3A /* AdvancedAlertStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A611051064F55477B300CD7 /* AdvancedAlertStore.swift */; };
+		F0E9C678BAC24DD0542F0DD0 /* AdvancedAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020FC870D6788BCEC2900F1A /* AdvancedAlerts.swift */; };
+		DCA050846FFB35655B6BC77C /* LedgerEstimatedEfficiency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB0E95C35A30F956C461851 /* LedgerEstimatedEfficiency.swift */; };
+		55CF4415829F4E61228A6943 /* LedgerMonthlyCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41729C6E2629EB7D4BC38116 /* LedgerMonthlyCSV.swift */; };
+		7253FF1BDE632D73BEC92BB1 /* LedgerServerAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ECB1ED1B83C2D189F13316B /* LedgerServerAnalysis.swift */; };
+		4F3598DD6A49B18661FD8BA8 /* VehicleEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7AE2FD4936C88D1BFF5B6 /* VehicleEditing.swift */; };
+		8A93A66394D0B77D37D3476D /* AdvancedAlertsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7312040CA9A4E5C208078518 /* AdvancedAlertsModel.swift */; };
+		E8F86B4380026F22EE8A6671 /* AdvancedAlertsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4BF887F41248A7A43B9ED5 /* AdvancedAlertsView.swift */; };
+		3C05A726F1F0983B74302FFD /* LedgerMonthlyExportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E620736E72ECA9E975BDF4B6 /* LedgerMonthlyExportViews.swift */; };
+		7D498FBF3A1AAA3A93DB8385 /* LedgerServerAnalysisViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69284659144956254B7EB5B /* LedgerServerAnalysisViews.swift */; };
+		78ED5D2287BA8347CF90578A /* VehicleEditorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9854575C743DBA791303C34 /* VehicleEditorViews.swift */; };
+		17B3B6797C4DF884635E0FE1 /* AdvancedAlertsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 394449B94FEEFADC03D0F7D8 /* AdvancedAlertsTests.swift */; };
+		3E4CB3F30542B79685971515 /* LedgerLocalAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626E5D44062F73A0B4DA8F1F /* LedgerLocalAnalysisTests.swift */; };
+		525E1EB6F5C21F389D8A8C2B /* LedgerServerAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A9FBF53C4656AF8901E3C0 /* LedgerServerAnalysisTests.swift */; };
+		632945014E2C337255DC7B11 /* VehicleEditingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E0F28FEC65287113404700 /* VehicleEditingTests.swift */; };
+		DB17F32038B7AAFDCE92E322 /* alerts-commands-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = 80423C12C9647305C2CF48DF /* alerts-commands-invalid.json */; };
+		BBC4E50EDDD11E8A57459C94 /* alerts-commands-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = CD5E6E5D66528DAE215814AB /* alerts-commands-valid.json */; };
+		093905E0FA352EAF371AA134 /* alerts-inbox-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 7C76BBAE8D4CBFFF4CBF25BC /* alerts-inbox-valid.json */; };
+		823A7BE50D7EE26029740F18 /* ledger-report-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = D53CF44EF7615DC1B7CF3393 /* ledger-report-invalid.json */; };
+		04FFD6A216886DE0B0053F9A /* ledger-report-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = E1F71A2642E95DF98029ECED /* ledger-report-valid.json */; };
+		774DA3E2633C3DD28C5540F1 /* metrics-compare-invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = B588134E2FBC9D06DA22E959 /* metrics-compare-invalid.json */; };
+		C8EEF05F3705D4C43D813A38 /* metrics-compare-response-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = EAD4C6C8EB7860B0E5F12E4A /* metrics-compare-response-valid.json */; };
+		09FBE7368C7899D75EADA4F0 /* metrics-compare-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 2FDB529EE36A24F59E0FC36D /* metrics-compare-valid.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -493,6 +516,29 @@
 		DF753CCB0591DB965B01CB38 /* SavedPlacesSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlacesSheetView.swift; sourceTree = "<group>"; };
 		30CA86FE48BA79F244217BA0 /* SavedGPXTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedGPXTests.swift; sourceTree = "<group>"; };
 		EAF691ABF23F4387208081A8 /* SavedMapStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedMapStoreTests.swift; sourceTree = "<group>"; };
+		7A611051064F55477B300CD7 /* AdvancedAlertStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertStore.swift; sourceTree = "<group>"; };
+		020FC870D6788BCEC2900F1A /* AdvancedAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlerts.swift; sourceTree = "<group>"; };
+		6AB0E95C35A30F956C461851 /* LedgerEstimatedEfficiency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerEstimatedEfficiency.swift; sourceTree = "<group>"; };
+		41729C6E2629EB7D4BC38116 /* LedgerMonthlyCSV.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerMonthlyCSV.swift; sourceTree = "<group>"; };
+		2ECB1ED1B83C2D189F13316B /* LedgerServerAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerServerAnalysis.swift; sourceTree = "<group>"; };
+		64A7AE2FD4936C88D1BFF5B6 /* VehicleEditing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditing.swift; sourceTree = "<group>"; };
+		7312040CA9A4E5C208078518 /* AdvancedAlertsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertsModel.swift; sourceTree = "<group>"; };
+		EB4BF887F41248A7A43B9ED5 /* AdvancedAlertsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertsView.swift; sourceTree = "<group>"; };
+		E620736E72ECA9E975BDF4B6 /* LedgerMonthlyExportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerMonthlyExportViews.swift; sourceTree = "<group>"; };
+		A69284659144956254B7EB5B /* LedgerServerAnalysisViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerServerAnalysisViews.swift; sourceTree = "<group>"; };
+		E9854575C743DBA791303C34 /* VehicleEditorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorViews.swift; sourceTree = "<group>"; };
+		394449B94FEEFADC03D0F7D8 /* AdvancedAlertsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedAlertsTests.swift; sourceTree = "<group>"; };
+		626E5D44062F73A0B4DA8F1F /* LedgerLocalAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerLocalAnalysisTests.swift; sourceTree = "<group>"; };
+		B6A9FBF53C4656AF8901E3C0 /* LedgerServerAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerServerAnalysisTests.swift; sourceTree = "<group>"; };
+		88E0F28FEC65287113404700 /* VehicleEditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditingTests.swift; sourceTree = "<group>"; };
+		80423C12C9647305C2CF48DF /* alerts-commands-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "alerts-commands-invalid.json"; path = "../contracts/testdata/api/alerts-commands-invalid.json"; sourceTree = SOURCE_ROOT; };
+		CD5E6E5D66528DAE215814AB /* alerts-commands-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "alerts-commands-valid.json"; path = "../contracts/testdata/api/alerts-commands-valid.json"; sourceTree = SOURCE_ROOT; };
+		7C76BBAE8D4CBFFF4CBF25BC /* alerts-inbox-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "alerts-inbox-valid.json"; path = "../contracts/testdata/api/alerts-inbox-valid.json"; sourceTree = SOURCE_ROOT; };
+		D53CF44EF7615DC1B7CF3393 /* ledger-report-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "ledger-report-invalid.json"; path = "../contracts/testdata/api/ledger-report-invalid.json"; sourceTree = SOURCE_ROOT; };
+		E1F71A2642E95DF98029ECED /* ledger-report-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "ledger-report-valid.json"; path = "../contracts/testdata/api/ledger-report-valid.json"; sourceTree = SOURCE_ROOT; };
+		B588134E2FBC9D06DA22E959 /* metrics-compare-invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "metrics-compare-invalid.json"; path = "../contracts/testdata/api/metrics-compare-invalid.json"; sourceTree = SOURCE_ROOT; };
+		EAD4C6C8EB7860B0E5F12E4A /* metrics-compare-response-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "metrics-compare-response-valid.json"; path = "../contracts/testdata/api/metrics-compare-response-valid.json"; sourceTree = SOURCE_ROOT; };
+		2FDB529EE36A24F59E0FC36D /* metrics-compare-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "metrics-compare-valid.json"; path = "../contracts/testdata/api/metrics-compare-valid.json"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -600,6 +646,12 @@
 			2518715874CC037D891522DD,
 			7D507AEF752F4494FB4E0639,
 			9315CCA0CF485CE5CC6A1D16,
+			7A611051064F55477B300CD7,
+			020FC870D6788BCEC2900F1A,
+			6AB0E95C35A30F956C461851,
+			41729C6E2629EB7D4BC38116,
+			2ECB1ED1B83C2D189F13316B,
+			64A7AE2FD4936C88D1BFF5B6,
 		); path = AnpFuelCore; sourceTree = "<group>"; };
 		75554FF80EAC9DF02D5876DB /* AnpFuelShell */ = {isa = PBXGroup; children = (
 			912F4E40081F5007CF1C6D59,
@@ -645,6 +697,11 @@
 			E2D9FCCBFBD99ECE85F017CD,
 			26AFDA243130087CCBF444BA,
 			DF753CCB0591DB965B01CB38,
+			7312040CA9A4E5C208078518,
+			EB4BF887F41248A7A43B9ED5,
+			E620736E72ECA9E975BDF4B6,
+			A69284659144956254B7EB5B,
+			E9854575C743DBA791303C34,
 		); path = AnpFuelShell; sourceTree = "<group>"; };
 		D29A9AA1D40D68CDEC6567F6 /* Tests */ = {isa = PBXGroup; children = (
 			C94131A3A8D14E2994E71B30,
@@ -755,6 +812,18 @@
 			8F4FDF6A6B913E18FB3D80CE,
 			30CA86FE48BA79F244217BA0,
 			EAF691ABF23F4387208081A8,
+			394449B94FEEFADC03D0F7D8,
+			626E5D44062F73A0B4DA8F1F,
+			B6A9FBF53C4656AF8901E3C0,
+			88E0F28FEC65287113404700,
+			80423C12C9647305C2CF48DF /* alerts-commands-invalid.json */,
+			CD5E6E5D66528DAE215814AB /* alerts-commands-valid.json */,
+			7C76BBAE8D4CBFFF4CBF25BC /* alerts-inbox-valid.json */,
+			D53CF44EF7615DC1B7CF3393 /* ledger-report-invalid.json */,
+			E1F71A2642E95DF98029ECED /* ledger-report-valid.json */,
+			B588134E2FBC9D06DA22E959 /* metrics-compare-invalid.json */,
+			EAD4C6C8EB7860B0E5F12E4A /* metrics-compare-response-valid.json */,
+			2FDB529EE36A24F59E0FC36D /* metrics-compare-valid.json */,
 		); path = AnpFuelCoreTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -887,6 +956,14 @@
 			90625ADCB70AF024879FF8BC /* consent-grant-valid.json in Resources */,
 			47A6305A94BE3F6CB0274F36 /* consent-status-granted.json in Resources */,
 			EE07CF93FA053F9A156BD951 /* consent-status-off.json in Resources */,
+			DB17F32038B7AAFDCE92E322 /* alerts-commands-invalid.json in Resources */,
+			BBC4E50EDDD11E8A57459C94 /* alerts-commands-valid.json in Resources */,
+			093905E0FA352EAF371AA134 /* alerts-inbox-valid.json in Resources */,
+			823A7BE50D7EE26029740F18 /* ledger-report-invalid.json in Resources */,
+			04FFD6A216886DE0B0053F9A /* ledger-report-valid.json in Resources */,
+			774DA3E2633C3DD28C5540F1 /* metrics-compare-invalid.json in Resources */,
+			C8EEF05F3705D4C43D813A38 /* metrics-compare-response-valid.json in Resources */,
+			09FBE7368C7899D75EADA4F0 /* metrics-compare-valid.json in Resources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		81B4DC0F6E7E97037B63B86E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 			1228440DDBCFF603473E79E6 /* Assets.xcassets in Resources */,
@@ -971,6 +1048,12 @@
 			89C80311B4426AD6EAFAB222,
 			E3A02C9594C438E0A8A4F423,
 			AE947DA5648922B510FC0590,
+			5FD420B1F9692C6476257D3A,
+			F0E9C678BAC24DD0542F0DD0,
+			DCA050846FFB35655B6BC77C,
+			55CF4415829F4E61228A6943,
+			7253FF1BDE632D73BEC92BB1,
+			4F3598DD6A49B18661FD8BA8,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		AD6DDB77B0D78A2D25806034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			B7D2E2DD83BFFC27B6409CDC,
@@ -1015,6 +1098,11 @@
 			E4AD6E096D8041F92237116C,
 			A9DC860A16027B40E3C8A54A,
 			98FCE2F28968DE4FF73EED8D,
+			8A93A66394D0B77D37D3476D,
+			E8F86B4380026F22EE8A6671,
+			3C05A726F1F0983B74302FFD,
+			7D498FBF3A1AAA3A93DB8385,
+			78ED5D2287BA8347CF90578A,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		58E6D120C756DCA8062CCDE6 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			D2C2E8915DB7BC9E8E642887,
@@ -1070,6 +1158,10 @@
 			DD19F1295840D36B361C5F3E,
 			7AB2B1B43C782A7C433B7BEC,
 			ADF10462ECD6B7945CDAFE5F,
+			17B3B6797C4DF884635E0FE1,
+			3E4CB3F30542B79685971515,
+			525E1EB6F5C21F389D8A8C2B,
+			632945014E2C337255DC7B11,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

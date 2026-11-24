@@ -122,12 +122,6 @@ struct LedgerHomeView: View {
     @ObservedObject var ledger: LedgerCoordinator
     let close: () -> Void
 
-    @State private var name = ""
-    @State private var propulsion: Propulsion = .flex
-    @State private var primaryFuel: FuelProduct = .gasolineRegular
-    @State private var tankLiters = "50"
-    @State private var batteryKwh = "52"
-    @State private var vehicleError: String?
     @State private var pendingDelete: LedgerEntryRecord?
 
     var body: some View {
@@ -142,14 +136,19 @@ struct LedgerHomeView: View {
                         Text(String(localized: "android.vehicle_empty_message")).foregroundStyle(.secondary)
                     }
                     ForEach(vehicles) { vehicle in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(vehicle.name).font(.headline)
-                                Spacer()
-                                Text(vehicle.propulsion.localizedLabel).font(.caption).foregroundStyle(.secondary)
+                        NavigationLink {
+                            VehicleEditorView(viewModel: viewModel, existing: vehicle)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(vehicle.name).font(.headline)
+                                    Spacer()
+                                    Text(vehicle.propulsion.localizedLabel).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Text(vehicleDetail(vehicle)).font(.caption).foregroundStyle(.secondary)
                             }
-                            Text(vehicleDetail(vehicle)).font(.caption).foregroundStyle(.secondary)
                         }
+                        .accessibilityHint(String(localized: "android.vehicle_edit"))
                     }
                     .onDelete { offsets in
                         let ids = Set(offsets.map { vehicles[$0].id })
@@ -177,6 +176,11 @@ struct LedgerHomeView: View {
                 LedgerIndicatorsSection(viewModel: viewModel, ledger: ledger)
 
                 Section(String(localized: "ledger.cloud_export")) {
+                    NavigationLink {
+                        LedgerServerAnalysisView(viewModel: viewModel, ledger: ledger)
+                    } label: {
+                        Label(String(localized: "ledger.server.analysis"), systemImage: "chart.bar.xaxis")
+                    }
                     NavigationLink {
                         LedgerSyncView(viewModel: viewModel, ledger: ledger)
                     } label: {
@@ -270,46 +274,10 @@ struct LedgerHomeView: View {
         Section(String(localized: "android.vehicle_add")) {
             switch admission {
             case .accept:
-                TextField(String(localized: "android.vehicle_name_hint"), text: $name)
-                Picker(String(localized: "android.vehicle_propulsion_label"), selection: $propulsion) {
-                    ForEach(Propulsion.allCases) { option in
-                        Text(option.localizedLabel).tag(option)
-                    }
-                }
-                if propulsion.supportsFuel {
-                    Picker(String(localized: "android.vehicle_fuel_product_label"), selection: $primaryFuel) {
-                        ForEach(FuelProduct.allCases) { fuel in
-                            Text(fuel.localizedName).tag(fuel)
-                        }
-                    }
-                    TextField(String(localized: "android.vehicle_tank_capacity_hint"), text: $tankLiters)
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
-                }
-                if propulsion.supportsElectric {
-                    TextField(String(localized: "android.vehicle_battery_capacity_hint"), text: $batteryKwh)
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
-                }
-                if let vehicleError {
-                    Text(vehicleError).font(.caption).foregroundStyle(.red)
-                }
-                Button(String(localized: "android.vehicle_save")) {
-                    switch viewModel.addVehicle(
-                        name: name,
-                        propulsion: propulsion,
-                        primaryFuel: primaryFuel,
-                        tankLitersText: tankLiters,
-                        batteryKwhText: batteryKwh
-                    ) {
-                    case .success:
-                        name = ""
-                        vehicleError = nil
-                    case .failure(let error):
-                        vehicleError = error.localizedDescription
-                    }
+                NavigationLink {
+                    VehicleEditorView(viewModel: viewModel, existing: nil)
+                } label: {
+                    Label(String(localized: "android.vehicle_add"), systemImage: "plus.circle")
                 }
             case .premiumRequired, .hostedAuthorityRequired:
                 Text(LedgerCoordinator.admissionMessage(admission)).font(.caption)
@@ -557,6 +525,11 @@ struct LedgerIndicatorsSection: View {
     @ObservedObject var viewModel: AppStateViewModel
     @ObservedObject var ledger: LedgerCoordinator
 
+    private struct EstimateEditorID: Hashable {
+        let scope: LedgerEstimateScope
+        let vehicleId: String
+    }
+
     @State private var indicatorVehicleId: String?
     @State private var year = Calendar(identifier: .gregorian).component(.year, from: Date())
     @State private var month = Calendar(identifier: .gregorian).component(.month, from: Date())
@@ -591,16 +564,26 @@ struct LedgerIndicatorsSection: View {
                     .buttonStyle(.borderless)
                     .accessibilityLabel(String(localized: "android.monthly_next"))
                 }
-                if let vehicle = viewModel.snapshot.vehicles.first(where: { $0.id == indicatorVehicleId }) {
+                if let scope = ledger.estimateScope,
+                   let vehicle = viewModel.snapshot.vehicles.first(where: { $0.id == indicatorVehicleId }) {
+                    LedgerEstimateEditor(ledger: ledger, vehicleId: vehicle.id, scope: scope)
+                        .id(EstimateEditorID(scope: scope, vehicleId: vehicle.id))
                     switch ledger.indicators(vehicle: vehicle, year: year, month: month) {
                     case .success(let result):
                         LedgerIndicatorsContent(result: result)
+                        if let estimate = ledger.estimatedEfficiency(for: vehicle.id, in: scope)?.fallback(for: result) {
+                            let value = estimate.formatted(locale: .current)
+                            Text(String(localized: "android.monthly_estimated", defaultValue: "Estimated efficiency: \(value) km/L"))
+                                .font(.subheadline)
+                        }
+                        LedgerMonthlyExportLink(report: result)
                     case .failure(let error):
                         Text(LedgerCoordinator.reasonLabel(error.rawValue)).foregroundStyle(.secondary)
                     }
                 }
             }
         }
+        .onChange(of: ledger.estimateScope) { _, _ in indicatorVehicleId = nil }
     }
 
     private func shiftMonth(_ delta: Int) {

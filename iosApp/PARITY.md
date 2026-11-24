@@ -110,6 +110,17 @@ Android references: `MapDiscoveryViewModel`, `SavedViewModel`, `GeoExchange`, `S
 
 Android references are `VehicleAdmissionRule`, `BatteryCapacity`, `LedgerDraft`, `PremiumBounds`, `PremiumConsumption`, `PremiumEnergy`, `GetMonthlyIndicatorsUseCase`, `DispatchLedgerCommandUseCase` and `ResolveLedgerConflictUseCase`. The XCTest fixtures copy `contracts/testdata/premium/{financial-execution-v1,energy-execution-v1,financial-wire-v1}.csv` and `vehicle-registration-v2.json` verbatim, and the integrity test checks them line by line. Acceptance needs a staging run for consent, upload, refusal, 409 resolution, a lapse, pull, erase and two devices, plus a device run of the screens.
 
+## B-BR-IOS-VEHICLE-DETAIL / BUC-IOS-VEHICLE-DETAIL — Vehicle edits and local analysis
+
+- Editing keeps the registered vehicle identifier and associated records and revalidates its propulsion, fuel and battery. The device-only photo is decoded and re-encoded as a bounded JPEG with no source metadata. The protected photo, estimate and alert preferences belong to the exact account or guest and origin. Vehicle removal clears its preferences and photo; account deletion, logout and origin switch purge their protected scope.
+- Per-vehicle price-drop alerts use the vehicle's admitted fuel and the same verified current and previous ANP week. Only an enabled rule requests notification permission. Deliver at most once per eligible vehicle and week. Estimate input uses exact decimal parser limits and remains distinguishable from measured efficiency. The monthly CSV keeps exact values and missing-data reasons; the raw record export remains available.
+
+## B-BR-IOS-ANALYSIS / BUC-IOS-ANALYSIS — Server reports, comparisons and alerts
+
+- Android has no client for these routes. Build and CSV call the bound-device ledger report routes after the server admits the account's Premium capability. Read the retained report with its live owner session even after a lapse. Bind report and CSV receipts to the submitted month and timezone. CSV uses the server bytes and ShareLink without a stored artifact.
+- Compare selected vehicle periods using the signed metrics route and its implemented fuel-purchase method. Keep exact server rational values, render incomplete and incompatible reasons, and omit a change or ratio the server did not establish.
+- Advanced alert reads, inbox, deletions and erasure remain available when Premium lapses. Enabled paid writes require server capability. Each command keeps its operation ID and eligibility through bounded retries. Notifications request explicit local permission and use a generic inbox message for trusted dispatched rows. Server evaluation, dispatch scheduling and APNs delivery require their runtime integration. The app shows the delivery boundary and keeps free reads and deletes available.
+
 ## B-BR-IOS-DRIVER / BUC-IOS-DRIVER — Manual local shifts
 
 A new local shift requires the user's selection of a registered vehicle, a valid initial odometer reading, and no other active shift. Closing the selected shift records the actual completion timestamp and validates the final odometer, exact centavo amounts within the Android `DriverMoney` bound, and the manually declared duration. Malformed inputs leave the shift open for correction. This iOS flow stores manual local records. GPS, work accounting, and synchronization require their own integration and acceptance tests.

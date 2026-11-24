@@ -89,6 +89,10 @@ public struct ProfileRootView: View {
             profileNavRow(icon: "chart.line.uptrend.xyaxis", title: String(localized: "profile.history_alerts"), subtitle: String(localized: "profile.official_fuel_series")) {
                 viewModel.activeSheet = .priceHistory
             }
+            Divider()
+            profileNavRow(icon: "bell.badge", title: String(localized: "alerts.title"), subtitle: String(localized: "alerts.inbox")) {
+                viewModel.activeSheet = .advancedAlerts
+            }
         }
     }
 

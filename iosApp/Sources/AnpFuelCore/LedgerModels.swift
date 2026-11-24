@@ -1008,8 +1008,9 @@ public enum LedgerCsvExport {
         + "odometer_metres,station_id,note,review_required"
 
     public static func escape(_ field: String) -> String {
-        guard let first = field.first else { return field }
-        let risky = first == "=" || first == "+" || first == "-" || first == "@"
+        let first = field.trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters)).first
+        let startsWithControl = field.unicodeScalars.first.map(LedgerText.isControl) ?? false
+        let risky = startsWithControl || first == "=" || first == "+" || first == "-" || first == "@"
             || field.contains(",") || field.contains("\"") || field.contains("\n") || field.contains("\r")
         guard risky else { return field }
         return "\"'" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""

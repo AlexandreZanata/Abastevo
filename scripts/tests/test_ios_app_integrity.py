@@ -417,8 +417,10 @@ class IosAppIntegrityTests(unittest.TestCase):
 
         state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
         vehicle = state.split("func addVehicle(", 1)[1].split("func removeVehicle", 1)[0]
-        self.assertIn("PortableMoney.parseBatteryCapacityWh", vehicle)
-        self.assertNotIn("Double(batteryKwhText", vehicle)
+        editor = (core / "VehicleEditing.swift").read_text(encoding="utf-8")
+        self.assertIn("draft.build(existing:", vehicle)
+        self.assertIn("PortableMoney.parseBatteryCapacityWh", editor)
+        self.assertNotIn("Double(batteryKwh", vehicle + editor)
         self.assertIn("ledger.admissionForNewVehicle()", vehicle)
         self.assertNotIn("VehicleRecord.maxFreeVehicles", vehicle)
         self.assertNotIn("func addLedgerEntry(", state)
@@ -482,6 +484,26 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("LedgerFixtures.vehicleRegistration", math)
         models = (tests / "LedgerModelsTests.swift").read_text(encoding="utf-8")
         self.assertIn("LedgerFixtures.financialWire", models)
+
+    def test_vehicle_photos_stay_local_and_purge_with_vehicle_and_owner(self):
+        views = (IOS_ROOT / "Sources/AnpFuelShell/VehicleEditorViews.swift").read_text(encoding="utf-8")
+        self.assertIn("PhotosPicker(", views)
+        self.assertIn("VehicleLocalPhoto(sanitizing: bytes)", views)
+        self.assertNotIn("URLSession", views)
+
+        vehicle = (IOS_ROOT / "Sources/AnpFuelCore/VehicleEditing.swift").read_text(encoding="utf-8")
+        self.assertIn("scope.storageKey", vehicle)
+        self.assertIn("options.isExcludedFromBackup = true", vehicle)
+        self.assertIn("data.write(to: file, options: [.atomic, .completeFileProtection])", vehicle)
+
+        state = (IOS_ROOT / "Sources/AnpFuelShell/AppStateViewModel.swift").read_text(encoding="utf-8")
+        for function in ("setApiEnvironment", "logout", "finishAccountDeletion"):
+            start = state.index(f"func {function}(")
+            end = state.index("\n    }", start)
+            self.assertIn("purgeVehiclePreferences()", state[start:end], function)
+        start = state.index("func removeVehicles(")
+        end = state.index("\n    }", start)
+        self.assertIn("vehicleDetails.remove(id: id)", state[start:end])
 
     def test_manual_shift_uses_selected_vehicle_exact_money_and_clock(self):
         shell = IOS_ROOT / "Sources/AnpFuelShell"

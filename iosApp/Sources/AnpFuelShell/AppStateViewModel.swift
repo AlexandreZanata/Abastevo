@@ -80,6 +80,8 @@ public final class AppStateViewModel: ObservableObject {
     @Published public var profilePath = NavigationPath()
 
     private let store: IosLocalStore
+    let vehicleDetails = VehicleDetailsStore()
+    @Published private var vehicleOwnerGeneration = UUID()
     let savedMapStore: SavedMapStore
     @Published private var savedMapInventory = SavedMapInventory()
     @Published private(set) var savedMapMessage: String?
@@ -99,8 +101,13 @@ public final class AppStateViewModel: ObservableObject {
     public let communitySafety = CommunitySafetyViewModel()
     public let trainingConsent = TrainingConsentModel()
     public var communityGateway: CommunityWriteClient { identity.communityGateway }
+    let advancedAlerts = AdvancedAlertsModel()
     var accountDataExportScope: AccountDataExportScope? {
-        guard !isOfflineSimulation, snapshot.apiEnvironment != .preview, !isAuthWorking else { return nil }
+        isOfflineSimulation ? nil : advancedAlertScope
+    }
+
+    var advancedAlertScope: AccountDataExportScope? {
+        guard snapshot.apiEnvironment != .preview, !isAuthWorking else { return nil }
         let session: PortableAuth.Session
         switch authFlow.rehydrate() {
         case .active(let owner), .needsRefresh(let owner): session = owner
@@ -327,9 +334,11 @@ public final class AppStateViewModel: ObservableObject {
         guard migrateSavedMapIfNeeded() else { return }
         navigation.stop()
         navigationDestination = nil
+        purgeVehiclePreferences()
         trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
+        advancedAlerts.purge()
         snapshot.apiEnvironment = env
         refreshSavedMap()
         httpClient.environment = env
@@ -761,9 +770,11 @@ public final class AppStateViewModel: ObservableObject {
         let ownerId = currentAccountIdOrNil
         navigation.stop()
         navigationDestination = nil
+        purgeVehiclePreferences()
         trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
+        advancedAlerts.purge()
         communitySafety.clear()
         photoCache.purgeAll()
         identity.purgeOwnedData()
@@ -797,9 +808,11 @@ public final class AppStateViewModel: ObservableObject {
     private func finishAccountDeletion(ownerId: String) {
         navigation.stop()
         navigationDestination = nil
+        purgeVehiclePreferences()
         trainingConsent.purgeProtectedState()
         qualityPublicCache.purge()
         qualityReportJournal.purge()
+        advancedAlerts.purge()
         communitySafety.clear()
         proofSigner.resetKey()
         identity.forgetDeviceIdentity()
@@ -808,6 +821,13 @@ public final class AppStateViewModel: ObservableObject {
         photoCache.purgeAll()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
         rehydrateAuth()
+        let estimateCleanupFailed: Bool
+        do {
+            try ledger.eraseEstimatedEfficiency(accountId: ownerId)
+            estimateCleanupFailed = false
+        } catch {
+            estimateCleanupFailed = true
+        }
         if let scope = SavedMapScope(owner: ownerId, origin: snapshot.apiEnvironment.origin) {
             do {
                 try savedMapStore.erase(scope)
@@ -816,7 +836,9 @@ public final class AppStateViewModel: ObservableObject {
                 return
             }
         }
-        authStatusMessage = String(localized: "auth.delete.accepted")
+        authStatusMessage = estimateCleanupFailed
+            ? String(localized: "ledger.estimate.account_delete_cleanup_failed")
+            : String(localized: "auth.delete.accepted")
     }
 
     public func exportMyDataJson() -> String {
@@ -970,46 +992,100 @@ public final class AppStateViewModel: ObservableObject {
 
     // MARK: - Vehicles, Ledger & Driver Hub
 
-    public func addVehicle(name: String, propulsion: Propulsion, primaryFuel: FuelProduct, tankLitersText: String, batteryKwhText: String) -> Result<VehicleRecord, AppValidationError> {
-        let admission = ledger.admissionForNewVehicle()
-        guard admission == .accept else {
-            return .failure(AppValidationError(LedgerCoordinator.admissionMessage(admission)))
-        }
-        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else { return .failure(AppValidationError(String(localized: "android.vehicle_validation_name_required"))) }
-        let tankMl: Int64
-        if propulsion.supportsFuel {
-            guard let parsed = try? PortableMoney.parseCapacityMilliLiters(tankLitersText) else {
-                return .failure(AppValidationError(String(localized: "android.vehicle_validation_tank_capacity")))
-            }
-            tankMl = parsed
-        } else {
-            tankMl = 0
-        }
-        let batteryWh: Int64
-        if propulsion.supportsElectric {
-            guard let parsed = try? PortableMoney.parseBatteryCapacityWh(batteryKwhText) else {
-                return .failure(AppValidationError(String(localized: "android.vehicle_validation_battery_capacity")))
-            }
-            batteryWh = parsed
-        } else {
-            batteryWh = 0
-        }
-        let vehicle = VehicleRecord(
-            name: cleanName,
-            propulsion: propulsion,
-            primaryFuel: primaryFuel,
-            tankCapacityMilliLiters: tankMl,
-            batteryCapacityWh: batteryWh
+    var vehicleEditorContext: VehicleEditorContext {
+        VehicleEditorContext(
+            scope: VehicleLocalScope(accountId: currentAccountIdOrNil, origin: snapshot.apiEnvironment.origin),
+            generation: vehicleOwnerGeneration
         )
-        snapshot.vehicles.append(vehicle)
-        persist()
-        return .success(vehicle)
+    }
+
+    public func addVehicle(
+        name: String, propulsion: Propulsion, primaryFuel: FuelProduct, tankLitersText: String, batteryKwhText: String
+    ) -> Result<VehicleRecord, AppValidationError> {
+        var draft = VehicleEditorDraft()
+        draft.name = name
+        draft.propulsion = propulsion
+        draft.fuel = primaryFuel
+        draft.tankLiters = tankLitersText
+        draft.batteryKwh = batteryKwhText
+        return saveVehicle(draft, editing: nil, photo: .keep, context: vehicleEditorContext)
+    }
+
+    func saveVehicle(
+        _ draft: VehicleEditorDraft, editing id: String?, photo: VehiclePhotoChange, context: VehicleEditorContext
+    ) -> Result<VehicleRecord, AppValidationError> {
+        guard context == vehicleEditorContext, !isAuthWorking else {
+            return .failure(AppValidationError(String(localized: "vehicle.session_changed")))
+        }
+        let index = id.flatMap { target in snapshot.vehicles.firstIndex { $0.id == target } }
+        if id != nil, index == nil {
+            return .failure(AppValidationError(String(localized: "vehicle.unavailable")))
+        }
+        if index == nil {
+            let admission = ledger.admissionForNewVehicle()
+            guard admission == .accept else {
+                return .failure(AppValidationError(LedgerCoordinator.admissionMessage(admission)))
+            }
+        }
+
+        do {
+            let edited = try draft.build(existing: index.map { snapshot.vehicles[$0] })
+            let previous = try vehicleDetails.load(id: edited.vehicle.id, scope: context.scope)
+            var next = snapshot
+            if let index {
+                next.vehicles[index] = edited.vehicle
+            } else {
+                next.vehicles.append(edited.vehicle)
+            }
+            try vehicleDetails.save(id: edited.vehicle.id, scope: context.scope, preference: edited.preference, photo: photo)
+            do {
+                try store.saveChecked(next)
+            } catch {
+                try? vehicleDetails.restore(id: edited.vehicle.id, scope: context.scope, details: previous)
+                throw VehicleEditorError.storageUnavailable
+            }
+            snapshot = next
+            if previous.preference.priceDropAlertEnabled && !edited.preference.priceDropAlertEnabled {
+                anpSurvey.cancelVehiclePriceDrop(vehicleId: edited.vehicle.id)
+            }
+            return .success(edited.vehicle)
+        } catch let error as VehicleEditorError {
+            return .failure(AppValidationError(error.message))
+        } catch {
+            return .failure(AppValidationError(VehicleEditorError.storageUnavailable.message))
+        }
     }
 
     public func removeVehicles(_ vehicleIds: Set<String>) {
-        snapshot.vehicles.removeAll { vehicleIds.contains($0.id) }
-        persist()
+        var next = snapshot
+        for id in vehicleIds {
+            do {
+                try ledger.removeEstimatedEfficiency(for: [id])
+                try vehicleDetails.remove(id: id)
+                anpSurvey.cancelVehiclePriceDrop(vehicleId: id)
+                next.vehicles.removeAll { $0.id == id }
+            } catch {
+                bannerMessage = VehicleEditorError.storageUnavailable.message
+            }
+        }
+        do {
+            try store.saveChecked(next)
+            snapshot = next
+        } catch {
+            bannerMessage = VehicleEditorError.storageUnavailable.message
+        }
+    }
+
+    func purgeVehiclePreferences() {
+        vehicleOwnerGeneration = UUID()
+        for vehicle in snapshot.vehicles {
+            anpSurvey.cancelVehiclePriceDrop(vehicleId: vehicle.id)
+        }
+        do {
+            try vehicleDetails.purge()
+        } catch {
+            bannerMessage = VehicleEditorError.storageUnavailable.message
+        }
     }
 
     public func startDriverShift(vehicleId: String, startOdometerKm: Int64) -> Result<Void, AppValidationError> {
@@ -1198,6 +1274,7 @@ public enum AppModalSheet: String, Identifiable {
     case accountManagement
     case premium
     case vehiclesLedger
+    case advancedAlerts
     case driverHub
     case enterpriseHub
     case arcadeGames

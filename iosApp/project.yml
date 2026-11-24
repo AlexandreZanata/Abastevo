@@ -160,6 +160,22 @@ targets:
         buildPhase: resources
       - path: ../contracts/testdata/privacy-consent/consent-status-off.json
         buildPhase: resources
+      - path: ../contracts/testdata/api/ledger-report-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/ledger-report-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/metrics-compare-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/metrics-compare-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/metrics-compare-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/alerts-commands-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/alerts-commands-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/alerts-inbox-valid.json
+        buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources
     dependencies:

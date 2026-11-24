@@ -133,6 +133,8 @@ public struct AbastevoRootView: View {
             PremiumStoreSheetView(model: viewModel.premiumStore)
         case .vehiclesLedger:
             VehiclesAndLedgerSheetView(viewModel: viewModel)
+        case .advancedAlerts:
+            AdvancedAlertsView(viewModel: viewModel)
         case .driverHub:
             DriverHubSheetView(viewModel: viewModel)
         case .enterpriseHub:

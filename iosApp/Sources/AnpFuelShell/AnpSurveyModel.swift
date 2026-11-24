@@ -37,6 +37,7 @@ public final class AnpSurveyModel: ObservableObject {
     private weak var host: AppStateViewModel?
     private var syncTask: Task<Void, Never>?
     private var stationsLoad: Task<Void, Never>?
+    private var isEvaluatingPriceDrops = false
 
     init(service: AnpSurveyService = AnpSurveyService()) {
         self.service = service
@@ -323,12 +324,7 @@ public final class AnpSurveyModel: ObservableObject {
     public func setAlert(_ product: FuelProduct, enabled: Bool) async -> Bool {
         guard let host else { return false }
         if enabled {
-            let center = UNUserNotificationCenter.current()
-            let settings = await center.notificationSettings()
-            var allowed = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
-            if settings.authorizationStatus == .notDetermined {
-                allowed = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
-            }
+            let allowed = await requestPriceDropAuthorization()
             if !host.snapshot.priceDropAlerts.contains(product.rawValue) {
                 host.snapshot.priceDropAlerts.append(product.rawValue)
                 host.persist()
@@ -340,10 +336,31 @@ public final class AnpSurveyModel: ObservableObject {
         return true
     }
 
+    public func requestPriceDropAuthorization() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .notDetermined {
+            return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+        }
+        return settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+    }
+
+    func cancelVehiclePriceDrop(vehicleId: String) {
+        let id = VehiclePriceDropRule.notificationIdentifier(vehicleId: vehicleId)
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+        center.removeDeliveredNotifications(withIdentifiers: [id])
+    }
+
     func evaluatePriceDrops() async {
-        guard let host, let city = host.selectedMunicipality, let current = displayWeek else { return }
+        guard !isEvaluatingPriceDrops, let host, let city = host.selectedMunicipality, let current = displayWeek else { return }
+        let context = host.vehicleEditorContext
         let products = host.snapshot.priceDropAlerts.compactMap { FuelProduct(rawValue: $0) }
-        guard !products.isEmpty else { return }
+        let vehicles = host.snapshot.vehicles.filter { $0.propulsion.supportsFuel }
+        guard !products.isEmpty || !vehicles.isEmpty else { return }
+        isEvaluatingPriceDrops = true
+        defer { isEvaluatingPriceDrops = false }
+
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
@@ -353,6 +370,7 @@ public final class AnpSurveyModel: ObservableObject {
             (AnpWeekRows(week: current, averages: store.averages(weekId: current.id) ?? [], stations: store.stations(weekId: current.id) ?? []),
              AnpWeekRows(week: previous, averages: store.averages(weekId: previous.id) ?? [], stations: store.stations(weekId: previous.id) ?? []))
         }.value
+        guard priceDropScopeIsCurrent(host, context: context, city: city, current: current) else { return }
         let drops = AnpOfficialRules.priceDrops(
             products: products, city: city, current: rows.0, previous: rows.1,
             notifiedWeekByAlert: store.loadState().notifiedWeekByAlert
@@ -369,6 +387,49 @@ public final class AnpSurveyModel: ObservableObject {
                 continue
             }
         }
+        for vehicle in vehicles {
+            guard priceDropScopeIsCurrent(host, context: context, city: city, current: current) else { return }
+            await notifyVehiclePriceDrop(vehicle, host: host, context: context, city: city, current: rows.0, previous: rows.1, center: center)
+        }
+    }
+
+    private func notifyVehiclePriceDrop(
+        _ vehicle: VehicleRecord, host: AppStateViewModel, context: VehicleEditorContext, city: Municipality,
+        current: AnpWeekRows, previous: AnpWeekRows, center: UNUserNotificationCenter
+    ) async {
+        guard host.snapshot.vehicles.contains(vehicle),
+              let details = try? host.vehicleDetails.load(id: vehicle.id, scope: context.scope),
+              let drop = VehiclePriceDropRule.detect(vehicle: vehicle, details: details, city: city, current: current, previous: previous) else {
+            return
+        }
+        let price = AnpPriceRounding.formatBrl(milli: drop.currentMilli, locale: .current)
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "vehicle.price_drop_title")
+        content.body = String(localized: "vehicle.price_drop_body", defaultValue: "\(vehicle.name) is now \(price)")
+        let request = UNNotificationRequest(identifier: drop.alertKey, content: content, trigger: nil)
+        do {
+            try await center.add(request)
+        } catch {
+            return
+        }
+        do {
+            guard priceDropScopeIsCurrent(host, context: context, city: city, current: current.week),
+                  host.snapshot.vehicles.contains(vehicle),
+                  try host.vehicleDetails.recordNotified(
+                    id: vehicle.id, scope: context.scope, week: current.week.id, matching: details.preference
+                  ) else {
+                cancelVehiclePriceDrop(vehicleId: vehicle.id)
+                return
+            }
+        } catch {
+            cancelVehiclePriceDrop(vehicleId: vehicle.id)
+        }
+    }
+
+    private func priceDropScopeIsCurrent(
+        _ host: AppStateViewModel, context: VehicleEditorContext, city: Municipality, current: AnpSurveyWeekRef
+    ) -> Bool {
+        !Task.isCancelled && host.vehicleEditorContext == context && host.selectedMunicipality == city && displayWeek == current
     }
 
     // MARK: - Messages

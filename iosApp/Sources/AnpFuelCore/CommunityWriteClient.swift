@@ -550,7 +550,10 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
                 expectedSessionFamilyId: requiresSameSessionFamily ? session.familyId : nil
             )
         }
-        return try await transport.plainPost(path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope)
+        return try await transport.plainPost(
+            path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope,
+            expectedSessionFamilyId: requiresSameSessionFamily ? session.familyId : nil
+        )
     }
 
     // MARK: Price observations and evidence

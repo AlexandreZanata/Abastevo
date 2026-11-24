@@ -143,10 +143,14 @@ public final class IosLocalStore {
     }
 
     public func save(_ snapshot: PersistedAppSnapshot) {
+        try? saveChecked(snapshot)
+    }
+
+    public func saveChecked(_ snapshot: PersistedAppSnapshot) throws {
         lock.lock()
         defer { lock.unlock() }
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        try? data.write(to: fileUrl, options: .atomic)
+        let data = try JSONEncoder().encode(snapshot)
+        try data.write(to: fileUrl, options: .atomic)
         Self.excludeFromBackup(fileUrl)
     }
 

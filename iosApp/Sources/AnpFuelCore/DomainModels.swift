@@ -898,6 +898,7 @@ public struct VehicleRecord: Codable, Equatable, Identifiable, Sendable {
     public let gasolineKmPerLiter: Double
     public let ethanolKmPerLiter: Double
     public let whPerKm: Int64
+    public let chargeConnector: ChargingConnector?
 
     public init(
         id: String = UUID().uuidString.lowercased(),
@@ -908,7 +909,8 @@ public struct VehicleRecord: Codable, Equatable, Identifiable, Sendable {
         batteryCapacityWh: Int64 = 0,
         gasolineKmPerLiter: Double = 11.5,
         ethanolKmPerLiter: Double = 8.0,
-        whPerKm: Int64 = 160
+        whPerKm: Int64 = 160,
+        chargeConnector: ChargingConnector? = nil
     ) {
         self.id = id
         self.name = name
@@ -919,6 +921,7 @@ public struct VehicleRecord: Codable, Equatable, Identifiable, Sendable {
         self.gasolineKmPerLiter = gasolineKmPerLiter
         self.ethanolKmPerLiter = ethanolKmPerLiter
         self.whPerKm = whPerKm
+        self.chargeConnector = chargeConnector
     }
 
     public func ethanolBreakEvenRatio() -> Double {

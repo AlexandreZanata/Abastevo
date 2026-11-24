@@ -21,6 +21,7 @@ public final class LedgerCoordinator: ObservableObject {
     private weak var host: AppStateViewModel?
     private let sessions: SignedSessionSource
     private let store: LedgerSyncStore
+    private let efficiencyStore = LedgerEfficiencyPreferenceStore()
     private var dispatchTask: Task<Void, Never>?
     private var dispatchToken: UUID?
     private var wakeTask: Task<Void, Never>?
@@ -142,6 +143,41 @@ public final class LedgerCoordinator: ObservableObject {
         }
     }
 
+    // MARK: - Local estimated efficiency
+
+    var estimateScope: LedgerEstimateScope? {
+        guard let host, !host.isAuthWorking else { return nil }
+        return LedgerEstimateScope(accountId: host.currentAccountIdOrNil, origin: host.snapshot.apiEnvironment.origin)
+    }
+
+    func estimatedEfficiency(for vehicleId: String, in scope: LedgerEstimateScope) -> LedgerEstimatedEfficiency? {
+        guard scope == estimateScope, host?.snapshot.vehicles.contains(where: { $0.id == vehicleId }) == true else { return nil }
+        return efficiencyStore.estimate(for: vehicleId, in: scope)
+    }
+
+    func setEstimatedEfficiency(
+        _ estimate: LedgerEstimatedEfficiency?, for vehicleId: String, in scope: LedgerEstimateScope
+    ) throws {
+        guard scope == estimateScope, host?.snapshot.vehicles.contains(where: { $0.id == vehicleId }) == true else {
+            throw LedgerEfficiencyPreferenceStore.Failure.invalidVehicle
+        }
+        try efficiencyStore.set(estimate, for: vehicleId, in: scope)
+        objectWillChange.send()
+    }
+
+    func removeEstimatedEfficiency(for vehicleIds: Set<String>) throws {
+        guard let scope = estimateScope else { throw LedgerEfficiencyPreferenceStore.Failure.unavailable }
+        try efficiencyStore.removeVehicles(vehicleIds, in: scope)
+        objectWillChange.send()
+    }
+
+    func eraseEstimatedEfficiency(accountId: String) throws {
+        guard let host, let scope = LedgerEstimateScope(accountId: accountId, origin: host.snapshot.apiEnvironment.origin) else {
+            throw LedgerEfficiencyPreferenceStore.Failure.unavailable
+        }
+        try efficiencyStore.erase(scope)
+    }
+
     // MARK: - Vehicle admission
 
     public func admissionForNewVehicle() -> VehicleAdmissionOutcome {
@@ -210,6 +246,13 @@ public final class LedgerCoordinator: ObservableObject {
         let transport = host.identity.signedTransport
         guard transport.origin == scope.origin else { return nil }
         return LedgerSyncClient(transport: transport, sessions: sessions)
+    }
+
+    func analysisClient(for owner: AccountDataExportScope) -> (String, LedgerSyncClient)? {
+        guard let host, host.accountDataExportScope == owner,
+              let scope = currentScope, scope.origin == owner.origin,
+              let client = makeClient(for: scope) else { return nil }
+        return (scope.accountId, client)
     }
 
     private struct ReadyClient {
