@@ -41,3 +41,11 @@ Fuel price data originates from the Brazilian National Agency of Petroleum, Natu
 
 - [architecture.md](../architecture/android.md) — UI layer
 - [glossary.md](../product/glossary.md) — `FuelProduct` domain terms
+
+## Sign in with Google
+
+The [Google Identity branding guidelines](https://developers.google.com/identity/branding-guidelines) supply the
+[official full-color G](https://developers.google.com/static/identity/images/g-logo.png)
+in [the Android drawable](../../app/src/main/res/drawable-nodpi/google_sign_in_g.png).
+Google owns the mark. The button uses [Google Sans](https://github.com/googlefonts/googlesans)
+at medium weight, subset to the localized button labels, and distributed under the bundled [SIL Open Font License 1.1](../../app/src/main/assets/licenses/google-sans-ofl.txt).

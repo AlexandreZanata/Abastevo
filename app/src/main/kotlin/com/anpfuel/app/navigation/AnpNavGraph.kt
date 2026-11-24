@@ -570,28 +570,8 @@ fun AnpNavGraph(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
-        composable(
-            route = "${Routes.AUTH}?provider={provider}&id_token={idToken}&nonce={nonce}&state={state}",
-            arguments = listOf(
-                navArgument("provider") { defaultValue = "" },
-                navArgument("idToken") { defaultValue = "" },
-                navArgument("nonce") { defaultValue = "" },
-                navArgument("state") { defaultValue = "" },
-            ),
-            deepLinks = listOf(
-                navDeepLink {
-                    uriPattern =
-                        "anpfuel://auth/callback?provider={provider}&id_token={idToken}&nonce={nonce}&state={state}"
-                },
-            ),
-        ) { entry ->
-            AuthRoute(
-                providerArg = entry.arguments?.getString("provider").orEmpty(),
-                idTokenArg = entry.arguments?.getString("idToken").orEmpty(),
-                nonceArg = entry.arguments?.getString("nonce").orEmpty(),
-                stateArg = entry.arguments?.getString("state").orEmpty(),
-                onNavigateBack = { navController.popBackStack() },
-            )
+        composable(Routes.AUTH) {
+            AuthRoute(onNavigateBack = { navController.popBackStack() })
         }
         composable(Routes.LEDGER_SYNC) {
             com.anpfuel.app.ui.sync.LedgerSyncScreen(onNavigateBack = { navController.popBackStack() })

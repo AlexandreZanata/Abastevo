@@ -23,6 +23,7 @@ dependencyResolutionManagement {
 rootProject.name = "anp-fuel-prices"
 
 include(":app")
+include(":app:credential-google")
 include(":domain")
 include(":application")
 include(":data")
