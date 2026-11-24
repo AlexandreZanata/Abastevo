@@ -34,7 +34,7 @@ final class NavigationGuidanceTests: XCTestCase {
         ))
     }
 
-    private func run() throws -> NavigationGuidance {
+    private func makeGuidanceRun() throws -> NavigationGuidance {
         let route = try route()
         return try XCTUnwrap(NavigationGuidance(route: route, input: route.input))
     }
@@ -99,7 +99,7 @@ final class NavigationGuidanceTests: XCTestCase {
     }
 
     func testProviderDistanceAndTurnProgressNeverAdvanceForPoorOrRepeatedFix() throws {
-        var run = try run()
+        var run = try makeGuidanceRun()
         let start = run.ingest(fix(0, seconds: 20), nowNanos: tick(20))
         XCTAssertEqual(start.state, .following)
         XCTAssertEqual(start.progress?.remainingMeters, 1_200)
@@ -130,7 +130,7 @@ final class NavigationGuidanceTests: XCTestCase {
     }
 
     func testAccuracyCorridorAndThreeConsecutiveDistinctOffRouteFixes() throws {
-        var run = try run()
+        var run = try makeGuidanceRun()
         XCTAssertEqual(run.ingest(fix(0, seconds: 20), nowNanos: tick(20)).state, .following)
         XCTAssertEqual(run.ingest(fix(50, 60, seconds: 21, accuracy: 40), nowNanos: tick(21)).state, .following)
         XCTAssertEqual(run.ingest(fix(70, 60, seconds: 22), nowNanos: tick(22)).state, .offRoute)
@@ -145,7 +145,7 @@ final class NavigationGuidanceTests: XCTestCase {
     }
 
     func testRerouteDeadlineAndFailureRecoveryRemainIndependentOfGPSCallbacks() throws {
-        var run = try run()
+        var run = try makeGuidanceRun()
         let request = try deviation(in: &run)
         XCTAssertFalse(NavigationGuidancePolicy.isRerouteExpired(startedAtNanos: 100, nowNanos: 50))
         XCTAssertEqual(run.advance(nowNanos: request.startedAtNanos + tick(60)).state, .rerouting)
@@ -167,7 +167,7 @@ final class NavigationGuidanceTests: XCTestCase {
     }
 
     func testSameRouteRecoveryCancelsRequestAndWrongRouteCannotReplaceCurrentGeometry() throws {
-        var run = try run()
+        var run = try makeGuidanceRun()
         let original = run.route
         let request = try deviation(in: &run)
         let regained = run.ingest(fix(100, seconds: 23), nowNanos: tick(23))
@@ -182,7 +182,7 @@ final class NavigationGuidanceTests: XCTestCase {
     }
 
     func testArrivalRequiresConsecutiveAccurateFixesNearProviderEndpoint() throws {
-        var run = try run()
+        var run = try makeGuidanceRun()
         XCTAssertEqual(run.ingest(fix(0, seconds: 20), nowNanos: tick(20)).state, .following)
         XCTAssertEqual(run.ingest(fix(985, seconds: 34, accuracy: 30), nowNanos: tick(34)).state, .following)
         XCTAssertEqual(run.ingest(fix(991, seconds: 35), nowNanos: tick(35)).state, .following)
