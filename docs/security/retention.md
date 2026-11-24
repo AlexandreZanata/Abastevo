@@ -11,7 +11,7 @@ periods.
 | Schedule | Kind | Cadence | Covers |
 |---|---|---|---|
 | `evidence-sweep-hourly` | `evidence-sweep` | Hourly | Every app-owned copy 24 h from first receipt (P15-T04; case extensions no longer extend photo bytes), orphan/stuck sessions, 90 d hash purge |
-| `privacy-retention-daily` | `privacy-retention` | Daily | Challenges, idempotency windows, closed moderation cases (12 mo), expired export bytes, ledger horizon (35 d), observation-age metric |
+| `privacy-retention-daily` | `privacy-retention` | Daily | Challenges, idempotency windows, closed moderation cases (12 mo), expired export bytes, ledger horizon (35 d), recovery audit (180 d), observation-age metric |
 | `account-provider-revoke-every-minute` | `account-provider-revoke` | Every minute | Revokes deleted accounts' sealed Sign in with Apple refresh tokens at Apple (≤20 per run); each row is deleted on acceptance or 30 days after deletion even if Apple never accepts (backoff 1 min doubling to 1 h) |
 
 All enqueue through the durable job queue with dedupe keys; poison
@@ -57,6 +57,10 @@ retention sweep generated_at=... challenges/purged=12 challenges/oldest_overdue=
   clock jump denies use without deleting otherwise unexpired credentials.
   Account/family deletion also cascades. Login prunes that account's invalid
   rows before enforcing its separate ten-company-session limit.
+- Account recovery audit: purge recovery and recovery-email change activity
+  after 180 days in oldest-first batches. The log stores account ID, action
+  and timestamp. Account deletion clears the name and recovery address within
+  the deletion transaction and the audit ages out on its own schedule.
 - Moderation closed cases: only `RESOLVED`/`REJECTED` older than 12
   months; audit rows delete before their cases each batch; open and
   triaged cases are never touched.

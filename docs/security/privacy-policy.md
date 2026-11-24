@@ -12,6 +12,17 @@ accounts, community writes, optional private ledger sync, foreground navigation/
 recording and Google ML Kit technical metrics. Pseudonymous IDs are not a basis
 for declaring that no personal information is processed.
 
+A name chosen by the account holder appears on the forum and in comments.
+An email is used for verification and key recovery. Abastevo stores a lookup
+hash and a private masked hint. The mail service processes the address and
+code for delivery. Google sign-in uses the provider's issuer and subject.
+A verified email can establish a recovery address when Google is authoritative
+for its domain. The suggested Google name stays on the device until the user
+confirms a name to publish. Account deletion removes the profile name,
+recovery address and provider links. Recovery and address-change audit events
+contain the account ID, action and timestamp and are retained for 180 days.
+See the [account data inventory](privacy-notice.md#inventory-purpose-retention-access-deletion).
+
 Controller: ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93. The maintainer
 reconfirmed the official privacy WhatsApp +55 (66) 9631-4240 and Brazil as the
 production hosting target on 2026-11-05. Do not invent a privacy email or silently
