@@ -360,12 +360,27 @@ extension CommunityWriteClient {
         ) { session in
             Self.forumPostOwnerBody(session: session, postId: postId)
         }
-        struct OwnerComments: Decodable { let commentIds: [String] }
-        let owned = try AbastevoHttpClient.publicDecoder().decode(OwnerComments.self, from: response.body)
-        guard owned.commentIds.count <= 100, owned.commentIds.allSatisfy(CommunityWire.isUuid) else {
+        return try Self.decodeForumOwnerCommentIds(response.body, postId: postId)
+    }
+
+    static func decodeForumOwnerCommentIds(_ data: Data, postId: String) throws -> Set<String> {
+        struct OwnerComments: Decodable {
+            struct Comment: Decodable {
+                let id: String
+                let postId: String
+            }
+            let comments: [Comment]
+        }
+        guard let owned = try? AbastevoHttpClient.publicDecoder().decode(OwnerComments.self, from: data),
+              owned.comments.count <= 100,
+              owned.comments.allSatisfy({
+                  CommunityWire.isUuid($0.id) && $0.postId.caseInsensitiveCompare(postId) == .orderedSame
+              }) else {
             throw CommunityWriteError.invalidReceipt
         }
-        return Set(owned.commentIds.map { $0.lowercased() })
+        let ids = Set(owned.comments.map { $0.id.lowercased() })
+        guard ids.count == owned.comments.count else { throw CommunityWriteError.invalidReceipt }
+        return ids
     }
 
     public func forumOwnReactions(postId: String, expectedScope: String) async throws -> ForumOwnReactions {

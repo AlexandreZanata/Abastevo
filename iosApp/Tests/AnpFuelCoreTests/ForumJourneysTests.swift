@@ -174,6 +174,20 @@ final class ForumJourneysTests: XCTestCase {
         }
     }
 
+    func testForumOwnerCommentIdsRejectAnotherConversationAndDuplicateReceipts() throws {
+        let wrongPost = Data(#"{"comments":[{"id":"\#(parentId)","post_id":"\#(replyId)"}]}"#.utf8)
+        XCTAssertThrowsError(try CommunityWriteClient.decodeForumOwnerCommentIds(wrongPost, postId: postId)) {
+            XCTAssertEqual($0 as? CommunityWriteError, .invalidReceipt)
+        }
+        let row = #"{"id":"\#(parentId)","post_id":"\#(postId)"}"#
+        let duplicate = Data(#"{"comments":[\#(row),\#(row)]}"#.utf8)
+        XCTAssertThrowsError(try CommunityWriteClient.decodeForumOwnerCommentIds(duplicate, postId: postId)) {
+            XCTAssertEqual($0 as? CommunityWriteError, .invalidReceipt)
+        }
+        let legacyShape = Data(#"{"comment_ids":["\#(parentId)"]}"#.utf8)
+        XCTAssertThrowsError(try CommunityWriteClient.decodeForumOwnerCommentIds(legacyShape, postId: postId))
+    }
+
     func testForumReactionAndOwnerReadsUseTheBoundSignedRoutes() async throws {
         let postId = self.postId
         let replyId = self.replyId
@@ -194,7 +208,7 @@ final class ForumJourneysTests: XCTestCase {
                         return .init(200, topicBody)
                     }
                     return .init(200, """
-                        {"comment_ids":["\(parentId)"]}
+                        {"comments":[{"id":"\(parentId)","post_id":"\(postId)","depth":0,"sequence":1,"revision":1,"publication_state":"PUBLISHED","visibility":"VISIBLE","body_text":"Example comment","created_at":"2025-11-23T10:00:00Z","updated_at":"2025-11-23T10:00:00Z","published_at":"2025-11-23T10:00:00Z","replayed":false}]}
                         """)
                 case "/v1/forum/owner/reactions":
                     return .init(200, """
