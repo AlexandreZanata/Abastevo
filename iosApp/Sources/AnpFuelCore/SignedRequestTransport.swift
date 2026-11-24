@@ -278,8 +278,18 @@ public actor SignedRequestTransport {
         return "anonymous:" + jwk.fingerprint
     }
 
+    nonisolated func requireOwnerScope(_ expected: String?) throws {
+        try Task.checkCancellation()
+        guard let expected else { return }
+        let accountPrefix = sessions.currentAccountId().map { "account:\($0):" } ?? "anonymous:"
+        guard expected.hasPrefix(accountPrefix), ownerScope() == expected else {
+            throw SignedTransportError.sessionRequired
+        }
+    }
+
     /// Ensures the contributor exists for this key and, with a live session, that it is bound to the account.
-    public func ensureIdentity() async throws -> DeviceIdentityRecord {
+    public func ensureIdentity(expectedOwnerScope: String? = nil) async throws -> DeviceIdentityRecord {
+        try requireOwnerScope(expectedOwnerScope)
         guard let authority else { throw SignedTransportError.originUnavailable }
         guard let jwk = signer.ensurePublicJwk(),
               PortableAnonymousProof.isFingerprintShape(jwk.fingerprint) else {
@@ -289,13 +299,20 @@ public actor SignedRequestTransport {
         if let current = registered, current.origin == origin, current.fingerprint == jwk.fingerprint {
             record = current
         } else {
-            record = try await register(jwk: jwk, authority: authority)
+            record = try await register(jwk: jwk, authority: authority, expectedOwnerScope: expectedOwnerScope)
+            try requireOwnerScope(expectedOwnerScope)
             registered = record
             try? identityStore.save(record)
         }
-        if let session = await sessions.liveSession() {
+        let session = await sessions.liveSession()
+        try requireOwnerScope(expectedOwnerScope)
+        if let session {
+            if let expectedOwnerScope, !expectedOwnerScope.hasPrefix("account:\(session.accountId):") {
+                throw SignedTransportError.sessionRequired
+            }
             try await bind(record: record, session: session)
         }
+        try requireOwnerScope(expectedOwnerScope)
         return record
     }
 
@@ -322,7 +339,8 @@ public actor SignedRequestTransport {
         path: String,
         query: String = "",
         body: Data?,
-        idempotencyKey: String? = nil
+        idempotencyKey: String? = nil,
+        expectedOwnerScope: String? = nil
     ) async throws -> SignedHttpResponse {
         let upperMethod = method.uppercased()
         guard upperMethod == "GET" || upperMethod == "POST",
@@ -334,8 +352,9 @@ public actor SignedRequestTransport {
             throw SignedTransportError.invalidRequest
         }
         guard let authority else { throw SignedTransportError.originUnavailable }
-        let record = try await ensureIdentity()
+        let record = try await ensureIdentity(expectedOwnerScope: expectedOwnerScope)
         let challenge = try await requestChallenge(fingerprint: record.fingerprint, purpose: PortableAnonymousProof.purposeSign)
+        try requireOwnerScope(expectedOwnerScope)
         let created = now()
         let expires = created + SignedRequestProfile.proofLifetimeSeconds
         let lines = SignedRequestProfile.baseLines(
@@ -363,8 +382,11 @@ public actor SignedRequestTransport {
             headers[SignedRequestProfile.headerIdempotencyKey] = key
         }
         do {
-            return try await send(method: upperMethod, path: path, query: query, body: body, headers: headers)
+            let response = try await send(method: upperMethod, path: path, query: query, body: body, headers: headers)
+            try requireOwnerScope(expectedOwnerScope)
+            return response
         } catch let error as SignedTransportError {
+            try requireOwnerScope(expectedOwnerScope)
             if case .refused(let status, _, _) = error, status == 401 {
                 forgetProofs()
             }
@@ -373,9 +395,18 @@ public actor SignedRequestTransport {
     }
 
     /// Unsigned JSON POST for session-only routes (station comments and votes).
-    public func plainPost(path: String, body: Data) async throws -> SignedHttpResponse {
+    public func plainPost(
+        path: String, body: Data, idempotencyKey: String? = nil, expectedOwnerScope: String? = nil
+    ) async throws -> SignedHttpResponse {
         guard SignedRequestProfile.isSignablePath(path) else { throw SignedTransportError.invalidRequest }
-        return try await send(method: "POST", path: path, query: "", body: body, headers: [:])
+        if let key = idempotencyKey, key.isEmpty || key.count > 128 {
+            throw SignedTransportError.invalidRequest
+        }
+        try requireOwnerScope(expectedOwnerScope)
+        let headers = idempotencyKey.map { [SignedRequestProfile.headerIdempotencyKey: $0] } ?? [:]
+        let response = try await send(method: "POST", path: path, query: "", body: body, headers: headers)
+        try requireOwnerScope(expectedOwnerScope)
+        return response
     }
 
     // MARK: - Identity ceremonies
@@ -391,8 +422,11 @@ public actor SignedRequestTransport {
         return challenge
     }
 
-    private func register(jwk: IosDeviceProofSigner.PublicJwk, authority: String) async throws -> DeviceIdentityRecord {
+    private func register(
+        jwk: IosDeviceProofSigner.PublicJwk, authority: String, expectedOwnerScope: String?
+    ) async throws -> DeviceIdentityRecord {
         let challenge = try await requestChallenge(fingerprint: jwk.fingerprint, purpose: PortableAnonymousProof.purposeRegister)
+        try requireOwnerScope(expectedOwnerScope)
         let created = now()
         let lines = SignedRequestProfile.baseLines(
             method: "POST",

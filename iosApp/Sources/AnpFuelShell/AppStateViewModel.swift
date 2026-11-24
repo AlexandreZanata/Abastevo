@@ -52,6 +52,9 @@ public final class AppStateViewModel: ObservableObject {
     @Published private(set) var nextStationCursor: String?
     @Published private(set) var isLoadingMoreStations = false
     @Published private(set) var stationPageUnavailable = false
+    @Published private(set) var nextCommunityCursor: String?
+    @Published private(set) var isLoadingMoreCommunity = false
+    @Published private(set) var communityPageUnavailable = false
 
     // Official ANP weeks, EV catalog and offline public reads
     public let anpSurvey: AnpSurveyModel
@@ -83,6 +86,8 @@ public final class AppStateViewModel: ObservableObject {
     private var cityReadGeneration = UUID()
     /// Device contributor identity and signed community writes (outbox, receipts, owner history).
     public let identity: IdentityCoordinator
+    public let communitySafety = CommunitySafetyViewModel()
+    public var communityGateway: CommunityWriteClient { identity.communityGateway }
     /// Abastevo Empresas: company access, the protected per-organization queue and signed company commands.
     public let enterprise: EnterpriseCoordinator
     private var identityRelay: AnyCancellable?
@@ -280,6 +285,7 @@ public final class AppStateViewModel: ObservableObject {
         snapshot.apiEnvironment = env
         httpClient.environment = env
         identity.updateEnvironment(env)
+        configureCommunitySafety()
         enterprise.purgeOwnedData()
         persist()
         evCatalog.originChanged()
@@ -313,6 +319,9 @@ public final class AppStateViewModel: ObservableObject {
         nextStationCursor = nil
         isLoadingMoreStations = false
         stationPageUnavailable = false
+        nextCommunityCursor = nil
+        isLoadingMoreCommunity = false
+        communityPageUnavailable = false
         directoryCachedAt = nil
         communityCachedAt = nil
         communityExpiredCount = 0
@@ -324,7 +333,7 @@ public final class AppStateViewModel: ObservableObject {
         }
         guard !isOfflineSimulation else {
             applyCachedDirectory(origin: origin, municipality: municipality)
-            applyCachedCommunity(origin: origin, municipality: municipality, fuel: fuel)
+            applyCachedCommunity(origin: origin, municipality: municipality, fuel: fuel, sort: order)
             return
         }
         stationReadState = .loading
@@ -343,20 +352,21 @@ public final class AppStateViewModel: ObservableObject {
             cache.saveDirectory(origin: origin, municipalityCode: municipality.ibgeCode, stations: page.stations)
         }
         communityRead = Task { [weak self] in
-            let fetched = try? await client.fetchCommunityFeedItems(
+            let fetched = try? await client.fetchCommunityFeedPage(
                 state: municipality.state, municipalityCode: municipality.ibgeCode, fuel: fuel, sort: order
             )
             guard !Task.isCancelled, let self, self.cityReadGeneration == generation else { return }
-            guard let items = fetched else {
-                self.applyCachedCommunity(origin: origin, municipality: municipality, fuel: fuel)
+            guard let page = fetched else {
+                self.applyCachedCommunity(origin: origin, municipality: municipality, fuel: fuel, sort: order)
                 return
             }
             let now = Int64(Date().timeIntervalSince1970)
-            let live = items.filter { $0.isLive(nowEpochSeconds: now) }
+            let live = page.items.filter { $0.isLive(nowEpochSeconds: now) }
             self.communityFeed = live.map(\.observation)
             self.communityExpiries = Dictionary(live.map { ($0.observation.id, $0.expiresAtEpochSeconds) }, uniquingKeysWith: { first, _ in first })
+            self.nextCommunityCursor = page.nextCursor
             self.communityReadState = .loaded
-            cache.saveCommunityFeed(origin: origin, municipalityCode: municipality.ibgeCode, fuel: fuel, items: items)
+            cache.saveCommunityFeed(origin: origin, municipalityCode: municipality.ibgeCode, fuel: fuel, sort: order, items: page.items)
         }
     }
 
@@ -373,8 +383,8 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     /// Saved community prices still before their server expiry; expired ones are only counted.
-    private func applyCachedCommunity(origin: String, municipality: Municipality, fuel: FuelProduct) {
-        guard let cached = publicReadCache.communityFeed(origin: origin, municipalityCode: municipality.ibgeCode, fuel: fuel) else {
+    private func applyCachedCommunity(origin: String, municipality: Municipality, fuel: FuelProduct, sort: FeedSortOrder) {
+        guard let cached = publicReadCache.communityFeed(origin: origin, municipalityCode: municipality.ibgeCode, fuel: fuel, sort: sort) else {
             communityReadState = .unavailable
             return
         }
@@ -411,6 +421,42 @@ public final class AppStateViewModel: ObservableObject {
         let currentIds = Set(stations.map(\.id))
         stations.append(contentsOf: page.stations.filter { !currentIds.contains($0.id) })
         nextStationCursor = cursor == page.nextCursor ? nil : page.nextCursor
+    }
+
+    public func loadMoreCommunity() async {
+        guard !isOfflineSimulation, !isLoadingMoreCommunity,
+              let cursor = nextCommunityCursor, let municipality = selectedMunicipality else { return }
+        let generation = cityReadGeneration
+        let fuel = snapshot.selectedFuel
+        let sort = feedSortOrder
+        isLoadingMoreCommunity = true
+        communityPageUnavailable = false
+        let page = try? await httpClient.fetchCommunityFeedPage(
+            state: municipality.state, municipalityCode: municipality.ibgeCode, fuel: fuel, sort: sort, after: cursor
+        )
+        guard cityReadGeneration == generation else { return }
+        isLoadingMoreCommunity = false
+        guard !Task.isCancelled else { return }
+        guard let page else {
+            communityPageUnavailable = true
+            return
+        }
+        let now = Int64(Date().timeIntervalSince1970)
+        let existing = Set(communityFeed.map(\.id))
+        let extra = page.items.filter { $0.isLive(nowEpochSeconds: now) && !existing.contains($0.observation.id) }
+        communityFeed.append(contentsOf: extra.map(\.observation))
+        for item in extra {
+            communityExpiries[item.observation.id] = item.expiresAtEpochSeconds
+        }
+        nextCommunityCursor = cursor == page.nextCursor ? nil : page.nextCursor
+    }
+
+    func publicObservationHelpfulness(_ reference: CommunityContributionReference) async throws -> CommunityHelpfulnessTally {
+        guard !isOfflineSimulation else { throw HttpClientError.unavailable }
+        let generation = cityReadGeneration
+        let tally = try await httpClient.publicHelpfulness(for: reference)
+        guard cityReadGeneration == generation else { throw CancellationError() }
+        return tally
     }
 
     public func officialPrices(for station: StationRecord) async throws -> [OfficialStationPrice] {
@@ -454,6 +500,13 @@ public final class AppStateViewModel: ObservableObject {
         case .pendingKeyAccount, .loggedOut:
             self.signedInAlias = nil
         }
+        configureCommunitySafety()
+    }
+
+    private func configureCommunitySafety() {
+        let client = communityGateway
+        let scope = currentAccountIdOrNil == nil ? nil : client.transport.ownerScope()
+        communitySafety.configure(client: client, ownerScope: scope, origin: snapshot.apiEnvironment.origin)
     }
 
     public var currentAccountIdOrNil: String? {
@@ -639,6 +692,7 @@ public final class AppStateViewModel: ObservableObject {
 
     public func logout() {
         let ownerId = currentAccountIdOrNil
+        communitySafety.clear()
         photoCache.purgeAll()
         identity.purgeOwnedData()
         enterprise.purgeOwnedData()
@@ -669,6 +723,7 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     private func finishAccountDeletion(ownerId: String) {
+        communitySafety.clear()
         proofSigner.resetKey()
         identity.forgetDeviceIdentity()
         enterprise.purgeOwnedData()
@@ -806,21 +861,17 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     /// Queues a forum comment (`POST /v1/forum/posts/{id}/comments`). Up to 280 Unicode scalars.
-    public func publishForumComment(postId: String, text: String) -> Result<CommunityOutboxItem, AppValidationError> {
+    public func publishForumComment(postId: String, text: String, parentId: String? = nil) -> Result<CommunityOutboxItem, AppValidationError> {
         let normalized = PortableText.normalize(text)
-        guard CommunityWire.isUuid(postId), PortableText.isValidComment(normalized) else {
+        guard CommunityWire.isUuid(postId), parentId.map(CommunityWire.isUuid) ?? true,
+              PortableText.isValidComment(normalized) else {
             return .failure(AppValidationError(String(localized: "community.comment.length")))
         }
-        let draft = CommunityTextDraft(text: normalized, postId: postId)
+        let draft = CommunityTextDraft(text: normalized, postId: postId, parentId: parentId)
         guard let item = identity.enqueue(kind: .forumComment, price: nil, text: draft) else {
             return .failure(AppValidationError(String(localized: "identity.device.keyUnavailable")))
         }
         return .success(item)
-    }
-
-    public func unblockUser(userId: String) {
-        snapshot.blockedUsers.removeAll { $0.id == userId }
-        persist()
     }
 
     // MARK: - Vehicles, Ledger & Driver Hub

@@ -281,8 +281,6 @@ public struct StationDetailSheetView: View {
     @ObservedObject var viewModel: AppStateViewModel
     let station: StationRecord
 
-    @State private var publicComments: [PublicStationComment] = []
-    @State private var commentsReadState: PublicReadState = .loading
     @State private var officialPrices: [OfficialStationPrice] = []
     @State private var officialSource: OfficialPriceSource?
     @State private var officialReadState: PublicReadState = .loading
@@ -418,45 +416,12 @@ public struct StationDetailSheetView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    EnergiaCard {
-                        Text(String(localized: "station.comments.by_fuel", defaultValue: "Community comments · \(viewModel.snapshot.selectedFuel.localizedName)"))
-                            .font(.headline)
-                        switch commentsReadState {
-                        case .loading:
-                            ProgressView()
-                        case .unavailable:
-                            Text(String(localized: "station.comments.failed")).foregroundStyle(.secondary)
-                        case .loaded:
-                            if publicComments.isEmpty {
-                                Text(String(localized: "station.comments.empty")).foregroundStyle(.secondary)
-                            }
-                            ForEach(publicComments) { comment in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(comment.publicAlias).font(.caption.bold())
-                                    Text(comment.text)
-                                    StationCommentVoteBar(viewModel: viewModel, commentId: comment.id)
-                                }
-                            }
-                        }
-                    }
+                    StationFeedbackCard(app: viewModel, station: station, fuel: viewModel.snapshot.selectedFuel)
+                        .id(viewModel.snapshot.selectedFuel)
 
                     StationCommentComposerCard(viewModel: viewModel, station: station)
                 }
                 .padding(16)
-            }
-            .task(id: viewModel.snapshot.selectedFuel) {
-                publicComments = []
-                commentsReadState = .loading
-                do {
-                    let fuel = viewModel.snapshot.selectedFuel
-                    let loaded = try await viewModel.socialReadClient().fetchStationComments(stationId: station.id, fuel: fuel)
-                    guard !Task.isCancelled else { return }
-                    publicComments = loaded
-                    commentsReadState = .loaded
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    commentsReadState = .unavailable
-                }
             }
             .task(id: officialReadAttempt) {
                 officialPrices = []

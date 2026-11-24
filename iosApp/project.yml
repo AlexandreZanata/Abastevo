@@ -58,6 +58,54 @@ targets:
       - path: Tests/AnpFuelCoreTests
       - path: ../contracts/testdata/premium/energy-v1.json
         buildPhase: resources
+      - path: ../contracts/testdata/api/feedback-comment-view-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/feedback-rating-receipt-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/feedback-rating-stats-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-comments-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-create-comment-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-comment-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-edit-comment-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-feed-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-owner-topic-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-post-summary-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-remove-comment-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/forum-replies-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-cast-invalid-choice.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-cast-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-tally-empty.json
+        buildPhase: resources
+      - path: ../contracts/testdata/community-helpfulness/helpful-tally-with-votes.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/moderation-disputed.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/retry-no-amplification.json
+        buildPhase: resources
+      - path: ../contracts/testdata/consensus/self-confirmation-excluded.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-rating-six.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-rating-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-rating-zero.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-revision-supersede.json
+        buildPhase: resources
+      - path: ../contracts/testdata/feedback/feedback-text-crlf.json
+        buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources
     dependencies:

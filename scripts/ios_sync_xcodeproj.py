@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Register iOS Swift sources and String Catalogs without Xcode.
+"""Register iOS Swift sources, String Catalogs and contract fixtures without Xcode.
 
 The project file is maintained by hand on Linux hosts, where XcodeGen and
 Xcode are unavailable. New files are included in the appropriate target's
@@ -142,6 +142,52 @@ def register_catalog(text: str, catalog: Path, group_folder: Path, phase: str) -
     return append_to_list(text, phase, "files", f"{build} /* {name} in Resources */")
 
 
+def configured_contract_fixtures() -> list[str]:
+    project = (IOS_ROOT / "project.yml").read_text(encoding="utf-8")
+    test_target = re.search(r"(?ms)^  AnpFuelCoreTests:\n(.*?)(?=^\S|^  \S|\Z)", project)
+    if test_target is None:
+        raise SystemExit("AnpFuelCoreTests target is missing from project.yml")
+    paths = re.findall(r"(?m)^      - path: (\.\./contracts/testdata/[^\n]+)\n        buildPhase: resources$", test_target.group(1))
+    names: set[str] = set()
+    for relative in paths:
+        fixture = (IOS_ROOT / relative).resolve()
+        if not fixture.is_relative_to(ROOT / "contracts/testdata") or not fixture.is_file():
+            raise SystemExit(f"invalid contract fixture: {relative}")
+        if fixture.name in names:
+            raise SystemExit(f"duplicate XCTest resource name: {fixture.name}")
+        names.add(fixture.name)
+    return sorted(paths)
+
+
+def register_contract_fixture(text: str, relative: str, phase: str) -> str:
+    fixture = Path(relative)
+    name = fixture.name
+    existing = re.search(rf'(?m)^\t\t([A-F0-9]{{24}}) /\* {re.escape(name)} \*/ = .*path = "{re.escape(relative)}";', text)
+    if existing:
+        ref = existing.group(1)
+    else:
+        ref = object_id("file", relative)
+        file_type = "text.json" if fixture.suffix == ".json" else "text"
+        text = insert_before(
+            text,
+            "/* End PBXFileReference section */",
+            f'\t\t{ref} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = {file_type}; '
+            f'name = "{name}"; path = "{relative}"; sourceTree = SOURCE_ROOT; }};\n',
+        )
+    existing_build = re.search(rf"(?m)^\t\t([A-F0-9]{{24}}) /\* [^\n]+ in Resources \*/ = .*fileRef = {ref}\b", text)
+    if existing_build:
+        build = existing_build.group(1)
+    else:
+        build = object_id("build", relative)
+        text = insert_before(
+            text,
+            "/* End PBXBuildFile section */",
+            f"\t\t{build} /* {name} in Resources */ = {{isa = PBXBuildFile; fileRef = {ref} /* {name} */; }};\n",
+        )
+    text = append_to_list(text, group_id(text, "AnpFuelCoreTests"), "children", f"{ref} /* {name} */")
+    return append_to_list(text, phase, "files", f"{build} /* {name} in Resources */")
+
+
 def sync(text: str) -> tuple[str, list[str]]:
     added: list[str] = []
     for relative_folder in FOLDERS:
@@ -178,6 +224,12 @@ def sync(text: str) -> tuple[str, list[str]]:
             text = register_catalog(text, catalog, IOS_ROOT / relative_group, phase)
             if text != before:
                 added.append(catalog.relative_to(IOS_ROOT).as_posix())
+    text, test_resources = resources_phase_for(text, "AnpFuelCoreTests")
+    for relative in configured_contract_fixtures():
+        updated = register_contract_fixture(text, relative, test_resources)
+        if updated != text:
+            added.append(relative)
+            text = updated
     return text, added
 
 

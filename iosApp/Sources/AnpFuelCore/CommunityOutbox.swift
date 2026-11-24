@@ -221,6 +221,19 @@ public enum CommunityOutbox {
     public static let signInRequiredCode = "community.sign-in-required"
     public static let attemptsExhaustedCode = "outbox.attempts-exhausted"
 
+    public static func ownedStationCommentIds(
+        _ items: [CommunityOutboxItem], ownerScope: String, origin: String, stationId: String, fuel: FuelProduct
+    ) -> Set<String> {
+        guard ownerScope.hasPrefix("account:") else { return [] }
+        return Set(items.compactMap { item in
+            guard item.kind == .stationComment, item.status == .accepted,
+                  item.ownerScope == ownerScope, item.origin == origin,
+                  item.text?.stationId?.lowercased() == stationId.lowercased(), item.text?.product == fuel,
+                  let id = item.receiptId, CommunityWire.isUuid(id) else { return nil }
+            return id.lowercased()
+        })
+    }
+
     public static func enqueue(_ item: CommunityOutboxItem, into items: [CommunityOutboxItem]) -> [CommunityOutboxItem] {
         var next = items.filter { $0.id != item.id }
         next.insert(item, at: 0)

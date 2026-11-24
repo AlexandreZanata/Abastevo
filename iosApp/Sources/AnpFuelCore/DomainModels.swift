@@ -377,6 +377,7 @@ public struct CommunityPriceObservation: Codable, Equatable, Identifiable, Senda
     public let observedEpochSeconds: Int64
     public let hasPhotoEvidence: Bool
     public let isOwnSubmission: Bool
+    public let contribution: CommunityContributionReference?
 
     public init(
         id: String,
@@ -393,7 +394,8 @@ public struct CommunityPriceObservation: Codable, Equatable, Identifiable, Senda
         observedAtLabel: String,
         observedEpochSeconds: Int64,
         hasPhotoEvidence: Bool,
-        isOwnSubmission: Bool = false
+        isOwnSubmission: Bool = false,
+        contribution: CommunityContributionReference? = nil
     ) {
         self.id = id
         self.stationId = stationId
@@ -410,6 +412,7 @@ public struct CommunityPriceObservation: Codable, Equatable, Identifiable, Senda
         self.observedEpochSeconds = observedEpochSeconds
         self.hasPhotoEvidence = hasPhotoEvidence
         self.isOwnSubmission = isOwnSubmission
+        self.contribution = contribution
     }
 }
 

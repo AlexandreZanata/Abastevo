@@ -510,6 +510,28 @@ public final class CommunityWriteClient: CommunityWriteGateway, @unchecked Senda
         self.nowMillis = nowMillis
     }
 
+    func ownerPost(
+        path: String,
+        expectedScope: String,
+        requiresDeviceProof: Bool,
+        idempotencyKey: String? = nil,
+        buildBody: (PortableAuth.Session) -> Data?
+    ) async throws -> SignedHttpResponse {
+        guard expectedScope.hasPrefix("account:") else { throw CommunityWriteError.signInRequired }
+        try transport.requireOwnerScope(expectedScope)
+        guard let session = await sessions.liveSession(), expectedScope.hasPrefix("account:\(session.accountId):") else {
+            throw CommunityWriteError.signInRequired
+        }
+        try transport.requireOwnerScope(expectedScope)
+        guard let body = buildBody(session) else { throw CommunityWriteError.invalid("community.invalid-request") }
+        if requiresDeviceProof {
+            return try await transport.signedRequest(
+                method: "POST", path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope
+            )
+        }
+        return try await transport.plainPost(path: path, body: body, idempotencyKey: idempotencyKey, expectedOwnerScope: expectedScope)
+    }
+
     // MARK: Price observations and evidence
 
     public func authorizePhotoCapture(stationId: String, clientCaptureId: String) async throws -> PhotoCaptureGrant {

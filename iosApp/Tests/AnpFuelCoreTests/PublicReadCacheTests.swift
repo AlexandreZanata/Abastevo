@@ -63,6 +63,22 @@ final class PublicReadCacheTests: XCTestCase {
         XCTAssertNil(cache.communityFeed(origin: origin, municipalityCode: "5107925", fuel: .ethanol))
     }
 
+    func testCommunityCacheRestartsWithSeparateRecentAndCheapestPages() throws {
+        let (cache, directory) = makeCache()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let now = Date(timeIntervalSince1970: 1_000)
+        let recent = CachedCommunityItem(observation: observation("recent", amount: 6_099), expiresAtEpochSeconds: 2_000)
+        let cheapest = CachedCommunityItem(observation: observation("cheapest", amount: 5_999), expiresAtEpochSeconds: 2_000)
+        cache.saveCommunityFeed(origin: origin, municipalityCode: "5107925", fuel: .gasolineRegular,
+                                sort: .recent, items: [recent], now: now)
+        cache.saveCommunityFeed(origin: origin, municipalityCode: "5107925", fuel: .gasolineRegular,
+                                sort: .cheapest, items: [cheapest], now: now)
+        let reopened = PublicReadCache(directory: directory)
+        XCTAssertEqual(reopened.communityFeed(origin: origin, municipalityCode: "5107925", fuel: .gasolineRegular)?.items, [recent])
+        XCTAssertEqual(reopened.communityFeed(origin: origin, municipalityCode: "5107925", fuel: .gasolineRegular,
+                                              sort: .cheapest)?.items, [cheapest])
+    }
+
     func testDirectoryAndOfficialPricesAreScopedAndBounded() {
         let (cache, directory) = makeCache()
         defer { try? FileManager.default.removeItem(at: directory) }

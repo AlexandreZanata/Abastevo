@@ -252,21 +252,8 @@ public struct AccountManagementSheetView: View {
                     }
                 }
 
-                Section(String(localized: "account.blocked_count", defaultValue: "Blocked Users (\(viewModel.snapshot.blockedUsers.count.formatted()))")) {
-                    if viewModel.snapshot.blockedUsers.isEmpty {
-                        Text(String(localized: "account.blocked_empty")).foregroundStyle(.secondary)
-                    } else {
-                        ForEach(viewModel.snapshot.blockedUsers) { user in
-                            HStack {
-                                Text(user.displayAlias)
-                                Spacer()
-                                Button(String(localized: "account.unblock")) {
-                                    viewModel.unblockUser(userId: user.id)
-                                }
-                                .font(.caption)
-                            }
-                        }
-                    }
+                CommunityBlockedUsersSection(model: viewModel.communitySafety) {
+                    viewModel.activeSheet = .auth
                 }
 
                 if viewModel.currentAccountIdOrNil != nil {

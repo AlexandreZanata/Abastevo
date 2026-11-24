@@ -20,6 +20,14 @@ Acceptance is open. Each supported Android journey needs an equivalent iOS entry
 - App copy and permission prompts use String Catalogs. Shared labels use the matching Android resource translations where their meaning is the same. Display dates, numbers and units follow the regional format, and prices stay in BRL.
 - Localization leaves signed request bytes, wire formats and the authoritative wording of hash-bound legal terms intact.
 
+## B-BR-IOS-COMMUNITY / BUC-IOS-COMMUNITY — Community and forum
+
+- Public forum and station-feedback lists use opaque cursors and preserve server order. A refresh replaces the loaded page and cursor together. Forum text search covers loaded posts. The app labels this scope. Threads show the server's parent and depth, with ranked top-level forum comments and on-demand replies. A newer filter, account, origin, refresh or navigation entry wins over an earlier response.
+- Observation actions require the server's contribution reference and decision sequence. Confirmation and dispute use device proof and the same submission id on retry. Helpfulness accepts HELPFUL and NOT_HELPFUL, can be removed, and uses its own tally. The public tally omits the owner's choice. Ratings are separate, use integer stars from one to five, and keep the mean absent when there are no ratings.
+- Station feedback writes use the existing session envelope. Comment edits carry the last server revision and normalized text of at most 280 Unicode scalars. Feedback replies have one level. The app exposes edit and removal for owner receipts it can verify. A creation with an unknown outcome needs an explicit reload before another attempt.
+- Forum edit, removal, reaction and owner reads use the account session and bound device proof. Edits and removals use the owner revision. Forum reactions are one LIKE, DISLIKE or NONE per target with authoritative counts and a private owner read. Each command keeps its operation id when retried.
+- Reports follow their specific forum, station-comment or user contract. The app names users through a public content reference. Server-side blocks are private to their owner. The app filters topics, comments and reply previews through the signed hidden-content subset, allows up to five seconds for the check, and rechecks after a block changes. Logout, deletion and origin changes clear the private UI state.
+
 ## B-BR-IOS-ID / BUC-IOS-ID — Device identity and signed community writes
 
 - Each signed request uses the backend profile: SHA-512 over the covered base, raw r||s P-256 signature as unpadded base64url, the canonical authority of the selected origin, and one fresh SIGN challenge. The content lines cover the exact body bytes. XCTest replays the Go identity vectors.

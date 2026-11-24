@@ -263,20 +263,35 @@ public struct StationCommentVoteBar: View {
 public struct ForumCommentComposer: View {
     @ObservedObject var viewModel: AppStateViewModel
     let postId: String
+    @Binding var replyingTo: ForumPublicComment?
+    @FocusState private var composerFocused: Bool
     @State private var text = ""
     @State private var notice: String?
 
-    public init(viewModel: AppStateViewModel, postId: String) {
+    public init(
+        viewModel: AppStateViewModel, postId: String, replyingTo: Binding<ForumPublicComment?> = .constant(nil)
+    ) {
         self.viewModel = viewModel
         self.postId = postId
+        _replyingTo = replyingTo
     }
 
     public var body: some View {
         let scalars = PortableText.countScalars(PortableText.normalize(text))
         let mine = viewModel.identity.items(of: .forumComment).filter { $0.text?.postId == postId }
         Section(String(localized: "android.forum_action_comment")) {
+            if let parent = replyingTo {
+                Text(String(localized: "android.forum_replying_to", defaultValue: "Replying to \(parent.publicAlias)"))
+                    .font(.caption)
+                Button(String(localized: "android.forum_cancel_reply")) { replyingTo = nil }
+                    .buttonStyle(.borderless)
+            }
             TextField(String(localized: "android.forum_comment_composer_hint"), text: $text, axis: .vertical)
                 .lineLimit(2...5)
+                .focused($composerFocused)
+                .onChange(of: replyingTo?.id) { _, id in
+                    if id != nil { composerFocused = true }
+                }
             HStack {
                 Text("\(scalars.formatted())/\(PortableText.maxCommentScalars.formatted())")
                     .font(.caption2)
@@ -300,12 +315,19 @@ public struct ForumCommentComposer: View {
                 CommunityOutboxRow(viewModel: viewModel, item: item)
             }
         }
+        .onChange(of: viewModel.forumScreenScope) { _, _ in
+            text = ""
+            notice = nil
+            replyingTo = nil
+            composerFocused = false
+        }
     }
 
     private func publish() {
-        switch viewModel.publishForumComment(postId: postId, text: text) {
+        switch viewModel.publishForumComment(postId: postId, text: text, parentId: replyingTo?.id) {
         case .success(let item):
             text = ""
+            replyingTo = nil
             notice = IdentityCoordinator.statusLabel(for: item)
         case .failure(let error):
             notice = error.localizedDescription

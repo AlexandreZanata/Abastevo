@@ -39,7 +39,7 @@ public struct CommunityRootView: View {
                 .padding(.vertical, 12)
             }
             .refreshable {
-                viewModel.reloadCityData()
+                await viewModel.refreshCityData()
             }
         }
     }
@@ -134,7 +134,12 @@ public struct CommunityRootView: View {
                 .pickerStyle(.menu)
             }
 
-            if items.isEmpty {
+            if items.isEmpty && viewModel.communityReadState == .loading {
+                ProgressView(String(localized: "observation.feed.loading"))
+            } else if items.isEmpty && viewModel.communityReadState == .unavailable {
+                Text(String(localized: "observation.feed.unavailable"))
+                    .foregroundStyle(.secondary)
+            } else if items.isEmpty {
                 EnergiaCard {
                     Text(String(localized: "community.fuel_empty", defaultValue: "No community observations for \(viewModel.snapshot.selectedFuel.localizedName) yet."))
                         .font(.subheadline)
@@ -169,7 +174,33 @@ public struct CommunityRootView: View {
                         Label(String(localized: "community.confirmation_count", defaultValue: "Confirmations: \(obs.confirmations.formatted())"), systemImage: "hand.thumbsup")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        if let contribution = obs.contribution, viewModel.communityCachedAt == nil {
+                            NavigationLink {
+                                CommunityObservationActionsView(
+                                    viewModel: viewModel, observation: obs, reference: contribution,
+                                    origin: viewModel.snapshot.apiEnvironment.origin
+                                )
+                            } label: {
+                                Text(String(localized: "observation.actions.open"))
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
+                }
+            }
+            if viewModel.communityPageUnavailable {
+                Text(String(localized: "observation.feed.page_failed"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if viewModel.nextCommunityCursor != nil {
+                Button(String(localized: "observation.feed.more")) {
+                    Task { await viewModel.loadMoreCommunity() }
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.isLoadingMoreCommunity)
+                if viewModel.isLoadingMoreCommunity {
+                    ProgressView(String(localized: "observation.feed.loading"))
                 }
             }
         }
@@ -532,14 +563,48 @@ struct IosCameraCaptureView: UIViewControllerRepresentable {
 }
 #endif
 
+@MainActor
 public struct ForumFeedSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AppStateViewModel
+    @ObservedObject private var safety: CommunitySafetyViewModel
     @State private var selectedCategory: String?
     @State private var showNewDraft = false
     @State private var categories: [ForumPublicCategory] = []
-    @State private var posts: [ForumPublicPost] = []
-    @State private var readState: PublicReadState = .loading
+    @State private var feed = ForumPageAccumulator<ForumPublicPost>()
+    @State private var hidden: Set<CommunitySafetyReference> = []
+    @State private var isRefreshing = true
+    @State private var isPaging = false
+    @State private var issue: String?
+    @State private var restartCursor = false
+    @State private var generation = UUID()
+    @State private var loadedQuery: Query?
+    @State private var categoryScope: ForumScreenScope?
+    @State private var searchText = ""
+    @State private var searchQuery = ""
+
+    private struct Query: Hashable {
+        let scope: ForumScreenScope
+        let category: String?
+    }
+
+    public init(viewModel: AppStateViewModel) {
+        self.viewModel = viewModel
+        self.safety = viewModel.communitySafety
+    }
+
+    private var query: Query {
+        Query(scope: viewModel.forumScreenScope, category: selectedCategory)
+    }
+
+    private var visiblePosts: [ForumPublicPost] {
+        let admitted = feed.items.filter { post in
+            guard post.kind == .topic else { return true }
+            let ref = ForumDiscussionModel.postReference(post.id)
+            return !hidden.contains(ref) && !safety.isLocallyHidden(ref)
+        }
+        return ForumReadWire.filteredPosts(admitted, query: searchQuery)
+    }
 
     public var body: some View {
         NavigationStack {
@@ -551,28 +616,44 @@ public struct ForumFeedSheetView: View {
                             Text(category.name).tag(Optional(category.code))
                         }
                     }
-                    switch readState {
-                    case .loading:
+                    if feed.items.isEmpty && isRefreshing {
                         ProgressView()
-                    case .unavailable:
-                        Text(String(localized: "android.forum_unavailable_title")).foregroundStyle(.secondary)
-                    case .loaded:
-                        if posts.isEmpty {
-                            Text(String(localized: "android.forum_feed_empty_hint")).foregroundStyle(.secondary)
-                        }
-                        ForEach(posts) { post in
-                            NavigationLink {
-                                ForumPostDetailView(viewModel: viewModel, post: post)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(post.title).font(.headline)
-                                    Text(postLabel(post.kind)).font(.caption).foregroundStyle(.secondary)
-                                    if let excerpt = post.excerpt {
-                                        Text(excerpt).font(.caption).lineLimit(2)
-                                    }
+                    } else if visiblePosts.isEmpty && issue == nil {
+                        Text(searchQuery.isEmpty
+                             ? String(localized: "android.forum_feed_empty_hint")
+                             : String(localized: "forum.search.no_matches"))
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(visiblePosts) { post in
+                        NavigationLink {
+                            ForumPostDetailView(viewModel: viewModel, post: post)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(post.title).font(.headline)
+                                Text(postLabel(post.kind)).font(.caption).foregroundStyle(.secondary)
+                                if let excerpt = post.excerpt {
+                                    Text(excerpt).font(.caption).lineLimit(2)
                                 }
                             }
                         }
+                    }
+                    if let issue {
+                        Text(issue).foregroundStyle(.secondary)
+                    }
+                    if isPaging {
+                        ProgressView()
+                    } else if feed.nextCursor != nil && !restartCursor {
+                        Button(issue == nil
+                               ? String(localized: "android.forum_load_more")
+                               : String(localized: "android.forum_retry")) {
+                            Task { await loadPage(reset: false) }
+                        }
+                        .disabled(isRefreshing)
+                    } else if issue != nil {
+                        Button(String(localized: "android.forum_retry")) {
+                            Task { await loadPage(reset: true) }
+                        }
+                        .disabled(isRefreshing)
                     }
                 }
                 let myTopics = viewModel.identity.items(of: .forumTopic)
@@ -602,39 +683,124 @@ public struct ForumFeedSheetView: View {
                 }
             }
             .navigationTitle(String(localized: "android.forum_screen_title"))
+            .searchable(text: $searchText, prompt: Text(String(localized: "forum.search.loaded_posts")))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "android.feed_close")) { dismiss() }
                 }
                 if !categories.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
-                        Button(String(localized: "android.forum_new_topic"), systemImage: "square.and.pencil") { showNewDraft = true }
+                        Button(String(localized: "android.forum_new_topic"), systemImage: "square.and.pencil") {
+                            showNewDraft = true
+                        }
                     }
                 }
             }
             .sheet(isPresented: $showNewDraft) {
                 ForumNewTopicSheetView(viewModel: viewModel, categories: categories)
             }
-            .task {
+            .task(id: query.scope) {
+                let scope = query.scope
+                if categoryScope != scope {
+                    categoryScope = scope
+                    categories = []
+                    searchText = ""
+                    searchQuery = ""
+                    showNewDraft = false
+                }
+                guard categories.isEmpty else { return }
                 guard let client = try? viewModel.socialReadClient(),
                       let loaded = try? await client.fetchForumCategories(),
-                      !Task.isCancelled else { return }
+                      !Task.isCancelled, query.scope == scope else { return }
                 categories = loaded
             }
-            .task(id: selectedCategory) {
-                posts = []
-                readState = .loading
+            .task(id: query) {
+                guard loadedQuery != query else { return }
+                loadedQuery = nil
+                feed = ForumPageAccumulator()
+                hidden = []
+                await loadPage(reset: true)
+            }
+            .task(id: searchText) {
                 do {
-                    let loaded = try await viewModel.socialReadClient().fetchForumPosts(category: selectedCategory)
+                    try await Task.sleep(for: .milliseconds(400))
                     guard !Task.isCancelled else { return }
-                    posts = loaded
-                    readState = .loaded
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    readState = .unavailable
-                }
+                    searchQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                } catch {}
+            }
+            .task(id: safety.revision) {
+                await refilter()
+            }
+            .refreshable { await loadPage(reset: true) }
+            .onDisappear {
+                generation = UUID()
+                isPaging = false
+                isRefreshing = false
             }
         }
+    }
+
+    private func loadPage(reset: Bool) async {
+        let request = query
+        let cursor = reset ? nil : feed.nextCursor
+        if reset {
+            generation = UUID()
+            isRefreshing = true
+            isPaging = false
+            restartCursor = false
+        } else {
+            guard cursor != nil, !isPaging, !isRefreshing else { return }
+            isPaging = true
+        }
+        let token = generation
+        issue = nil
+        defer {
+            if generation == token {
+                isRefreshing = false
+                isPaging = false
+            }
+        }
+        do {
+            let filters = ForumFeedFilters(category: request.category)
+            let page = try await viewModel.socialReadClient().fetchForumFeed(filters: filters, cursor: cursor)
+            guard !Task.isCancelled, generation == token, query == request else { return }
+            let refs = topicReferences(page.items)
+            guard let result = await safety.filterHidden(refs),
+                  !Task.isCancelled, generation == token, query == request else { return }
+            hidden.subtract(refs)
+            hidden.formUnion(result)
+            if let cursor {
+                try feed.append(page.items, after: cursor, nextCursor: page.nextCursor)
+            } else {
+                try feed.replace(page.items, nextCursor: page.nextCursor)
+                loadedQuery = request
+            }
+        } catch {
+            guard !Task.isCancelled, generation == token, query == request else { return }
+            if let read = error as? HttpClientError {
+                if case .httpStatus(400, "forum.bad-cursor") = read {
+                    restartCursor = true
+                } else if read == .invalidJson, !reset {
+                    restartCursor = true
+                }
+                if case .httpStatus(404, _) = read { feed = ForumPageAccumulator() }
+            }
+            issue = restartCursor ? String(localized: "forum.cursor_invalid") : ForumFeedback.describe(error)
+        }
+    }
+
+    private func refilter() async {
+        let request = query
+        let token = generation
+        let refs = topicReferences(feed.items)
+        guard let checked = await safety.filterHidden(refs),
+              !Task.isCancelled, generation == token, query == request else { return }
+        hidden.subtract(refs)
+        hidden.formUnion(checked)
+    }
+
+    private func topicReferences(_ posts: [ForumPublicPost]) -> [CommunitySafetyReference] {
+        posts.filter { $0.kind == .topic }.map { ForumDiscussionModel.postReference($0.id) }
     }
 
     private func postLabel(_ kind: ForumPublicPost.Kind) -> String {
@@ -647,76 +813,335 @@ public struct ForumFeedSheetView: View {
     }
 }
 
+@MainActor
 public struct ForumPostDetailView: View {
     @ObservedObject var viewModel: AppStateViewModel
+    @ObservedObject private var safety: CommunitySafetyViewModel
+    @StateObject private var discussion: ForumDiscussionModel
+    @State private var editing: ForumPublicComment?
+    @State private var removing: ForumPublicComment?
     let post: ForumPublicPost
-    @State private var detail: ForumPublicDetail?
-    @State private var comments: [ForumPublicComment]?
-    @State private var isLoadingDetail = true
-    @State private var isLoadingComments = true
+
+    public init(viewModel: AppStateViewModel, post: ForumPublicPost) {
+        self.viewModel = viewModel
+        self.post = post
+        self.safety = viewModel.communitySafety
+        _discussion = StateObject(wrappedValue: ForumDiscussionModel(post: post))
+    }
+
+    private var hidePost: Bool {
+        if discussion.hidePost { return true }
+        return post.kind == .topic && safety.isLocallyHidden(ForumDiscussionModel.postReference(post.id))
+    }
 
     public var body: some View {
         List {
-            Section {
+            if hidePost {
+                Section {
+                    Text(String(localized: "android.safety_topic_hidden_title")).font(.headline)
+                    Text(String(localized: "android.safety_topic_hidden_message")).foregroundStyle(.secondary)
+                }
+            } else {
+                postSection
+                if let detail = discussion.detail {
+                    if detail.commentsEnabled == false {
+                        Text(String(localized: "android.forum_comments_disabled")).foregroundStyle(.secondary)
+                    } else {
+                        discussionSection
+                        ForumCommentComposer(viewModel: viewModel, postId: post.id, replyingTo: $discussion.replyingTo)
+                    }
+                }
+            }
+            CommunitySafetyNoticeLine(model: safety)
+            if let notice = discussion.actionNotice {
+                Section {
+                    Text(notice).foregroundStyle(.secondary)
+                    if discussion.pendingNeedsReview {
+                        Button(String(localized: "android.forum_retry")) {
+                            Task { await discussion.refreshAfterConflict(viewModel) }
+                        }
+                    } else if discussion.pending != nil {
+                        Button(String(localized: "android.forum_retry")) {
+                            Task { await discussion.retry(viewModel) }
+                        }
+                        .disabled(discussion.isWriting)
+                    }
+                }
+            }
+        }
+        .navigationTitle(String(localized: "android.forum_detail_title"))
+        .task(id: viewModel.forumScreenScope) {
+            editing = nil
+            removing = nil
+            await discussion.open(viewModel, reset: true)
+        }
+        .task(id: safety.revision) {
+            await discussion.refilter(viewModel)
+        }
+        .task(id: discussion.sort) {
+            if discussion.detail != nil && !discussion.isLoadingDetail {
+                await discussion.loadComments(viewModel, reset: true)
+            }
+        }
+        .refreshable { await discussion.open(viewModel, reset: false) }
+        .onDisappear { discussion.closeScreen() }
+        .sheet(item: $editing) { comment in
+            ForumEditCommentSheet(viewModel: viewModel, discussion: discussion, comment: comment)
+        }
+        .alert(
+            String(localized: "android.forum_delete_dialog_title"),
+            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+            presenting: removing
+        ) { comment in
+            Button(String(localized: "android.forum_delete_confirm"), role: .destructive) {
+                Task { await discussion.remove(comment, host: viewModel) }
+                removing = nil
+            }
+            Button(String(localized: "android.action_cancel"), role: .cancel) { removing = nil }
+        } message: { _ in
+            Text(String(localized: "android.forum_delete_dialog_message"))
+        }
+    }
+
+    private var postSection: some View {
+        Section {
+            if let detail = discussion.detail {
                 Text(post.title).font(.title3.bold())
                 if let alias = post.publicAlias {
                     Text(alias).font(.caption).foregroundStyle(.secondary)
                 }
-                if let detail {
-                    if let body = detail.bodyText {
-                        Text(body)
-                    }
-                    if let source = detail.source,
-                       ForumSafeLinks.isAllowedHttpsLink(source.url),
-                       let url = URL(string: source.url) {
-                        Link(source.name, destination: url)
-                    }
-                    HStack(spacing: 12) {
-                        Label(detail.likeCount.formatted(), systemImage: "hand.thumbsup")
-                        Label(detail.dislikeCount.formatted(), systemImage: "hand.thumbsdown")
-                    }
-                    .foregroundStyle(.secondary)
-                } else if isLoadingDetail {
-                    ProgressView()
-                } else {
-                    Text(String(localized: "android.forum_post_not_found_hint")).foregroundStyle(.secondary)
+                if let body = detail.bodyText {
+                    Text(body)
+                }
+                if let source = detail.source,
+                   ForumSafeLinks.isAllowedHttpsLink(source.url),
+                   let url = URL(string: source.url) {
+                    Link(source.name, destination: url)
+                }
+                reactionBar(to: .post(post.id), counts: detail.reactionCounts)
+                if post.kind == .topic && !discussion.ownsTopic {
+                    CommunitySafetyActions(
+                        model: safety, reference: ForumDiscussionModel.postReference(post.id),
+                        onSignIn: { viewModel.activeSheet = .auth }
+                    )
+                }
+            } else if discussion.isLoadingDetail {
+                ProgressView()
+            }
+            if let issue = discussion.detailIssue {
+                Text(issue).foregroundStyle(.secondary)
+                Button(String(localized: "android.forum_retry")) {
+                    Task { await discussion.open(viewModel, reset: false) }
                 }
             }
-            Section(String(localized: "android.forum_comments_title")) {
-                if let comments {
-                    if comments.isEmpty {
-                        Text(String(localized: "forum.no_comments")).foregroundStyle(.secondary)
+        }
+    }
+
+    private var discussionSection: some View {
+        Section(String(localized: "android.forum_comments_title")) {
+            Picker(String(localized: "android.forum_sort_label"), selection: $discussion.sort) {
+                Text(String(localized: "android.forum_sort_relevant")).tag(ForumReplySort.relevant)
+                Text(String(localized: "android.forum_sort_recent")).tag(ForumReplySort.recent)
+                Text(String(localized: "android.forum_sort_liked")).tag(ForumReplySort.liked)
+            }
+            .disabled(discussion.comments.isLoading)
+            let visible = discussion.comments.content.items.filter(commentIsVisible)
+            if visible.isEmpty, !discussion.comments.isLoading, discussion.comments.issue == nil {
+                Text(String(localized: "forum.no_comments")).foregroundStyle(.secondary)
+            }
+            ForEach(visible) { comment in
+                commentRow(comment)
+                if comment.replyCount > 0 {
+                    repliesSection(for: comment)
+                }
+            }
+            if discussion.comments.isLoading { ProgressView() }
+            if let issue = discussion.comments.issue {
+                Text(issue).foregroundStyle(.secondary)
+                Button(String(localized: "android.forum_retry")) {
+                    Task { await discussion.loadComments(viewModel, reset: true) }
+                }
+            } else if !discussion.comments.isLoading, discussion.comments.content.nextCursor != nil {
+                Button(String(localized: "android.forum_load_more")) {
+                    Task { await discussion.loadComments(viewModel, reset: false) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func repliesSection(for parent: ForumPublicComment) -> some View {
+        let isExpanded = discussion.expanded.contains(parent.id)
+        Button(isExpanded
+               ? String(localized: "android.forum_hide_replies")
+               : String(localized: "android.forum_replies_count", defaultValue: "Replies (\(parent.replyCount))")) {
+            Task { await discussion.toggleReplies(for: parent, host: viewModel) }
+        }
+        .buttonStyle(.borderless)
+        if isExpanded {
+            let page = discussion.replies[parent.id]
+            ForEach(page?.content.items.filter(commentIsVisible) ?? []) { reply in
+                commentRow(reply)
+                    .padding(.leading, 16)
+            }
+            if page?.isLoading == true {
+                ProgressView()
+            } else if let issue = page?.issue {
+                Text(issue).foregroundStyle(.secondary)
+                Button(String(localized: "android.forum_retry")) {
+                    Task { await discussion.loadReplies(for: parent, host: viewModel, first: true) }
+                }
+            } else if page?.content.nextCursor != nil {
+                Button(String(localized: "android.forum_show_more_replies")) {
+                    Task { await discussion.loadReplies(for: parent, host: viewModel, first: false) }
+                }
+            }
+        } else if let preview = parent.topReply?.comment, commentIsVisible(preview) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(preview.publicAlias).font(.caption.bold())
+                Text(preview.bodyText).font(.caption).lineLimit(2)
+            }
+            .padding(.leading, 16)
+        }
+    }
+
+    private func commentIsVisible(_ comment: ForumPublicComment) -> Bool {
+        let ref = ForumDiscussionModel.commentReference(comment.id)
+        return !discussion.hidden.contains(ref) && !safety.isLocallyHidden(ref)
+            && !discussion.submittedCommentIds.contains(comment.id.lowercased())
+    }
+
+    private func commentRow(_ comment: ForumPublicComment) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(comment.publicAlias).font(.caption.bold())
+            Text(comment.bodyText)
+            reactionBar(to: .comment(comment.id), counts: comment.reactionCounts)
+            HStack {
+                if comment.depth == 0 {
+                    Button(String(localized: "android.forum_reply_button")) {
+                        discussion.replyingTo = comment
                     }
-                    ForEach(comments) { comment in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(comment.publicAlias).font(.caption.bold())
-                            Text(comment.bodyText)
+                    .buttonStyle(.borderless)
+                }
+                Spacer()
+                if discussion.owns(comment) {
+                    Menu {
+                        Button(String(localized: "android.forum_edit_comment")) { editing = comment }
+                        Button(String(localized: "android.forum_delete_comment"), role: .destructive) {
+                            removing = comment
+                        }
+                    } label: {
+                        Label(String(localized: "forum.comment.actions"), systemImage: "ellipsis.circle")
+                            .labelStyle(.iconOnly)
+                    }
+                    .disabled(discussion.isWriting)
+                } else {
+                    CommunitySafetyActions(
+                        model: safety, reference: ForumDiscussionModel.commentReference(comment.id),
+                        onSignIn: { viewModel.activeSheet = .auth }
+                    )
+                }
+            }
+        }
+    }
+
+    private func reactionBar(to target: ForumReactionTarget, counts base: ForumReactionCounts?) -> some View {
+        let counts = discussion.counts(for: target, base: base)
+        return HStack(spacing: 16) {
+            reactionButton(.like, target: target, title: String(localized: "android.forum_like"),
+                           symbol: "hand.thumbsup", count: counts?.likes, base: base)
+            reactionButton(.dislike, target: target, title: String(localized: "android.forum_dislike"),
+                           symbol: "hand.thumbsdown", count: counts?.dislikes, base: base)
+        }
+    }
+
+    private func reactionButton(
+        _ reaction: ForumReaction, target: ForumReactionTarget, title: String,
+        symbol: String, count: Int64?, base: ForumReactionCounts?
+    ) -> some View {
+        let selected = discussion.reaction(to: target) == reaction
+        let selection: String
+        if discussion.ownReactionsKnown {
+            selection = selected ? String(localized: "android.forum_reaction_on")
+                : String(localized: "android.forum_reaction_off")
+        } else {
+            selection = ""
+        }
+        return Button {
+            Task { await discussion.react(reaction, target: target, base: base, host: viewModel) }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: selected ? symbol + ".fill" : symbol)
+                if let count { Text(count.formatted()) }
+            }
+        }
+        .buttonStyle(.borderless)
+        .disabled(discussion.isWriting || discussion.isLoadingDetail)
+        .accessibilityLabel(title)
+        .accessibilityValue(selection)
+    }
+}
+
+@MainActor
+private struct ForumEditCommentSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: AppStateViewModel
+    @ObservedObject var discussion: ForumDiscussionModel
+    let comment: ForumPublicComment
+    @State private var text: String
+    @State private var refreshed = false
+    @State private var refreshedTarget: ForumPublicComment?
+
+    init(viewModel: AppStateViewModel, discussion: ForumDiscussionModel, comment: ForumPublicComment) {
+        self.viewModel = viewModel
+        self.discussion = discussion
+        self.comment = comment
+        _text = State(initialValue: comment.bodyText)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField(String(localized: "android.forum_comment_composer_hint"), text: $text, axis: .vertical)
+                    .lineLimit(3...8)
+                if let notice = discussion.actionNotice {
+                    Text(notice).foregroundStyle(.secondary)
+                }
+                if discussion.pendingNeedsReview {
+                    Button(String(localized: "android.forum_retry")) {
+                        Task {
+                            await discussion.refreshAfterConflict(viewModel)
+                            refreshedTarget = discussion.freshEditTarget(comment)
+                            refreshed = true
                         }
                     }
-                } else if isLoadingComments {
-                    ProgressView()
-                } else {
-                    Text(String(localized: "forum.comments_unavailable")).foregroundStyle(.secondary)
+                    .disabled(discussion.isLoadingDetail)
+                }
+                if refreshed {
+                    if let latest = refreshedTarget {
+                        Section(String(localized: "android.forum_updated_label")) {
+                            Text(latest.bodyText)
+                        }
+                    } else {
+                        Text(String(localized: "android.forum_post_not_found_hint")).foregroundStyle(.secondary)
+                    }
+                }
+                let target = refreshed ? refreshedTarget : comment
+                Button(String(localized: "android.forum_edit_save")) {
+                    guard let target else { return }
+                    Task {
+                        if await discussion.edit(target, text: text, host: viewModel) { dismiss() }
+                    }
+                }
+                .disabled(target == nil || discussion.isWriting || discussion.pendingNeedsReview
+                          || !PortableText.isValidComment(text))
+            }
+            .navigationTitle(String(localized: "android.forum_edit_dialog_title"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "android.action_cancel")) { dismiss() }
                 }
             }
-            ForumCommentComposer(viewModel: viewModel, postId: post.id)
-        }
-        .navigationTitle(String(localized: "android.forum_detail_title"))
-        .task {
-            if let client = try? viewModel.socialReadClient() {
-                let loaded = try? await client.fetchForumPost(id: post.id)
-                guard !Task.isCancelled else { return }
-                detail = loaded
-            }
-            isLoadingDetail = false
-        }
-        .task {
-            if let client = try? viewModel.socialReadClient() {
-                let loaded = try? await client.fetchForumComments(postId: post.id)
-                guard !Task.isCancelled else { return }
-                comments = loaded
-            }
-            isLoadingComments = false
         }
     }
 }

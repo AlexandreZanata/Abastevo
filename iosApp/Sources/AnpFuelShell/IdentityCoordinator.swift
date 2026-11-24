@@ -87,6 +87,7 @@ public final class IdentityCoordinator: ObservableObject {
     /// The signed transport of the current origin, for other owner-signed
     /// commands such as Premium purchase verification.
     public var signedTransport: SignedRequestTransport { transport }
+    var communityGateway: CommunityWriteClient { client }
 
     /// Loads the queue, observes app activation and resumes pending writes.
     public func start() {
@@ -209,6 +210,34 @@ public final class IdentityCoordinator: ObservableObject {
 
     public func items(of kind: CommunityWriteKind) -> [CommunityOutboxItem] {
         outboxItems.filter { $0.kind == kind }
+    }
+
+    func ownedStationComments(stationId: String, fuel: FuelProduct) -> Set<String> {
+        guard hasAccount, let ownerScope = transport.ownerScope() else { return [] }
+        return CommunityOutbox.ownedStationCommentIds(outboxItems, ownerScope: ownerScope, origin: origin, stationId: stationId, fuel: fuel)
+    }
+
+    func recordStationReply(
+        _ reply: PublicStationComment, fuel: FuelProduct, text: String, ownerScope: String, operationId: String
+    ) {
+        guard hasAccount, transport.ownerScope() == ownerScope else { return }
+        let item = CommunityOutboxItem(
+            id: operationId, kind: .stationComment, ownerScope: ownerScope, origin: origin,
+            createdAtMillis: Self.nowMillis(),
+            text: CommunityTextDraft(text: text, stationId: reply.stationId, product: fuel, parentId: reply.parentId),
+            status: .accepted, receiptId: reply.id, serverState: "PUBLISHED"
+        )
+        outboxItems = CommunityOutbox.enqueue(item, into: outboxItems)
+        persist()
+    }
+
+    func forgetStationCommentReceipt(_ id: String, ownerScope: String) {
+        guard hasAccount, transport.ownerScope() == ownerScope else { return }
+        outboxItems.removeAll {
+            $0.kind == .stationComment && $0.origin == origin && $0.ownerScope == ownerScope
+                && $0.receiptId?.lowercased() == id.lowercased()
+        }
+        persist()
     }
 
     public func dispatchPending() {
