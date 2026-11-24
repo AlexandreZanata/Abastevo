@@ -51,12 +51,14 @@ func TestSEC01DDuplicateAndRotationOnRealSQL(t *testing.T) {
 	// Fill the aggregate exactly, then prove a new distinct subject is
 	// suppressed with zero new rows.
 	for i := 1; i < domain.MaxAggregateCodesPerHour; i++ {
-		clock.advance(61 * time.Second)
 		if err := svc.RequestCode(ctx, fmt.Sprintf("fill-%d@example.invalid", i)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	before, _ := store.CountAllCodesSince(ctx, clock.NowUnix()-3600)
+	before, err := store.CountAllCodesSince(ctx, clock.NowUnix()-3600)
+	if err != nil || before != domain.MaxAggregateCodesPerHour {
+		t.Fatalf("expected full mail quota, rows=%d, error=%v", before, err)
+	}
 	if err := svc.RequestCode(ctx, "overflow@example.invalid"); err != nil {
 		t.Fatalf("exhausted budget must answer nil, got %v", err)
 	}

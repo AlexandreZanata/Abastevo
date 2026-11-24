@@ -62,6 +62,9 @@ type Verifier struct {
 	Nonces   NonceStore
 	Skew     time.Duration
 	CacheTTL time.Duration
+	// The native-only presenter policy leaves legacy provider links unchanged.
+	GoogleNativeAudience    string
+	GoogleAuthorizedParties map[string]bool
 }
 
 // Verify checks provider, token, audience and nonce binding in order.
@@ -104,11 +107,18 @@ func (v Verifier) Verify(ctx context.Context, provider, rawToken, audience, nonc
 		return domain.ProviderSubject{}, domain.ErrOIDCWrongAudience
 	}
 	now := v.Clock()
-	if claims.Issuer != issuer {
+	googleIssuerAlias := provider == "google" && issuer == domain.IssuerGoogle && claims.Issuer == "accounts.google.com"
+	if claims.Issuer != issuer && !googleIssuerAlias {
 		return domain.ProviderSubject{}, domain.ErrOIDCUnknownIssuer
 	}
 	if !claims.audienceHas(audience) {
 		return domain.ProviderSubject{}, domain.ErrOIDCWrongAudience
+	}
+	if provider == "google" && audience == v.GoogleNativeAudience && len(v.GoogleAuthorizedParties) > 0 {
+		party, _ := claims.AuthorizedParty.(string)
+		if !v.GoogleAuthorizedParties[party] {
+			return domain.ProviderSubject{}, domain.ErrOIDCWrongAudience
+		}
 	}
 	if now.After(time.Time(claims.Expiry).Add(v.Skew)) {
 		return domain.ProviderSubject{}, domain.ErrOIDCExpired
@@ -122,16 +132,24 @@ func (v Verifier) Verify(ctx context.Context, provider, rawToken, audience, nonc
 	if !v.Nonces.Consume(nonce) {
 		return domain.ProviderSubject{}, domain.ErrOIDCNonceReused
 	}
-	return domain.ProviderSubject{Issuer: issuer, Subject: claims.Subject, Email: claims.Email}, nil
+	subject := domain.ProviderSubject{Issuer: issuer, Subject: claims.Subject, Email: claims.Email}
+	if provider == "google" {
+		subject.EmailVerified = claims.EmailVerified == true || claims.EmailVerified == "true"
+		subject.HostedDomain, _ = claims.HostedDomain.(string)
+	}
+	return subject, nil
 }
 
 type claims struct {
-	Issuer  string   `json:"iss"`
-	Subject string   `json:"sub"`
-	Aud     any      `json:"aud"`
-	Expiry  unixTime `json:"exp"`
-	Nonce   string   `json:"nonce"`
-	Email   string   `json:"email"`
+	Issuer          string   `json:"iss"`
+	Subject         string   `json:"sub"`
+	Aud             any      `json:"aud"`
+	Expiry          unixTime `json:"exp"`
+	Nonce           string   `json:"nonce"`
+	Email           string   `json:"email"`
+	EmailVerified   any      `json:"email_verified"`
+	HostedDomain    any      `json:"hd"`
+	AuthorizedParty any      `json:"azp"`
 }
 
 type unixTime time.Time

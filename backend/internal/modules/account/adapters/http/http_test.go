@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -41,7 +42,7 @@ func testHandler() (Handler, *testMail) {
 	mail := &testMail{}
 	codes := []string{"482916", "111111"}
 	var mu sync.Mutex
-	ci, tn := 0, 0
+	ci, tn, ids := 0, 0, 0
 	h := Handler{Service: &application.Service{
 		Clock:       &testClock{now: 1_700_000_000},
 		Hasher:      domain.SHA256Hasher{},
@@ -59,7 +60,13 @@ func testHandler() (Handler, *testMail) {
 			return strings.Repeat("t", tn) + strings.Repeat("k", 64-tn), nil
 		},
 		AliasGen: func() (string, error) { return "alias-test", nil },
-		IDGen:    func() (string, error) { return "aaaaaaaa-1111-4111-8111-111111111111", nil },
+		KeyGen:   domain.GenerateAccountKey,
+		IDGen: func() (string, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			ids++
+			return fmt.Sprintf("aaaaaaaa-1111-4111-8111-%012d", ids), nil
+		},
 	}}
 	return h, mail
 }
@@ -106,36 +113,40 @@ func TestRequestCodeRejectsMalformed(t *testing.T) {
 	}
 }
 
-func TestConsumeLoginFlow(t *testing.T) {
+func TestVerifiedSignupLoginFlow(t *testing.T) {
 	h, _ := testHandler()
 	if rec := call(t, h, "POST", "/v1/accounts/email/codes", `{"email":"case-02@example.invalid"}`); rec.Code != 202 {
 		t.Fatalf("request: %d", rec.Code)
 	}
-	rec := call(t, h, "POST", "/v1/accounts/email/consume", `{"email":"case-02@example.invalid","code":"482916"}`)
-	if rec.Code != 200 {
-		t.Fatalf("consume: %d (%s)", rec.Code, rec.Body.String())
+	rec := call(t, h, "POST", "/v1/accounts/keys/signup", `{"name":"Ana Silva","email":"case-02@example.invalid","code":"482916"}`)
+	if rec.Code != 201 {
+		t.Fatalf("signup: %d (%s)", rec.Code, rec.Body.String())
 	}
 	var out struct {
 		Account struct {
 			AccountID string `json:"account_id"`
-			Alias     string `json:"alias"`
-			Status    string `json:"status"`
+			Name      string `json:"public_name"`
 		} `json:"account"`
 		Session struct {
 			AccessToken  string `json:"access_token"`
 			RefreshToken string `json:"refresh_token"`
 			FamilyID     string `json:"family_id"`
 		} `json:"session"`
-		Created bool `json:"created"`
+		AccountKey string `json:"account_key"`
+		Created    bool   `json:"created"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if !out.Created || out.Account.Status != "active" || out.Session.AccessToken == "" {
-		t.Errorf("login must create an active sessioned account: %+v", out)
+	if !out.Created || out.Account.Name != "Ana Silva" || out.Session.AccessToken == "" || len(out.AccountKey) != domain.KeyLength {
+		t.Fatal("signup must create a named account, key and session")
+	}
+	access := `{"family_id":"` + out.Session.FamilyID + `","access_token":"` + out.Session.AccessToken + `"}`
+	if rec := call(t, h, "POST", "/v1/accounts/profile", access); rec.Code != 200 {
+		t.Fatalf("signup session must be active: %d %s", rec.Code, rec.Body.String())
 	}
 
-	bad := call(t, h, "POST", "/v1/accounts/email/consume", `{"email":"case-02@example.invalid","code":"000000"}`)
+	bad := call(t, h, "POST", "/v1/accounts/keys/signup", `{"name":"Ana Silva","email":"case-02@example.invalid","code":"000000"}`)
 	if bad.Code != 401 {
 		t.Errorf("wrong code must be 401, got %d", bad.Code)
 	}
@@ -147,9 +158,10 @@ func TestConsumeLoginFlow(t *testing.T) {
 func TestRefreshAndRevokeFlow(t *testing.T) {
 	h, _ := testHandler()
 	call(t, h, "POST", "/v1/accounts/email/codes", `{"email":"case-03@example.invalid"}`)
-	login := call(t, h, "POST", "/v1/accounts/email/consume", `{"email":"case-03@example.invalid","code":"482916"}`)
+	login := call(t, h, "POST", "/v1/accounts/keys/signup", `{"name":"Ana Silva","email":"case-03@example.invalid","code":"482916"}`)
 	var auth struct {
-		Session struct {
+		AccountKey string `json:"account_key"`
+		Session    struct {
 			AccessToken  string `json:"access_token"`
 			RefreshToken string `json:"refresh_token"`
 			FamilyID     string `json:"family_id"`
@@ -168,8 +180,7 @@ func TestRefreshAndRevokeFlow(t *testing.T) {
 		t.Errorf("superseded refresh must be 401 reuse-revoked, got %d (%s)", rec.Code, rec.Body.String())
 	}
 
-	call(t, h, "POST", "/v1/accounts/email/codes", `{"email":"case-03@example.invalid"}`)
-	login2 := call(t, h, "POST", "/v1/accounts/email/consume", `{"email":"case-03@example.invalid","code":"111111"}`)
+	login2 := call(t, h, "POST", "/v1/accounts/keys/login", `{"account_key":"`+auth.AccountKey+`"}`)
 	var auth2 struct {
 		Session struct {
 			AccessToken  string `json:"access_token"`
@@ -195,8 +206,8 @@ func TestBodiesNeverLeakSecrets(t *testing.T) {
 	h, _ := testHandler()
 	call(t, h, "POST", "/v1/accounts/email/codes", `{"email":"case-04@example.invalid"}`)
 	bodies := []*httptest.ResponseRecorder{
-		call(t, h, "POST", "/v1/accounts/email/consume", `{"email":"case-04@example.invalid","code":"000000"}`),
-		call(t, h, "POST", "/v1/accounts/email/consume", `{"email":"","code":""}`),
+		call(t, h, "POST", "/v1/accounts/recovery", `{"email":"case-04@example.invalid","code":"000000"}`),
+		call(t, h, "POST", "/v1/accounts/recovery", `{"email":"","code":""}`),
 		call(t, h, "POST", "/v1/accounts/sessions/refresh", `{"family_id":"x","refresh_token":"tok-test"}`),
 	}
 	for _, rec := range bodies {

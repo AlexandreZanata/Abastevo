@@ -272,10 +272,11 @@ func (h Handler) FinishMutation(w http.ResponseWriter, r *http.Request, result a
 }
 
 type accountView struct {
-	AccountID string    `json:"account_id"`
-	Alias     string    `json:"alias"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	AccountID   string    `json:"account_id"`
+	Alias       string    `json:"alias"`
+	DisplayName string    `json:"display_name,omitempty"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type paidView struct {
@@ -291,7 +292,7 @@ func (h Handler) searchAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]accountView, 0, len(items))
 	for _, item := range items {
-		out = append(out, accountView{AccountID: item.ID, Alias: item.Alias, Status: item.Status, CreatedAt: item.CreatedAt})
+		out = append(out, accountView{AccountID: item.ID, Alias: item.Alias, DisplayName: item.DisplayName, Status: item.Status, CreatedAt: item.CreatedAt})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
 }
@@ -307,13 +308,14 @@ func (h Handler) accountDetail(w http.ResponseWriter, r *http.Request) {
 		grants = append(grants, app.View(grant))
 	}
 	writeJSON(w, http.StatusOK, struct {
-		AccountID string          `json:"account_id"`
-		Alias     string          `json:"alias"`
-		Status    string          `json:"status"`
-		CreatedAt time.Time       `json:"created_at"`
-		Grants    []app.GrantView `json:"grants"`
-		Paid      paidView        `json:"paid"`
-	}{detail.Account.ID, detail.Account.Alias, detail.Account.Status, detail.Account.CreatedAt, grants,
+		AccountID   string          `json:"account_id"`
+		Alias       string          `json:"alias"`
+		DisplayName string          `json:"display_name,omitempty"`
+		Status      string          `json:"status"`
+		CreatedAt   time.Time       `json:"created_at"`
+		Grants      []app.GrantView `json:"grants"`
+		Paid        paidView        `json:"paid"`
+	}{detail.Account.ID, detail.Account.Alias, detail.Account.DisplayName, detail.Account.Status, detail.Account.CreatedAt, grants,
 		paidView{State: detail.Paid.State, ValidUntil: detail.Paid.ValidUntil}})
 }
 

@@ -83,11 +83,11 @@ SELECT id, alias, status, created_at FROM accounts
 WHERE id = @id FOR UPDATE;
 
 -- name: GetAccount :one
-SELECT id, alias, status, created_at FROM accounts
+SELECT id, alias, display_name, status, created_at FROM accounts
 WHERE id = @id;
 
 -- name: SearchAccounts :many
-SELECT a.id, a.alias, a.status, a.created_at
+SELECT a.id, a.alias, a.display_name, a.status, a.created_at
 FROM accounts a
 WHERE a.id = sqlc.narg('id')::uuid
    OR a.alias = sqlc.arg('query')::text

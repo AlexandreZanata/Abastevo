@@ -66,10 +66,11 @@ type AuditEvent struct {
 }
 
 type Account struct {
-	ID        string
-	Alias     string
-	Status    string
-	CreatedAt time.Time
+	ID          string
+	Alias       string
+	DisplayName string
+	Status      string
+	CreatedAt   time.Time
 }
 
 type PaidSummary struct {

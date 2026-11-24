@@ -62,8 +62,8 @@ func TestSelfDeleteFlow(t *testing.T) {
 	if rec := f.call(t, "POST", "/v1/accounts/email/codes", `{"email":"gone-a@example.invalid"}`); rec.Code != 202 {
 		t.Fatalf("re-request: %d", rec.Code)
 	}
-	rec = f.call(t, "POST", "/v1/accounts/email/consume", `{"email":"gone-a@example.invalid","code":"111111"}`)
-	if rec.Code != 200 {
+	rec = f.call(t, "POST", "/v1/accounts/keys/signup", `{"name":"Ana Silva","email":"gone-a@example.invalid","code":"111111"}`)
+	if rec.Code != 201 {
 		t.Fatalf("re-signup: %d (%s)", rec.Code, rec.Body.String())
 	}
 	var out struct {

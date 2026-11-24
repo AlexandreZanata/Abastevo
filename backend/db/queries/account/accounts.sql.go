@@ -231,9 +231,16 @@ JOIN account_addresses l ON l.account_id = a.id
 WHERE l.address_hash = $1
 `
 
-func (q *Queries) FindAccountByAddress(ctx context.Context, addressHash string) (Account, error) {
+type FindAccountByAddressRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Alias     string             `json:"alias"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) FindAccountByAddress(ctx context.Context, addressHash string) (FindAccountByAddressRow, error) {
 	row := q.db.QueryRow(ctx, findAccountByAddress, addressHash)
-	var i Account
+	var i FindAccountByAddressRow
 	err := row.Scan(
 		&i.ID,
 		&i.Alias,
@@ -333,11 +340,18 @@ FROM accounts
 WHERE id = $1
 `
 
+type GetAccountByIDRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Alias     string             `json:"alias"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 // Provider links and OIDC nonces (P13-T03B). Only salt-free opaque
 // subjects persist; email is display/relay only and never a merge key.
-func (q *Queries) GetAccountByID(ctx context.Context, id pgtype.UUID) (Account, error) {
+func (q *Queries) GetAccountByID(ctx context.Context, id pgtype.UUID) (GetAccountByIDRow, error) {
 	row := q.db.QueryRow(ctx, getAccountByID, id)
-	var i Account
+	var i GetAccountByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Alias,
@@ -986,10 +1000,17 @@ const lockQualityAccount = `-- name: LockQualityAccount :one
 SELECT id, alias, status, created_at FROM accounts WHERE id = $1 FOR SHARE
 `
 
+type LockQualityAccountRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Alias     string             `json:"alias"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 // FQ-09: protect signed private commands against concurrent deletion/unbinding.
-func (q *Queries) LockQualityAccount(ctx context.Context, id pgtype.UUID) (Account, error) {
+func (q *Queries) LockQualityAccount(ctx context.Context, id pgtype.UUID) (LockQualityAccountRow, error) {
 	row := q.db.QueryRow(ctx, lockQualityAccount, id)
-	var i Account
+	var i LockQualityAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.Alias,

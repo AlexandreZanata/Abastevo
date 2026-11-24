@@ -81,6 +81,7 @@ func newProviderHandler(t *testing.T) *providerFixture {
 			an++
 			return fmt.Sprintf("alias-%d", an), nil
 		},
+		KeyGen: domain.GenerateAccountKey,
 		IDGen: func() (string, error) {
 			mu.Lock()
 			defer mu.Unlock()
@@ -137,17 +138,16 @@ func (f *providerFixture) signup(t *testing.T, email, code string) sessionOut {
 	if rec := f.call(t, "POST", "/v1/accounts/email/codes", `{"email":"`+email+`"}`); rec.Code != 202 {
 		t.Fatalf("request code: %d (%s)", rec.Code, rec.Body.String())
 	}
-	rec := f.call(t, "POST", "/v1/accounts/email/consume", `{"email":"`+email+`","code":"`+code+`"}`)
-	if rec.Code != 200 {
-		t.Fatalf("consume: %d (%s)", rec.Code, rec.Body.String())
+	// Seed legacy address-only accounts for the existing provider tests.
+	// The public email-login endpoint is retired.
+	svc := svcOf(t, f)
+	auth, err := svc.ConsumeCode(t.Context(), email, code)
+	if err != nil {
+		t.Fatalf("seed account: %v", err)
 	}
-	var out struct {
-		Session sessionOut `json:"session"`
+	return sessionOut{
+		FamilyID: auth.Session.FamilyID, AccessToken: auth.Session.AccessToken, RefreshToken: auth.Session.RefreshToken,
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
-		t.Fatalf("decode session: %v", err)
-	}
-	return out.Session
 }
 
 func linkBody(sess sessionOut, provider, token, nonce string) string {

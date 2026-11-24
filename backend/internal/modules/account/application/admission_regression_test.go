@@ -18,7 +18,7 @@ import (
 func TestDistinctAddressesExceedAggregateBudget(t *testing.T) {
 	svc, _, mail := testService()
 	ctx := context.Background()
-	for i := 0; i < 100; i++ {
+	for i := 0; i < domain.MaxAggregateCodesPerHour+20; i++ {
 		if err := svc.RequestCode(ctx, fmt.Sprintf("flood-%d@example.invalid", i)); err != nil {
 			t.Fatalf("request %d: %v", i, err)
 		}

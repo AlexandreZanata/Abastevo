@@ -68,7 +68,7 @@ func (q *Queries) FlagComment(ctx context.Context, id pgtype.UUID) (int64, error
 }
 
 const getCommentView = `-- name: GetCommentView :one
-SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
+SELECT c.id, c.account_id, COALESCE(a.display_name, a.alias)::text AS alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
     c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
@@ -149,7 +149,7 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) er
 }
 
 const listReplies = `-- name: ListReplies :many
-SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
+SELECT c.id, c.account_id, COALESCE(a.display_name, a.alias)::text AS alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
     c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
@@ -225,7 +225,7 @@ func (q *Queries) ListReplies(ctx context.Context, arg ListRepliesParams) ([]Lis
 }
 
 const listTopLevel = `-- name: ListTopLevel :many
-SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
+SELECT c.id, c.account_id, COALESCE(a.display_name, a.alias)::text AS alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
     c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c

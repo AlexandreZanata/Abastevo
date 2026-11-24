@@ -112,16 +112,25 @@ func (q *Queries) DeleteMutation(ctx context.Context, arg DeleteMutationParams) 
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, alias, status, created_at FROM accounts
+SELECT id, alias, display_name, status, created_at FROM accounts
 WHERE id = $1
 `
 
-func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (Account, error) {
+type GetAccountRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	Alias       string             `json:"alias"`
+	DisplayName pgtype.Text        `json:"display_name"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (GetAccountRow, error) {
 	row := q.db.QueryRow(ctx, getAccount, id)
-	var i Account
+	var i GetAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.Alias,
+		&i.DisplayName,
 		&i.Status,
 		&i.CreatedAt,
 	)
@@ -268,9 +277,16 @@ SELECT id, alias, status, created_at FROM accounts
 WHERE id = $1 FOR UPDATE
 `
 
-func (q *Queries) LockAccount(ctx context.Context, id pgtype.UUID) (Account, error) {
+type LockAccountRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Alias     string             `json:"alias"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) LockAccount(ctx context.Context, id pgtype.UUID) (LockAccountRow, error) {
 	row := q.db.QueryRow(ctx, lockAccount, id)
-	var i Account
+	var i LockAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.Alias,
@@ -416,7 +432,7 @@ func (q *Queries) RevokeSession(ctx context.Context, arg RevokeSessionParams) (i
 }
 
 const searchAccounts = `-- name: SearchAccounts :many
-SELECT a.id, a.alias, a.status, a.created_at
+SELECT a.id, a.alias, a.display_name, a.status, a.created_at
 FROM accounts a
 WHERE a.id = $1::uuid
    OR a.alias = $2::text
@@ -437,7 +453,15 @@ type SearchAccountsParams struct {
 	AddressHash string      `json:"address_hash"`
 }
 
-func (q *Queries) SearchAccounts(ctx context.Context, arg SearchAccountsParams) ([]Account, error) {
+type SearchAccountsRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	Alias       string             `json:"alias"`
+	DisplayName pgtype.Text        `json:"display_name"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) SearchAccounts(ctx context.Context, arg SearchAccountsParams) ([]SearchAccountsRow, error) {
 	rows, err := q.db.Query(ctx, searchAccounts,
 		arg.ID,
 		arg.Query,
@@ -448,12 +472,13 @@ func (q *Queries) SearchAccounts(ctx context.Context, arg SearchAccountsParams) 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Account
+	var items []SearchAccountsRow
 	for rows.Next() {
-		var i Account
+		var i SearchAccountsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Alias,
+			&i.DisplayName,
 			&i.Status,
 			&i.CreatedAt,
 		); err != nil {

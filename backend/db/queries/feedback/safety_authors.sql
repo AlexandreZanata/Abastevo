@@ -4,7 +4,7 @@
 -- account id to clients.
 
 -- name: GetSafetyCommentAuthor :one
-SELECT c.account_id, a.alias
+SELECT c.account_id, COALESCE(a.display_name, a.alias)::text AS alias
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.id = @id AND c.deleted_at IS NULL AND c.visibility <> 'hidden';

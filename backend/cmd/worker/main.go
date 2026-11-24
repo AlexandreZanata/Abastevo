@@ -446,6 +446,10 @@ func run() error {
 	// cascade design lands. Rate windows self-clean on check and
 	// evidence media purges on its hourly sweeper.
 	retentionPurges := []privacyapp.NamedPurge{
+		{Name: "account-recovery-audit", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			count, oldest, err := accountadapters.NewPGStore(raw).PurgeRecoveryAudit(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: count, OldestOverdue: oldest}, err
+		}},
 		{Name: "company-web-sessions", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
 			count, oldest, err := (&companysession.Store{Pool: raw}).PurgeExpired(ctx, time.Now(), privacyapp.RetentionBatch)
 			return privacyapp.CategoryReport{Purged: count, OldestOverdue: oldest}, err

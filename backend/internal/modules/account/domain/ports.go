@@ -78,12 +78,13 @@ type MailSender interface {
 }
 
 // ProviderSubject is the verified identity a provider token binds: issuer
-// plus subject. Email is carried for display/relay only and is never a
-// merge key on its own.
+// plus subject. Email claims never resolve or merge accounts.
 type ProviderSubject struct {
-	Issuer  string
-	Subject string
-	Email   string
+	Issuer        string
+	Subject       string
+	Email         string
+	EmailVerified bool
+	HostedDomain  string
 }
 
 // ProviderVerifier checks issuer, audience, signature/JWKS, expiry, nonce
@@ -110,6 +111,10 @@ type KeyProver interface {
 // nothing fails without an explainable reason.
 func VerdictCode(err error) string {
 	switch {
+	case errors.Is(err, ErrProviderEmailInUse):
+		return "provider-email-in-use"
+	case errors.Is(err, ErrMailDelivery):
+		return "mail-delivery-unavailable"
 	case err == nil:
 		return VerdictOK
 	case errors.Is(err, ErrCodeExpired):
@@ -172,6 +177,16 @@ func VerdictCode(err error) string {
 		return "key-collision"
 	case errors.Is(err, ErrAddressLinked):
 		return "address-linked"
+	case errors.Is(err, ErrNameInvalid):
+		return "name-invalid"
+	case errors.Is(err, ErrEmailInvalid):
+		return "email-invalid"
+	case errors.Is(err, ErrRecoveryNoAccount):
+		return "recovery-no-account"
+	case errors.Is(err, ErrReauthenticationRequired):
+		return "reauthentication-required"
+	case errors.Is(err, ErrEmailLoginRetired):
+		return "email-login-retired"
 	case errors.Is(err, ErrSessionReuse):
 		return "session-reuse-revoked"
 	case errors.Is(err, ErrSessionInvalid):
