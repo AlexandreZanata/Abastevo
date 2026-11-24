@@ -129,7 +129,7 @@ final class AccountDataExportTests: XCTestCase {
 
     func testOwnerReadAuthEnvelopesAndObservationCursor() throws {
         let session = PortableAuth.Session(
-            accountId: rowA, familyId: family, accessToken: "fixture-token", refreshToken: "fixture-refresh",
+            familyId: family, accountId: rowA, accessToken: "fixture-token", refreshToken: "fixture-refresh",
             accessExpiresAt: 12345, absoluteExpiresAt: 67890
         )
         let observations = try XCTUnwrap(AccountExportPlan.reads.first { $0.section == .priceObservations })
