@@ -25,8 +25,11 @@ public enum EnterpriseQueueStatus: String, Codable, Sendable {
 
 public enum EnterpriseCommandKind: String, Codable, Sendable {
     case tripStart = "TRIP_START"
+    case missionResponse = "MISSION_RESPONSE"
+    case tripLifecycle = "TRIP_LIFECYCLE"
     case tripFinish = "TRIP_FINISH"
     case expense = "EXPENSE"
+    case fueling = "FUELING"
     case checklist = "CHECKLIST"
 }
 
@@ -42,6 +45,7 @@ public struct EnterpriseQueueItem: Codable, Equatable, Sendable, Identifiable {
     public var lastCode: String?
     public var receivedAt: String?
     public var entityRevision: Int64?
+    public var dismissedFromQueue: Bool?
 
     public var id: String { operation.operationId }
 
@@ -56,6 +60,7 @@ public struct EnterpriseQueueItem: Codable, Equatable, Sendable, Identifiable {
         self.lastCode = nil
         self.receivedAt = nil
         self.entityRevision = nil
+        self.dismissedFromQueue = nil
     }
 }
 
@@ -112,18 +117,22 @@ public struct EnterpriseTripRecord: Codable, Equatable, Sendable, Identifiable {
     public let startOperationId: String
     public let startedAtMillis: Int64
     public let startMeterId: String?
+    public let missionId: String?
+    public var lifecycle: [EnterpriseTripLifecycleFact]?
     public var finishOperationId: String?
     public var finishedAtMillis: Int64?
 
-    public var isOpen: Bool { finishOperationId == nil }
+    public var isOpen: Bool { localState == .running || localState == .paused }
 
-    public init(id: String, assetId: String, assetLabel: String, startOperationId: String, startedAtMillis: Int64, startMeterId: String?) {
+    public init(id: String, assetId: String, assetLabel: String, startOperationId: String, startedAtMillis: Int64, startMeterId: String?, missionId: String? = nil) {
         self.id = id
         self.assetId = assetId
         self.assetLabel = assetLabel
         self.startOperationId = startOperationId
         self.startedAtMillis = startedAtMillis
         self.startMeterId = startMeterId
+        self.missionId = missionId
+        self.lifecycle = nil
         self.finishOperationId = nil
         self.finishedAtMillis = nil
     }
@@ -143,6 +152,8 @@ public struct EnterprisePartitionSnapshot: Codable, Equatable, Sendable {
     public var attachments: [EnterpriseAttachmentItem]
     public var trips: [EnterpriseTripRecord]
     public var reference: EnterpriseReferenceCache?
+    public var missionInbox: EnterpriseMissionInbox?
+    public var returnChecklists: EnterpriseReturnChecklistBook?
 
     public init(partition: EnterprisePartition, membershipId: String) {
         self.schemaVersion = Self.currentVersion
@@ -154,6 +165,7 @@ public struct EnterprisePartitionSnapshot: Codable, Equatable, Sendable {
         self.attachments = []
         self.trips = []
         self.reference = nil
+        self.missionInbox = nil
     }
 
     /// The trip in progress; a trip whose start the server refused is not in progress.
@@ -194,35 +206,47 @@ public enum EnterpriseQueue {
         snapshot.queue.append(item)
     }
 
-    /// Due commands in creation (append) order. A command waits while an earlier one it depends on is undelivered and not due.
+    /// Due commands in creation order. Ineligible trip chains do not prevent an unrelated delivery.
     public static func dueBatch(_ snapshot: EnterprisePartitionSnapshot, nowMillis: Int64, limit: Int = batchLimit) -> [EnterpriseQueueItem] {
         var batch: [EnterpriseQueueItem] = []
-        var blocked = Set<String>()
-        for item in snapshot.queue {
+        for scheduled in commandSchedule(snapshot) where scheduled.at <= nowMillis {
             if batch.count >= limit { break }
-            guard item.status == .pending else {
-                if item.status == .exhausted { blocked.insert(item.id) }
-                continue
-            }
-            if item.nextAttemptAtMillis > nowMillis {
-                blocked.insert(item.id)
-                continue
-            }
-            if let start = startDependency(of: item, in: snapshot), blocked.contains(start) {
-                blocked.insert(item.id)
-                continue
+            let item = scheduled.item
+            if item.kind == .missionResponse {
+                return batch.isEmpty ? [item] : batch
             }
             batch.append(item)
         }
         return batch
     }
 
-    static func startDependency(of item: EnterpriseQueueItem, in snapshot: EnterprisePartitionSnapshot) -> String? {
-        guard item.kind == .tripFinish,
-              let trip = snapshot.trips.first(where: { $0.finishOperationId == item.id }) else {
-            return nil
+    private static func commandSchedule(_ snapshot: EnterprisePartitionSnapshot) -> [(item: EnterpriseQueueItem, at: Int64)] {
+        var prerequisite: [String: String] = [:]
+        for trip in snapshot.trips {
+            var latest = trip.startOperationId
+            for fact in trip.lifecycle ?? [] {
+                prerequisite[fact.operationId] = latest
+                latest = fact.operationId
+            }
+            if let finish = trip.finishOperationId { prerequisite[finish] = latest }
         }
-        return trip.startOperationId
+        var dueTimes: [String: Int64] = [:]
+        var schedule: [(item: EnterpriseQueueItem, at: Int64)] = []
+        for item in snapshot.queue {
+            switch item.status {
+            case .accepted:
+                dueTimes[item.id] = 0
+            case .pending:
+                // An absent prior receipt can have been dismissed after acceptance.
+                let predecessorTime = prerequisite[item.id].flatMap { dueTimes[$0] } ?? 0
+                let at = max(item.nextAttemptAtMillis, predecessorTime)
+                dueTimes[item.id] = at
+                if at != Int64.max { schedule.append((item, at)) }
+            case .rejected, .inReview, .exhausted:
+                dueTimes[item.id] = Int64.max
+            }
+        }
+        return schedule
     }
 
     /// Applies the acknowledgements of one delivered batch.
@@ -307,8 +331,25 @@ public enum EnterpriseQueue {
 
     /// Only a final server receipt can leave the visible list; unsent company work is never discarded here.
     public static func dismiss(id: String, in snapshot: inout EnterprisePartitionSnapshot) {
-        snapshot.queue.removeAll { $0.id == id && $0.status.isFinal }
+        if let index = snapshot.queue.firstIndex(where: { $0.id == id }), canDismiss(snapshot.queue[index], in: snapshot) {
+            if snapshot.queue[index].kind == .fueling {
+                snapshot.queue[index].dismissedFromQueue = true
+            } else {
+                if snapshot.missionInbox?.releaseDismissedAnswer(id) == false { return }
+                snapshot.queue.remove(at: index)
+            }
+        }
         snapshot.attachments.removeAll { $0.id == id && ($0.status == .delivered || $0.status == .refused) }
+    }
+
+    public static func canDismiss(_ item: EnterpriseQueueItem, in snapshot: EnterprisePartitionSnapshot) -> Bool {
+        guard item.status.isFinal else { return false }
+        if item.status != .accepted, item.kind == .tripLifecycle { return false }
+        if item.status != .accepted, item.kind == .tripStart,
+           snapshot.trips.contains(where: { $0.startOperationId == item.id }) { return false }
+        if let completion = snapshot.returnChecklists?.draft?.completion, completion.operationId == item.id,
+           snapshot.openTrip?.id == completion.tripId { return false }
+        return true
     }
 
     /// Receipts of a received owner become due; receipts of a rejected owner are refused locally.
@@ -356,7 +397,7 @@ public enum EnterpriseQueue {
 
     /// The next time any held work becomes due, if any.
     public static func nextWakeMillis(_ snapshot: EnterprisePartitionSnapshot) -> Int64? {
-        let commands = snapshot.queue.filter { $0.status == .pending }.map { $0.nextAttemptAtMillis }
+        let commands = commandSchedule(snapshot).map(\.at)
         let receipts = snapshot.attachments.filter { $0.status == .pending }.map { $0.nextAttemptAtMillis }
         return (commands + receipts).min()
     }
@@ -407,12 +448,13 @@ public final class EnterprisePartitionStore: @unchecked Sendable {
         return snapshot
     }
 
-    public func save(_ snapshot: EnterprisePartitionSnapshot) {
+    @discardableResult
+    public func save(_ snapshot: EnterprisePartitionSnapshot) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return false }
         ensureDirectory(directory)
-        write(data, to: fileUrl(snapshot.partition))
+        return write(data, to: fileUrl(snapshot.partition))
     }
 
     public func saveReceipt(_ content: Data, partition: EnterprisePartition, documentId: String) -> Bool {

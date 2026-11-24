@@ -162,12 +162,13 @@ struct EnterpriseCompanySections: View {
             Section {
                 if let trip = openTrip {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(String(localized: "enterprise.trip.in_progress")).font(.headline)
+                        Text(EnterpriseTripLifecycleLabels.state(trip.localState)).font(.headline)
                         Text(trip.assetLabel)
                         Text(String(localized: "enterprise.trip.start_time", defaultValue: "Started \(EnterpriseLabels.dateTime(millis: trip.startedAtMillis))"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    EnterpriseTripLifecycleControls(enterprise: enterprise, trip: trip)
                     NavigationLink(String(localized: "android.enterprise_trips_finish")) {
                         EnterpriseTripFinishView(enterprise: enterprise, trip: trip)
                     }
@@ -176,6 +177,12 @@ struct EnterpriseCompanySections: View {
                         EnterpriseTripStartView(enterprise: enterprise)
                     }
                 }
+                NavigationLink(String(localized: "android.enterprise_missions_section_title")) {
+                    EnterpriseMissionInboxView(enterprise: enterprise)
+                }
+                NavigationLink(String(localized: "android.enterprise_fuelings_title")) {
+                    EnterpriseFuelingsView(enterprise: enterprise, partition: active.partition, membershipId: active.summary.membershipId)
+                }
                 NavigationLink(String(localized: "android.enterprise_expenses_new")) {
                     EnterpriseExpenseView(enterprise: enterprise)
                 }
@@ -183,6 +190,22 @@ struct EnterpriseCompanySections: View {
                 Text(String(localized: "enterprise.operations"))
             } footer: {
                 Text(String(localized: "enterprise.tracking_off"))
+            }
+
+            let ended = (snapshot?.trips ?? []).reversed().filter { !$0.isOpen }
+            if !ended.isEmpty {
+                Section(String(localized: "enterprise.trip_transition.history")) {
+                    ForEach(Array(ended)) { trip in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(trip.assetLabel).font(.subheadline.weight(.semibold))
+                            Text(EnterpriseTripLifecycleLabels.state(trip.localState))
+                            if let id = trip.finishOperationId ?? trip.lifecycle?.last?.operationId,
+                               let item = snapshot?.queue.first(where: { $0.id == id }) {
+                                Text(EnterpriseCoordinator.statusLabel(item)).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
             }
 
             Section {
@@ -394,6 +417,7 @@ struct EnterpriseEvidenceFields: View {
 
 struct EnterpriseTripStartView: View {
     @ObservedObject var enterprise: EnterpriseCoordinator
+    let missionId: String?
     @Environment(\.dismiss) private var dismiss
     @State private var assetId: String?
     @State private var meterId: String?
@@ -411,6 +435,18 @@ struct EnterpriseTripStartView: View {
     @State private var checklistStartedAt = ""
     @State private var loading = false
     @State private var error: String?
+
+    init(enterprise: EnterpriseCoordinator, missionId: String? = nil) {
+        self.enterprise = enterprise
+        self.missionId = missionId
+    }
+
+    private var missionAssetId: String? { missionId.flatMap { enterprise.missionAssetId($0) } }
+
+    private var assets: [EnterpriseReferenceAsset] {
+        if let missionAssetId { return enterprise.assets.filter { $0.id == missionAssetId } }
+        return enterprise.assets
+    }
 
     private var asset: EnterpriseReferenceAsset? {
         assetId.flatMap { enterprise.findAsset($0) }
@@ -433,13 +469,19 @@ struct EnterpriseTripStartView: View {
             Section(String(localized: "enterprise.assets.asset")) {
                 Picker(String(localized: "enterprise.assets.asset"), selection: $assetId) {
                     Text(String(localized: "android.enterprise_assets_pick_title")).tag(nil as String?)
-                    ForEach(enterprise.assets) { item in
+                    ForEach(assets) { item in
                         Text(EnterpriseCoordinator.assetLabel(item)).tag(Optional(item.id))
                     }
                 }
                 .onChange(of: assetId) { _, _ in
                     meterId = asset?.meters.first?.id
                     resetChecklist()
+                }
+                if missionAssetId != nil && assets.isEmpty {
+                    Text(String(localized: "android.enterprise_missions_vehicle_unknown"))
+                        .foregroundStyle(.secondary)
+                    Button(String(localized: "android.enterprise_assets_refresh")) { enterprise.refreshAssets() }
+                        .disabled(enterprise.isRefreshingAssets)
                 }
                 if let asset, needsReview {
                     Text(EnterpriseLabels.assetStatus(asset, nowMillis: EnterpriseLabels.nowMillis()))
@@ -485,7 +527,12 @@ struct EnterpriseTripStartView: View {
                 Text(String(localized: "enterprise.trip.device_notice"))
             }
         }
-        .navigationTitle(String(localized: "android.enterprise_trips_start"))
+        .task(id: missionAssetId) {
+            if let missionAssetId, enterprise.findAsset(missionAssetId) != nil {
+                assetId = missionAssetId
+            }
+        }
+        .navigationTitle(missionId == nil ? String(localized: "android.enterprise_trips_start") : String(localized: "android.enterprise_missions_start"))
         .sheet(isPresented: $showChecklist) {
             if let applicable {
                 NavigationStack {
@@ -539,7 +586,7 @@ struct EnterpriseTripStartView: View {
             error = parsed.1
             return
         }
-        switch enterprise.startTrip(assetId: asset.id, evidence: evidence, departureRunId: departureRunId) {
+        switch enterprise.startTrip(assetId: asset.id, evidence: evidence, departureRunId: departureRunId, missionId: missionId) {
         case .success:
             dismiss()
         case .failure(let failure):
@@ -556,6 +603,11 @@ struct EnterpriseTripFinishView: View {
     @State private var valueText = ""
     @State private var reasonText = ""
     @State private var error: String?
+    @State private var binding: EnterpriseReturnChecklistBinding?
+    @State private var completedReturn: EnterpriseReturnChecklistCompletion?
+    @State private var checkedReturn = false
+    @State private var showReturn = false
+    @State private var confirmUnlinked = false
 
     private var meters: [EnterpriseReferenceMeter] {
         enterprise.findAsset(trip.assetId)?.meters ?? []
@@ -570,10 +622,29 @@ struct EnterpriseTripFinishView: View {
             Section(String(localized: "android.enterprise_trips_final_value")) {
                 EnterpriseEvidenceFields(meters: meters, meterId: $meterId, valueText: $valueText, reasonText: $reasonText)
             }
+            Section(String(localized: "enterprise.checklist.return_title")) {
+                Button(String(localized: "enterprise.checklist.return_title")) { showReturn = true }
+                    .disabled(binding == nil)
+                if let completedReturn {
+                    if let item = enterprise.snapshot?.queue.first(where: { $0.id == completedReturn.operationId }) {
+                        Text(EnterpriseCoordinator.statusLabel(item)).foregroundStyle(.secondary)
+                    }
+                    if !canLinkReturn {
+                        Text(String(localized: "enterprise.trip_transition.wait_return")).foregroundStyle(.secondary)
+                    }
+                }
+            }
             Section {
-                Button(String(localized: "android.enterprise_trips_finish"), action: finish)
+                Button(String(localized: "android.enterprise_trips_finish")) {
+                    finish(returnRunId: completedReturn?.runId)
+                }
                     .buttonStyle(.borderedProminent)
                     .tint(AbastevoTheme.ink)
+                    .disabled(!checkedReturn || (completedReturn != nil && !canLinkReturn))
+                if !checkedReturn || (completedReturn != nil && !canLinkReturn) {
+                    Button(String(localized: "enterprise.trip_transition.finish_unlinked")) { confirmUnlinked = true }
+                        .disabled(binding == nil)
+                }
                 if let error {
                     Text(error).font(.footnote).foregroundStyle(AbastevoTheme.errorRed)
                 }
@@ -581,19 +652,43 @@ struct EnterpriseTripFinishView: View {
         }
         .navigationTitle(String(localized: "android.enterprise_trips_finish"))
         .onAppear {
+            if binding == nil { binding = enterprise.returnChecklistBinding(tripId: trip.id) }
             if meterId == nil {
                 meterId = trip.startMeterId ?? meters.first?.id
             }
         }
+        .sheet(isPresented: $showReturn) {
+            NavigationStack {
+                EnterpriseReturnChecklistView(enterprise: enterprise, trip: trip) { completion in
+                    completedReturn = completion
+                    checkedReturn = true
+                    showReturn = false
+                }
+            }
+        }
+        .confirmationDialog(String(localized: "enterprise.trip_transition.finish_unlinked"), isPresented: $confirmUnlinked) {
+            Button(String(localized: "enterprise.trip_transition.finish_unlinked")) { finish(returnRunId: nil) }
+        } message: {
+            Text(String(localized: "enterprise.trip_transition.finish_unlinked_explanation"))
+        }
     }
 
-    private func finish() {
+    private var canLinkReturn: Bool {
+        guard let completedReturn else { return false }
+        return enterprise.snapshot?.queue.first(where: { $0.id == completedReturn.operationId })?.status == .accepted
+    }
+
+    private func finish(returnRunId: String?) {
+        guard let binding else {
+            error = String(localized: "enterprise.trip_transition.changed")
+            return
+        }
         let parsed = EnterpriseEvidenceFields.evidence(meters: meters, meterId: meterId, valueText: valueText, reasonText: reasonText)
         guard let evidence = parsed.0 else {
             error = parsed.1
             return
         }
-        switch enterprise.finishTrip(evidence: evidence) {
+        switch enterprise.finishTrip(evidence: evidence, tripId: trip.id, returnRunId: returnRunId, expectedBinding: binding) {
         case .success:
             dismiss()
         case .failure(let failure):
@@ -876,7 +971,7 @@ struct EnterpriseQueueView: View {
         let snapshot = enterprise.snapshot
         List {
             Section(String(localized: "enterprise.queue.records")) {
-                let items = (snapshot?.queue ?? []).reversed()
+                let items = (snapshot?.queue ?? []).reversed().filter { $0.dismissedFromQueue != true }
                 if items.isEmpty {
                     Text(String(localized: "enterprise.queue.empty")).foregroundStyle(.secondary)
                 }
@@ -889,7 +984,7 @@ struct EnterpriseQueueView: View {
                             Button(String(localized: "enterprise.queue.retry_now")) { enterprise.retryNow(item.id) }
                                 .font(.caption)
                         }
-                        if item.status.isFinal {
+                        if let snapshot, EnterpriseQueue.canDismiss(item, in: snapshot) {
                             Button(String(localized: "enterprise.queue.dismiss")) { enterprise.dismiss(item.id) }
                                 .font(.caption)
                         }

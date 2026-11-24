@@ -257,7 +257,8 @@ class IosAppIntegrityTests(unittest.TestCase):
         sync = (core / "EnterpriseDeviceSync.swift").read_text(encoding="utf-8")
         # Every device-plane command and read goes through SignedRequestTransport.
         self.assertEqual(sync.count("transport.signedRequest("), 1)
-        self.assertIn('transport.signedRequest(method: "POST", path: path, body: body)', sync)
+        self.assertIn('method: "POST", path: path, body: body, expectedOwnerScope: ownerScope, expectedSessionFamilyId: sessionFamilyId', sync)
+        self.assertIn('body: body, ownerScope: ownerScope, sessionFamilyId: session.familyId', sync)
         for route in ("/sync/operations", "/sync/reference", "/sync/attachments", "devices/", '"check"', '"enroll"', '"contact"'):
             self.assertIn(route, sync)
         # The only unsigned request is the capability-bound content ingress of a saved receipt.
@@ -289,8 +290,15 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertGreaterEqual(len(enterprise_sources), 8)
         for path in enterprise_sources:
             text = path.read_text(encoding="utf-8")
-            for token in ("fuelingAuthCode", "fueling-authorizations/issue", "joinSampleEnterprise", "voucher", "sampleCompany"):
+            for token in (
+                "fuelingAuthCode", "fueling-authorizations/issue", "redemptions/confirm",
+                "voucherCode", "/vouchers/issue", "joinSampleEnterprise", "sampleCompany",
+            ):
                 self.assertNotIn(token, text, f"{token} in {path.name}")
+            self.assertNotRegex(
+                text, r"(?i)(?:mint|issue|create|generate)[_\s]*(?:fueling[_\s]*)?(?:authorization|voucher)",
+                f"Field-side authorization issuance in {path.name}",
+            )
             # Tracking stays off on iOS: no location API in company mode.
             for token in ("CLLocationManager", "requestAlwaysAuthorization", "startMonitoring", "CoreLocation"):
                 self.assertNotIn(token, text, f"{token} in {path.name}")

@@ -634,10 +634,13 @@ public struct EnterpriseSyncClient: Sendable {
         return session
     }
 
-    private func post(_ path: String, body: Data) async throws -> SignedHttpResponse {
+    private func post(_ path: String, body: Data, ownerScope: String? = nil, sessionFamilyId: String? = nil) async throws -> SignedHttpResponse {
         do {
-            return try await transport.signedRequest(method: "POST", path: path, body: body)
+            return try await transport.signedRequest(
+                method: "POST", path: path, body: body, expectedOwnerScope: ownerScope, expectedSessionFamilyId: sessionFamilyId
+            )
         } catch {
+            try Task.checkCancellation()
             throw EnterpriseSyncError(error)
         }
     }
@@ -749,6 +752,9 @@ public struct EnterpriseSyncClient: Sendable {
                                documentId: String, linkId: String, sha256: String, bytes: Int64, targetKind: String,
                                targetId: String) async throws -> EnterpriseAttachmentSession {
         let session = try await liveSession(for: partition)
+        guard let ownerScope = transport.ownerScope(), ownerScope.hasPrefix("account:\(partition.accountId):") else {
+            throw EnterpriseSyncError.signInRequired
+        }
         let request = EnterpriseAttachmentWire.Request(
             requestId: newId(), familyId: session.familyId, accessToken: session.accessToken,
             membershipId: enrollment.membershipId, enrollmentId: enrollment.enrollmentId, declarationId: declarationId,
@@ -760,7 +766,9 @@ public struct EnterpriseSyncClient: Sendable {
         } catch {
             throw EnterpriseSyncError.unavailable
         }
-        let response = try await post("/v1/orgs/\(partition.organizationId)/sync/attachments", body: body)
+        let response = try await post(
+            "/v1/orgs/\(partition.organizationId)/sync/attachments", body: body, ownerScope: ownerScope, sessionFamilyId: session.familyId
+        )
         do {
             return try EnterpriseAttachmentWire.parseSession(response.body, request: request)
         } catch {
@@ -770,6 +778,7 @@ public struct EnterpriseSyncClient: Sendable {
 
     /// The capability-bound content ingress: no cookie, signature or Origin; the capability is the only proof.
     public func upload(partition: EnterprisePartition, documentId: String, capability: String, content: Data) async throws -> EnterpriseAttachmentStorage {
+        try requireAttachmentOwner(partition)
         guard partition.origin == origin, EnterpriseValues.isId(documentId), !content.isEmpty,
               content.count <= EnterpriseAttachmentWire.maxBytes,
               let url = URL(string: origin + "/v1/orgs/\(partition.organizationId)/documents/\(documentId)/content/upload") else {
@@ -786,8 +795,10 @@ public struct EnterpriseSyncClient: Sendable {
         do {
             result = try await uploads.send(request)
         } catch {
+            try requireAttachmentOwner(partition)
             throw EnterpriseSyncError.offline
         }
+        try requireAttachmentOwner(partition)
         let (data, http) = result
         guard http.statusCode == 200 else {
             throw EnterpriseSyncError.refused(
@@ -804,5 +815,10 @@ public struct EnterpriseSyncClient: Sendable {
         } catch {
             throw EnterpriseSyncError.invalidResponse
         }
+    }
+
+    private func requireAttachmentOwner(_ partition: EnterprisePartition) throws {
+        try Task.checkCancellation()
+        guard sessions.currentAccountId() == partition.accountId else { throw EnterpriseSyncError.signInRequired }
     }
 }

@@ -186,6 +186,16 @@ targets:
         buildPhase: resources
       - path: ../contracts/testdata/driver-suite/planned-financial-v1.json
         buildPhase: resources
+      - path: ../contracts/testdata/enterprise/trip/trip-operations-v3.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/checklist/run-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/checklist/checklist-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/fueling/fueling-submit-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/enterprise/agreement/voucher-limits-v1.psv
+        buildPhase: resources
       - path: ../contracts/testdata/api/driver-report-request-valid.json
         buildPhase: resources
       - path: ../contracts/testdata/api/driver-report-request-invalid.json
