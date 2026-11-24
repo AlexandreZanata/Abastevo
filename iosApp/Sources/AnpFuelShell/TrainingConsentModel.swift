@@ -78,8 +78,10 @@ public final class TrainingConsentModel {
     }
 
     /// Invalidates every in-flight response before the caller changes account or server.
+    /// Logout passes `keepPendingRevocations` so an undelivered OFF survives until the same
+    /// owner signs in again; account deletion erases everything.
     @discardableResult
-    public func purgeProtectedState() -> Bool {
+    public func purgeProtectedState(keepPendingRevocations: Bool = false) -> Bool {
         invalidateOperation()
         context = nil
         status = nil
@@ -90,7 +92,11 @@ public final class TrainingConsentModel {
         reviewID = UUID()
         termsSuperseded = false
         do {
-            try journal.purge()
+            if keepPendingRevocations {
+                try journal.purgeKeepingPendingRevocations()
+            } else {
+                try journal.purge()
+            }
             return true
         } catch {
             refusal = .localStorage

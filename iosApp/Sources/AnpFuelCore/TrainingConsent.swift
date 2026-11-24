@@ -385,23 +385,50 @@ public final class TrainingConsentJournal: @unchecked Sendable {
         }
     }
 
+    /// Logout keeps only the journals that still owe the server an OFF, so the revocation resumes
+    /// when the same owner signs in again (Android keeps its journal and retries it in a worker).
+    /// Every other journal, and any unreadable file, is removed.
+    public func purgeKeepingPendingRevocations() throws {
+        lock.lock()
+        defer { lock.unlock() }
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.fileSizeKey])
+        } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
+            return
+        } catch {
+            throw TrainingConsentError.localStorage
+        }
+        do {
+            for file in files {
+                if let state = try? Self.decode(file), state.pending?.decision == .revoked { continue }
+                try FileManager.default.removeItem(at: file)
+            }
+        } catch {
+            throw TrainingConsentError.localStorage
+        }
+    }
+
     private func path(_ scope: TrainingConsentScope) -> URL {
         directory.appendingPathComponent(scope.storageKey + ".json")
     }
 
     private func loadUnlocked(_ scope: TrainingConsentScope) throws -> TrainingConsentJournalState {
         do {
-            let url = path(scope)
-            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize
-            guard let size, size <= 4096 else { throw TrainingConsentError.localStorage }
-            let state = try JSONDecoder().decode(TrainingConsentJournalState.self, from: Data(contentsOf: url))
-            guard state.valid else { throw TrainingConsentError.localStorage }
-            return state
+            return try Self.decode(path(scope))
         } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
             return TrainingConsentJournalState()
         } catch {
             throw TrainingConsentError.localStorage
         }
+    }
+
+    private static func decode(_ url: URL) throws -> TrainingConsentJournalState {
+        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize
+        guard let size, size <= 4096 else { throw TrainingConsentError.localStorage }
+        let state = try JSONDecoder().decode(TrainingConsentJournalState.self, from: Data(contentsOf: url))
+        guard state.valid else { throw TrainingConsentError.localStorage }
+        return state
     }
 }
 

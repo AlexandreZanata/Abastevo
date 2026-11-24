@@ -147,6 +147,33 @@ final class TrainingConsentTests: XCTestCase {
         try restored.purge()
     }
 
+    func testLogoutPurgeKeepsOnlyUndeliveredRevocations() throws {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let journal = TrainingConsentJournal(directory: home)
+        let owed = try scope()
+        let granted = try scope(account: "granted")
+        let settled = try scope(account: "settled")
+        try journal.update(owed) { $0.requestRevocation(id: UUID()) }
+        try journal.update(granted) { try $0.requestGrant(id: UUID(), serverRevision: 2) }
+        let grantState = try journal.update(settled) { try $0.requestGrant(id: UUID(), serverRevision: 0) }
+        let grant = try XCTUnwrap(grantState.pending)
+        let receipt = try TrainingConsentWire.receipt(from: Data("""
+            {"state":"GRANTED","revision":1,"terms_version":"\(TrainingTermsContract.version)","decided_at":"2026-10-11T00:00:00Z","replayed":false}
+            """.utf8), command: grant)
+        try journal.update(settled) { $0.acknowledge(grant, receipt: receipt) }
+
+        try journal.purgeKeepingPendingRevocations()
+
+        let restored = TrainingConsentJournal(directory: home)
+        XCTAssertEqual(try restored.load(owed).pending?.decision, .revoked)
+        XCTAssertEqual(try restored.load(granted), TrainingConsentJournalState())
+        XCTAssertEqual(try restored.load(settled), TrainingConsentJournalState())
+        try restored.purge()
+        XCTAssertEqual(try restored.load(owed), TrainingConsentJournalState())
+        try TrainingConsentJournal(directory: home.appendingPathComponent("missing")).purgeKeepingPendingRevocations()
+    }
+
     func testLocalFailureDoesNotAcknowledgeAnUnsavedRevocation() throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: home) }

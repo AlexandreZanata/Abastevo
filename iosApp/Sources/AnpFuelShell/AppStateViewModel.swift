@@ -353,7 +353,7 @@ public final class AppStateViewModel: ObservableObject {
         navigation.stop()
         navigationDestination = nil
         purgeVehiclePreferences()
-        trainingConsent.purgeProtectedState()
+        trainingConsent.purgeProtectedState(keepPendingRevocations: true)
         qualityPublicCache.purge()
         qualityReportJournal.purge()
         advancedAlerts.purge()
@@ -594,8 +594,17 @@ public final class AppStateViewModel: ObservableObject {
 
     public func configureTrainingConsent() {
         let client = communityGateway
-        let session = isAuthWorking ? nil : authFlow.currentSession()
-        let ownerScope = session?.accountId == currentAccountIdOrNil && session != nil ? client.transport.ownerScope() : nil
+        // An expired 15-minute access token still names the owner: the consent calls refresh it
+        // through `liveSession()` and the server authenticates the signed proof (Android
+        // `TrainingConsentOwner` accepts NeedsRefresh too).
+        let session: PortableAuth.Session?
+        switch authFlowState {
+        case .active(let stored), .needsRefresh(let stored):
+            session = isAuthWorking ? nil : stored
+        case .pendingKeyAccount, .loggedOut:
+            session = nil
+        }
+        let ownerScope = session != nil ? client.transport.ownerScope() : nil
         trainingConsent.configure(client: client, origin: snapshot.apiEnvironment.origin,
                                   ownerScope: ownerScope, familyId: session?.familyId, offline: isOfflineSimulation)
     }
@@ -800,7 +809,7 @@ public final class AppStateViewModel: ObservableObject {
         navigation.stop()
         navigationDestination = nil
         purgeVehiclePreferences()
-        trainingConsent.purgeProtectedState()
+        trainingConsent.purgeProtectedState(keepPendingRevocations: true)
         qualityPublicCache.purge()
         qualityReportJournal.purge()
         advancedAlerts.purge()
