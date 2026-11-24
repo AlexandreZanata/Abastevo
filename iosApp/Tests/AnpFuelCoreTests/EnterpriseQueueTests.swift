@@ -138,8 +138,18 @@ final class EnterpriseQueueTests: XCTestCase {
         XCTAssertEqual(snapshot.queue[0].status, .inReview)
         XCTAssertEqual(snapshot.attachments[0].status, .pending)
         XCTAssertEqual(EnterpriseQueue.dueAttachment(snapshot, nowMillis: 40_000)?.id, attachment.id)
+        let uploadRefused = EnterpriseAttachmentWire.isFinalRefusal(status: 409, code: "CONFLICT", source: .capabilityUpload)
+        EnterpriseQueue.applyAttachment(id: attachment.id, storage: nil, refusedCode: uploadRefused ? "CONFLICT" : nil,
+                                        failureCode: "CONFLICT", to: &snapshot, nowMillis: 41_000, retryAfterMillis: 120_000)
+        XCTAssertEqual(snapshot.attachments[0].status, .pending)
+        XCTAssertNil(EnterpriseQueue.dueAttachment(snapshot, nowMillis: 160_999))
+        let retry = try XCTUnwrap(EnterpriseQueue.dueAttachment(snapshot, nowMillis: 161_000))
+        XCTAssertEqual(retry.declarationId, attachment.declarationId)
+        XCTAssertEqual(retry.documentId, attachment.documentId)
+        XCTAssertEqual(retry.linkId, attachment.linkId)
+        XCTAssertEqual(retry.sha256, attachment.sha256)
         EnterpriseQueue.applyAttachment(id: attachment.id, storage: .stored, refusedCode: nil, failureCode: nil, to: &snapshot,
-                                        nowMillis: 41_000, retryAfterMillis: nil)
+                                        nowMillis: 161_000, retryAfterMillis: nil)
         XCTAssertEqual(snapshot.attachments[0].status, .delivered)
 
         attachment = EnterpriseAttachmentItem(documentId: EnterpriseValues.newId(), declarationId: EnterpriseValues.newId(),

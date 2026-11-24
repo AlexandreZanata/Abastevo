@@ -590,10 +590,16 @@ public enum EnterpriseAttachmentWire {
         return storage
     }
 
-    /// Final, closed refusals of the session (B-BR-EMP-417); everything else is retried.
-    public static func isFinalRefusal(status: Int, code: String?) -> Bool {
-        switch (status, code ?? "") {
-        case (403, "FORBIDDEN"), (409, "CONFLICT"), (409, "OPERATION_ID_REUSED"), (422, "VALIDATION_FAILED"): return true
+    public enum RefusalSource: Sendable {
+        case signedSession
+        case capabilityUpload
+    }
+
+    /// Only a closed refusal of the signed session settles the receipt (B-BR-EMP-417).
+    public static func isFinalRefusal(status: Int, code: String?, source: RefusalSource) -> Bool {
+        switch (source, status, code ?? "") {
+        case (.signedSession, 403, "FORBIDDEN"), (.signedSession, 409, "CONFLICT"),
+             (.signedSession, 409, "OPERATION_ID_REUSED"), (.signedSession, 422, "VALIDATION_FAILED"): return true
         default: return false
         }
     }

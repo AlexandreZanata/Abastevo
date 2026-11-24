@@ -1120,6 +1120,7 @@ public final class EnterpriseCoordinator: ObservableObject {
                 finishAttachment(item, partition: current.partition, storage: nil, refused: "LOCAL_COPY_MISSING", failure: nil, retryAfter: nil)
                 continue
             }
+            var refusalSource = EnterpriseAttachmentWire.RefusalSource.signedSession
             do {
                 let session = try await sync.openAttachment(
                     partition: current.partition, enrollment: current.enrollment, declarationId: item.declarationId,
@@ -1133,6 +1134,7 @@ public final class EnterpriseCoordinator: ObservableObject {
                         finishAttachment(item, partition: current.partition, storage: nil, refused: nil, failure: "UPLOAD_WINDOW_CLOSED", retryAfter: nil)
                         continue
                     }
+                    refusalSource = .capabilityUpload
                     storage = try await sync.upload(partition: current.partition, documentId: item.documentId,
                                                     capability: capability, content: content)
                 }
@@ -1145,7 +1147,7 @@ public final class EnterpriseCoordinator: ObservableObject {
                 case .offline, .signInRequired:
                     return
                 case .refused(let status, let code, let retryAfter):
-                    let isFinalRefusal = EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code)
+                    let isFinalRefusal = EnterpriseAttachmentWire.isFinalRefusal(status: status, code: code, source: refusalSource)
                     finishAttachment(item, partition: current.partition, storage: nil, refused: isFinalRefusal ? (code ?? "REFUSED") : nil,
                                      failure: code ?? "HTTP_\(status)", retryAfter: retryAfter.map { $0 * 1000 })
                 case .unavailable, .invalidResponse:
