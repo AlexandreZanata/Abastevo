@@ -147,6 +147,17 @@ public enum NavigationGuidancePolicy {
     public static let maxAccuracyMeters = 50.0
     public static let maxFixAgeNanos: UInt64 = 15_000_000_000
     public static let rerouteTimeoutNanos: UInt64 = 60_000_000_000
+    /// Automatic reroutes back off: 15 s after the first, doubling up to 2 minutes while they keep
+    /// coming within the 3-minute window. A person's explicit retry is never delayed.
+    public static let rerouteCooldownBaseNanos: UInt64 = 15_000_000_000
+    public static let rerouteCooldownMaxNanos: UInt64 = 120_000_000_000
+    public static let rerouteWindowNanos: UInt64 = 180_000_000_000
+
+    public static func rerouteCooldownNanos(afterConsecutive count: Int) -> UInt64 {
+        guard count > 0 else { return 0 }
+        let doubled = rerouteCooldownBaseNanos << UInt64(min(count - 1, 4))
+        return min(doubled, rerouteCooldownMaxNanos)
+    }
 
     public static func accepts(_ fix: NavigationGuidanceFix, nowNanos: UInt64) -> Bool {
         nowNanos >= fix.sampledAtNanos && nowNanos - fix.sampledAtNanos <= maxFixAgeNanos
@@ -226,6 +237,8 @@ public struct NavigationGuidance: Sendable {
     private var offRouteFixes = 0
     private var arrivalFixes = 0
     private var spokenManeuvers = Set<Int>()
+    private var lastAutomaticRerouteNanos: UInt64?
+    private var consecutiveAutomaticReroutes = 0
 
     public init?(route: NavigationGuidanceRoute, input: NavigationGuidanceInput) {
         guard route.input == input else { return nil }
@@ -256,7 +269,8 @@ public struct NavigationGuidance: Sendable {
             if pendingReroute != nil || state == .rerouteFailed { return update() }
             state = .offRoute
             offRouteFixes += 1
-            return offRouteFixes >= 3 ? startReroute(from: fix, nowNanos: nowNanos) : update()
+            guard offRouteFixes >= 3 else { return update() }
+            return automaticRerouteAllowed(nowNanos: nowNanos) ? startAutomaticReroute(from: fix, nowNanos: nowNanos) : update()
         }
 
         pendingReroute = nil
@@ -335,6 +349,24 @@ public struct NavigationGuidance: Sendable {
         state = .waitingForFix
         guard let fix, NavigationGuidancePolicy.accepts(fix, nowNanos: nowNanos) else { return update() }
         return ingest(fix, nowNanos: nowNanos)
+    }
+
+    private func automaticRerouteAllowed(nowNanos: UInt64) -> Bool {
+        guard let last = lastAutomaticRerouteNanos, nowNanos >= last else { return true }
+        let elapsed = nowNanos - last
+        if elapsed > NavigationGuidancePolicy.rerouteWindowNanos { return true }
+        return elapsed >= NavigationGuidancePolicy.rerouteCooldownNanos(afterConsecutive: consecutiveAutomaticReroutes)
+    }
+
+    private mutating func startAutomaticReroute(from fix: NavigationGuidanceFix, nowNanos: UInt64) -> NavigationGuidanceUpdate {
+        if let last = lastAutomaticRerouteNanos, nowNanos >= last,
+           nowNanos - last <= NavigationGuidancePolicy.rerouteWindowNanos {
+            consecutiveAutomaticReroutes = min(consecutiveAutomaticReroutes + 1, 16)
+        } else {
+            consecutiveAutomaticReroutes = 1
+        }
+        lastAutomaticRerouteNanos = nowNanos
+        return startReroute(from: fix, nowNanos: nowNanos)
     }
 
     private mutating func startReroute(from fix: NavigationGuidanceFix, nowNanos: UInt64) -> NavigationGuidanceUpdate {

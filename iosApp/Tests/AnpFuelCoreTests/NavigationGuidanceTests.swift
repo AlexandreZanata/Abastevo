@@ -176,9 +176,39 @@ final class NavigationGuidanceTests: XCTestCase {
         let replacement = try route(input: request.input)
         XCTAssertEqual(run.completeReroute(request, route: replacement, nowNanos: tick(24)).state, .following)
         XCTAssertEqual(run.route, original)
-        let next = try deviation(in: &run, startingAt: 25)
-        XCTAssertEqual(run.completeReroute(next, route: original, nowNanos: tick(29)).state, .rerouteFailed)
+        // The second automatic reroute waits for the 15 s backoff after the first (started at 22 s).
+        let next = try deviation(in: &run, startingAt: 35)
+        XCTAssertEqual(next.startedAtNanos, tick(37))
+        XCTAssertEqual(run.completeReroute(next, route: original, nowNanos: tick(39)).state, .rerouteFailed)
         XCTAssertEqual(run.route, original)
+    }
+
+    func testAutomaticReroutesBackOffWithinTheWindow() throws {
+        XCTAssertEqual(NavigationGuidancePolicy.rerouteCooldownNanos(afterConsecutive: 0), 0)
+        XCTAssertEqual(NavigationGuidancePolicy.rerouteCooldownNanos(afterConsecutive: 1), tick(15))
+        XCTAssertEqual(NavigationGuidancePolicy.rerouteCooldownNanos(afterConsecutive: 2), tick(30))
+        XCTAssertEqual(NavigationGuidancePolicy.rerouteCooldownNanos(afterConsecutive: 3), tick(60))
+        XCTAssertEqual(NavigationGuidancePolicy.rerouteCooldownNanos(afterConsecutive: 4), tick(120))
+        XCTAssertEqual(NavigationGuidancePolicy.rerouteCooldownNanos(afterConsecutive: 9), tick(120))
+
+        var run = try makeGuidanceRun()
+        let first = try deviation(in: &run)
+        XCTAssertEqual(first.startedAtNanos, tick(22))
+        XCTAssertEqual(run.ingest(fix(100, seconds: 23), nowNanos: tick(23)).state, .following)
+        for second in [UInt64(24), 25, 26, 31, 36] {
+            let held = run.ingest(fix(100, 120, seconds: second), nowNanos: tick(second))
+            XCTAssertEqual(held.state, .offRoute)
+            XCTAssertNil(held.reroute)
+        }
+        let secondRequest = try XCTUnwrap(run.ingest(fix(100, 120, seconds: 37), nowNanos: tick(37)).reroute)
+        XCTAssertEqual(secondRequest.startedAtNanos, tick(37))
+
+        XCTAssertEqual(run.ingest(fix(100, seconds: 38), nowNanos: tick(38)).state, .following)
+        for second in [UInt64(39), 40, 41, 52, 63] {
+            XCTAssertNil(run.ingest(fix(100, 120, seconds: second), nowNanos: tick(second)).reroute)
+        }
+        let third = try XCTUnwrap(run.ingest(fix(100, 120, seconds: 67), nowNanos: tick(67)).reroute)
+        XCTAssertEqual(third.startedAtNanos, tick(67))
     }
 
     func testArrivalRequiresConsecutiveAccurateFixesNearProviderEndpoint() throws {
