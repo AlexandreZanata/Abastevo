@@ -32,7 +32,7 @@ func (m *MemStore) RecoverWithCode(_ context.Context, proof EmailProof, hasher d
 
 	acc, found := m.accounts[proof.Address.Hash]
 	if found && !acc.Active() {
-		if _, err := m.verifyCodeLocked(proof.Address.Hash, proof.Code, hasher, proof.Now, false, false); err != nil {
+		if _, err := m.verifyCodeLocked(proof.Address.Hash, proof.Code, hasher, proof.Now, false); err != nil {
 			return domain.Account{}, err
 		}
 		return domain.Account{}, accountUsable(acc)

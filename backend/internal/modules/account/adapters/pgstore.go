@@ -348,9 +348,7 @@ func (s *PGStore) TryConsume(ctx context.Context, addressHash, code string, hash
 }
 
 func consumeAddressCode(ctx context.Context, q *account.Queries, addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (domain.EmailCode, error) {
-	row, err := verifyAddressCode(ctx, q, addressHash, code, hasher, nowUnix, addressCodeCheck{
-		countWrongGuess: true, legacyLockVerdict: legacyLockVerdict,
-	})
+	row, err := verifyAddressCode(ctx, q, addressHash, code, hasher, nowUnix, legacyLockVerdict)
 	if err != nil {
 		return domain.EmailCode{}, err
 	}
@@ -362,12 +360,7 @@ func consumeAddressCode(ctx context.Context, q *account.Queries, addressHash, co
 	return rec, nil
 }
 
-type addressCodeCheck struct {
-	countWrongGuess   bool
-	legacyLockVerdict bool
-}
-
-func verifyAddressCode(ctx context.Context, q *account.Queries, addressHash, code string, hasher domain.CodeHasher, nowUnix int64, check addressCodeCheck) (account.AccountEmailCode, error) {
+func verifyAddressCode(ctx context.Context, q *account.Queries, addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (account.AccountEmailCode, error) {
 	rows, err := q.LockAddressCodes(ctx, addressHash)
 	if err != nil {
 		return account.AccountEmailCode{}, err
@@ -390,10 +383,7 @@ func verifyAddressCode(ctx context.Context, q *account.Queries, addressHash, cod
 	}
 	// No match: wrong codes stay indistinguishable from unknown addresses.
 	// States surface only on hash match (proof of possession). Attempts burn
-	// on the newest live row when one exists and this check permits attempts.
-	if !check.countWrongGuess {
-		return account.AccountEmailCode{}, domain.ErrCodeUnknown
-	}
+	// on the newest live row when one exists.
 	for _, row := range rows {
 		rec := toCode(row)
 		if !rec.Live(nowUnix) {
@@ -402,7 +392,7 @@ func verifyAddressCode(ctx context.Context, q *account.Queries, addressHash, cod
 		if err := q.BumpCodeAttempts(ctx, row.ID); err != nil {
 			return account.AccountEmailCode{}, err
 		}
-		if check.legacyLockVerdict && !domain.AttemptAllowed(rec.Attempts+1) {
+		if legacyLockVerdict && !domain.AttemptAllowed(rec.Attempts+1) {
 			return account.AccountEmailCode{}, domain.ErrCodeAttemptsExhausted
 		}
 		break

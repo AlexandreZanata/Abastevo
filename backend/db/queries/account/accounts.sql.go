@@ -1085,7 +1085,11 @@ func (q *Queries) PruneRefreshHistory(ctx context.Context, arg PruneRefreshHisto
 const purgeExpiredCodes = `-- name: PurgeExpiredCodes :execrows
 
 DELETE FROM account_email_codes
-WHERE issued_at < $1
+WHERE id IN (
+    SELECT code.id FROM account_email_codes code
+    WHERE code.issued_at < $1
+    ORDER BY code.issued_at, code.id LIMIT 500
+)
 `
 
 // SEC01-C bounded retention (FREE_ACCOUNT_ACCESS inventory): purge

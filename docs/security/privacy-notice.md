@@ -51,9 +51,9 @@ policy](privacy-policy.md) for the wider Android inventory.
 | IP digests/quota windows | Abuse/cost bounding | ≤24 h rotating digest | Server only | Self-clean on check; provider edge retention configured consistently |
 | Public name, legacy alias | Author attribution on comments and the forum | While the account lives | Public | Clear profile name when the account is deleted, with content erasure handled by its owning module |
 | Recovery email hash and masked hint | Verify control of address and recover access | Until replaced or the account is deleted | Server hash lookup and owner-only hint | Unbind and remove on replacement or deletion |
-| SMTP message address and verification code | Deliver the account's verification or recovery message | Code valid for 10 minutes; delivery retention governed by the mail provider | SMTP provider and recipient | Verifier purged within 24 h of expiry; no message payload retained by Abastevo |
+| SMTP message address and verification code | Deliver the account's verification or recovery message | Code valid for 10 minutes; delivery retention governed by the mail provider | SMTP provider and recipient | Verifier purged by the account job at the 24-hour expiry grace cutoff; no message payload retained by Abastevo |
 | Google issuer and subject | Sign-in and explicit account linking | While linked | Account backend | Unlink/delete; verified authoritative email follows the recovery-address row |
-| Recovery and recovery-email audit | Account security and accountability | 180 days | Restricted backend operations | Daily sweeper; only ID, account ID, action and timestamp |
+| Recovery and recovery-email audit | Account security and accountability | 180 days | Restricted backend operations | Minute account sweeper; only ID, account ID, action and timestamp |
 | Sign in with Apple grant (sealed refresh token) | Revoke the app's Apple authorization when the account is deleted (App Store 5.1.1(v)) | While the account lives; after deletion until Apple accepts the revocation, at most 30 days | Server only; AES-256-GCM, key outside the database | Moved to the revocation queue with the deletion; row deleted on revocation or at 30 days |
 | Export archives | Rights access | 24 h download window | Owner only | Bytes purged on expiry/erasure; receipts stay |
 | Deletion ledger | Restore-safe replay | Backup horizon (35 days) | Restricted operators | Aged out by retention; never payload |
@@ -66,9 +66,11 @@ policy](privacy-policy.md) for the wider Android inventory.
 - `privacy-retention-daily`: challenges, idempotency, closed
   moderation cases, expired export bytes, aged-out ledger rows, plus
   per-category overdue metrics in the structured log.
-- Every sweep purges bounded oldest-first and reports purged counts
-  with the oldest overdue instant; a stuck category fails its job
-  loudly for retry instead of hiding backlog.
+- `account-erasure-every-minute`: account erasure, expired email code
+  verifiers and recovery audit. Logs give counts and recovery-audit backlog
+  age without account or address identifiers.
+- Sweeps purge bounded oldest-first and report failures for retry after
+  independent categories have run.
 
 ## Target revision pending P13/P14/P15
 

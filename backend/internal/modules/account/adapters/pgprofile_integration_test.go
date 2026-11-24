@@ -216,10 +216,8 @@ func TestPGCodeFailuresSuspensionAndDeletedRecovery(t *testing.T) {
 	if err := svc.SuspendAccount(ctx, owner.Account.ID); err != nil {
 		t.Fatal(err)
 	}
-	for range domain.CodeMaxAttempts {
-		if _, err := svc.RecoverKey(ctx, address, "000000"); !errors.Is(err, domain.ErrCodeUnknown) {
-			t.Fatalf("unproven recovery disclosed suspension: %v", err)
-		}
+	if _, err := svc.RecoverKey(ctx, address, "000000"); !errors.Is(err, domain.ErrCodeUnknown) {
+		t.Fatalf("unproven recovery disclosed suspension: %v", err)
 	}
 	if _, err := svc.RecoverKey(ctx, address, "222222"); !errors.Is(err, domain.ErrAccountSuspended) {
 		t.Fatalf("suspended recovery: %v", err)
@@ -231,10 +229,28 @@ func TestPGCodeFailuresSuspensionAndDeletedRecovery(t *testing.T) {
 		t.Fatalf("suspension burned the proof: %v", err)
 	}
 	pgRequest(t, svc, address)
+	if err := svc.SuspendAccount(ctx, owner.Account.ID); err != nil {
+		t.Fatal(err)
+	}
+	for range domain.CodeMaxAttempts {
+		if _, err := svc.RecoverKey(ctx, address, "000000"); !errors.Is(err, domain.ErrCodeUnknown) {
+			t.Fatalf("unproven recovery disclosed suspension or attempts: %v", err)
+		}
+	}
+	if _, err := svc.RecoverKey(ctx, address, "333333"); !errors.Is(err, domain.ErrCodeAttemptsExhausted) {
+		t.Fatalf("suspended account did not enforce the attempt limit: %v", err)
+	}
+	if err := svc.ReactivateAccount(ctx, owner.Account.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.RecoverKey(ctx, address, "333333"); !errors.Is(err, domain.ErrCodeAttemptsExhausted) {
+		t.Fatalf("reactivation unlocked guesses against the code: %v", err)
+	}
+	pgRequest(t, svc, address)
 	if _, err := svc.DeleteAccount(ctx, owner.Account.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.RecoverKey(ctx, address, "333333"); !errors.Is(err, domain.ErrRecoveryNoAccount) {
+	if _, err := svc.RecoverKey(ctx, address, "444444"); !errors.Is(err, domain.ErrRecoveryNoAccount) {
 		t.Fatalf("verified deleted address: %v", err)
 	}
 	pool := svc.Store.(*PGStore).pool
@@ -242,7 +258,8 @@ func TestPGCodeFailuresSuspensionAndDeletedRecovery(t *testing.T) {
 	if err := pool.QueryRow(ctx, "SELECT display_name IS NULL FROM accounts WHERE id=$1", owner.Account.ID).Scan(&removed); err != nil || !removed {
 		t.Fatalf("deleted public name remains: %v", err)
 	}
-	if replacement := pgNamedSignUp(t, svc, address, "444444"); replacement.Account.ID == owner.Account.ID {
+	clock.advance(time.Hour)
+	if replacement := pgNamedSignUp(t, svc, address, "555555"); replacement.Account.ID == owner.Account.ID {
 		t.Fatal("re-signup after deletion reused the deleted owner")
 	}
 }
@@ -473,5 +490,42 @@ func TestPGRecoveryAndFreshNativeSignInKeepConsistentFamilies(t *testing.T) {
 	}
 	if logged, err := f.svc.LoginWithKey(ctx, recovered.Key); err != nil || logged.Account.ID != first.Account.ID {
 		t.Fatalf("recovery did not create a key for the Google-only account: %v", err)
+	}
+}
+
+func TestPGExpiredEmailCodePurgeBoundsBatchAndKeepsCutoff(t *testing.T) {
+	f := orgtest.New(t)
+	ctx := t.Context()
+	const cutoff = int64(1_800_000_000)
+	if _, err := f.Admin.Exec(ctx, "GRANT SELECT, DELETE ON account_email_codes TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Admin.Exec(ctx, `
+		INSERT INTO account_email_codes(id, address_hash, salt, hash, issued_at)
+		SELECT gen_random_uuid(), 'synthetic-lookup', 'synthetic-salt', 'synthetic-verifier',
+			to_timestamp(($1::bigint + i)::double precision)
+		FROM generate_series(-502, 1) AS i`, cutoff); err != nil {
+		t.Fatal(err)
+	}
+
+	store := NewPGStore(f.Runtime)
+	for _, pass := range []struct {
+		count  int
+		oldest int64
+	}{
+		{500, cutoff - 2},
+		{2, cutoff},
+		{0, cutoff},
+	} {
+		n, err := store.PurgeExpiredCodes(ctx, cutoff)
+		if err != nil || n != pass.count {
+			t.Fatalf("purged %d, want %d: %v", n, pass.count, err)
+		}
+		var oldest, newest int64
+		if err := f.Admin.QueryRow(ctx, `
+			SELECT extract(epoch FROM min(issued_at))::bigint, extract(epoch FROM max(issued_at))::bigint
+			FROM account_email_codes`).Scan(&oldest, &newest); err != nil || oldest != pass.oldest || newest != cutoff+1 {
+			t.Fatalf("retention order or cutoff changed: oldest=%d newest=%d error=%v", oldest, newest, err)
+		}
 	}
 }

@@ -154,8 +154,8 @@ func (s *PGStore) RecoverWithCode(ctx context.Context, proof application.EmailPr
 	if err == nil && row.Status != domain.StatusActive {
 		// Refuse a proven suspended account without spending its code.
 		// An incorrect guess cannot reveal that the address is suspended.
-		if _, err := verifyAddressCode(ctx, q, proof.Address.Hash, proof.Code, hasher, proof.Now, addressCodeCheck{}); err != nil {
-			return domain.Account{}, err
+		if _, err := verifyAddressCode(ctx, q, proof.Address.Hash, proof.Code, hasher, proof.Now, false); err != nil {
+			return domain.Account{}, commitCodeVerdict(ctx, tx, err)
 		}
 		return domain.Account{}, checkAccountStatus(row.Status)
 	}

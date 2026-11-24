@@ -85,7 +85,7 @@ The email-code proof errors are 401 `account.code-unknown`,
 `account.code-expired`, `account.code-consumed`, and
 `account.code-attempts-exhausted`. A six-digit code has a 10-minute
 lifetime. The request purpose and locale only change the message. Wrong
-recovery codes and unknown email addresses share `account.code-unknown`.
+recovery codes return `account.code-unknown` for both bound and unbound addresses.
 
 The profile returns `account_id`, `public_name`, `name` (nullable),
 `profile_complete`, `recovery_email_hint` (nullable), `has_account_key`

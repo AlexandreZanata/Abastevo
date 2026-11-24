@@ -55,7 +55,9 @@ BUC-A01 signup/login, A02 link/unlink and recovery, A03 logout/revoke, A04 right
   entry. It issues a new session and returns the new key once. The old key
   can no longer sign in. A valid code for an unbound address returns
   `account.recovery-no-account`. Suspended accounts are refused before code
-  consumption. Deleted accounts have no bound address or public display name.
+  consumption after a correct code. Wrong guesses against a suspended
+  account keep the generic verdict and use the same attempt budget as other
+  guesses. Deleted accounts have no bound address or public display name.
 - An active session can change the public name. Adding or replacing the
   single recovery address requires a login family at most 600 seconds old
   and a valid email code. A bound address owned by another account cannot

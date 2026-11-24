@@ -337,7 +337,7 @@ func (m *MemStore) TryConsume(_ context.Context, addressHash, code string, hashe
 }
 
 func (m *MemStore) consumeCodeLocked(addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (domain.EmailCode, error) {
-	rec, err := m.verifyCodeLocked(addressHash, code, hasher, nowUnix, true, legacyLockVerdict)
+	rec, err := m.verifyCodeLocked(addressHash, code, hasher, nowUnix, legacyLockVerdict)
 	if err != nil {
 		return domain.EmailCode{}, err
 	}
@@ -345,7 +345,7 @@ func (m *MemStore) consumeCodeLocked(addressHash, code string, hasher domain.Cod
 	return *rec, nil
 }
 
-func (m *MemStore) verifyCodeLocked(addressHash, code string, hasher domain.CodeHasher, nowUnix int64, countWrongGuess, legacyLockVerdict bool) (*domain.EmailCode, error) {
+func (m *MemStore) verifyCodeLocked(addressHash, code string, hasher domain.CodeHasher, nowUnix int64, legacyLockVerdict bool) (*domain.EmailCode, error) {
 	idx := m.byAddr[addressHash]
 	// Match-first: a presented code decides its own row, so same-second
 	// issuance never burns attempts on a sibling row.
@@ -367,9 +367,6 @@ func (m *MemStore) verifyCodeLocked(addressHash, code string, hasher domain.Code
 	}
 	// No match: wrong codes stay indistinguishable from unknown addresses.
 	// States surface only on hash match (proof of possession).
-	if !countWrongGuess {
-		return nil, domain.ErrCodeUnknown
-	}
 	for i := len(idx) - 1; i >= 0; i-- {
 		rec := &m.codes[idx[i]]
 		if rec.Live(nowUnix) {

@@ -301,7 +301,11 @@ WHERE account_id = @account_id
 
 -- name: PurgeExpiredCodes :execrows
 DELETE FROM account_email_codes
-WHERE issued_at < @before;
+WHERE id IN (
+    SELECT code.id FROM account_email_codes code
+    WHERE code.issued_at < @before
+    ORDER BY code.issued_at, code.id LIMIT 500
+);
 
 -- name: PurgeExpiredFamilies :execrows
 DELETE FROM account_session_families
