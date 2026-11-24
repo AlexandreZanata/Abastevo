@@ -1,5 +1,6 @@
 package com.anpfuel.application.portable
 
+import com.anpfuel.domain.account.PublicName
 import com.anpfuel.domain.portable.PortableAuth
 
 /**
@@ -56,7 +57,7 @@ class AuthFlow(private val ports: AuthPorts) {
 
     fun signUp(name: String, email: String, code: String): AuthApiResult<NewKey> =
         issueKey(email, code) { address ->
-            if (name.isBlank()) AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID)
+            if (!PublicName.isValid(name)) AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID)
             else ports.api.signUp(name, address, code)
         }
 
@@ -126,7 +127,7 @@ class AuthFlow(private val ports: AuthPorts) {
     fun profile(): AuthApiResult<PortableAuth.Profile> = withSession(ports.api::profile)
 
     fun updateName(name: String): AuthApiResult<PortableAuth.Profile> {
-        if (name.isBlank()) return AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID)
+        if (!PublicName.isValid(name)) return AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID)
         return withSession { ports.api.updateName(it, name) }
     }
 

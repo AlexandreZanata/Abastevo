@@ -8,6 +8,7 @@ import com.anpfuel.application.portable.GoogleSignInGateway
 import com.anpfuel.application.portable.GoogleSignInResult
 import com.anpfuel.data.repository.OwnerLocalErasure
 import com.anpfuel.domain.account.GoogleNonce
+import com.anpfuel.domain.account.PublicName
 import com.anpfuel.domain.portable.PortableAuth
 import com.anpfuel.domain.portable.PortableAuth.CodePurpose
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -210,7 +211,7 @@ class AuthViewModel @Inject constructor(
     fun onRequestCode(locale: String) {
         val state = _uiState.value
         if (state.step !in codeFormSteps || (state.step == AuthStep.CODE_SENT && state.resendSeconds != 0)) return
-        if (state.purpose == CodePurpose.SIGNUP && state.name.isBlank()) {
+        if (state.purpose == CodePurpose.SIGNUP && !PublicName.isValid(state.name)) {
             _uiState.update { it.copy(error = AuthUiError.InvalidName) }
             return
         }
@@ -456,6 +457,10 @@ class AuthViewModel @Inject constructor(
     fun onSaveName() {
         val state = _uiState.value
         if (state.step !in setOf(AuthStep.CONFIRM_NAME, AuthStep.EDIT_NAME)) return
+        if (!PublicName.isValid(state.name)) {
+            _uiState.update { it.copy(error = AuthUiError.InvalidName) }
+            return
+        }
         beginBusy(state)
         viewModelScope.launch {
             when (val result = onIo { authFlow.updateName(state.name) }) {

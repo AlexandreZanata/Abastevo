@@ -104,6 +104,36 @@ class EmailAndGoogleAuthViewModelTest {
     }
 
     @Test
+    fun invalidPublicNameIsRefusedBeforeAnEmailCodeIsRequested() = runTest(dispatcher) {
+        val vm = viewModel()
+        runCurrent()
+        vm.beginSignUp()
+        vm.onEmailChange(email)
+        for (name in listOf("Suporte Abastevo", "João🟢", "A")) {
+            vm.onNameChange(name)
+            vm.onRequestCode("en")
+            runCurrent()
+            assertEquals(AuthStep.SIGNUP_FORM, vm.uiState.value.step)
+            assertEquals(AuthUiError.InvalidName, vm.uiState.value.error)
+        }
+        verify(exactly = 0) { auth.requestCode(any(), any(), any()) }
+    }
+
+    @Test
+    fun invalidPublicNameEditStaysOnTheFormWithoutCallingTheApi() = runTest(dispatcher) {
+        every { auth.rehydrate() } returns AuthFlow.AuthState.Active(session)
+        val vm = viewModel()
+        runCurrent()
+        vm.beginPublicNameEdit()
+        vm.onNameChange("Admin")
+        vm.onSaveName()
+        runCurrent()
+        assertEquals(AuthStep.EDIT_NAME, vm.uiState.value.step)
+        assertEquals(AuthUiError.InvalidName, vm.uiState.value.error)
+        verify(exactly = 0) { auth.updateName(any()) }
+    }
+
+    @Test
     fun googleCancellationIsSilentAndEmailConflictReturnsToEntry() = runTest(dispatcher) {
         every { auth.loginWithGoogle("synthetic-id-token", any()) } returns AuthApiResult.Err("provider-email-in-use")
         val vm = viewModel()

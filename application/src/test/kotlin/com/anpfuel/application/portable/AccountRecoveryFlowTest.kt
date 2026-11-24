@@ -57,6 +57,17 @@ class AccountRecoveryFlowTest {
     }
 
     @Test
+    fun invalidPublicNamesAreRefusedWithoutAccountCalls() {
+        for (invalid in listOf("", "A", "Abastevo Oficial", "Ana‍Lima")) {
+            assertEquals(AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID), flow.signUp(invalid, email, code))
+            assertEquals(AuthApiResult.Err(PortableAuth.Verdict.NAME_INVALID), flow.updateName(invalid))
+        }
+        verify(exactly = 0) { api.signUp(any(), any(), any()) }
+        verify(exactly = 0) { api.updateName(any(), any()) }
+        assertNull(storedKey)
+    }
+
+    @Test
     fun recoveryReplacesAnOldBackupAndKeepsTheNewKeyAvailable() {
         storedKey = AuthFlow.KeyBackup("Old label", "old-key")
         every { api.recover(email, code) } returns AuthApiResult.Ok(IssuedAccountKey(session, name, "new-key"))

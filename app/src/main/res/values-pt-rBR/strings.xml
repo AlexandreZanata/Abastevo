@@ -636,7 +636,7 @@
     <string name="a11y_week_picker_operational_note_expand">Expandir aviso operacional</string>
     <string name="a11y_week_picker_operational_note_collapse">Recolher aviso operacional</string>
     <string name="auth_title">Conta gratuita</string>
-    <string name="auth_email_label">Email</string>
+    <string name="auth_email_label">E-mail</string>
     <string name="auth_continue">Continuar</string>
     <string name="auth_code_label">Código de 6 dígitos</string>
     <string name="auth_confirm">Entrar</string>
