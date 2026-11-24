@@ -32,6 +32,23 @@ final class SavedMapStoreTests: XCTestCase {
         }
     }
 
+    func testPurgingAGuestOriginKeepsOtherOwnedPartitions() throws {
+        try withDirectory { directory in
+            let old = try scope(SavedMapScope.guest)
+            let other = try scope(SavedMapScope.guest, origin: "https://other.example")
+            let account = try scope(accountA)
+            let store = SavedMapStore(directory: directory)
+            let content = try gpx(#"<gpx><wpt lat="1" lon="2"><name>Saved</name></wpt></gpx>"#)
+            for scope in [old, other, account] {
+                _ = try store.importGPX(content, restoringDeleted: false, in: scope)
+            }
+            try store.erase(old)
+            XCTAssertTrue(try store.inventory(in: old).places.isEmpty)
+            XCTAssertEqual(try store.inventory(in: other).places.count, 1)
+            XCTAssertEqual(try store.inventory(in: account).places.count, 1)
+        }
+    }
+
     func testRepeatImportAndTombstoneRequireConfirmationBeforeAnyWrite() throws {
         try withDirectory { directory in
             let owner = try scope(accountA)

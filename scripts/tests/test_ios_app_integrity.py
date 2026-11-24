@@ -520,6 +520,29 @@ class IosAppIntegrityTests(unittest.TestCase):
         self.assertIn("startedAtLabel: Date().ISO8601Format()", state)
         self.assertIn("endedAtLabel: Date().ISO8601Format()", state)
 
+    def test_driver_gps_uses_shared_location_and_only_persists_aggregate(self):
+        shell = IOS_ROOT / "Sources/AnpFuelShell"
+        state = (shell / "AppStateViewModel.swift").read_text(encoding="utf-8")
+        self.assertIn("NavigationCoordinator(location: continuousLocation)", state)
+        self.assertIn("DriverGpsCoordinator(location: continuousLocation)", state)
+        for function in ("setApiEnvironment", "logout", "finishAccountDeletion"):
+            start = state.index(f"func {function}(")
+            end = state.index("\n    }", start)
+            self.assertIn("purgeDriverGps()", state[start:end], function)
+
+        gps = (shell / "DriverGpsCoordinator.swift").read_text(encoding="utf-8")
+        self.assertLess(gps.index("store.begin("), gps.index("location.start(consumer: .driver)"))
+        self.assertIn("location.stop(consumer: .driver)", gps)
+        self.assertNotIn("CLLocationManager", gps)
+        self.assertNotIn("URLSession", gps)
+
+        journal = (IOS_ROOT / "Sources/AnpFuelCore/DriverGpsDistance.swift").read_text(encoding="utf-8")
+        self.assertIn("scope.storageKey", journal)
+        self.assertIn("exclusion.isExcludedFromBackup = true", journal)
+        self.assertIn(".completeFileProtection", journal)
+        for coordinate in ("latitude", "longitude", "CLLocation"):
+            self.assertNotIn(coordinate, journal)
+
     def test_info_plist_privacy_manifest_and_entitlements_are_valid_and_safe(self):
         with (IOS_ROOT / "App/Info.plist").open("rb") as fh:
             info = plistlib.load(fh)

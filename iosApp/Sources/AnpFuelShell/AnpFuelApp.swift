@@ -44,16 +44,22 @@ public struct AbastevoRootView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
+                viewModel.driverGPS.verifyOwner()
                 viewModel.navigation.foregrounded()
+                viewModel.driverAccounting.foregrounded()
                 viewModel.configureTrainingConsent()
                 viewModel.trainingConsent.foregrounded()
                 viewModel.anpSurvey.automaticSyncIfDue()
             } else {
                 viewModel.trainingConsent.backgrounded()
+                viewModel.driverAccounting.backgrounded()
             }
         }
         .task {
-            if scenePhase == .active { viewModel.trainingConsent.foregrounded() }
+            if scenePhase == .active {
+                viewModel.trainingConsent.foregrounded()
+                viewModel.driverAccounting.foregrounded()
+            }
             viewModel.anpSurvey.automaticSyncIfDue()
         }
     }

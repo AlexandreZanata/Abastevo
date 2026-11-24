@@ -30,12 +30,14 @@ public final class AppStateViewModel: ObservableObject {
         didSet {
             if oldValue != isOfflineSimulation {
                 configureTrainingConsent()
+                driverAccounting.contextChanged()
                 reloadCityData()
             }
         }
     }
     @Published public var isSyncing: Bool = false
     @Published public var bannerMessage: String?
+    @Published public private(set) var apiEnvironmentError: String?
 
     // Auth & Identity
     @Published public var authFlowState: AuthFlowState = .loggedOut
@@ -48,7 +50,9 @@ public final class AppStateViewModel: ObservableObject {
     @Published public var lastLocationRisk: PortableLocation.FixRisk?
     @Published public var isVoiceGuidanceEnabled: Bool = true
     @Published public var navigationDestination: NavigationDestination?
-    let navigation = NavigationCoordinator()
+    let navigation: NavigationCoordinator
+    let driverGPS: DriverGpsCoordinator
+    lazy var driverAccounting = DriverAccountingModel(host: self)
 
     // Community & Outbox
     @Published public var communityFeed: [CommunityPriceObservation] = []
@@ -152,6 +156,9 @@ public final class AppStateViewModel: ObservableObject {
 
     public init(store: IosLocalStore = IosLocalStore()) {
         self.store = store
+        let continuousLocation = ActiveNavigationLocation()
+        self.navigation = NavigationCoordinator(location: continuousLocation)
+        self.driverGPS = DriverGpsCoordinator(location: continuousLocation)
         self.savedMapStore = SavedMapStore(directory: store.savedMapDirectory)
         self.municipalityCatalog = (try? MunicipalityCatalog(bundle: .main)) ?? .empty
         let loaded = store.load()
@@ -331,7 +338,18 @@ public final class AppStateViewModel: ObservableObject {
 
     public func setApiEnvironment(_ env: ApiEnvironment) {
         guard env != snapshot.apiEnvironment, canSwitchApiEnvironment else { return }
-        guard migrateSavedMapIfNeeded() else { return }
+        apiEnvironmentError = nil
+        guard migrateSavedMapIfNeeded() else {
+            apiEnvironmentError = SavedMapError.localStorage.savedMessage
+            return
+        }
+        let cleanup = purgeSavedAndEstimatedData(accountId: currentAccountIdOrNil, origin: snapshot.apiEnvironment.origin)
+        guard cleanup.savedMap, cleanup.estimates else {
+            apiEnvironmentError = String(localized: "account.map_preferences.origin_cleanup_failed")
+            return
+        }
+        driverAccounting.purge()
+        purgeDriverGps()
         navigation.stop()
         navigationDestination = nil
         purgeVehiclePreferences()
@@ -339,10 +357,13 @@ public final class AppStateViewModel: ObservableObject {
         qualityPublicCache.purge()
         qualityReportJournal.purge()
         advancedAlerts.purge()
+        let previousDriverOrigin = snapshot.apiEnvironment.origin
+        snapshot.driverShifts.removeAll { $0.ownerApiOrigin == nil || $0.ownerApiOrigin == previousDriverOrigin }
         snapshot.apiEnvironment = env
         refreshSavedMap()
         httpClient.environment = env
         identity.updateEnvironment(env)
+        driverAccounting.contextChanged()
         configureCommunitySafety()
         configureTrainingConsent()
         enterprise.purgeOwnedData()
@@ -552,6 +573,7 @@ public final class AppStateViewModel: ObservableObject {
         let previousAccount = currentAccountIdOrNil
         let state = authFlow.rehydrate()
         self.authFlowState = state
+        driverGPS.verifyOwner()
         if previousAccount != currentAccountIdOrNil {
             navigation.stop()
             navigationDestination = nil
@@ -567,6 +589,7 @@ public final class AppStateViewModel: ObservableObject {
         refreshSavedMap()
         configureCommunitySafety()
         configureTrainingConsent()
+        driverAccounting.contextChanged()
     }
 
     public func configureTrainingConsent() {
@@ -628,6 +651,7 @@ public final class AppStateViewModel: ObservableObject {
         }
         let flow = authFlow
         isAuthWorking = true
+        driverAccounting.contextChanged()
         let result = await AuthBlockingWork.run { flow.createKeyAccount(username: username) }
         isAuthWorking = false
         switch result {
@@ -756,6 +780,7 @@ public final class AppStateViewModel: ObservableObject {
         apply: @escaping (AppStateViewModel, T) -> Void
     ) {
         isAuthWorking = true
+        driverGPS.verifyOwner()
         configureTrainingConsent()
         Task { [weak self] in
             let result = await AuthBlockingWork.run(work)
@@ -763,11 +788,15 @@ public final class AppStateViewModel: ObservableObject {
             self.isAuthWorking = false
             apply(self, result)
             self.configureTrainingConsent()
+            self.driverAccounting.contextChanged()
         }
     }
 
     public func logout() {
         let ownerId = currentAccountIdOrNil
+        let cleanup = purgeSavedAndEstimatedData(accountId: ownerId, origin: snapshot.apiEnvironment.origin)
+        driverAccounting.purge()
+        purgeDriverGps()
         navigation.stop()
         navigationDestination = nil
         purgeVehiclePreferences()
@@ -784,7 +813,9 @@ public final class AppStateViewModel: ObservableObject {
         let flow = authFlow
         runAuth({ flow.logout() }) { viewModel, _ in
             viewModel.rehydrateAuth()
-            viewModel.authStatusMessage = String(localized: "auth.account.signedOutPurged")
+            viewModel.authStatusMessage = cleanup.savedMap && cleanup.estimates
+                ? String(localized: "auth.account.signedOutPurged")
+                : String(localized: "account.map_preferences.logout_cleanup_failed")
         }
     }
 
@@ -806,6 +837,8 @@ public final class AppStateViewModel: ObservableObject {
     }
 
     private func finishAccountDeletion(ownerId: String) {
+        driverAccounting.purge()
+        purgeDriverGps()
         navigation.stop()
         navigationDestination = nil
         purgeVehiclePreferences()
@@ -820,25 +853,46 @@ public final class AppStateViewModel: ObservableObject {
         ledger.purgeOwnedData(accountId: ownerId)
         photoCache.purgeAll()
         store.purgeOwnedData(snapshot: &snapshot, ownerAccountId: ownerId)
+        let cleanup = purgeSavedAndEstimatedData(accountId: ownerId, origin: snapshot.apiEnvironment.origin)
         rehydrateAuth()
-        let estimateCleanupFailed: Bool
+        switch cleanup {
+        case (true, true):
+            authStatusMessage = String(localized: "auth.delete.accepted")
+        case (false, true):
+            authStatusMessage = String(localized: "map.saved.account_delete_cleanup_failed")
+        case (true, false):
+            authStatusMessage = String(localized: "ledger.estimate.account_delete_cleanup_failed")
+        case (false, false):
+            authStatusMessage = String(localized: "account.map_preferences.deletion_cleanup_failed")
+        }
+    }
+
+    private func purgeSavedAndEstimatedData(
+        accountId: String?, origin: String
+    ) -> (savedMap: Bool, estimates: Bool) {
+        guard let savedScope = SavedMapScope(owner: accountId ?? SavedMapScope.guest, origin: origin),
+              let estimateScope = LedgerEstimateScope(accountId: accountId, origin: origin) else {
+            return (false, false)
+        }
+        if presentedSavedMapScope == savedScope {
+            presentedSavedMapScope = nil
+            savedMapInventory = SavedMapInventory()
+        }
+        let savedMapPurged: Bool
         do {
-            try ledger.eraseEstimatedEfficiency(accountId: ownerId)
-            estimateCleanupFailed = false
+            try savedMapStore.erase(savedScope)
+            savedMapPurged = true
         } catch {
-            estimateCleanupFailed = true
+            savedMapPurged = false
         }
-        if let scope = SavedMapScope(owner: ownerId, origin: snapshot.apiEnvironment.origin) {
-            do {
-                try savedMapStore.erase(scope)
-            } catch {
-                authStatusMessage = String(localized: "map.saved.account_delete_cleanup_failed")
-                return
-            }
+        let estimatesPurged: Bool
+        do {
+            try ledger.eraseEstimatedEfficiency(in: estimateScope)
+            estimatesPurged = true
+        } catch {
+            estimatesPurged = false
         }
-        authStatusMessage = estimateCleanupFailed
-            ? String(localized: "ledger.estimate.account_delete_cleanup_failed")
-            : String(localized: "auth.delete.accepted")
+        return (savedMapPurged, estimatesPurged)
     }
 
     public func exportMyDataJson() -> String {
@@ -1071,6 +1125,7 @@ public final class AppStateViewModel: ObservableObject {
         do {
             try store.saveChecked(next)
             snapshot = next
+            driverGPS.verifyOwner()
         } catch {
             bannerMessage = VehicleEditorError.storageUnavailable.message
         }
@@ -1088,49 +1143,128 @@ public final class AppStateViewModel: ObservableObject {
         }
     }
 
-    public func startDriverShift(vehicleId: String, startOdometerKm: Int64) -> Result<Void, AppValidationError> {
-        guard snapshot.vehicles.contains(where: { $0.id == vehicleId }) else {
-            return .failure(AppValidationError(LedgerFormError.vehicleRequired.localizedMessage))
-        }
-        guard !snapshot.driverShifts.contains(where: \.isActive) else {
-            return .failure(AppValidationError(String(localized: "driver.shift.alreadyActive")))
-        }
-        guard (0...(PremiumEnergyCalculator.maxDistanceMetres / 1000)).contains(startOdometerKm) else {
-            return .failure(AppValidationError(String(localized: "driver.shift.invalidStartOdometer")))
-        }
-        let shift = DriverShiftRecord(vehicleId: vehicleId, startedAtLabel: Date().ISO8601Format(), startOdometerKm: startOdometerKm)
-        snapshot.driverShifts.insert(shift, at: 0)
-        persist()
-        return .success(())
+    var driverVisibleShifts: [DriverShiftRecord] {
+        snapshot.driverShifts.filter { $0.belongs(to: driverGpsScope) }
     }
 
-    public func finishActiveDriverShift(shiftId: String, endOdometerKm: Int64, grossCentavos: Int64, fuelCentavos: Int64, minutes: Int) -> Result<Void, AppValidationError> {
-        guard let idx = snapshot.driverShifts.firstIndex(where: { $0.id == shiftId && $0.isActive }) else {
+    private var driverGpsScope: DriverGpsScope {
+        DriverGpsScope(accountId: currentAccountIdOrNil, origin: snapshot.apiEnvironment.origin)
+    }
+
+    private func driverGpsContext(shiftId: String) -> DriverGpsCoordinator.Context? {
+        guard !isAuthWorking,
+              let shift = driverVisibleShifts.first(where: { $0.id == shiftId && $0.isActive }),
+              snapshot.vehicles.contains(where: { $0.id == shift.vehicleId }) else { return nil }
+        let scope = driverGpsScope
+        if let account = scope.accountId {
+            guard let session = authFlow.currentSession(), session.accountId == account else { return nil }
+            return DriverGpsCoordinator.Context(scope: scope, sessionFamilyId: session.familyId, shiftId: shiftId)
+        }
+        return DriverGpsCoordinator.Context(scope: scope, sessionFamilyId: nil, shiftId: shiftId)
+    }
+
+    func isDriverGpsAvailable(shiftId: String) -> Bool {
+        driverGpsContext(shiftId: shiftId) != nil
+    }
+
+    func loadDriverGps(shiftId: String?) {
+        driverGPS.load(shiftId.flatMap { driverGpsContext(shiftId: $0) })
+    }
+
+    func startDriverGps(shiftId: String) {
+        guard let context = driverGpsContext(shiftId: shiftId) else { return }
+        driverGPS.start(context) { [weak self] in
+            self?.driverGpsContext(shiftId: shiftId) == context
+        }
+    }
+
+    func purgeDriverGps() {
+        do {
+            try driverGPS.purge()
+        } catch {
+            bannerMessage = String(localized: "driver.gps_storage_unavailable")
+        }
+    }
+
+    public func startDriverShift(vehicleId: String, startOdometerKm: Int64) -> Result<Void, AppValidationError> {
+        guard !isAuthWorking, snapshot.vehicles.contains(where: { $0.id == vehicleId }) else {
+            return .failure(AppValidationError(LedgerFormError.vehicleRequired.localizedMessage))
+        }
+        guard !driverVisibleShifts.contains(where: \.isActive) else {
+            return .failure(AppValidationError(String(localized: "driver.shift.alreadyActive")))
+        }
+        guard (0...(DriverGpsAccumulator.maximumDistanceMetres / 1000)).contains(startOdometerKm) else {
+            return .failure(AppValidationError(String(localized: "driver.shift.invalidStartOdometer")))
+        }
+        let scope = driverGpsScope
+        let shift = DriverShiftRecord(
+            vehicleId: vehicleId, startedAtLabel: Date().ISO8601Format(), startOdometerKm: startOdometerKm,
+            ownerAccountId: scope.accountId, ownerApiOrigin: scope.origin, capturedTimezone: TimeZone.current.identifier
+        )
+        var next = snapshot
+        next.driverShifts.insert(shift, at: 0)
+        return saveDriverShiftSnapshot(next)
+    }
+
+    public func finishActiveDriverShift(
+        shiftId: String, endOdometerKm: Int64?, grossCentavos: Int64, fuelCentavos: Int64, minutes: Int,
+        distanceBasis: DriverShiftDistanceBasis = .odometer
+    ) -> Result<Void, AppValidationError> {
+        let scope = driverGpsScope
+        guard !isAuthWorking,
+              let index = snapshot.driverShifts.firstIndex(where: { $0.id == shiftId && $0.isActive && $0.belongs(to: scope) }) else {
             return .failure(AppValidationError(String(localized: "driver.shift.alreadyEnded")))
         }
-        let current = snapshot.driverShifts[idx]
-        guard endOdometerKm >= current.startOdometerKm,
-              (0...(PremiumEnergyCalculator.maxDistanceMetres / 1000)).contains(endOdometerKm) else {
-            return .failure(AppValidationError(String(localized: "driver.shift.invalidEndOdometer")))
+        let current = snapshot.driverShifts[index]
+        let gpsContext = driverGpsContext(shiftId: shiftId)
+        let odometer: Int64?
+        let gpsMetres: Int64?
+        switch distanceBasis {
+        case .odometer:
+            guard let endOdometerKm, endOdometerKm >= current.startOdometerKm,
+                  (0...(DriverGpsAccumulator.maximumDistanceMetres / 1000)).contains(endOdometerKm) else {
+                return .failure(AppValidationError(String(localized: "driver.shift.invalidEndOdometer")))
+            }
+            odometer = endOdometerKm
+            gpsMetres = nil
+        case .gpsEstimate:
+            guard let gpsContext, let recorded = try? driverGPS.finalMetres(gpsContext) else {
+                return .failure(AppValidationError(String(localized: "driver.gps_distance_required")))
+            }
+            odometer = nil
+            gpsMetres = recorded
         }
         guard [grossCentavos, fuelCentavos].allSatisfy({ (0...PortableMoney.maxRecordCentavos).contains($0) }), minutes > 0 else {
             return .failure(AppValidationError(String(localized: "driver.shift.invalidTotals")))
         }
-        snapshot.driverShifts[idx] = DriverShiftRecord(
-            id: current.id,
-            vehicleId: current.vehicleId,
-            startedAtLabel: current.startedAtLabel,
-            endedAtLabel: Date().ISO8601Format(),
-            startOdometerKm: current.startOdometerKm,
-            endOdometerKm: endOdometerKm,
-            grossEarningsCentavos: grossCentavos,
-            fuelCostCentavos: fuelCentavos,
-            otherExpenseCentavos: current.otherExpenseCentavos,
-            activeMinutes: minutes,
-            isActive: false
+        var next = snapshot
+        next.driverShifts[index] = DriverShiftRecord(
+            id: current.id, vehicleId: current.vehicleId, startedAtLabel: current.startedAtLabel,
+            endedAtLabel: Date().ISO8601Format(), startOdometerKm: current.startOdometerKm, endOdometerKm: odometer,
+            grossEarningsCentavos: grossCentavos, fuelCostCentavos: fuelCentavos,
+            otherExpenseCentavos: current.otherExpenseCentavos, activeMinutes: minutes, isActive: false,
+            gpsDistanceMetres: gpsMetres, ownerAccountId: scope.accountId, ownerApiOrigin: scope.origin,
+            capturedTimezone: current.capturedTimezone
         )
-        persist()
-        return .success(())
+        let result = saveDriverShiftSnapshot(next)
+        if case .success = result {
+            do {
+                try driverGPS.completed(scope: scope, shiftId: shiftId)
+            } catch {
+                bannerMessage = String(localized: "driver.gps_storage_unavailable")
+            }
+        }
+        return result
+    }
+
+    private func saveDriverShiftSnapshot(_ next: PersistedAppSnapshot) -> Result<Void, AppValidationError> {
+        do {
+            try store.saveChecked(next)
+            snapshot = next
+            return .success(())
+        } catch {
+            return .failure(AppValidationError(String(localized: "driver.gps_storage_unavailable")))
+        }
     }
 
     // MARK: - Map and route preview

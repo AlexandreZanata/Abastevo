@@ -171,11 +171,9 @@ public final class LedgerCoordinator: ObservableObject {
         objectWillChange.send()
     }
 
-    func eraseEstimatedEfficiency(accountId: String) throws {
-        guard let host, let scope = LedgerEstimateScope(accountId: accountId, origin: host.snapshot.apiEnvironment.origin) else {
-            throw LedgerEfficiencyPreferenceStore.Failure.unavailable
-        }
+    func eraseEstimatedEfficiency(in scope: LedgerEstimateScope) throws {
         try efficiencyStore.erase(scope)
+        objectWillChange.send()
     }
 
     // MARK: - Vehicle admission

@@ -39,6 +39,8 @@ final class LedgerLocalAnalysisTests: XCTestCase {
         XCTAssertEqual(restarted.estimate(for: vehicleId, in: other), alternative)
         XCTAssertNil(restarted.estimate(for: vehicleId, in: guest))
         XCTAssertNil(restarted.estimate(for: vehicleId, in: differentOrigin))
+        try restarted.set(estimate, for: vehicleId, in: differentOrigin)
+        try restarted.set(alternative, for: vehicleId, in: guest)
         try restarted.removeVehicles([vehicleId], in: account)
         XCTAssertNil(restarted.estimate(for: vehicleId, in: account))
         XCTAssertEqual(restarted.estimate(for: secondVehicleId, in: account), alternative)
@@ -47,6 +49,11 @@ final class LedgerLocalAnalysisTests: XCTestCase {
         try restarted.set(estimate, for: vehicleId, in: account)
         try restarted.erase(account)
         XCTAssertNil(restarted.estimate(for: vehicleId, in: account))
+        XCTAssertEqual(restarted.estimate(for: vehicleId, in: other), alternative)
+        XCTAssertEqual(restarted.estimate(for: vehicleId, in: differentOrigin), estimate)
+        XCTAssertEqual(restarted.estimate(for: vehicleId, in: guest), alternative)
+        try restarted.erase(guest)
+        XCTAssertNil(restarted.estimate(for: vehicleId, in: guest))
         XCTAssertEqual(restarted.estimate(for: vehicleId, in: other), alternative)
     }
 

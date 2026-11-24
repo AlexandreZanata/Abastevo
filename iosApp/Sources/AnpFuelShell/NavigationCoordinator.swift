@@ -42,7 +42,7 @@ final class NavigationCoordinator: ObservableObject {
     @Published private(set) var hasSession = false
     @Published private(set) var voiceFailed = false
 
-    private let location = ActiveNavigationLocation()
+    private let location: ActiveNavigationLocation
     private let voice = IosVoiceGuidance()
     private var guidance: NavigationGuidance?
     private var routed: NavigationGuidanceRoute?
@@ -51,6 +51,10 @@ final class NavigationCoordinator: ObservableObject {
     private var rerouteID: UUID?
     private var timer: Task<Void, Never>?
     private var ownerFence = UUID()
+
+    init(location: ActiveNavigationLocation) {
+        self.location = location
+    }
 
     var voiceEnabled = true {
         didSet {

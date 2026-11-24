@@ -299,14 +299,15 @@ public struct DriverHubSheetView: View {
     @State private var driverVehicleId: String?
     @State private var startKmText = ""
     @State private var endKmText = ""
+    @State private var distanceBasis: DriverShiftDistanceBasis = .odometer
     @State private var grossReaisText = ""
     @State private var fuelReaisText = ""
     @State private var minutesText = ""
     @State private var shiftError: String?
 
     public var body: some View {
-        let activeShift = viewModel.snapshot.driverShifts.first(where: { $0.isActive })
-        let closedShifts = viewModel.snapshot.driverShifts.filter { !$0.isActive }
+        let activeShift = viewModel.driverVisibleShifts.first(where: { $0.isActive })
+        let closedShifts = viewModel.driverVisibleShifts.filter { !$0.isActive }
         NavigationStack {
             List {
                 Section(String(localized: "driver.manual_shift")) {
@@ -317,7 +318,16 @@ public struct DriverHubSheetView: View {
                         if let started = formattedDate(active.startedAtLabel) {
                             Text(String(localized: "driver.started", defaultValue: "Started \(started)")).foregroundStyle(.secondary)
                         }
-                        TextField(String(localized: "driver.end_odometer"), text: $endKmText)
+                        DriverGpsControls(viewModel: viewModel, shiftId: active.id)
+                        if availableGpsDistance(for: active) != nil {
+                            Picker(String(localized: "driver.distance_source"), selection: $distanceBasis) {
+                                Text(String(localized: "driver.odometer_source")).tag(DriverShiftDistanceBasis.odometer)
+                                Text(String(localized: "driver.gps_source")).tag(DriverShiftDistanceBasis.gpsEstimate)
+                            }
+                        }
+                        if distanceBasis == .odometer || availableGpsDistance(for: active) == nil {
+                            TextField(String(localized: "driver.end_odometer"), text: $endKmText)
+                        }
                         TextField(String(localized: "driver.gross_earnings"), text: $grossReaisText)
                         TextField(String(localized: "driver.fuel_cost"), text: $fuelReaisText)
                         TextField(String(localized: "driver.declared_duration"), text: $minutesText)
@@ -354,8 +364,13 @@ public struct DriverHubSheetView: View {
                             } else {
                                 Text(String(localized: "driver.balance_unavailable")).font(.headline)
                             }
-                            if let distance = s.distanceKm {
-                                Text(String(localized: "driver.distance_driven", defaultValue: "\(distance.formatted()) km driven"))
+                            if let metres = s.distanceMetres {
+                                let distance = LedgerFormat.kilometres(metres)
+                                if s.distanceBasis == .gpsEstimate {
+                                    Text(String(localized: "driver.gps_distance_value", defaultValue: "GPS estimate · \(distance)"))
+                                } else {
+                                    Text(String(localized: "driver.odometer_distance_value", defaultValue: "Odometer · \(distance)"))
+                                }
                             }
                             if let ended = formattedDate(s.endedAtLabel) {
                                 Text(String(localized: "driver.ended", defaultValue: "Ended \(ended)"))
@@ -366,6 +381,25 @@ public struct DriverHubSheetView: View {
                         }
                     }
                 }
+                Section {
+                    NavigationLink {
+                        DriverAccountingView(viewModel: viewModel)
+                    } label: {
+                        Label(String(localized: "driver.sync.title"), systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    NavigationLink {
+                        DriverServerReportsView(viewModel: viewModel)
+                    } label: {
+                        Label(String(localized: "driver.server.title"), systemImage: "chart.bar.doc.horizontal")
+                    }
+                }
+            }
+            .task(id: activeShift?.id) {
+                distanceBasis = .odometer
+                viewModel.loadDriverGps(shiftId: activeShift?.id)
+            }
+            .onChange(of: viewModel.driverGPS.stoppedMetres) { _, distance in
+                if distance == nil { distanceBasis = .odometer }
             }
             .navigationTitle(String(localized: "android.driver_hub_title"))
             .toolbar {
@@ -391,15 +425,24 @@ public struct DriverHubSheetView: View {
         }
     }
 
+    private func availableGpsDistance(for shift: DriverShiftRecord) -> Int64? {
+        let gps = viewModel.driverGPS
+        return gps.shiftId == shift.id ? gps.stoppedMetres : nil
+    }
+
     private func finishShift(_ active: DriverShiftRecord) {
-        guard let endKm = Int64(endKmText.trimmingCharacters(in: .whitespacesAndNewlines)),
+        let endKm = Int64(endKmText.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard distanceBasis != .odometer || endKm != nil,
               let minutes = Int(minutesText.trimmingCharacters(in: .whitespacesAndNewlines)),
               let gross = try? PortableMoney.parseBrlCentavos(grossReaisText),
               let fuel = try? PortableMoney.parseBrlCentavos(fuelReaisText) else {
             shiftError = String(localized: "driver.invalid_end")
             return
         }
-        switch viewModel.finishActiveDriverShift(shiftId: active.id, endOdometerKm: endKm, grossCentavos: gross, fuelCentavos: fuel, minutes: minutes) {
+        switch viewModel.finishActiveDriverShift(
+            shiftId: active.id, endOdometerKm: endKm, grossCentavos: gross, fuelCentavos: fuel,
+            minutes: minutes, distanceBasis: distanceBasis
+        ) {
         case .success:
             endKmText = ""
             grossReaisText = ""
@@ -569,6 +612,9 @@ public struct SettingsSheetView: View {
                     if !viewModel.canSwitchApiEnvironment {
                         Text(String(localized: "settings.sign_out_to_switch"))
                             .font(.caption)
+                    }
+                    if let error = viewModel.apiEnvironmentError {
+                        Text(error).font(.caption).foregroundStyle(.secondary)
                     }
                     Toggle(String(localized: "settings.offline_simulation"), isOn: $viewModel.isOfflineSimulation)
                 }

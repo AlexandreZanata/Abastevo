@@ -3,9 +3,14 @@ import CoreLocation
 import Foundation
 import UIKit
 
-/// Called only by an explicit, foreground navigation or driver shift action.
+/// One platform location manager for explicit navigation and driver recording leases.
 @MainActor
 final class ActiveNavigationLocation: NSObject, @preconcurrency CLLocationManagerDelegate {
+    enum Consumer: Hashable {
+        case navigation
+        case driver
+    }
+
     enum Event {
         case requestingPermission
         case active
@@ -15,8 +20,15 @@ final class ActiveNavigationLocation: NSObject, @preconcurrency CLLocationManage
         case fix(CLLocation)
     }
 
+    private struct Lease {
+        let id = UUID()
+        let activity: CLActivityType
+        let receive: (Event) -> Void
+    }
+
     private let manager: CLLocationManager
-    private var receive: ((Event) -> Void)?
+    private var leases: [Consumer: Lease] = [:]
+    private var notified: Set<UUID> = []
     private var started = false
     private var prompted = false
 
@@ -26,23 +38,46 @@ final class ActiveNavigationLocation: NSObject, @preconcurrency CLLocationManage
         manager.delegate = self
     }
 
-    func start(activity: CLActivityType = .automotiveNavigation, receive: @escaping (Event) -> Void) {
-        stop()
+    func start(
+        consumer: Consumer = .navigation, activity: CLActivityType = .automotiveNavigation,
+        receive: @escaping (Event) -> Void
+    ) {
         guard UIApplication.shared.applicationState == .active else {
             receive(.serviceUnavailable)
             return
         }
-        self.receive = receive
-        manager.activityType = activity
-        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        manager.distanceFilter = kCLDistanceFilterNone
-        manager.pausesLocationUpdatesAutomatically = false
+        if let prior = leases.updateValue(Lease(activity: activity, receive: receive), forKey: consumer) {
+            notified.remove(prior.id)
+        }
+        configureActivity()
         updateAuthorization()
     }
 
-    func stop() {
-        receive = nil
+    func stop(consumer: Consumer = .navigation) {
+        if let lease = leases.removeValue(forKey: consumer) { notified.remove(lease.id) }
+        if leases.isEmpty {
+            stopManager()
+        } else {
+            configureActivity()
+        }
+    }
+
+    func foregrounded() {
+        updateAuthorization()
+    }
+
+    private func configureActivity() {
+        if let activity = leases[.navigation]?.activity ?? leases[.driver]?.activity {
+            manager.activityType = activity
+        }
+        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        manager.distanceFilter = kCLDistanceFilterNone
+        manager.pausesLocationUpdatesAutomatically = false
+    }
+
+    private func stopManager() {
         prompted = false
+        notified.removeAll()
         if started {
             manager.stopUpdatingLocation()
             started = false
@@ -51,37 +86,47 @@ final class ActiveNavigationLocation: NSObject, @preconcurrency CLLocationManage
         manager.showsBackgroundLocationIndicator = false
     }
 
-    func foregrounded() {
-        if !started { updateAuthorization() }
+    private func endAll(_ event: Event) {
+        let prior = Array(leases.values)
+        leases = [:]
+        notified.removeAll()
+        stopManager()
+        for lease in prior { lease.receive(event) }
+    }
+
+    private func send(_ event: Event, to consumer: Consumer, lease: Lease) {
+        guard leases[consumer]?.id == lease.id else { return }
+        lease.receive(event)
     }
 
     private func updateAuthorization() {
-        guard let receive else { return }
+        guard !leases.isEmpty else { return }
         switch manager.authorizationStatus {
         case .notDetermined:
+            if started { stopManager() }
             guard !prompted, UIApplication.shared.applicationState == .active else { return }
             prompted = true
-            receive(.requestingPermission)
-            manager.requestWhenInUseAuthorization()
+            for (consumer, lease) in leases { send(.requestingPermission, to: consumer, lease: lease) }
+            if !leases.isEmpty { manager.requestWhenInUseAuthorization() }
         case .restricted, .denied:
-            stop()
-            receive(.permissionDenied)
+            endAll(.permissionDenied)
         case .authorizedWhenInUse, .authorizedAlways:
             guard manager.accuracyAuthorization == .fullAccuracy else {
-                stop()
-                receive(.permissionDenied)
+                endAll(.permissionDenied)
                 return
             }
-            guard !started else { return }
-            guard UIApplication.shared.applicationState == .active else { return }
-            manager.allowsBackgroundLocationUpdates = true
-            manager.showsBackgroundLocationIndicator = true
-            started = true
-            manager.startUpdatingLocation()
-            receive(.active)
+            if !started {
+                guard UIApplication.shared.applicationState == .active else { return }
+                manager.allowsBackgroundLocationUpdates = true
+                manager.showsBackgroundLocationIndicator = true
+                started = true
+                manager.startUpdatingLocation()
+            }
+            for (consumer, lease) in leases where notified.insert(lease.id).inserted {
+                send(.active, to: consumer, lease: lease)
+            }
         @unknown default:
-            stop()
-            receive(.serviceUnavailable)
+            endAll(.serviceUnavailable)
         }
     }
 
@@ -90,17 +135,20 @@ final class ActiveNavigationLocation: NSObject, @preconcurrency CLLocationManage
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard started, let receive, let fix = locations.last else { return }
-        receive(.fix(fix))
+        guard started else { return }
+        if let lease = leases[.navigation], let newest = locations.last {
+            send(.fix(newest), to: .navigation, lease: lease)
+        }
+        if let lease = leases[.driver] {
+            for fix in locations { send(.fix(fix), to: .driver, lease: lease) }
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        guard let receive else { return }
         if (error as? CLError)?.code == .denied {
-            stop()
-            receive(.permissionDenied)
+            endAll(.permissionDenied)
         } else {
-            receive(.weakSignal)
+            for (consumer, lease) in leases { send(.weakSignal, to: consumer, lease: lease) }
         }
     }
 }

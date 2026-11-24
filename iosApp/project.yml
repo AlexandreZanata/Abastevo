@@ -176,6 +176,24 @@ targets:
         buildPhase: resources
       - path: ../contracts/testdata/api/alerts-inbox-valid.json
         buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/http/receipt-200.json
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/http/auth-401.json
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/http/conflict-409.json
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/driver-manual-reference-v1.psv
+        buildPhase: resources
+      - path: ../contracts/testdata/driver-suite/planned-financial-v1.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-report-request-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-report-request-invalid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-report-response-valid.json
+        buildPhase: resources
+      - path: ../contracts/testdata/api/driver-earnings-page-request-invalid.json
+        buildPhase: resources
       - path: ../data/src/main/assets/ibge_municipalities.json
         buildPhase: resources
     dependencies:

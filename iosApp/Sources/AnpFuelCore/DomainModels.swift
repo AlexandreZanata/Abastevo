@@ -1130,10 +1130,29 @@ public struct DriverShiftRecord: Codable, Equatable, Identifiable, Sendable {
     public let otherExpenseCentavos: Int64
     public let activeMinutes: Int
     public let isActive: Bool
+    public let gpsDistanceMetres: Int64?
+    public let ownerAccountId: String?
+    public let ownerApiOrigin: String?
+    public let capturedTimezone: String?
 
-    public var distanceKm: Int64? {
-        guard let end = endOdometerKm, startOdometerKm >= 0, end >= startOdometerKm else { return nil }
-        return end - startOdometerKm
+    public var distanceBasis: DriverShiftDistanceBasis { gpsDistanceMetres == nil ? .odometer : .gpsEstimate }
+
+    public var distanceMetres: Int64? {
+        let bound = DriverGpsAccumulator.maximumDistanceMetres
+        if let gpsDistanceMetres {
+            return (0...bound).contains(gpsDistanceMetres) ? gpsDistanceMetres : nil
+        }
+        guard let end = endOdometerKm, startOdometerKm >= 0, end >= startOdometerKm,
+              end - startOdometerKm <= bound / 1000 else { return nil }
+        return (end - startOdometerKm) * 1000
+    }
+
+    public var distanceKm: Int64? { distanceMetres.map { $0 / 1000 } }
+
+    public func belongs(to scope: DriverGpsScope) -> Bool {
+        guard ownerAccountId == scope.accountId else { return false }
+        if let ownerApiOrigin { return ownerApiOrigin == scope.origin }
+        return ownerAccountId == nil
     }
 
     public var netEarningsCentavos: Int64? {
@@ -1153,7 +1172,11 @@ public struct DriverShiftRecord: Codable, Equatable, Identifiable, Sendable {
         fuelCostCentavos: Int64 = 0,
         otherExpenseCentavos: Int64 = 0,
         activeMinutes: Int = 0,
-        isActive: Bool = true
+        isActive: Bool = true,
+        gpsDistanceMetres: Int64? = nil,
+        ownerAccountId: String? = nil,
+        ownerApiOrigin: String? = nil,
+        capturedTimezone: String? = nil
     ) {
         self.id = id
         self.vehicleId = vehicleId
@@ -1166,6 +1189,10 @@ public struct DriverShiftRecord: Codable, Equatable, Identifiable, Sendable {
         self.otherExpenseCentavos = otherExpenseCentavos
         self.activeMinutes = activeMinutes
         self.isActive = isActive
+        self.gpsDistanceMetres = gpsDistanceMetres
+        self.ownerAccountId = ownerAccountId
+        self.ownerApiOrigin = ownerApiOrigin
+        self.capturedTimezone = capturedTimezone
     }
 }
 
