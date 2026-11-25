@@ -9,7 +9,9 @@
   bound to `127.0.0.1` only.
 - **Edge:** Cloudflare (proxied, Full TLS) → host Caddy, which imports one
   Abastevo site file and serves `abastevo.com.br` (landing, portal, forum),
-  `www.` (redirect), `api.` (`/v1`, `/health`) and `admin.`.
+  `www.` (redirect), `api.` (`/v1`, `/health`) and `admin.` (the admin panel
+  under `/admin/` plus its same-origin `/v1`). `/v1/admin/*` answers only on
+  `admin.`; the other hosts return `404` for it.
 - **Data:** PostgreSQL + PostGIS StatefulSet and a private S3-compatible
   storage deployment, both inside the namespace.
 - **Releases:** merge to `main` → CI → `release-staging` publishes a signed
