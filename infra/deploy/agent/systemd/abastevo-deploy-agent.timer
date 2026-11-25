@@ -1,9 +1,11 @@
 [Unit]
-Description=Run the Abastevo staging release planner every two minutes
+Description=Run the Abastevo staging release planner every four minutes
 
+# The host IP shares GitHub's anonymous REST quota (60 requests/hour) with
+# other projects; Abastevo's share is 15/hour, one run every four minutes.
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=2min
+OnUnitActiveSec=4min
 RandomizedDelaySec=15s
 AccuracySec=1s
 Unit=abastevo-deploy-agent.service

@@ -92,3 +92,45 @@ write_oci "$CASE"
 BEFORE="$(wc -l < "$CASE/kubectl.log")"
 expect_failure "immutable pinned tag SHA mismatch refused" run_agent_apply "$CASE"
 assert_eq "pin mismatch makes no cluster call" "$(wc -l < "$CASE/kubectl.log")" "$BEFORE"
+
+# Positive GitHub ancestry answers are durable on a protected main, so repeated
+# runs stay off the anonymous API quota the host shares with other projects.
+# Refusals and malformed caches are never trusted.
+CASE="$(new_case github-cache-no-change)"
+make_current "$CASE"
+expect_success "first no-change run verifies through GitHub" run_agent "$CASE"
+assert_eq "verified main answer cached" "$(jq -r '[.entries[] | .base + " " + .head] | join(",")' "$CASE/state/github-verified.json" 2>/dev/null)" "main $FIXTURE_SHA"
+assert_eq "verified cache mode" "$(stat -c '%a' "$CASE/state/github-verified.json" 2>/dev/null)" "600"
+CURL_MODE=fail expect_success "repeat no-change run makes no GitHub call" run_agent "$CASE"
+assert_eq "repeat run still plans no-change" "$(jq -r .action "$(latest_receipt "$CASE")")" "no-change"
+
+CASE="$(new_case github-cache-floor)"
+make_current_old "$CASE"
+expect_success "first candidate run verifies main and floor" run_agent "$CASE"
+assert_eq "floor answer cached" "$(jq -r --arg old "$FIXTURE_OLD_SHA" '[.entries[] | select(.base == $old)] | length' "$CASE/state/github-verified.json" 2>/dev/null)" "1"
+CURL_MODE=fail CURL_FLOOR_MODE=fail expect_success "repeat candidate run makes no GitHub call" run_agent "$CASE"
+
+CASE="$(new_case github-cache-main-refusal)"
+CURL_MODE=ahead expect_failure "unreachable candidate refused" run_agent "$CASE"
+assert_absent "main refusal never cached" "$CASE/state/github-verified.json"
+CASE="$(new_case github-cache-floor-refusal)"
+make_current_old "$CASE"
+CURL_FLOOR_MODE=diverged expect_failure "non-descending candidate refused" run_agent "$CASE"
+assert_eq "floor refusal never cached" "$(jq -r --arg old "$FIXTURE_OLD_SHA" '[.entries[] | select(.base == $old)] | length' "$CASE/state/github-verified.json" 2>/dev/null)" "0"
+CURL_MODE=fail CURL_FLOOR_MODE=behind expect_failure "floor refusal asks GitHub again" run_agent "$CASE"
+
+CASE="$(new_case github-cache-malformed)"
+make_current "$CASE"
+printf '{"schema":"bad","entries":[{"base":"main","head":"%s","status":"behind"}]}\n' "$FIXTURE_SHA" > "$CASE/state/github-verified.json"
+CURL_MODE=fail expect_failure "malformed cache is not trusted" run_agent "$CASE"
+expect_success "malformed cache replaced after verification" run_agent "$CASE"
+assert_eq "replaced cache schema" "$(jq -r .schema "$CASE/state/github-verified.json")" "abastevo-deploy-github-verified-v1"
+
+CASE="$(new_case github-cache-bounded)"
+make_current "$CASE"
+jq -n '{schema:"abastevo-deploy-github-verified-v1",
+    entries:[range(100; 140) | tostring | {base:"main", head:(("2" * 37) + .), status:"behind"}]}' \
+    > "$CASE/state/github-verified.json"
+expect_success "bounded cache run" run_agent "$CASE"
+assert_eq "cache keeps the newest 32 answers" "$(jq '.entries | length' "$CASE/state/github-verified.json")" "32"
+assert_eq "newest answer is last" "$(jq -r '.entries[-1].head' "$CASE/state/github-verified.json")" "$FIXTURE_SHA"

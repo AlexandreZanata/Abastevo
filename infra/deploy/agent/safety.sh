@@ -9,6 +9,37 @@ safety_write() {
     mv "$tmp" "$ABASTEVO_STATE_DIR/$name"
 }
 
+# GitHub compare answers are cached only when positive. On the protected main
+# a commit that is reachable from main, or that descends from a deployed
+# commit, stays so; remembering the pair keeps repeated runs off the anonymous
+# API quota the host shares with other projects. Refusals are never cached and
+# a malformed cache is ignored, so the agent asks GitHub again.
+SAFETY_GITHUB_VERIFIED_KEEP=32
+
+safety_github_verified() {
+    local base="$1" head="$2" file="$ABASTEVO_STATE_DIR/github-verified.json"
+    [[ -f "$file" ]] || return 1
+    jq -e --arg base "$base" --arg head "$head" \
+        '.schema == "abastevo-deploy-github-verified-v1"
+         and (.entries | type == "array")
+         and any(.entries[]; .base == $base and .head == $head)' \
+        "$file" >/dev/null 2>&1
+}
+
+safety_github_record() {
+    local base="$1" head="$2" status="$3" file="$ABASTEVO_STATE_DIR/github-verified.json" entries='[]'
+    if [[ -f "$file" ]] && jq -e '.schema == "abastevo-deploy-github-verified-v1"
+            and (.entries | type == "array")' "$file" >/dev/null 2>&1; then
+        entries="$(jq -c '[.entries[] | select(type == "object")]' "$file")"
+    fi
+    safety_write github-verified.json "$(jq -n --argjson entries "$entries" \
+        --arg base "$base" --arg head "$head" --arg status "$status" \
+        --argjson keep "$SAFETY_GITHUB_VERIFIED_KEEP" \
+        '{schema:"abastevo-deploy-github-verified-v1",
+          entries:(([$entries[] | select(.base != $base or .head != $head)]
+              + [{base:$base, head:$head, status:$status}])[-$keep:])}')"
+}
+
 safety_open() {
     if [[ "$COMMAND" == "release-hold" ]]; then
         rm -f "$ABASTEVO_STATE_DIR/operator-hold.json"
@@ -46,7 +77,8 @@ safety_refuse() {
 safety_candidate() {
     local floor http_code status
     floor="$(jq -r '.sha // empty' "$workdir/current.json")"
-    if [[ -n "$floor" && "$floor" != "$release_sha" ]]; then
+    if [[ -n "$floor" && "$floor" != "$release_sha" ]] \
+        && ! safety_github_verified "$floor" "$release_sha"; then
         http_code="$(curl -sS -o "$workdir/floor.json" -w '%{http_code}' \
             --connect-timeout 10 --max-time 30 \
             -H 'Accept: application/vnd.github+json' \
@@ -59,6 +91,7 @@ safety_candidate() {
             || safety_refuse "invalid deployment floor response"
         [[ "$status" == "ahead" || "$status" == "identical" ]] \
             || safety_refuse "candidate does not descend from deployed SHA"
+        safety_github_record "$floor" "$release_sha" "$status"
     fi
     if [[ -n "$RECHECK_SHA" && "$release_sha" != "$RECHECK_SHA" ]]; then
         safety_refuse "candidate differs from explicit recheck SHA"

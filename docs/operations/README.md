@@ -2,12 +2,16 @@
 
 ## Current deployment
 
-- **Host:** one VPS (shared with an unrelated service that must never be
-  touched). Abastevo runs isolated in k3s, namespace `abastevo-temp`, with
-  NodePorts bound to `127.0.0.1` only.
+- **Host:** one VPS (shared with unrelated services that must never be
+  touched, including their share of the host's anonymous GitHub API quota;
+  see the [deploy agent](../../infra/deploy/agent/README.md#github-api-quota)).
+  Abastevo runs isolated in k3s, namespace `abastevo-temp`, with NodePorts
+  bound to `127.0.0.1` only.
 - **Edge:** Cloudflare (proxied, Full TLS) → host Caddy, which imports one
   Abastevo site file and serves `abastevo.com.br` (landing, portal, forum),
-  `www.` (redirect), `api.` (`/v1`, `/health`) and `admin.`.
+  `www.` (redirect), `api.` (`/v1`, `/health`) and `admin.` (the admin panel
+  under `/admin/` plus its same-origin `/v1`). `/v1/admin/*` answers only on
+  `admin.`; the other hosts return `404` for it.
 - **Data:** PostgreSQL + PostGIS StatefulSet and a private S3-compatible
   storage deployment, both inside the namespace.
 - **Releases:** merge to `main` → CI → `release-staging` publishes a signed
@@ -16,7 +20,7 @@
   merge that lands while the previous commit is still in CI cancels that
   commit's runs: the release gate stays closed for it without failing, and
   the newer commit carries its changes. The
-  `abastevo-deploy-agent` timer on the VPS (every 2 minutes) verifies the
+  `abastevo-deploy-agent` timer on the VPS (every 4 minutes) verifies the
   signature, checks the schema gate, takes a verified backup, runs the migrate
   Job, rolls out images, switches the landing and smoke-tests, writing a receipt.
   Code: [`infra/deploy/agent`](../../infra/deploy/agent/), manifests:

@@ -2,8 +2,10 @@
 
 Static owner/staff panel for the backend admin API (`/v1/admin/*`): login,
 accounts, grants and staff roles, contributors, station lookup, forum and
-audit. It is served at `/admin/` from the signed landing bundle and calls only
-same-origin relative `/v1/admin/...` paths. It is not the company app
+audit. It is served at `/admin/` from the signed landing bundle, on its own
+host (staging: `admin.abastevo.com.br`, whose edge also proxies `/v1`), and
+calls only same-origin relative `/v1/...` paths (`/v1/admin/*` plus public
+station lookups). It is not the company app
 (`business-web/`).
 
 ## Layout

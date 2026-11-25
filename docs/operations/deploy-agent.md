@@ -95,10 +95,11 @@ or variable dump.
   source) + `infra/deploy/agent/README.md`; host config only in
   `/etc/abastevo-deploy/agent.env` (mode 600, never committed): namespace,
   deployment names, landing root, backup dir, receipt dir.
-- systemd `abastevo-deploy-agent.timer` (every 2 min) + service with
+- systemd `abastevo-deploy-agent.timer` (every 4 min) + service with
   `flock`, `ProtectSystem=strict`, `NoNewPrivileges=yes`.
 - Each run: fetch `staging` manifest, verify signature + certificate
-  identity + `sha` reachable from `main` (GitHub API, anonymous), compare
+  identity + `sha` reachable from `main` (GitHub API, anonymous; positive
+  answers cached), compare
   with `/var/lib/abastevo-deploy/current.json`, and write a **plan receipt**
   (what would change) without mutating anything.
 

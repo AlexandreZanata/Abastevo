@@ -48,10 +48,20 @@ manifest change is live.
   `ANPFUEL_ENTERPRISE_ENABLED=true`; the secret's own `ANPFUEL_DATABASE_URL`
   stays the owner DSN used by the agent's backup/migration Jobs and the
   registry CronJob. Enterprise routes must never run on the owner DSN.
-- Admin API: patch `ANPFUEL_ADMIN_KEY_SHA256` and `ANPFUEL_ADMIN_ORIGIN` into the
-  Secret (key from `go run ./cmd/ops admin keygen`; rotate via
+- Admin API: patch `ANPFUEL_ADMIN_KEY_SHA256` and
+  `ANPFUEL_ADMIN_ORIGIN=https://admin.abastevo.com.br` into the Secret (key
+  from `go run ./cmd/ops admin keygen`; rotate via
   `ANPFUEL_ADMIN_KEY_SHA256_NEXT`) and restart the API. The panel is
-  `https://abastevo.com.br/admin/login/`.
+  `https://admin.abastevo.com.br/admin/login/`; the apex `/admin/` redirects
+  there and the edge answers `/v1/admin/*` only on that host. The optional
+  `ANPFUEL_ADMIN_ALLOWED_CIDRS` fence holds the operator's own network (kept
+  out of Git); when that address changes, patch it and restart the API.
+- Client IPs: Caddy reaches the API through the loopback NodePort, which k3s
+  source-NATs to the CNI gateway, so the API sees every request from that one
+  address (default `10.42.0.1`). Set `ANPFUEL_TRUSTED_PROXIES` to exactly that
+  address (`10.42.0.1/32`) so per-IP quotas and the admin fence use the
+  client IP Caddy forwards. Never trust a wider range: the API would accept
+  forwarded headers from in-cluster callers.
 - Seeds (`backend/db/seeds/*.sql`) are idempotent dev/staging data, applied by
   hand with `psql -v ON_ERROR_STOP=1` inside the db pod after the migrations
   they depend on.
