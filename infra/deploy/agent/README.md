@@ -2,7 +2,7 @@
 
 Pull-based deployer for staging. A systemd timer on the staging host (VPS
 72.60.147.2, k3s namespace `abastevo-temp`, https://abastevo.com.br) runs it
-every two minutes; it is the only path by which a release reaches staging.
+every four minutes; it is the only path by which a release reaches staging.
 It deploys only what `release-staging` signed after every `main` workflow
 passed. Production is out of scope.
 
@@ -15,7 +15,9 @@ Verification and plan (every mode):
    exact `release-staging.yml@refs/heads/main` identity and GitHub OIDC issuer.
 3. Validate the `abastevo-release-manifest-v1` schema; check through the
    anonymous GitHub compare API that the commit is reachable from `main` and
-   descends from the deployed commit.
+   descends from the deployed commit. Positive answers are remembered in
+   `github-verified.json`, so a run for an already verified commit makes no
+   GitHub request (see [GitHub API quota](#github-api-quota)).
 4. Compare with `current.json` and write a mode-600 plan receipt
    (`abastevo-deploy-plan-v1`; `action` is `no-change` when nothing differs).
 
@@ -57,13 +59,27 @@ bash /usr/local/lib/abastevo-deploy-agent/status.sh   # read-only status
 - State files in `ABASTEVO_STATE_DIR`: `current.json`, `checked.json` (failed
   commits are latched and skipped), `operator-hold.json` (written after an
   incomplete rollback; all runs refuse until `release-hold`), `inflight.json`
-  (an interrupted candidate is converged before newer releases).
+  (an interrupted candidate is converged before newer releases),
+  `github-verified.json` (the last 32 positive GitHub ancestry answers; delete
+  it to force fresh checks).
 - All commands share one non-blocking lock; a busy run prints `Deferred:` and
   exits 0.
 - Pause and resume are explicit owner decisions:
   `systemctl disable --now abastevo-deploy-agent.timer` /
   `systemctl enable --now abastevo-deploy-agent.timer`. Disabling the timer does
   not cancel a running apply.
+
+## GitHub API quota
+
+The agent uses GitHub's anonymous REST API, whose limit (60 requests/hour) is
+per IP address and shared with every other project on the host. Conditional
+requests answered with `304` still count when anonymous. The staging host
+splits the quota into 15 requests/hour per project, so the timer runs every
+four minutes. Ancestry is immutable on the protected `main`, so only positive
+answers are cached: a no-change or latched run spends nothing, and a new
+release spends one or two requests once. Refusals and HTTP errors are never
+cached. An exhausted quota shows as `GitHub reachability check failed with
+HTTP 403` in the journal and clears at the hourly reset.
 
 ## Host configuration
 

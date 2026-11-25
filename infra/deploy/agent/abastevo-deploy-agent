@@ -263,20 +263,24 @@ if [[ "$COMMAND" == "baseline" && "$release_sha" != "$BASELINE_SHA" ]]; then
 fi
 
 log "checking that the release commit is reachable from main"
-compare_url="${ABASTEVO_GITHUB_API}/repos/${ABASTEVO_GITHUB_REPOSITORY}/compare/main...${release_sha}"
-http_code="$(curl -sS -o "$workdir/compare.json" -w '%{http_code}' \
-    --connect-timeout 10 --max-time 30 \
-    -H 'Accept: application/vnd.github+json' \
-    -H 'X-GitHub-Api-Version: 2022-11-28' \
-    -H 'User-Agent: abastevo-deploy-agent' \
-    "$compare_url")" || fail "GitHub reachability request failed"
-[[ "$http_code" == "200" ]] \
-    || fail "GitHub reachability check failed with HTTP $http_code"
-compare_status="$(jq -r '.status // empty' "$workdir/compare.json")"
-case "$compare_status" in
-    behind|identical) ;;
-    *) fail "release commit is not reachable from main" ;;
-esac
+if safety_github_verified main "$release_sha"; then
+    log "release commit already verified as reachable from main"
+else
+    compare_url="${ABASTEVO_GITHUB_API}/repos/${ABASTEVO_GITHUB_REPOSITORY}/compare/main...${release_sha}"
+    http_code="$(curl -sS -o "$workdir/compare.json" -w '%{http_code}' \
+        --connect-timeout 10 --max-time 30 \
+        -H 'Accept: application/vnd.github+json' \
+        -H 'X-GitHub-Api-Version: 2022-11-28' \
+        -H 'User-Agent: abastevo-deploy-agent' \
+        "$compare_url")" || fail "GitHub reachability request failed"
+    [[ "$http_code" == "200" ]] \
+        || fail "GitHub reachability check failed with HTTP $http_code"
+    compare_status="$(jq -r '.status // empty' "$workdir/compare.json")"
+    case "$compare_status" in
+        behind|identical) safety_github_record main "$release_sha" "$compare_status" ;;
+        *) fail "release commit is not reachable from main" ;;
+    esac
+fi
 
 if [[ "$COMMAND" == "baseline" ]]; then
     baseline_release
