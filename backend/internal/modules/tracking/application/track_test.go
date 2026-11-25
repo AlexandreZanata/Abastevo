@@ -1,12 +1,10 @@
 package application_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"testing"
 
@@ -67,10 +65,8 @@ func TestTrackViewsAreRedacted(t *testing.T) {
 		app.TrackRequest{TripID: id(21)}, app.TrackActor{AccountID: id(1)},
 	}
 	for _, v := range values {
-		var out bytes.Buffer
-		slog.New(slog.NewJSONHandler(&out, nil)).Info("value", "v", v)
 		raw, _ := json.Marshal(v)
-		for _, s := range []string{fmt.Sprintf("%v %+v %#v %s", v, v, v, v), string(raw), out.String()} {
+		for _, s := range []string{fmt.Sprintf("%v %+v %#v %s", v, v, v, v), string(raw), loggedValue(v)} {
 			for _, secret := range []string{"100000000", "500000000", id(1), id(11), id(21), "1389"} {
 				if strings.Contains(s, secret) {
 					t.Fatalf("%T leaked %q", v, secret)

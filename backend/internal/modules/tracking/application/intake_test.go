@@ -1,11 +1,9 @@
 package application_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -635,11 +633,8 @@ func TestTrackingValuesAreRedacted(t *testing.T) {
 		app.SessionRecord{ID: id(11)}, app.StoredTransition{OperationID: id(12)}, app.SegmentRecord{OperationID: id(13)}, app.SessionChange{},
 	}
 	for _, v := range values {
-		var out bytes.Buffer
-		logger := slog.New(slog.NewJSONHandler(&out, nil))
-		logger.Info("value", "v", v)
 		raw, _ := json.Marshal(v)
-		for _, s := range []string{fmt.Sprintf("%v %+v %#v %s", v, v, v, v), string(raw), out.String()} {
+		for _, s := range []string{fmt.Sprintf("%v %+v %#v %s", v, v, v, v), string(raw), loggedValue(v)} {
 			for _, secret := range []string{"100000000", "500000000", id(11), id(12), id(13), id(21), "1389"} {
 				if strings.Contains(s, secret) {
 					t.Fatalf("%T leaked %q", v, secret)

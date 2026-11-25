@@ -1,12 +1,10 @@
 package application_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -416,10 +414,8 @@ func TestDistanceValuesAreRedacted(t *testing.T) {
 	values := []any{view, view.Odometer, view.GPS, *view.Odometer.Start, app.DistanceRequest{TripID: policyID(80), MembershipID: policyID(3)},
 		app.DistanceFacts{Trip: distanceTrip(trip.Completed, true), SessionID: policyID(90)}, *preciseSummary(158_300)}
 	for _, v := range values {
-		var out bytes.Buffer
-		slog.New(slog.NewJSONHandler(&out, nil)).Info("value", "v", v)
 		raw, _ := json.Marshal(v)
-		for _, s := range []string{fmt.Sprintf("%v %+v %#v %s", v, v, v, v), string(raw), out.String()} {
+		for _, s := range []string{fmt.Sprintf("%v %+v %#v %s", v, v, v, v), string(raw), loggedValue(v)} {
 			for _, secret := range []string{policyID(80), policyID(90), policyID(3), "158300", "186400", "184320000"} {
 				if strings.Contains(s, secret) {
 					t.Fatalf("%T leaked %q", v, secret)
