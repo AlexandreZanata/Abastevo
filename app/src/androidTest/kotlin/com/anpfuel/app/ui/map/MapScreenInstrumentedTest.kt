@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
@@ -31,6 +32,9 @@ import com.anpfuel.app.R
 import com.anpfuel.data.local.map.MapGenerationEntity
 import com.anpfuel.data.local.map.MapPackageEntity
 import com.anpfuel.data.map.MapPackageStore
+import kotlinx.coroutines.flow.flowOf
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -60,13 +64,14 @@ class MapScreenInstrumentedTest {
             )
         }
         compose.waitForIdle()
-        // Top ANP/Community selector.
-        compose.onNodeWithText("ANP", ignoreCase = true).assertIsDisplayed()
+        // The visible source chip expands the filter choices on demand.
+        compose.onNodeWithTag("map-controls-toggle").assertIsDisplayed().assert(hasText("ANP"))
+        compose.onNodeWithTag("map-source-anp").assertDoesNotExist()
         // Only the two compact bottom actions remain; search stays in the header.
         compose.onNodeWithTag("map-list-toggle").assertDoesNotExist()
         compose.onNodeWithTag("map-open-search").assertDoesNotExist()
         compose.onNodeWithTag("map-open-saved").assertDoesNotExist()
-        compose.onNodeWithText("Filters", ignoreCase = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-open-filters").assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).performTextInput("Station")
         compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).assertIsDisplayed()
@@ -90,9 +95,70 @@ class MapScreenInstrumentedTest {
             )
         }
         compose.waitForIdle()
-        vm.selectSource(MapPriceSource.COMMUNITY)
-        compose.waitForIdle()
-        compose.onNodeWithText("Community", ignoreCase = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-controls-toggle").performClick()
+        compose.onNodeWithTag("map-source-anp").assertIsSelected()
+        compose.onNodeWithTag("map-source-community").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("map-source-community").assertIsSelected()
+        compose.runOnIdle { assertEquals(MapPriceSource.COMMUNITY, vm.ui.value.source) }
+    }
+
+    @Test fun mobileDataPromptCanBeDismissedAndOnlyConfirmationOpensTheDownload() {
+        val selection = MapRegionSelection()
+        val vm = MapScreenViewModel(
+            emptyStore(),
+            regions = object : MapRegionServices {
+                override val downloadsConfigured = true
+                override suspend fun regionFor(latitude: Double, longitude: Double) = "Brazil_Mato Grosso"
+                override fun isDismissed(slug: String) = false
+                override fun dismiss(slug: String) = Unit
+                override fun select(slug: String?) = selection.select(slug)
+                override fun requestDownload(slug: String, allowMobileData: Boolean) =
+                    selection.requestDownload(slug, allowMobileData)
+                override fun observeUsesMobileData() = flowOf(true)
+                override fun canFetchManifestAutomatically() = false
+                override suspend fun regionDownloadBytes(slug: String): Long = error("Unexpected prefetch")
+                override suspend fun activeRegionSlug(): String? = null
+            },
+        )
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val title = context.getString(R.string.map_mobile_download_title)
+        val region = "brazil-mato-grosso"
+        var opened = 0
+        compose.setContent {
+            com.anpfuel.app.ui.theme.AnpFuelTheme {
+                MapScreen(
+                    guidance = testGuidance(),
+                    onOpenStation = { _, _ -> },
+                    onOpenDownloads = { opened++ },
+                    viewModel = vm,
+                    mapContent = { Box(Modifier.size(10.dp)) },
+                )
+            }
+        }
+        compose.runOnIdle { vm.onCityPoint(-12.545, -55.711) }
+
+        compose.onNodeWithText(title).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.map_mobile_download_message, "Mato Grosso"))
+            .assertIsDisplayed()
+        compose.onNode(
+            hasText(context.getString(R.string.map_mobile_download_dismiss)) and hasAnyAncestor(isDialog()),
+        ).performClick()
+        compose.onNodeWithText(title).assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals(0, opened)
+            assertNull(selection.consumeDownloadRequest(region))
+        }
+
+        compose.onNodeWithTag("map-region-suggestion-download").performClick()
+        compose.onNodeWithText(title).assertIsDisplayed()
+        compose.onNode(
+            hasText(context.getString(R.string.map_mobile_download_confirm)) and hasAnyAncestor(isDialog()),
+        ).performClick()
+        compose.onNodeWithText(title).assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals(1, opened)
+            assertEquals(MapRegionDownloadRequest(region, true), selection.consumeDownloadRequest(region))
+        }
     }
 
     @Test fun clickingSourceSelectorAndShowCommunityButtonReloadsChargingSheet() {
