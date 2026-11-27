@@ -189,6 +189,10 @@ For a segmented control pass `AbastevoSelectionDefaults.segmentedButtonColors()`
 Use one filled button per card or screen section for the main action;
 secondary actions are outlined or text buttons.
 
+Pair the map download dialog actions in one row. Split the available width
+evenly after horizontal margins and spacing. Use the taller label to size
+both buttons when text wraps.
+
 ## Bundled fonts
 
 - Need: user-requested Android typography matching the landing page; no

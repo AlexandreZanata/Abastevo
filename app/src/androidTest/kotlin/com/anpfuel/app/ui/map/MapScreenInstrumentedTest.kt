@@ -3,12 +3,15 @@ package com.anpfuel.app.ui.map
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.performSemanticsAction
@@ -17,6 +20,7 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -25,6 +29,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -35,6 +40,7 @@ import com.anpfuel.data.map.MapPackageStore
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -123,16 +129,20 @@ class MapScreenInstrumentedTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val title = context.getString(R.string.map_mobile_download_title)
         val region = "brazil-mato-grosso"
+        val fontScale = mutableFloatStateOf(1f)
         var opened = 0
         compose.setContent {
-            com.anpfuel.app.ui.theme.AnpFuelTheme {
-                MapScreen(
-                    guidance = testGuidance(),
-                    onOpenStation = { _, _ -> },
-                    onOpenDownloads = { opened++ },
-                    viewModel = vm,
-                    mapContent = { Box(Modifier.size(10.dp)) },
-                )
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, fontScale.floatValue)) {
+                com.anpfuel.app.ui.theme.AnpFuelTheme {
+                    MapScreen(
+                        guidance = testGuidance(),
+                        onOpenStation = { _, _ -> },
+                        onOpenDownloads = { opened++ },
+                        viewModel = vm,
+                        mapContent = { Box(Modifier.size(10.dp)) },
+                    )
+                }
             }
         }
         compose.runOnIdle { vm.onCityPoint(-12.545, -55.711) }
@@ -140,9 +150,30 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithText(title).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.map_mobile_download_message, "Mato Grosso"))
             .assertIsDisplayed()
-        compose.onNode(
-            hasText(context.getString(R.string.map_mobile_download_dismiss)) and hasAnyAncestor(isDialog()),
-        ).performClick()
+        val dialogAction = hasClickAction() and hasAnyAncestor(isDialog())
+        val dismiss = compose.onNode(hasText(context.getString(R.string.map_mobile_download_dismiss)) and dialogAction)
+        val confirm = compose.onNode(hasText(context.getString(R.string.map_mobile_download_confirm)) and dialogAction)
+        for (scale in listOf(1f, 2f)) {
+            compose.runOnIdle { fontScale.floatValue = scale }
+            val dismissBounds = dismiss.assertIsDisplayed().getUnclippedBoundsInRoot()
+            val confirmBounds = confirm.assertIsDisplayed().getUnclippedBoundsInRoot()
+            assertEquals(
+                "Action widths at font scale $scale",
+                (dismissBounds.right - dismissBounds.left).value,
+                (confirmBounds.right - confirmBounds.left).value,
+                1f,
+            )
+            assertEquals(
+                "Action heights at font scale $scale",
+                (dismissBounds.bottom - dismissBounds.top).value,
+                (confirmBounds.bottom - confirmBounds.top).value,
+                0.01f,
+            )
+            assertEquals("Action alignment at font scale $scale", dismissBounds.top, confirmBounds.top)
+            assertTrue("Action spacing at font scale $scale", dismissBounds.right < confirmBounds.left)
+        }
+        compose.runOnIdle { fontScale.floatValue = 1f }
+        dismiss.performClick()
         compose.onNodeWithText(title).assertDoesNotExist()
         compose.runOnIdle {
             assertEquals(0, opened)
@@ -151,9 +182,7 @@ class MapScreenInstrumentedTest {
 
         compose.onNodeWithTag("map-region-suggestion-download").performClick()
         compose.onNodeWithText(title).assertIsDisplayed()
-        compose.onNode(
-            hasText(context.getString(R.string.map_mobile_download_confirm)) and hasAnyAncestor(isDialog()),
-        ).performClick()
+        confirm.performClick()
         compose.onNodeWithText(title).assertDoesNotExist()
         compose.runOnIdle {
             assertEquals(1, opened)

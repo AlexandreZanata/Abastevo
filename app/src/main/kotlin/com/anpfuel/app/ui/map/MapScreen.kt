@@ -16,11 +16,16 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
@@ -43,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -52,6 +58,7 @@ import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.app.ui.designsystem.AbastevoButtonDefaults
 import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.theme.AbastevoSpacing
 import com.anpfuel.domain.map.saved.SavedTrip
 import com.anpfuel.domain.routing.NativeRouteRequest
 import com.anpfuel.domain.routing.RoadAvoidance
@@ -533,19 +540,27 @@ fun MapScreen(
                 title = { Text(stringResource(R.string.map_mobile_download_title)) },
                 text = { Text(stringResource(R.string.map_mobile_download_message, region.name)) },
                 confirmButton = {
-                    Button(onClick = {
-                        if (viewModel.confirmMobileDownload(region.slug)) onOpenDownloads()
-                    }) {
-                        Text(stringResource(R.string.map_mobile_download_confirm))
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = viewModel::dismissMobileDownloadPrompt,
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        border = AbastevoButtonDefaults.outlinedBorder(enabled = true),
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.sm),
                     ) {
-                        Text(stringResource(R.string.map_mobile_download_dismiss))
+                        TextButton(
+                            onClick = viewModel::dismissMobileDownloadPrompt,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border = AbastevoButtonDefaults.outlinedBorder(enabled = true),
+                        ) {
+                            Text(stringResource(R.string.map_mobile_download_dismiss), textAlign = TextAlign.Center)
+                        }
+                        Button(
+                            onClick = {
+                                if (viewModel.confirmMobileDownload(region.slug)) onOpenDownloads()
+                            },
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            contentPadding = ButtonDefaults.TextButtonContentPadding,
+                        ) {
+                            Text(stringResource(R.string.map_mobile_download_confirm), textAlign = TextAlign.Center)
+                        }
                     }
                 },
             )
