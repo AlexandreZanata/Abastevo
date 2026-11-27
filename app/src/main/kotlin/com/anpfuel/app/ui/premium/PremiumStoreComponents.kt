@@ -141,6 +141,11 @@ private fun PremiumPlansCard(
 private fun PremiumPlanRow(plan: StorePlan, enabled: Boolean, onSubscribe: () -> Unit) {
     val title = premiumPlanTitle(plan.billingPeriod)
     val price = premiumPlanPrice(plan.billingPeriod)
+    val renewalPrice = if (price.count == null) {
+        stringResource(price.res, plan.formattedPrice)
+    } else {
+        stringResource(price.res, plan.formattedPrice, price.count)
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -152,10 +157,10 @@ private fun PremiumPlanRow(plan: StorePlan, enabled: Boolean, onSubscribe: () ->
                 style = MaterialTheme.typography.titleSmall,
             )
             Text(
-                text = if (price.count == null) {
-                    stringResource(price.res, plan.formattedPrice)
+                text = if (plan.hasOneMonthFreeTrial) {
+                    stringResource(R.string.premium_store_trial_then, renewalPrice)
                 } else {
-                    stringResource(price.res, plan.formattedPrice, price.count)
+                    renewalPrice
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

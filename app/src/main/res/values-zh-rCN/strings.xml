@@ -1467,6 +1467,7 @@
     <string name="premium_store_section_title">订阅</string>
     <string name="premium_store_plans_loading">正在加载 Google Play 方案…</string>
     <string name="premium_store_plans_unavailable">无法加载 Google Play 方案。</string>
+    <string name="premium_store_trial_then">免费试用 1 个月，之后按%1$s自动续订</string>
     <string name="premium_store_subscribe">订阅</string>
     <string name="premium_store_billing_note">付款、续订和取消均由 Google Play 处理。</string>
     <string name="premium_plan_title_week">按周方案</string>

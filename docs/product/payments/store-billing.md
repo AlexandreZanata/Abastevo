@@ -138,3 +138,18 @@ provider or channel unavailable.
 notifications through an authenticated Pub/Sub push.
 `/v1/premium/app-store-notifications` receives App Store Server Notifications
 V2 (`{"signedPayload": "..."}`); the signature chain is the authentication.
+
+## Play free trial
+
+- **B-BR-STORE-12 — Play free trial.** For the `abastevo_premium` monthly
+  and yearly base plans, Android may show `mes-gratis` only when Play
+  returns the offer for the current Google account. It must contain a
+  single zero-price month followed by the paid recurring base-plan
+  period. Show the full localized renewal price and period before
+  purchase. Other offers and invalid trial terms fall back to the
+  ordinary base plan. The free app tier requires no subscription.
+- **BUC-STORE-06 — Start a Play trial.** An eligible first-time subscriber
+  sees one free month followed by the full recurring price, then opens the
+  Play checkout with that offer token. A subscriber without the trial
+  receives the ordinary paid offer. Server verification and renewal
+  handling follow the same rules for both.
