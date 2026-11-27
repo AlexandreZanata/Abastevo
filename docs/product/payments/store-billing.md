@@ -67,6 +67,13 @@ provider API details live in the
   credentials and catalog are configured. Without a configured offer for the
   app's store, the app shows the current status with no purchase button.
   Payment never changes trust, moderation or free participation.
+- **B-BR-STORE-11 — Play license test access.** In the `test` environment,
+  Google Play offers, verification and restore are limited to explicitly
+  listed Abastevo accounts. The backend uses the authenticated account ID.
+  An empty, unreadable or invalid list denies all Play offers and owner
+  purchase requests. Canonical verification still requires a Google Play
+  test purchase. Existing acknowledgements, notifications and reconciliation
+  continue when test access is removed.
 
 ## Use cases
 
@@ -84,6 +91,10 @@ provider API details live in the
 - **BUC-STORE-04 — Cross-platform.** A subscription bought on the web or on
   the other platform appears as an active source in the status. The app shows
   Premium as active without offering a second purchase.
+- **BUC-STORE-05 — Test Play on the public app.** A listed Abastevo test
+  account signs in and buys with a Google Play license tester and a test
+  payment method. An ordinary account sees no Play offer and a signed attempt
+  to verify or restore is denied before a purchase is recorded.
 
 ## API contract (v1)
 

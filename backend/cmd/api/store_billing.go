@@ -19,6 +19,7 @@ func storeChannels(cfg config.StoreBillingConfig) subscriptionadapters.StoreChan
 	if cfg.Play.Configured {
 		channels.Play = &subscriptionadapters.PlayChannel{
 			PackageName: cfg.Play.PackageName, ServiceAccountJSON: cfg.Play.ServiceAccountJSON, Products: cfg.Play.Products,
+			TestAccounts: cfg.Play.TestAccounts,
 		}
 	}
 	if cfg.AppStore.Configured {

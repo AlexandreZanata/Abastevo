@@ -59,6 +59,8 @@ type Service struct {
 	StoreName                string
 	Catalog                  []Product
 	ManagementURL            string
+	// PlayTestAccounts controls owner offers and admissions only.
+	PlayTestAccounts map[string]struct{}
 }
 
 // Product is one sellable store product and its plans, owned by the server
