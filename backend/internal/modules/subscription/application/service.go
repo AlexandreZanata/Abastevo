@@ -28,10 +28,18 @@ func (s *Service) Configured() bool {
 	return s != nil && s.Provider != nil && s.Tokens != nil && s.AccountBinding != nil && (s.Environment == "test" || s.Environment == "production") && s.PackageName != "" && domain.ValidProvider(s.store())
 }
 
+func (s *Service) allowsOwnerCommands(accountID string) bool {
+	if s.store() != domain.ProviderPlay || s.Environment != "test" {
+		return true
+	}
+	_, allowed := s.PlayTestAccounts[accountID]
+	return allowed
+}
+
 // Offer returns the sellable products and the owner's store binding, or
 // false when this store is not configured to sell (B-BR-STORE-10).
 func (s *Service) Offer(p Principal) (Offer, bool) {
-	if !s.Configured() || len(s.Catalog) == 0 || !domain.ValidID(p.AccountID) {
+	if !s.Configured() || len(s.Catalog) == 0 || !domain.ValidID(p.AccountID) || !s.allowsOwnerCommands(p.AccountID) {
 		return Offer{}, false
 	}
 	binding := s.AccountBinding(p.AccountID)
@@ -85,6 +93,9 @@ func (s *Service) Admit(ctx context.Context, p Principal, c Command) (Receipt, e
 	}
 	if !s.Configured() || s.Store == nil {
 		return Receipt{}, domain.ErrUnavailable
+	}
+	if !s.allowsOwnerCommands(p.AccountID) {
+		return Receipt{}, domain.ErrDenied
 	}
 	digest := domain.StoreTokenDigest(s.store(), s.Environment, s.PackageName, c.Token)
 	aad := s.Environment + "\x00" + s.PackageName + "\x00" + p.AccountID + "\x00" + digest

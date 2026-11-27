@@ -1475,6 +1475,7 @@
     <string name="premium_store_section_title">Оформить подписку</string>
     <string name="premium_store_plans_loading">Загрузка тарифов Google Play…</string>
     <string name="premium_store_plans_unavailable">Не удалось загрузить тарифы Google Play.</string>
+    <string name="premium_store_trial_then">1 месяц бесплатно, затем %1$s с автоматическим продлением</string>
     <string name="premium_store_subscribe">Оформить</string>
     <string name="premium_store_billing_note">Оплата, продление и отмена выполняются через Google Play.</string>
     <string name="premium_plan_title_week">Недельный тариф</string>

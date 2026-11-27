@@ -1472,6 +1472,7 @@
     <string name="premium_store_section_title">登録</string>
     <string name="premium_store_plans_loading">Google Playのプランを読み込んでいます…</string>
     <string name="premium_store_plans_unavailable">Google Playのプランを読み込めませんでした。</string>
+    <string name="premium_store_trial_then">1か月無料。その後は%1$sで自動更新</string>
     <string name="premium_store_subscribe">登録する</string>
     <string name="premium_store_billing_note">支払い、更新、解約はGoogle Playで行われます。</string>
     <string name="premium_plan_title_week">週間プラン</string>

@@ -183,6 +183,8 @@ data class StorePricePhase(
     val formattedPrice: String,
     val billingPeriod: String,
     val infiniteRecurring: Boolean,
+    val priceAmountMicros: Long? = null,
+    val billingCycleCount: Int? = null,
 )
 
 /** One subscription offer the store lists for this user; [offerId] is null for the base plan offer. */
@@ -205,12 +207,14 @@ data class StorePlan(
     val offerToken: String,
     val formattedPrice: String,
     val billingPeriod: StoreBillingPeriod?,
+    val hasOneMonthFreeTrial: Boolean = false,
 )
 
 /**
  * Plans the app may sell: the server catalog decides which base plans exist
- * and their order; the store decides the localized price. Developer offers
- * (trials, introductory prices) and prepaid plans are not presented.
+ * and their order. Play supplies the localized renewal price and the
+ * available one-month trial. Other developer offers and prepaid plans are
+ * not presented.
  */
 fun selectStorePlans(offer: StoreOffer, catalog: List<StoreProductDetails>): List<StorePlan> {
     val plans = mutableListOf<StorePlan>()
@@ -220,16 +224,43 @@ fun selectStorePlans(offer: StoreOffer, catalog: List<StoreProductDetails>): Lis
             val base = details.offers.firstOrNull { it.basePlanId == planId && it.offerId == null } ?: continue
             val recurring = base.phases.lastOrNull { it.infiniteRecurring } ?: continue
             if (base.offerToken.isBlank() || recurring.formattedPrice.isBlank()) continue
+            val trial = if (offer.provider == StoreProvider.PLAY) {
+                details.oneMonthTrial(planId, recurring.billingPeriod)
+            } else {
+                null
+            }
+            val renewal = trial?.phases?.last() ?: recurring
             plans += StorePlan(
                 productId = product.productId,
                 basePlanId = planId,
-                offerToken = base.offerToken,
-                formattedPrice = recurring.formattedPrice,
-                billingPeriod = StoreBillingPeriod.parse(recurring.billingPeriod),
+                offerToken = trial?.offerToken ?: base.offerToken,
+                formattedPrice = renewal.formattedPrice,
+                billingPeriod = StoreBillingPeriod.parse(renewal.billingPeriod),
+                hasOneMonthFreeTrial = trial != null,
             )
         }
     }
     return plans
+}
+
+/** Checks the exact campaign terms before presenting the trial (B-BR-STORE-12). */
+private fun StoreProductDetails.oneMonthTrial(planId: String, billingPeriod: String): StoreSubscriptionOffer? {
+    if (productId != "abastevo_premium") return null
+    val expectedPeriod = when (planId) {
+        "monthly" -> "P1M"
+        "yearly" -> "P1Y"
+        else -> return null
+    }
+    if (billingPeriod != expectedPeriod) return null
+
+    val offer = offers.singleOrNull { it.basePlanId == planId && it.offerId == "mes-gratis" } ?: return null
+    if (offer.offerToken.isBlank() || offer.phases.size != 2) return null
+    val (intro, renewal) = offer.phases
+    val singleFreeMonth = intro.priceAmountMicros == 0L && intro.billingPeriod == "P1M" &&
+        !intro.infiniteRecurring && (intro.billingCycleCount == 0 || intro.billingCycleCount == 1)
+    val paidRenewal = renewal.infiniteRecurring && renewal.billingPeriod == billingPeriod &&
+        (renewal.priceAmountMicros ?: 0) > 0 && renewal.formattedPrice.isNotBlank()
+    return offer.takeIf { singleFreeMonth && paidRenewal }
 }
 
 enum class StorePurchaseState { PURCHASED, PENDING, UNSPECIFIED }

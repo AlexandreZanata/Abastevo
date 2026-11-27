@@ -396,7 +396,8 @@ func TestAdmissionRechecksRevocationAfterProviderHTTP(t *testing.T) {
 	p := seedOwner(t, pool)
 	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
 	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
-	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding,
+		PlayTestAccounts: map[string]struct{}{p.AccountID: {}}}
 	called := false
 	svc.Provider = verifyFunc(func(ctx context.Context, r app.ProviderRequest) (app.ProviderPurchase, error) {
 		called = true
@@ -424,7 +425,8 @@ func TestAdmissionExactReplayAndDeniedProofRecovery(t *testing.T) {
 	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
 	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
 	count := 0
-	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding,
+		PlayTestAccounts: map[string]struct{}{p.AccountID: {}}}
 	svc.Provider = verifyFunc(func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
 		count++
 		return app.ProviderPurchase{Snapshot: verified().Snapshot}, nil
@@ -472,11 +474,13 @@ func TestAcknowledgementLostResponseRecoversDurableJob(t *testing.T) {
 	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
 	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
 	provider := &ackProvider{}
-	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Provider: provider, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Provider: provider, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding,
+		PlayTestAccounts: map[string]struct{}{owner.AccountID: {}}}
 	_, err := svc.Admit(context.Background(), owner, app.Command{OperationID: newid(t), Token: "synthetic-ack", Kind: "verify"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	svc.PlayTestAccounts = nil // Removing test access keeps the acknowledgement job runnable.
 	dispatcher := jobs.Dispatcher{Queue: jobs.NewQueue(pool), WorkerID: "premium-test", Handlers: map[string]jobs.Handler{"subscription-acknowledge": subjobs.Handler{Name: "subscription-acknowledge", Run: svc.Acknowledge}}}
 	if found, err := dispatcher.RunOnce(context.Background()); err != nil || !found {
 		t.Fatal("first lost reply", err)
@@ -581,7 +585,8 @@ func TestReplacementReconciliationAndCanonicalRevocation(t *testing.T) {
 	store := NewStore(pool)
 	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
 	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
-	svc := &app.Service{Store: store, Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	svc := &app.Service{Store: store, Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding,
+		PlayTestAccounts: map[string]struct{}{owner.AccountID: {}}}
 	pending := true
 	gone := false
 	svc.Provider = verifyFunc(func(_ context.Context, r app.ProviderRequest) (app.ProviderPurchase, error) {
@@ -624,6 +629,7 @@ func TestReplacementReconciliationAndCanonicalRevocation(t *testing.T) {
 	if _, err = svc.Admit(ctx, owner, app.Command{OperationID: newid(t), Token: "old-chain-token", Kind: "restore"}); !errors.Is(err, domain.ErrDenied) {
 		t.Fatal("retired predecessor restored", err)
 	}
+	svc.PlayTestAccounts = nil // Revocation still refreshes a bound purchase.
 	late, err := store.Begin(ctx, attempt(t, owner, "new-chain-token"))
 	if err != nil {
 		t.Fatal(err)
@@ -659,11 +665,12 @@ func TestProviderRefreshOutageCannotRefreshRights(t *testing.T) {
 	store := NewStore(pool)
 	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
 	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
-	svc := &app.Service{Store: store, Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding, Provider: verifyFunc(func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
-		v := verified().Snapshot
-		v.Acknowledged = true
-		return app.ProviderPurchase{Snapshot: v}, nil
-	})}
+	svc := &app.Service{Store: store, Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding,
+		PlayTestAccounts: map[string]struct{}{owner.AccountID: {}}, Provider: verifyFunc(func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
+			v := verified().Snapshot
+			v.Acknowledged = true
+			return app.ProviderPurchase{Snapshot: v}, nil
+		})}
 	ctx := context.Background()
 	if _, err := svc.Admit(ctx, owner, app.Command{OperationID: newid(t), Token: "outage-token", Kind: "verify"}); err != nil {
 		t.Fatal(err)
@@ -744,10 +751,12 @@ func TestRestorePurchaseSameOwnerNeverTransfersOrRecoversSession(t *testing.T) {
 	pool := freshDB(t)
 	p := seedOwner(t, pool)
 	foreign := seedOwner(t, pool)
+	unlisted := seedOwner(t, pool)
 	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
 	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
 	lookups := 0
-	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding,
+		PlayTestAccounts: map[string]struct{}{p.AccountID: {}, foreign.AccountID: {}}}
 	svc.Provider = verifyFunc(func(_ context.Context, r app.ProviderRequest) (app.ProviderPurchase, error) {
 		lookups++
 		if r.ExpectedAccount != binding(p.AccountID) {
@@ -756,6 +765,15 @@ func TestRestorePurchaseSameOwnerNeverTransfersOrRecoversSession(t *testing.T) {
 		return app.ProviderPurchase{Snapshot: verified().Snapshot}, nil
 	})
 	ctx := context.Background()
+	for _, kind := range []string{"verify", "restore"} {
+		if _, err := svc.Admit(ctx, unlisted, app.Command{OperationID: newid(t), Token: "unlisted-purchase", Kind: kind}); !errors.Is(err, domain.ErrDenied) {
+			t.Fatalf("unlisted %s: %v", kind, err)
+		}
+	}
+	var operations int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM subscription_operations WHERE account_id=$1", unlisted.AccountID).Scan(&operations); err != nil || operations != 0 || lookups != 0 {
+		t.Fatalf("unlisted commands wrote %d operation rows and made %d provider calls: %v", operations, lookups, err)
+	}
 	verify := app.Command{OperationID: newid(t), Token: "synthetic-restore-purchase", Kind: "verify"}
 	if _, err := svc.Admit(ctx, p, verify); err != nil {
 		t.Fatal(err)

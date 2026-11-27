@@ -167,6 +167,7 @@ class StoreBillingTest {
 
         assertEquals(listOf("monthly", "yearly"), plans.map { it.basePlanId })
         assertEquals(listOf("tok-m", "tok-y"), plans.map { it.offerToken })
+        assertTrue(plans.none { it.hasOneMonthFreeTrial })
         assertEquals("R$ 9,90", plans[0].formattedPrice)
         assertEquals(StoreBillingPeriod(StoreBillingPeriod.PeriodUnit.YEAR, 1), plans[1].billingPeriod)
         assertTrue(plans.all { it.productId == "abastevo_premium" })
@@ -177,6 +178,73 @@ class StoreBillingTest {
         val duplicated = listOf(StoreProductDetails("abastevo_premium", listOf(monthlyBase, monthlyBase.copy(offerToken = "tok-2"))))
         assertEquals(listOf("tok-m"), selectStorePlans(play, duplicated).map { it.offerToken })
     }
+
+    @Test
+    fun `eligible monthly and yearly plans use the one-month trial and disclose the renewal price`() {
+        val monthly = recurringOffer("monthly", "P1M", "R$ 10,00", 10_000_000)
+        val yearly = recurringOffer("yearly", "P1Y", "R$ 120,00", 120_000_000)
+        val yearlyTrial = trialOffer(recurringOffer("yearly", "P1Y", "R$ 100,00", 100_000_000))
+        val (free, renewal) = yearlyTrial.phases
+
+        val plans = selectStorePlans(play, listOf(StoreProductDetails("abastevo_premium", listOf(
+            yearly, yearlyTrial.copy(phases = listOf(free.copy(billingCycleCount = 0), renewal)),
+            monthly, trialOffer(monthly),
+        ))))
+
+        assertEquals(listOf("trial-monthly", "trial-yearly"), plans.map { it.offerToken })
+        assertTrue(plans.all { it.hasOneMonthFreeTrial })
+        assertEquals(listOf("R$ 10,00", "R$ 100,00"), plans.map { it.formattedPrice })
+        assertEquals(listOf(StoreBillingPeriod.parse("P1M"), StoreBillingPeriod.parse("P1Y")), plans.map { it.billingPeriod })
+    }
+
+    @Test
+    fun `missing unexpected or malformed trial offers fall back to the regular plan`() {
+        val monthly = recurringOffer("monthly", "P1M", "R$ 10,00", 10_000_000)
+        val trial = trialOffer(monthly)
+        val (free, renewal) = trial.phases
+        val invalid = listOf(
+            trial.copy(basePlanId = "unlisted"),
+            trial.copy(offerId = "other-trial"),
+            trial.copy(offerToken = ""),
+            trial.copy(phases = listOf(free.copy(priceAmountMicros = null), renewal)),
+            trial.copy(phases = listOf(free.copy(priceAmountMicros = 1), renewal)),
+            trial.copy(phases = listOf(free.copy(billingPeriod = "P1W"), renewal)),
+            trial.copy(phases = listOf(free.copy(billingCycleCount = 2), renewal)),
+            trial.copy(phases = listOf(free.copy(infiniteRecurring = true), renewal)),
+            trial.copy(phases = listOf(free, renewal.copy(priceAmountMicros = 0))),
+            trial.copy(phases = listOf(free, renewal.copy(billingPeriod = "P1Y"))),
+            trial.copy(phases = listOf(free, renewal.copy(infiniteRecurring = false))),
+            trial.copy(phases = listOf(free, free, renewal)),
+            trial.copy(phases = listOf(renewal, free)),
+        )
+
+        val fallbackCatalogs = listOf(listOf(monthly), listOf(monthly, trial, trial)) +
+            invalid.map { listOf(monthly, it) }
+        for (offers in fallbackCatalogs) {
+            val plan = selectStorePlans(play, listOf(StoreProductDetails("abastevo_premium", offers))).single()
+            assertEquals(monthly.offerToken, plan.offerToken)
+            assertFalse(plan.hasOneMonthFreeTrial)
+            assertEquals("R$ 10,00", plan.formattedPrice)
+        }
+    }
+
+    private fun recurringOffer(
+        planId: String,
+        period: String,
+        price: String,
+        micros: Long,
+    ): StoreSubscriptionOffer = StoreSubscriptionOffer(
+        basePlanId = planId,
+        offerId = null,
+        offerToken = "base-$planId",
+        phases = listOf(StorePricePhase(price, period, true, micros, 0)),
+    )
+
+    private fun trialOffer(base: StoreSubscriptionOffer): StoreSubscriptionOffer = base.copy(
+        offerId = "mes-gratis",
+        offerToken = "trial-${base.basePlanId}",
+        phases = listOf(StorePricePhase("Grátis", "P1M", false, 0, 1)) + base.phases,
+    )
 
     @Test
     fun `purchase tokens are validated and never printed`() {

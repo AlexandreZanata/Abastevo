@@ -20,6 +20,7 @@ const (
 	keyPlayPackageName        = "ANPFUEL_PLAY_PACKAGE_NAME"
 	keyPlayServiceAccountFile = "ANPFUEL_PLAY_SERVICE_ACCOUNT_FILE"
 	keyPlayProducts           = "ANPFUEL_PLAY_PRODUCTS"
+	keyPlayTestAccountsFile   = "ANPFUEL_PLAY_TEST_ACCOUNTS_FILE"
 	keyPlayPushSubscription   = "ANPFUEL_PLAY_PUSH_SUBSCRIPTION"
 	keyPlayPushAudience       = "ANPFUEL_PLAY_PUSH_AUDIENCE"
 	keyPlayPushServiceAccount = "ANPFUEL_PLAY_PUSH_SERVICE_ACCOUNT"
@@ -41,6 +42,7 @@ type PlayStoreConfig struct {
 	ServiceAccountJSON []byte
 	// Products maps a subscription product ID to its sellable base plans.
 	Products           map[string][]string
+	TestAccounts       map[string]struct{}
 	PushSubscription   string
 	PushAudience       string
 	PushServiceAccount string
@@ -127,6 +129,14 @@ func loadStoreBilling(getenv func(string) (string, bool)) StoreBillingConfig {
 			cfg.Play.ServiceAccountJSON = raw
 		}
 		cfg.Play.Configured = ok
+		if cfg.Environment == "test" {
+			if raw, err := readSecretFile(text(keyPlayTestAccountsFile)); err == nil {
+				cfg.Play.TestAccounts = parsePlayTestAccounts(raw)
+			}
+			if len(cfg.Play.TestAccounts) == 0 {
+				issue(keyPlayTestAccountsFile + " must name a readable list of lowercase account UUIDs to allow Play test purchases")
+			}
+		}
 		cfg.Play.PushSubscription = text(keyPlayPushSubscription)
 		cfg.Play.PushAudience = text(keyPlayPushAudience)
 		cfg.Play.PushServiceAccount = text(keyPlayPushServiceAccount)
@@ -211,6 +221,24 @@ func parsePlayProducts(raw string) map[string][]string {
 		}
 	}
 	return products
+}
+
+func parsePlayTestAccounts(raw []byte) map[string]struct{} {
+	if len(raw) == 0 || len(raw) > 16<<10 {
+		return nil
+	}
+	accounts := make(map[string]struct{})
+	for _, line := range strings.Split(string(raw), "\n") {
+		account := strings.TrimSpace(line)
+		if account == "" {
+			continue
+		}
+		if !validPaymentUUID(account) || account != strings.ToLower(account) {
+			return nil
+		}
+		accounts[account] = struct{}{}
+	}
+	return accounts
 }
 
 func (s StoreBillingConfig) logValue() slog.Value {

@@ -67,6 +67,55 @@ func TestStoreBillingCompleteConfiguration(t *testing.T) {
 	}
 }
 
+func TestPlayLicenseTestAccountFileFailClosed(t *testing.T) {
+	const first = "77777777-7777-4777-8777-777777777777"
+	const second = "abcdefab-cdef-4abc-8def-abcdefabcdef"
+	for _, tc := range []struct {
+		name    string
+		path    string
+		content string
+		valid   bool
+	}{
+		{name: "unset"},
+		{name: "unreadable", path: "/run/secrets/missing"},
+		{name: "empty", path: "/run/secrets/testers", content: " \r\n"},
+		{name: "mixed valid and malformed", path: "/run/secrets/testers", content: first + "\ninvalid\n"},
+		{name: "noncanonical UUID", path: "/run/secrets/testers", content: strings.ToUpper(second)},
+		{name: "oversized", path: "/run/secrets/testers", content: strings.Repeat("\n", 16<<10) + first},
+		{name: "valid", path: "/run/secrets/testers", content: first + "\r\n\n" + second + "\r\n", valid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			withSecretFiles(t, map[string]string{"/run/secrets/play.json": `{}`, "/run/secrets/appstore.p8": "key", "/run/secrets/testers": tc.content})
+			values := completeStoreEnv()
+			values[keyStoreEnvironment] = "test"
+			values[keyPlayTestAccountsFile] = tc.path
+			cfg := loadStoreBilling(storeEnv(values))
+			if !cfg.Play.Configured || !cfg.Play.PushConfigured || !cfg.AppStore.Configured {
+				t.Fatal("test account file affected provider maintenance or App Store")
+			}
+			if tc.valid {
+				_, haveFirst := cfg.Play.TestAccounts[first]
+				_, haveSecond := cfg.Play.TestAccounts[second]
+				if !haveFirst || !haveSecond || len(cfg.Play.TestAccounts) != 2 || len(cfg.Issues) != 0 {
+					t.Fatal("valid test accounts were not configured")
+				}
+			} else if len(cfg.Play.TestAccounts) != 0 || len(cfg.Issues) != 1 {
+				t.Fatal("invalid account file must deny all test offers and record one issue")
+			}
+			logged := cfg.logValue().String() + strings.Join(cfg.Issues, "\n")
+			if strings.Contains(logged, first) || strings.Contains(logged, second) {
+				t.Fatal("account IDs appeared in log output")
+			}
+		})
+	}
+	withSecretFiles(t, map[string]string{"/run/secrets/play.json": `{}`, "/run/secrets/appstore.p8": "key"})
+	values := completeStoreEnv()
+	values[keyPlayTestAccountsFile] = "/run/secrets/missing"
+	if cfg := loadStoreBilling(storeEnv(values)); !cfg.Play.Configured || len(cfg.Play.TestAccounts) != 0 || len(cfg.Issues) != 0 {
+		t.Fatal("production must ignore the test file")
+	}
+}
+
 func TestStoreBillingPartialConfigurationStaysOff(t *testing.T) {
 	withSecretFiles(t, map[string]string{"/run/secrets/play.json": `{}`, "/run/secrets/appstore.p8": "key"})
 	cases := map[string]func(map[string]string){

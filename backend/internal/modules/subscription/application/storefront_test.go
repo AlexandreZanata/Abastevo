@@ -73,7 +73,8 @@ func storefrontFixture(now time.Time) (Storefront, *memoryStore, *countingVerifi
 	appleVerifier := &countingVerifier{provider: domain.ProviderAppStore, now: now}
 	playService := &Service{Store: store, Provider: playVerifier, Tokens: identityCodec{}, Clock: clock, Environment: "test", PackageName: "com.anpfuel.app",
 		AccountBinding: func(string) string { return "hex-binding" }, StoreName: domain.ProviderPlay,
-		Catalog: []Product{{ProductID: "abastevo_premium", PlanIDs: []string{"monthly"}}}, ManagementURL: "https://play.google.com/store/account/subscriptions?package=com.anpfuel.app"}
+		Catalog: []Product{{ProductID: "abastevo_premium", PlanIDs: []string{"monthly"}}}, ManagementURL: "https://play.google.com/store/account/subscriptions?package=com.anpfuel.app",
+		PlayTestAccounts: map[string]struct{}{owner.AccountID: {}}}
 	appleService := &Service{Store: store, Provider: appleVerifier, Tokens: identityCodec{}, Clock: clock, Environment: "test", PackageName: "com.anpfuel.app",
 		AccountBinding: func(string) string { return "6f1c2b8e-6d2a-8c3e-9a41-2b7d5e0c1f34" }, StoreName: domain.ProviderAppStore,
 		Catalog: []Product{{ProductID: "com.anpfuel.app.premium.monthly"}}, ManagementURL: "https://apps.apple.com/account/subscriptions"}
@@ -120,6 +121,61 @@ func TestStorefrontOffersOnlyConfiguredStores(t *testing.T) {
 	}
 	if offers = front.Offers(Principal{AccountID: "bad"}); len(offers) != 0 {
 		t.Fatal("offers for an invalid account")
+	}
+}
+
+func TestPlayLicenseTestOffersAndOwnerCommandsAreRestricted(t *testing.T) {
+	ordinary := owner
+	ordinary.AccountID = "77777777-7777-4777-8777-777777777777"
+	for _, tc := range []struct {
+		name        string
+		environment string
+		principal   Principal
+		clearList   bool
+		allowed     bool
+	}{
+		{name: "listed tester", environment: "test", principal: owner, allowed: true},
+		{name: "ordinary account", environment: "test", principal: ordinary},
+		{name: "empty list", environment: "test", principal: owner, clearList: true},
+		{name: "production", environment: "production", principal: ordinary, clearList: true, allowed: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			front, store, play, apple := storefrontFixture(time.Now())
+			front.Services[0].Environment = tc.environment
+			if tc.clearList {
+				front.Services[0].PlayTestAccounts = nil
+			}
+			providers := []string{}
+			for _, offer := range front.Offers(tc.principal) {
+				providers = append(providers, offer.Provider)
+			}
+			if tc.allowed {
+				if len(providers) != 2 || providers[0] != domain.ProviderPlay || providers[1] != domain.ProviderAppStore {
+					t.Errorf("expected Play and App Store offers, got %v", providers)
+				}
+			} else if len(providers) != 1 || providers[0] != domain.ProviderAppStore {
+				t.Errorf("expected only App Store offer, got %v", providers)
+			}
+			for _, command := range []Command{
+				{OperationID: "55555555-5555-4555-8555-555555555551", Token: "purchase-token", Kind: "verify", Provider: domain.ProviderPlay},
+				{OperationID: "55555555-5555-4555-8555-555555555552", Token: "purchase-token", Kind: "restore"},
+			} {
+				_, err := front.Admit(context.Background(), tc.principal, command)
+				if tc.allowed && err != nil {
+					t.Errorf("%s for an allowed account: %v", command.Kind, err)
+				}
+				if !tc.allowed && !errors.Is(err, domain.ErrDenied) {
+					t.Errorf("%s for an unlisted account: %v", command.Kind, err)
+				}
+			}
+			wantCalls := 0
+			if tc.allowed {
+				wantCalls = 2
+			}
+			if len(store.begun) != wantCalls || len(store.committed) != wantCalls || play.calls != wantCalls || apple.calls != 0 {
+				t.Fatalf("Play attempts=%d commits=%d lookups=%d, App Store lookups=%d", len(store.begun), len(store.committed), play.calls, apple.calls)
+			}
+		})
 	}
 }
 

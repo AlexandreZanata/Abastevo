@@ -22,6 +22,7 @@ type PlayChannel struct {
 	PackageName        string
 	ServiceAccountJSON []byte
 	Products           map[string][]string
+	TestAccounts       map[string]struct{}
 }
 
 // AppStoreChannel is a complete App Store configuration.
@@ -82,6 +83,7 @@ func NewStorefront(store *Store, channels StoreChannels, clock func() time.Time)
 		default:
 			playService.Provider, playService.Tokens, playService.AccountBinding = client, tokens, binding
 			playService.Catalog = playCatalog(channels.Play.Products)
+			playService.PlayTestAccounts = channels.Play.TestAccounts
 		}
 	}
 
