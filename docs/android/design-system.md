@@ -5,7 +5,8 @@ Scope: Compose UI in `app/src/main/kotlin/com/anpfuel/app`. The identity is
 status bar band and bottom bar are one solid black chrome in both themes,
 over warm off-white screens where every container is white (light) or
 near-black screens with graphite cards (dark), with a single green accent.
-The light theme is the default; Perfil switches to dark for the session. Fuel icons, prices
+The light theme is the default; the system night-mode setting does not select
+the app theme. Perfil switches to dark for the session. Fuel icons, prices
 and the map are the only colorful content. Typography is shared with the
 landing page (`landing/static/assets/styles.css`). Containers keep the rules
 in [UI_CONTAINER_GUIDELINES](ui-containers.md).
