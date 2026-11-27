@@ -7,6 +7,7 @@ Base: `8a4503c`; isolated worktree because maintained dev contains another agent
 
 - B-BR-NAV-01: Every bottom-bar tap opens the selected tab's base destination: Explore → Home, Community → Community, Profile → Profile. A previously visited child must not be restored by that action.
 - B-BR-NAV-02: Repeated taps at a base destination do not add duplicate entries. Existing screen Back actions and persisted application data retain their contracts.
+- B-BR-NAV-03: When the selected base already exists in the back stack, pop to that entry instead of creating a replacement. Its ViewModel and saved UI state survive tab switches, while child destinations above it are discarded.
 - BUC-NAV-01: Given Home → Select location (including deeper search/location paths), tapping Explore returns to Home.
 - BUC-NAV-02: Given Community → Contributions or Profile → Settings → Help, tapping the corresponding tab returns to its base.
 - BUC-NAV-03: Given another tab was left on a child screen, switching back opens its base. Repeated taps and subsequent Back do not reveal that discarded child.
