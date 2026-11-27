@@ -29,7 +29,8 @@ const (
 	keyAppStorePrivateKeyFile = "ANPFUEL_APPSTORE_PRIVATE_KEY_FILE"
 	keyAppStoreProducts       = "ANPFUEL_APPSTORE_PRODUCTS"
 	keyAppStoreSandbox        = "ANPFUEL_APPSTORE_SANDBOX_FALLBACK"
-	defaultStoreAppID         = "com.anpfuel.app"
+	defaultPlayPackageName    = "com.abastevo"
+	defaultAppStoreBundleID   = "com.anpfuel.app"
 )
 
 // readSecretFile is replaced in tests.
@@ -70,8 +71,8 @@ type StoreBillingConfig struct {
 
 func loadStoreBilling(getenv func(string) (string, bool)) StoreBillingConfig {
 	cfg := StoreBillingConfig{
-		Play:     PlayStoreConfig{PackageName: defaultStoreAppID},
-		AppStore: AppStoreConfig{BundleID: defaultStoreAppID},
+		Play:     PlayStoreConfig{PackageName: defaultPlayPackageName},
+		AppStore: AppStoreConfig{BundleID: defaultAppStoreBundleID},
 	}
 	text := func(key string) string {
 		raw, _ := getenv(key)

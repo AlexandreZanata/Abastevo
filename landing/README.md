@@ -36,7 +36,7 @@ npm test
 
 `build.mjs` options: `--origin <https-origin>` (default
 `https://abastevo.com.br`), `--store-state prelaunch|published`, `--store-url
-<Play URL>` (required when published; must be the `com.anpfuel` listing),
+<Play URL>` (required when published; must be the `com.abastevo` listing),
 `--out-dir <dir>`, `--api-origin <https-origin>` (or `ABASTEVO_API_ORIGIN`;
 empty keeps the contributors list disabled). `check.mjs` accepts `--origin`
 and `--dist-dir`. `make quick-verify` runs all four npm steps when `landing/`

@@ -39,7 +39,7 @@ test('store state: default build stays prelaunch until a verified listing exists
 
 test('store state: published with valid URL renders verified Play Store link', () => {
   const tmpOut = path.join(root, '.test-dist-store-published-' + Date.now());
-  const validUrl = 'https://play.google.com/store/apps/details?id=com.anpfuel';
+  const validUrl = 'https://play.google.com/store/apps/details?id=com.abastevo';
   try {
     build({
       projectRoot: root,
@@ -49,7 +49,7 @@ test('store state: published with valid URL renders verified Play Store link', (
     });
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
-    assert.match(indexHtml, /<a href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.anpfuel"[^>]*target="_blank"[^>]*rel="noopener"/);
+    assert.match(indexHtml, /<a href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.abastevo"[^>]*target="_blank"[^>]*rel="noopener"/);
     assert.match(indexHtml, /Ver na Google Play<\/strong>/);
     assert.doesNotMatch(indexHtml, /Em breve no Google Play/);
     const hubHtml = fs.readFileSync(path.join(tmpOut, 'como-usar', 'index.html'), 'utf8');
@@ -69,19 +69,19 @@ test('store state: invalid store URL or package rejected', () => {
 
   // 2. Insecure HTTP URL
   assert.throws(
-    () => validateStoreState('published', 'http://play.google.com/store/apps/details?id=com.anpfuel'),
+    () => validateStoreState('published', 'http://play.google.com/store/apps/details?id=com.abastevo'),
     /Invalid store URL for published state/
   );
 
   // 3. Wrong package name
   assert.throws(
     () => validateStoreState('published', 'https://play.google.com/store/apps/details?id=com.otherapp'),
-    /Invalid store URL for published state: expected verified Google Play URL with package com.anpfuel/
+    /Invalid store URL for published state: expected verified Google Play URL with package com.abastevo/
   );
 
   // 4. Non-Play-Store domain
   assert.throws(
-    () => validateStoreState('published', 'https://malicious.com/store/apps/details?id=com.anpfuel'),
+    () => validateStoreState('published', 'https://malicious.com/store/apps/details?id=com.abastevo'),
     /Invalid store URL for published state/
   );
 

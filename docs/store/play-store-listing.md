@@ -12,7 +12,7 @@ state that they do not represent a government body. Keep both when editing.
 | Field | Value |
 |-------|-------|
 | **App name** | Abastevo |
-| **Package name** | `com.anpfuel.app` (permanent after the first upload) |
+| **Package name** | `com.abastevo` (Google Play production package; `com.anpfuel.app` stays for GitHub APK staging) |
 | **Default language** | Português (Brasil) — `pt-BR`; translation: English (United States) |
 | **Category** | Auto & Vehicles (to confirm) |
 | **Website** | https://abastevo.com.br |

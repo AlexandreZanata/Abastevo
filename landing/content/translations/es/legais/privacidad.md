@@ -11,7 +11,7 @@ reviewedBy: AI review (Codex)
 reviewedAt: 2026-11-22
 ---
 
-**Versión 1.0 · Actualizada el 5 de noviembre de 2026 · Aplicación Android:** `com.anpfuel.app`.
+**Versión 1.0 · Actualizada el 5 de noviembre de 2026 · Aplicación Android:** `com.abastevo` (Play Store) / `com.anpfuel.app` (GitHub).
 
 Esta política explica qué datos se usan en el sitio y la aplicación, cuáles permanecen en tu dispositivo, cuándo se envía información al servicio y cómo ejercer tus derechos.
 

@@ -89,3 +89,24 @@ python3 -m unittest discover -s scripts/android -p 'test_*.py'
 The old Gate 15/v2.0.0 publication instructions are historical; they do not govern
 this channel. Current acceptance
 records actual local/remote evidence and any outstanding delivery obligations.
+
+## Google Play autodeploy (`com.abastevo`)
+
+The separate main-only `android-play-deploy` workflow (`.github/workflows/android-play-deploy.yml`)
+publishes signed Android App Bundles (`.aab`) for the live Google Play listing
+`com.abastevo` without altering the GitHub staging APK channel (`com.anpfuel.app`).
+
+- **Distribution switch:** pass `-PandroidDistribution=play` (or `ANPFUEL_ANDROID_DISTRIBUTION=play`)
+  to build with `applicationId = "com.abastevo"` while preserving Kotlin/Java `namespace` and modules.
+- **Versioning:** `release/android/play-channel.json` shares the `main` epoch and monotonic
+  `versionCode` progression with `release/android/channel.json`.
+- **Environment:** `android-play-release` (main-only branch policy), requiring secrets:
+  - `PLAY_UPLOAD_KEYSTORE_BASE64`
+  - `PLAY_UPLOAD_KEYSTORE_PASSWORD`
+  - `PLAY_UPLOAD_KEY_ALIAS`
+  - `PLAY_UPLOAD_KEY_PASSWORD`
+  - `PLAY_SERVICE_ACCOUNT_JSON`
+- **Verification & upload:** `scripts/android/play_bundle.py` verifies `jarsigner` signature,
+  `com.abastevo` manifest identity, native map engine ABIs, bundled licenses, and hygiene before
+  uploading `app-release.aab` + `mapping.txt` to Google Play (`production` on `main`, or selectable
+  track via `scripts/publish-play-release.sh --publish --track <track>`).

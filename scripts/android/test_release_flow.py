@@ -63,3 +63,13 @@ class FinalGateRecheck(unittest.TestCase):
   pages=[{'workflow_runs':[{'id':i} for i in range(100)]},{'workflow_runs':[{'id':100}]}]
   with patch.object(f,'gh',side_effect=pages) as call:
    self.assertEqual(len(f.workflow_runs(B)),101);self.assertEqual(call.call_count,2)
+
+ def test_play_channel_config_maps_com_abastevo_with_monotonic_codes(self):
+  import json
+  play_cfg=json.loads(Path('release/android/play-channel.json').read_text())
+  staging_cfg=json.loads(Path('release/android/channel.json').read_text())
+  self.assertEqual(play_cfg['application_id'],'com.abastevo')
+  self.assertEqual(play_cfg['channel'],'play-production')
+  self.assertEqual(play_cfg['epoch'],staging_cfg['epoch'])
+  self.assertGreaterEqual(play_cfg['base_code'],staging_cfg['base_code'])
+  self.assertEqual(f.version_for(play_cfg,[play_cfg['epoch'],B]),{'name':'3.1.1','code':5})

@@ -54,17 +54,17 @@ test('localized homes retain the Portuguese modules and usable controls without 
   }));
 
 test('the locale homes respect the verified Play Store publication switch', () =>
-  builtHomes({ storeState: 'published', storeUrl: 'https://play.google.com/store/apps/details?id=com.anpfuel' }, (pt, en, es, _js, read) => {
+  builtHomes({ storeState: 'published', storeUrl: 'https://play.google.com/store/apps/details?id=com.abastevo' }, (pt, en, es, _js, read) => {
     for (const [html, path, label, prelaunch] of [
       [pt, 'index.html', 'Ver na Google Play', 'Em breve no Google Play'],
       [en, 'en/index.html', 'View on Google Play', 'Coming soon to Google Play'],
       [es, 'es/index.html', 'Ver en Google Play', 'Próximamente en Google Play'],
     ]) {
-      assert.match(html, /href="https:\/\/play.google.com\/store\/apps\/details\?id=com.anpfuel"/);
+      assert.match(html, /href="https:\/\/play.google.com\/store\/apps\/details\?id=com.abastevo"/);
       assert.ok(html.includes(`<strong>${label}</strong>`));
       assert.ok(!html.includes(prelaunch), 'published page drops the prelaunch pill');
       const graph = read(path).match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1];
       const app = JSON.parse(graph)['@graph'].find((node) => node['@type'] === 'MobileApplication');
-      assert.equal(app?.installUrl, 'https://play.google.com/store/apps/details?id=com.anpfuel');
+      assert.equal(app?.installUrl, 'https://play.google.com/store/apps/details?id=com.abastevo');
     }
   }));
