@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.locale.AppLocaleHolder
+import com.anpfuel.app.ui.designsystem.AbastevoButtonDefaults
 import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.domain.map.saved.SavedTrip
@@ -538,7 +540,11 @@ fun MapScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = viewModel::dismissMobileDownloadPrompt) {
+                    TextButton(
+                        onClick = viewModel::dismissMobileDownloadPrompt,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = AbastevoButtonDefaults.outlinedBorder(enabled = true),
+                    ) {
                         Text(stringResource(R.string.map_mobile_download_dismiss))
                     }
                 },
