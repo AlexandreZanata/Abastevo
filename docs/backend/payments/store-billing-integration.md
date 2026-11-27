@@ -291,7 +291,7 @@ All channels stay off until complete. Partial values are reported as
 | `ANPFUEL_STORE_ENVIRONMENT` | `test` (Play license testing, App Store Sandbox) or `production`. |
 | `ANPFUEL_STORE_TOKEN_KEY` | 32 bytes in base64: AES-GCM key for stored purchase keys. |
 | `ANPFUEL_STORE_BINDING_KEY` | 32 bytes in base64: HMAC key for account bindings. Rotating it breaks restore of existing purchases. |
-| `ANPFUEL_PLAY_PACKAGE_NAME` | Default `com.anpfuel.app`. |
+| `ANPFUEL_PLAY_PACKAGE_NAME` | Default `com.abastevo`. |
 | `ANPFUEL_PLAY_SERVICE_ACCOUNT_FILE` | Path to the mounted service-account JSON key. |
 | `ANPFUEL_PLAY_PRODUCTS` | `abastevo_premium:monthly,yearly` (entries separated by `;`). |
 | `ANPFUEL_PLAY_PUSH_SUBSCRIPTION` | `projects/<project>/subscriptions/<name>` of the push subscription. |

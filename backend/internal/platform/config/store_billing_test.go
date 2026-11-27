@@ -42,7 +42,7 @@ func completeStoreEnv() map[string]string {
 
 func TestStoreBillingOffByDefault(t *testing.T) {
 	cfg := loadStoreBilling(storeEnv(nil))
-	if cfg.Play.Configured || cfg.AppStore.Configured || len(cfg.Issues) != 0 || cfg.Play.PackageName != "com.anpfuel.app" || cfg.AppStore.BundleID != "com.anpfuel.app" {
+	if cfg.Play.Configured || cfg.AppStore.Configured || len(cfg.Issues) != 0 || cfg.Play.PackageName != "com.abastevo" || cfg.AppStore.BundleID != "com.anpfuel.app" {
 		t.Fatalf("default %+v", cfg)
 	}
 }

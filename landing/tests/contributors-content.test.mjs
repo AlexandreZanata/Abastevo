@@ -34,7 +34,7 @@ test('contribuidores page works without JS: explainer, repo and app links', () =
     const html = fs.readFileSync(path.join(outDir, 'contribuidores/index.html'), 'utf8');
     assert.match(html, /<h1>Contribuidores do projeto<\/h1>/);
     assert.ok(html.includes('https://github.com/AlexandreZanata/abastevo'), 'repo link');
-    assert.ok(html.includes('play.google.com/store/apps/details?id=com.anpfuel'), 'app link');
+    assert.ok(html.includes('play.google.com/store/apps/details?id=com.abastevo'), 'app link');
     assert.ok(html.includes('Sem conta para ler') || html.includes('sem conta'), 'no-account note');
     // API origin disabled by default: meta left empty, enhancement stays inert.
     assert.match(html, /<meta name="abastevo-api" content="">/);

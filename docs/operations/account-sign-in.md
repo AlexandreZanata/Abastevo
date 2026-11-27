@@ -12,16 +12,17 @@
    release workflow passes it as `-PgoogleServerClientId` for Credential
    Manager's server client ID. A local build can use the same Gradle property
    or environment variable.
-3. Create Android OAuth clients for package `com.anpfuel.app` with the Play
-   App Signing certificate SHA-1 and with the upload certificate SHA-1.
-   Create a client for `com.anpfuel.app.debug` using the debug signing
-   certificate SHA-1. Get the Play certificate from App Integrity in Play
-   Console and the local signing fingerprints with `./gradlew :app:signingReport`.
-   Put the Android client IDs in the API's comma-separated
-   `ANPFUEL_GOOGLE_AUTHORIZED_PARTIES` for the authorized-party check.
-   Keep the configured values out of Git. Verify the installing channel's
-   signing certificate when an emulator, locally signed APK or Play build
-   behaves differently.
+3. Create Android OAuth clients for Play Store package `com.abastevo` with the
+   Play App Signing certificate SHA-1 and with the Play upload certificate
+   SHA-1, and for GitHub staging package `com.anpfuel.app` (plus `.debug`
+   variants such as `com.abastevo.debug` / `com.anpfuel.app.debug` using the
+   debug signing certificate SHA-1). Get the Play certificate from App
+   Integrity in Play Console and the local signing fingerprints with
+   `./gradlew :app:signingReport`. Put the Android client IDs in the API's
+   comma-separated `ANPFUEL_GOOGLE_AUTHORIZED_PARTIES` for the
+   authorized-party check. Keep the configured values out of Git. Verify the
+   installing channel's signing certificate when an emulator, locally signed
+   APK or Play build behaves differently.
 
 [Credential Manager setup](https://developer.android.com/identity/sign-in/credential-manager-siwg-implementation) ·
 [Signing fingerprints](https://developers.google.com/android/guides/client-auth)

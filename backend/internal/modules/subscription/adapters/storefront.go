@@ -54,7 +54,7 @@ type Storefront struct {
 // shared store. The Play service always exists so the status read and
 // export keep working while every channel is off.
 func NewStorefront(store *Store, channels StoreChannels, clock func() time.Time) Storefront {
-	playPackage := "com.anpfuel.app"
+	playPackage := "com.abastevo"
 	if channels.Play != nil && channels.Play.PackageName != "" {
 		playPackage = channels.Play.PackageName
 	}

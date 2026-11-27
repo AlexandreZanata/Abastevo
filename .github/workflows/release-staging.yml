@@ -167,7 +167,7 @@ jobs:
         run: |
           set -euo pipefail
           npm --prefix landing ci
-          npm --prefix landing run build -- --origin https://abastevo.com.br
+          npm --prefix landing run build -- --origin https://abastevo.com.br --store-state published --store-url https://play.google.com/store/apps/details?id=com.abastevo
           npm --prefix landing run check
           npm --prefix landing test
       - name: Build admin web panel into the landing bundle

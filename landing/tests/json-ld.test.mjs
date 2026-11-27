@@ -57,7 +57,7 @@ test('json-ld: prelaunch state has factual graph without phantom mobile app or r
 
 test('json-ld: published state fixture contains valid MobileApplication schema', () => {
   const tmpOut = path.join(root, '.test-jsonld-pub-' + Math.random().toString(36).slice(2, 8));
-  const validStoreUrl = 'https://play.google.com/store/apps/details?id=com.anpfuel';
+  const validStoreUrl = 'https://play.google.com/store/apps/details?id=com.abastevo';
   try {
     buildSite({
       projectRoot: root,

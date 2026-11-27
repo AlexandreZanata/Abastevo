@@ -68,9 +68,9 @@ export function validateStoreState(storeState, storeUrl) {
     if (!storeUrl || typeof storeUrl !== 'string') {
       throw new Error('storeUrl is required when storeState is "published"');
     }
-    const storeRegex = /^https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.anpfuel(&[a-zA-Z0-9_=-]+)*$/;
+    const storeRegex = /^https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.abastevo(&[a-zA-Z0-9_=-]+)*$/;
     if (!storeRegex.test(storeUrl)) {
-      throw new Error(`Invalid store URL for published state: expected verified Google Play URL with package com.anpfuel, got '${storeUrl}'`);
+      throw new Error(`Invalid store URL for published state: expected verified Google Play URL with package com.abastevo, got '${storeUrl}'`);
     }
   }
 }
