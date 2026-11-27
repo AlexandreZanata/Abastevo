@@ -175,6 +175,8 @@ internal fun toStoreProduct(details: ProductDetails): StoreProductDetails = Stor
                     formattedPrice = phase.formattedPrice,
                     billingPeriod = phase.billingPeriod,
                     infiniteRecurring = phase.recurrenceMode == ProductDetails.RecurrenceMode.INFINITE_RECURRING,
+                    priceAmountMicros = phase.priceAmountMicros,
+                    billingCycleCount = phase.billingCycleCount,
                 )
             },
         )

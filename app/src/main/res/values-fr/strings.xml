@@ -1469,6 +1469,7 @@
     <string name="premium_store_section_title">S’abonner</string>
     <string name="premium_store_plans_loading">Chargement des formules Google Play…</string>
     <string name="premium_store_plans_unavailable">Impossible de charger les formules Google Play.</string>
+    <string name="premium_store_trial_then">1 mois gratuit, puis %1$s avec renouvellement automatique</string>
     <string name="premium_store_subscribe">S’abonner</string>
     <string name="premium_store_billing_note">Le paiement, le renouvellement et la résiliation sont gérés par Google Play.</string>
     <string name="premium_plan_title_week">Formule hebdomadaire</string>

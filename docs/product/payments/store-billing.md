@@ -67,6 +67,13 @@ provider API details live in the
   credentials and catalog are configured. Without a configured offer for the
   app's store, the app shows the current status with no purchase button.
   Payment never changes trust, moderation or free participation.
+- **B-BR-STORE-11 — Play license test access.** In the `test` environment,
+  Google Play offers, verification and restore are limited to explicitly
+  listed Abastevo accounts. The backend uses the authenticated account ID.
+  An empty, unreadable or invalid list denies all Play offers and owner
+  purchase requests. Canonical verification still requires a Google Play
+  test purchase. Existing acknowledgements, notifications and reconciliation
+  continue when test access is removed.
 
 ## Use cases
 
@@ -84,6 +91,10 @@ provider API details live in the
 - **BUC-STORE-04 — Cross-platform.** A subscription bought on the web or on
   the other platform appears as an active source in the status. The app shows
   Premium as active without offering a second purchase.
+- **BUC-STORE-05 — Test Play on the public app.** A listed Abastevo test
+  account signs in and buys with a Google Play license tester and a test
+  payment method. An ordinary account sees no Play offer and a signed attempt
+  to verify or restore is denied before a purchase is recorded.
 
 ## API contract (v1)
 
@@ -127,3 +138,18 @@ provider or channel unavailable.
 notifications through an authenticated Pub/Sub push.
 `/v1/premium/app-store-notifications` receives App Store Server Notifications
 V2 (`{"signedPayload": "..."}`); the signature chain is the authentication.
+
+## Play free trial
+
+- **B-BR-STORE-12 — Play free trial.** For the `abastevo_premium` monthly
+  and yearly base plans, Android may show `mes-gratis` only when Play
+  returns the offer for the current Google account. It must contain a
+  single zero-price month followed by the paid recurring base-plan
+  period. Show the full localized renewal price and period before
+  purchase. Other offers and invalid trial terms fall back to the
+  ordinary base plan. The free app tier requires no subscription.
+- **BUC-STORE-06 — Start a Play trial.** An eligible first-time subscriber
+  sees one free month followed by the full recurring price, then opens the
+  Play checkout with that offer token. A subscriber without the trial
+  receives the ordinary paid offer. Server verification and renewal
+  handling follow the same rules for both.

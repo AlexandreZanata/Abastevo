@@ -1482,6 +1482,7 @@
     <string name="premium_store_section_title">Assinar</string>
     <string name="premium_store_plans_loading">Carregando planos do Google Play…</string>
     <string name="premium_store_plans_unavailable">Não foi possível carregar os planos do Google Play.</string>
+    <string name="premium_store_trial_then">1 mês grátis, depois %1$s com renovação automática</string>
     <string name="premium_store_subscribe">Assinar</string>
     <string name="premium_store_billing_note">O pagamento, a renovação e o cancelamento são feitos pelo Google Play.</string>
     <string name="premium_plan_title_week">Plano semanal</string>

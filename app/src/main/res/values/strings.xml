@@ -1488,6 +1488,7 @@
     <string name="premium_store_section_title">Subscribe</string>
     <string name="premium_store_plans_loading">Loading Google Play plans…</string>
     <string name="premium_store_plans_unavailable">Google Play plans could not be loaded.</string>
+    <string name="premium_store_trial_then">1 month free, then %1$s with automatic renewal</string>
     <string name="premium_store_subscribe">Subscribe</string>
     <string name="premium_store_billing_note">Payment, renewal and cancellation are handled by Google Play.</string>
     <string name="premium_plan_title_week">Weekly plan</string>

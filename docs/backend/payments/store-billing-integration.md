@@ -283,8 +283,8 @@ iOS app ──── StoreKit 2 ──────────► App Store ─�
 
 ## Server configuration
 
-All channels stay off until complete. Partial values are reported as
-`subscription.store-channel-off` warnings and never logged with secrets.
+Store credentials and the catalog are required to start each channel.
+Configuration warnings omit secrets and account IDs.
 
 | Variable | Meaning |
 |----------|---------|
@@ -294,6 +294,7 @@ All channels stay off until complete. Partial values are reported as
 | `ANPFUEL_PLAY_PACKAGE_NAME` | Default `com.abastevo`. |
 | `ANPFUEL_PLAY_SERVICE_ACCOUNT_FILE` | Path to the mounted service-account JSON key. |
 | `ANPFUEL_PLAY_PRODUCTS` | `abastevo_premium:monthly,yearly` (entries separated by `;`). |
+| `ANPFUEL_PLAY_TEST_ACCOUNTS_FILE` | In `test`, path to a private file with one lowercase Abastevo account UUID per line. Blank lines are allowed. Missing, empty or malformed files disable Play offers and app-initiated verification and restore. |
 | `ANPFUEL_PLAY_PUSH_SUBSCRIPTION` | `projects/<project>/subscriptions/<name>` of the push subscription. |
 | `ANPFUEL_PLAY_PUSH_AUDIENCE` | Audience configured on the push subscription. |
 | `ANPFUEL_PLAY_PUSH_SERVICE_ACCOUNT` | Service-account email that signs push tokens. |
@@ -306,6 +307,15 @@ All channels stay off until complete. Partial values are reported as
 
 Mount key files as secrets; never commit them. Use the `test` environment on
 a non-production deployment for sandbox and license-tester runs.
+
+When the public app uses the test backend, mount the same tester file on the
+API and worker and verify an ordinary account receives no Play offer before
+activating a base plan. Keep out-of-app promotion disabled. On the tester's
+device use the Google Play license tester account that installed the app and
+a test payment method. Let test purchases expire or revoke them, then drain
+their lifecycle jobs before changing the backend environment. When another
+store channel is active, use a separate deployment because both channels
+share `ANPFUEL_STORE_ENVIRONMENT`.
 
 ## Acceptance checklist
 

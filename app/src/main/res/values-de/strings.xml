@@ -1468,6 +1468,7 @@
     <string name="premium_store_section_title">Abonnieren</string>
     <string name="premium_store_plans_loading">Google-Play-Tarife werden geladen…</string>
     <string name="premium_store_plans_unavailable">Die Google-Play-Tarife konnten nicht geladen werden.</string>
+    <string name="premium_store_trial_then">1 Monat kostenlos, danach %1$s mit automatischer Verlängerung</string>
     <string name="premium_store_subscribe">Abonnieren</string>
     <string name="premium_store_billing_note">Zahlung, Verlängerung und Kündigung laufen über Google Play.</string>
     <string name="premium_plan_title_week">Wochentarif</string>
