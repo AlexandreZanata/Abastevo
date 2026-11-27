@@ -32,6 +32,18 @@ fun hasReleaseSigningConfig(): Boolean {
 }
 
 val automatedVersionName = providers.gradleProperty("androidReleaseVersionName").orNull
+val androidDistribution = providers.gradleProperty("androidDistribution")
+    .orElse(providers.environmentVariable("ANPFUEL_ANDROID_DISTRIBUTION"))
+    .orElse("staging")
+    .get()
+    .trim()
+require(androidDistribution in setOf("staging", "play")) {
+    "Invalid androidDistribution: $androidDistribution (expected staging or play)"
+}
+val resolvedApplicationId = when (androidDistribution) {
+    "play" -> "com.abastevo"
+    else -> "com.anpfuel.app"
+}
 val googleServerClientId = providers.gradleProperty("googleServerClientId")
     .orElse(providers.environmentVariable("ANPFUEL_GOOGLE_SERVER_CLIENT_ID"))
     .orElse("")
@@ -67,7 +79,7 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.anpfuel.app"
+        applicationId = resolvedApplicationId
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = automatedVersionCode?.toInt() ?: 4
@@ -109,7 +121,7 @@ android {
         } else {
             "androidx.test.runner.AndroidJUnitRunner"
         }
-        if (enterpriseDeviceValidation) testApplicationId = "com.anpfuel.app.enterprisevalidation.test"
+        if (enterpriseDeviceValidation) testApplicationId = "${resolvedApplicationId}.enterprisevalidation.test"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
 
@@ -122,7 +134,8 @@ android {
             val storeFilePath = signingProperty("storeFile", "ANPFUEL_KEYSTORE_PATH")
                 ?: return@create
             storeFile = rootProject.file(storeFilePath)
-            storeType = "PKCS12"
+            val explicitStoreType = signingProperty("storeType", "ANPFUEL_KEYSTORE_TYPE")
+            storeType = explicitStoreType ?: if (storeFilePath.endsWith(".jks", ignoreCase = true)) "JKS" else "PKCS12"
             storePassword = signingProperty("storePassword", "ANPFUEL_KEYSTORE_PASSWORD")
             keyAlias = signingProperty("keyAlias", "ANPFUEL_KEY_ALIAS")
             keyPassword = signingProperty("keyPassword", "ANPFUEL_KEY_PASSWORD")

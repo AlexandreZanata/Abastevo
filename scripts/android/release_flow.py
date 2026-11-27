@@ -81,6 +81,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["gate", "version", "assert-ready"])
     parser.add_argument("--sha")
+    parser.add_argument("--channel", type=Path, default=Path("release/android/channel.json"))
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.command == "gate":
@@ -98,7 +99,7 @@ def main():
     else:
         if not args.sha or not SHA.fullmatch(args.sha):
             raise ValueError("full release SHA required")
-        config = json.loads(Path("release/android/channel.json").read_text())
+        config = json.loads(args.channel.read_text())
         parents = subprocess.check_output(["git", "rev-list", "--first-parent", "--reverse", args.sha], text=True).splitlines()
         version = version_for(config, parents)
         result = {"schema": 1, "commit": args.sha, "channel": config["channel"], "application_id": config["application_id"],

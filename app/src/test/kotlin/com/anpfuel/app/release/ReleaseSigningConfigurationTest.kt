@@ -23,6 +23,16 @@ class ReleaseSigningConfigurationTest {
         assertTrue(buildGradle.contains("signingConfigs"), "app/build.gradle.kts must define signingConfigs")
         assertTrue(buildGradle.contains("signing.properties"), "app/build.gradle.kts must read signing.properties")
         assertTrue(buildGradle.contains("bundleRelease") || buildGradle.contains("assembleRelease"))
+        assertTrue(buildGradle.contains("ANPFUEL_KEYSTORE_TYPE"), "app/build.gradle.kts must allow overriding keystore type")
+    }
+
+    @Test
+    fun appBuildGradleSupportsPlayStoreDistributionId() {
+        val buildGradle = readProjectFile("app/build.gradle.kts")
+
+        assertTrue(buildGradle.contains("androidDistribution"), "app/build.gradle.kts must read androidDistribution")
+        assertTrue(buildGradle.contains("\"play\" -> \"com.abastevo\""), "play distribution must map to com.abastevo")
+        assertTrue(buildGradle.contains("\"com.anpfuel.app\""), "staging distribution must retain com.anpfuel.app")
     }
 
     @Test
