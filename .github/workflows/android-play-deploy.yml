@@ -1,0 +1,151 @@
+name: android-play-deploy
+run-name: Google Play deploy ${{ github.event.workflow_run.head_sha || inputs.sha }}
+
+on:
+  workflow_run:
+    workflows: [quick, CI, backend]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Current full main SHA (all three push workflows must pass)
+        required: true
+        type: string
+      track:
+        description: Google Play track
+        required: true
+        default: production
+        type: choice
+        options: [production, internal, alpha, beta]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-play-deploy
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    # A later push to main cancels the runs of the commit it replaces, and a
+    # cancelled run still fires workflow_run. Skipping this job skips deploy too.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Require trusted event and all exact current-main checks
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/android/release_flow.py gate
+
+  deploy:
+    needs: gate
+    if: needs.gate.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    environment: android-play-release
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Verify current main again and derive Play version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.gate.outputs.sha }}
+          PLAY_TRACK: ${{ inputs.track || 'production' }}
+        run: |
+          set -euo pipefail
+          case "$PLAY_TRACK" in
+            production|internal|alpha|beta) ;;
+            *) echo "::error::Invalid Google Play track"; exit 1 ;;
+          esac
+          test "$(gh api repos/AlexandreZanata/Abastevo/git/ref/heads/main --jq .object.sha)" = "$RELEASE_SHA"
+          python3 scripts/android/release_flow.py version --sha "$RELEASE_SHA" \
+            --channel release/android/play-channel.json --output "$RUNNER_TEMP/play-version.json"
+          python3 -m unittest discover -s scripts/android -p 'test_*.py'
+      - name: Install pinned Android build tools
+        run: |
+          set -euo pipefail
+          sdkmanager="${ANDROID_HOME:?ANDROID_HOME is not set on this runner}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$sdkmanager" ]; then
+            echo "::error::Android cmdline-tools not found at $sdkmanager"
+            exit 1
+          fi
+          "$sdkmanager" --install 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Recheck current main checks before accessing Play signing material
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.gate.outputs.sha }}
+        run: python3 scripts/android/release_flow.py assert-ready --sha "$RELEASE_SHA"
+      - name: Restore Play upload identity and build signed AAB
+        env:
+          PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          ANPFUEL_KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+          ANPFUEL_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          ANPFUEL_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export ANPFUEL_KEYSTORE_PATH="$RUNNER_TEMP/play-upload.keystore"
+          trap 'rm -f "$ANPFUEL_KEYSTORE_PATH"' EXIT
+          for name in PLAY_UPLOAD_KEYSTORE_BASE64 ANPFUEL_KEYSTORE_PASSWORD ANPFUEL_KEY_ALIAS ANPFUEL_KEY_PASSWORD PLAY_SERVICE_ACCOUNT_JSON; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required secret missing in environment android-play-release: $name"
+              exit 1
+            fi
+          done
+          store_type="$(python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          json.loads(os.environ['PLAY_SERVICE_ACCOUNT_JSON'])
+          raw = base64.b64decode(os.environ['PLAY_UPLOAD_KEYSTORE_BASE64'], validate=True)
+          Path(os.environ['ANPFUEL_KEYSTORE_PATH']).write_bytes(raw)
+          print('JKS' if raw.startswith(b'\xfe\xed\xfe\xed') else 'PKCS12')
+          PY
+          )"
+          export ANPFUEL_KEYSTORE_TYPE="$store_type"
+          version_name="$(jq -r .version_name "$RUNNER_TEMP/play-version.json")"
+          version_code="$(jq -r .version_code "$RUNNER_TEMP/play-version.json")"
+          ./gradlew :app:bundleRelease --no-daemon --max-workers=1 \
+            -PandroidDistribution=play \
+            -PandroidReleaseVersionName="$version_name" \
+            -PandroidReleaseVersionCode="$version_code" \
+            -PgoogleServerClientId="${{ vars.ANPFUEL_GOOGLE_SERVER_CLIENT_ID }}"
+      - name: Verify signed Play AAB bundle
+        run: |
+          python3 scripts/android/play_bundle.py \
+            --aab app/build/outputs/bundle/release/app-release.aab \
+            --version "$RUNNER_TEMP/play-version.json"
+      - name: Upload signed AAB to Google Play
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.abastevo
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          mappingFile: app/build/outputs/mapping/release/mapping.txt
+          track: ${{ inputs.track || 'production' }}
+          status: completed
+      - name: Remove Play signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/play-upload.keystore"
