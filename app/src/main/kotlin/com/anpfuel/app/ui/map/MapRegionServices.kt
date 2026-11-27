@@ -10,11 +10,13 @@ import com.anpfuel.data.map.MapPackageRepository
 import com.anpfuel.data.map.MapPackageStore
 import com.anpfuel.data.map.MapRegionDismissalStore
 import com.anpfuel.data.map.MapRegionResolver
+import com.anpfuel.data.repository.NetworkConnectivityRepositoryImpl
 import com.anpfuel.domain.map.MapRegionCatalog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,8 @@ data class MapRegionUi(val countryId: String, val slug: String, val name: String
     }
 }
 
+data class MapRegionDownloadRequest(val slug: String, val allowMobileData: Boolean)
+
 /**
  * Region the map screen resolved for the opened city, shared with the
  * downloads screen (every "Baixar" entry point downloads that region only).
@@ -38,23 +42,23 @@ data class MapRegionUi(val countryId: String, val slug: String, val name: String
 class MapRegionSelection @Inject constructor() {
     private val _selected = MutableStateFlow<String?>(null)
     val selected: StateFlow<String?> = _selected.asStateFlow()
-    @Volatile private var pendingDownload: String? = null
+    private var pendingDownload: MapRegionDownloadRequest? = null
 
     fun select(slug: String?) {
         _selected.value = slug
     }
 
-    fun requestDownload(slug: String) {
+    @Synchronized
+    fun requestDownload(slug: String, allowMobileData: Boolean = false) {
+        pendingDownload = MapRegionDownloadRequest(slug, allowMobileData)
         _selected.value = slug
-        pendingDownload = slug
     }
 
-    /** True once for the slug that [requestDownload] marked. */
     @Synchronized
-    fun consumeDownloadRequest(slug: String): Boolean {
-        if (pendingDownload != slug) return false
+    fun consumeDownloadRequest(slug: String): MapRegionDownloadRequest? {
+        val request = pendingDownload?.takeIf { it.slug == slug } ?: return null
         pendingDownload = null
-        return true
+        return request
     }
 }
 
@@ -65,7 +69,8 @@ interface MapRegionServices {
     fun isDismissed(slug: String): Boolean
     fun dismiss(slug: String)
     fun select(slug: String?)
-    fun requestDownload(slug: String)
+    fun requestDownload(slug: String, allowMobileData: Boolean)
+    fun observeUsesMobileData(): Flow<Boolean>
     /** Automatic manifest fetches only on an unmetered (Wi-Fi) network. */
     fun canFetchManifestAutomatically(): Boolean
     /** Total bytes of the region's signed, verified manifest. */
@@ -83,6 +88,7 @@ class DefaultMapRegionServices @Inject constructor(
     private val distribution: MapDistribution,
     private val store: MapPackageStore,
     private val repository: MapPackageRepository,
+    private val connectivity: NetworkConnectivityRepositoryImpl,
 ) : MapRegionServices {
     override val downloadsConfigured: Boolean get() = config.configured
 
@@ -95,7 +101,10 @@ class DefaultMapRegionServices @Inject constructor(
 
     override fun select(slug: String?) = selection.select(slug)
 
-    override fun requestDownload(slug: String) = selection.requestDownload(slug)
+    override fun requestDownload(slug: String, allowMobileData: Boolean) =
+        selection.requestDownload(slug, allowMobileData)
+
+    override fun observeUsesMobileData(): Flow<Boolean> = connectivity.observeUsesMobileData()
 
     override fun canFetchManifestAutomatically(): Boolean {
         val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return false

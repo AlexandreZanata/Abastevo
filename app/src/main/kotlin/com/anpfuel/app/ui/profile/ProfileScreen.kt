@@ -260,35 +260,10 @@ fun ProfileScreen(
             ) {
                 Column {
                     ProfileToolItem(
-                        icon = Icons.Default.SportsEsports,
-                        title = stringResource(R.string.games_title),
-                        subtitle = stringResource(R.string.games_profile_subtitle),
-                        onClick = { onNavigate(Routes.GAMES) },
-                    )
-                    HorizontalDivider()
-                    if (signedIn) {
-                        ProfileToolItem(
-                            icon = Icons.Default.PersonOutline,
-                            title = stringResource(R.string.profile_action_manage_account),
-                            subtitle = stringResource(R.string.profile_signed_in_title),
-                            onClick = { onNavigate(Routes.ACCOUNT) },
-                        )
-                        HorizontalDivider()
-                    }
-                    ProfileToolItem(
-                        icon = Icons.Default.Business,
-                        title = stringResource(R.string.enterprise_context_entry),
-                        subtitle = stringResource(R.string.enterprise_context_intro),
-                        onClick = { onNavigate(Routes.ENTERPRISE_CONTEXT) },
-                        modifier = Modifier.testTag("enterprise-context-entry"),
-                    )
-                    HorizontalDivider()
-                    ProfileToolItem(
-                        icon = Icons.Default.Business,
-                        title = stringResource(R.string.enterprise_invitation_entry),
-                        subtitle = stringResource(R.string.enterprise_invitation_entry_hint),
-                        onClick = { onNavigate(Routes.ENTERPRISE_INVITATION) },
-                        modifier = Modifier.testTag("enterprise-invitation-entry"),
+                        icon = Icons.Default.Settings,
+                        title = stringResource(R.string.profile_tool_settings_title),
+                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
+                        onClick = { onNavigate(Routes.SETTINGS) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(
@@ -296,13 +271,6 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_vehicles_title),
                         subtitle = stringResource(R.string.profile_tool_vehicles_subtitle),
                         onClick = { onNavigate(Routes.VEHICLES) },
-                    )
-                    HorizontalDivider()
-                    ProfileToolItem(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.profile_tool_settings_title),
-                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
-                        onClick = { onNavigate(Routes.SETTINGS) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(
@@ -331,6 +299,38 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_week_picker_title),
                         subtitle = stringResource(R.string.profile_tool_week_picker_subtitle),
                         onClick = { onNavigate(Routes.WEEK_PICKER) },
+                    )
+                    HorizontalDivider()
+                    if (signedIn) {
+                        ProfileToolItem(
+                            icon = Icons.Default.PersonOutline,
+                            title = stringResource(R.string.profile_action_manage_account),
+                            subtitle = stringResource(R.string.profile_signed_in_title),
+                            onClick = { onNavigate(Routes.ACCOUNT) },
+                        )
+                        HorizontalDivider()
+                    }
+                    ProfileToolItem(
+                        icon = Icons.Default.SportsEsports,
+                        title = stringResource(R.string.games_title),
+                        subtitle = stringResource(R.string.games_profile_subtitle),
+                        onClick = { onNavigate(Routes.GAMES) },
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Business,
+                        title = stringResource(R.string.enterprise_context_entry),
+                        subtitle = stringResource(R.string.enterprise_context_intro),
+                        onClick = { onNavigate(Routes.ENTERPRISE_CONTEXT) },
+                        modifier = Modifier.testTag("enterprise-context-entry"),
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Business,
+                        title = stringResource(R.string.enterprise_invitation_entry),
+                        subtitle = stringResource(R.string.enterprise_invitation_entry_hint),
+                        onClick = { onNavigate(Routes.ENTERPRISE_INVITATION) },
+                        modifier = Modifier.testTag("enterprise-invitation-entry"),
                     )
                     HorizontalDivider()
                     ProfileToolItem(

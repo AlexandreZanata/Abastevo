@@ -30,7 +30,18 @@ data class MapScreenUi(
     val region: MapRegionUi? = null,
     /** "Baixar mapa de <região> (N MB)" offer; null when not applicable. */
     val regionSuggestion: MapRegionSuggestion? = null,
-)
+    val usesMobileData: Boolean = false,
+    val allowMapDownloadsOnMobileData: Boolean? = null,
+    val dismissedMobilePromptSlug: String? = null,
+) {
+    val needsMobileDownloadConfirmation: Boolean
+        get() = usesMobileData && allowMapDownloadsOnMobileData != true
+
+    val mobileDownloadPrompt: MapRegionUi?
+        get() = regionSuggestion?.region?.takeIf {
+            needsMobileDownloadConfirmation && it.slug != dismissedMobilePromptSlug
+        }
+}
 
 /** [bytes] is null until the signed region manifest was fetched (Wi-Fi or on tap). */
 data class MapRegionSuggestion(val region: MapRegionUi, val bytes: Long?)
@@ -63,6 +74,13 @@ class MapScreenViewModel @Inject constructor(
     private var regionJob: Job? = null
 
     init {
+        if (regions != null) {
+            viewModelScope.launch {
+                regions.observeUsesMobileData().collect { usesMobileData ->
+                    _ui.update { it.copy(usesMobileData = usesMobileData) }
+                }
+            }
+        }
         refreshAvailability()
     }
 
@@ -114,6 +132,7 @@ class MapScreenViewModel @Inject constructor(
                     it.copy(
                         loading = false,
                         noPackage = !hasVerifiedPackage,
+                        allowMapDownloadsOnMobileData = prefs?.allowMapDownloadsOnMobileData ?: false,
                         selectedFuelProduct = preferredFuel,
                         selectedSurveyPeriod = preferredPeriod,
                     )
@@ -145,6 +164,7 @@ class MapScreenViewModel @Inject constructor(
         }
         if (cityPoint == latitude to longitude) return
         cityPoint = latitude to longitude
+        _ui.update { it.copy(regionSuggestion = null) }
         evaluateRegion(latitude, longitude)
     }
 
@@ -194,11 +214,28 @@ class MapScreenViewModel @Inject constructor(
         }
     }
 
-    /** "Baixar": the downloads screen starts this region right away. */
+    /** Starts the requested region or reopens the cellular confirmation. */
     fun acceptRegionSuggestion(): Boolean {
-        val suggestion = _ui.value.regionSuggestion ?: return false
-        regions?.requestDownload(suggestion.region.slug) ?: return false
+        val state = _ui.value
+        val region = state.regionSuggestion?.region ?: return false
+        if (state.needsMobileDownloadConfirmation) {
+            _ui.update { it.copy(dismissedMobilePromptSlug = null) }
+            return false
+        }
+        regions?.requestDownload(region.slug, allowMobileData = false) ?: return false
         return true
+    }
+
+    fun confirmMobileDownload(slug: String): Boolean {
+        val region = _ui.value.mobileDownloadPrompt?.takeIf { it.slug == slug } ?: return false
+        regions?.requestDownload(region.slug, allowMobileData = true) ?: return false
+        dismissMobileDownloadPrompt()
+        return true
+    }
+
+    fun dismissMobileDownloadPrompt() {
+        val region = _ui.value.mobileDownloadPrompt ?: return
+        _ui.update { it.copy(dismissedMobilePromptSlug = region.slug) }
     }
 
     /** "Agora não": persisted per region. */

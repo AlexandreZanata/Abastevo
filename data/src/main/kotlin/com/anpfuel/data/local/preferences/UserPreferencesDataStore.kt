@@ -57,6 +57,7 @@ class UserPreferencesDataStore internal constructor(
             stored[Keys.STATION_DETAIL_RETENTION_WEEKS] = preferences.stationDetailRetentionWeeks
             stored[Keys.NEAREST_STATION_RADIUS_KM] = preferences.nearestStationRadiusKm
             stored[Keys.AUTO_SYNC_ON_WIFI] = preferences.autoSyncOnWifi
+            stored[Keys.ALLOW_MAP_DOWNLOADS_ON_MOBILE_DATA] = preferences.allowMapDownloadsOnMobileData
             stored[Keys.SHOW_PRICE_HISTORY] = preferences.showPriceHistory
             stored[Keys.ONBOARDING_COMPLETED] = preferences.onboardingCompleted
             stored[Keys.LOCATION_PROMPT_COMPLETED] = preferences.locationPromptCompleted
@@ -116,6 +117,7 @@ class UserPreferencesDataStore internal constructor(
                 ?.takeIf { it in UserPreferences.NEAREST_STATION_RADIUS_KM_OPTIONS }
                 ?: UserPreferences.DEFAULT_NEAREST_STATION_RADIUS_KM,
             autoSyncOnWifi = preferences[Keys.AUTO_SYNC_ON_WIFI] ?: true,
+            allowMapDownloadsOnMobileData = preferences[Keys.ALLOW_MAP_DOWNLOADS_ON_MOBILE_DATA] ?: false,
             showPriceHistory = preferences[Keys.SHOW_PRICE_HISTORY] ?: true,
             onboardingCompleted = preferences[Keys.ONBOARDING_COMPLETED] ?: false,
             locationPromptCompleted = preferences[Keys.LOCATION_PROMPT_COMPLETED] ?: false,
@@ -140,6 +142,7 @@ class UserPreferencesDataStore internal constructor(
         val STATION_DETAIL_RETENTION_WEEKS = intPreferencesKey("station_detail_retention_weeks")
         val NEAREST_STATION_RADIUS_KM = intPreferencesKey("nearest_station_radius_km")
         val AUTO_SYNC_ON_WIFI = booleanPreferencesKey("auto_sync_on_wifi")
+        val ALLOW_MAP_DOWNLOADS_ON_MOBILE_DATA = booleanPreferencesKey("allow_map_downloads_on_mobile_data")
         val SHOW_PRICE_HISTORY = booleanPreferencesKey("show_price_history")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val LOCATION_PROMPT_COMPLETED = booleanPreferencesKey("location_prompt_completed")

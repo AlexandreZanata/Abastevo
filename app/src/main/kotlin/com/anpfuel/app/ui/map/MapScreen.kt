@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Box
@@ -22,8 +23,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +48,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.locale.AppLocaleHolder
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.domain.map.saved.SavedTrip
 import com.anpfuel.domain.routing.NativeRouteRequest
 import com.anpfuel.domain.routing.RoadAvoidance
@@ -516,6 +521,29 @@ fun MapScreen(
         !discUi.chargingSnapshotPresent || discUi.chargingError != null -> R.string.charging_catalog_unavailable
         discUi.error == null && discUi.selectableByUuid.values.none { it.charging } -> R.string.charging_map_gap
         else -> R.string.charging_open_sources
+    }
+
+    if (!guidanceUi.active && !guidanceUi.starting && !showRoute && !showFilters && !showFilterLocation) {
+        ui.mobileDownloadPrompt?.let { region ->
+            AlertDialog(
+                onDismissRequest = viewModel::dismissMobileDownloadPrompt,
+                icon = { Icon(Icons.Default.SignalCellularAlt, contentDescription = null) },
+                title = { Text(stringResource(R.string.map_mobile_download_title)) },
+                text = { Text(stringResource(R.string.map_mobile_download_message, region.name)) },
+                confirmButton = {
+                    Button(onClick = {
+                        if (viewModel.confirmMobileDownload(region.slug)) onOpenDownloads()
+                    }) {
+                        Text(stringResource(R.string.map_mobile_download_confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::dismissMobileDownloadPrompt) {
+                        Text(stringResource(R.string.map_mobile_download_dismiss))
+                    }
+                },
+            )
+        }
     }
 
     if (showFilters) {

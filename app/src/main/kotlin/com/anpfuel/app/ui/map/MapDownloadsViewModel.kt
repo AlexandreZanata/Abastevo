@@ -63,7 +63,7 @@ data class MapDownloadsUi(
 
 /** Enqueue/cancel seam over WorkManager unique work; faked in unit tests. */
 interface MapWorkControl {
-    fun enqueue(generation: String, requireUnmetered: Boolean)
+    suspend fun enqueue(generation: String, requireUnmetered: Boolean)
     fun cancel(generation: String)
 }
 
@@ -71,7 +71,7 @@ class WorkManagerControl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val config: MapDistributionConfig,
 ) : MapWorkControl {
-    override fun enqueue(generation: String, requireUnmetered: Boolean) {
+    override suspend fun enqueue(generation: String, requireUnmetered: Boolean) {
         MapDownloadScheduler.enqueue(WorkManager.getInstance(context), generation, config.baseUrl, requireUnmetered)
     }
 
@@ -105,13 +105,12 @@ class MapDownloadsViewModel @Inject constructor(
     private val _ui = MutableStateFlow(MapDownloadsUi(region = regionSlug?.let(::regionUi)))
     val ui: StateFlow<MapDownloadsUi> = _ui.asStateFlow()
     private var pollJob: Job? = null
-    private var autoStart = false
+    private var pendingDownload = regionSlug?.takeIf { config.configured }?.let(selection::consumeDownloadRequest)
+    private var mobileDataGeneration: String? = null
 
     init {
         savedState[KEY_REGION] = regionSlug
-        if (regionSlug != null && config.configured && selection.consumeDownloadRequest(regionSlug)) {
-            // "Baixar" on the map suggestion: check and download this region now.
-            autoStart = true
+        if (pendingDownload != null) {
             checkForUpdate()
         } else {
             refresh()
@@ -132,7 +131,7 @@ class MapDownloadsViewModel @Inject constructor(
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null, retryable = false) }
             try {
-                val wifiOnly = runCatching { preferences.getPreferences().autoSyncOnWifi }.getOrDefault(true)
+                val wifiOnly = requiresUnmetered(_ui.value.candidateGeneration)
                 val active = store.activeGeneration()
                 val published = repository.publishedState()?.complete == true
                 val inactive = runCatching { store.inactiveGenerations() }.getOrDefault(emptyList())
@@ -162,15 +161,9 @@ class MapDownloadsViewModel @Inject constructor(
             refresh()
             return
         }
-        val startAfterCheck = autoStart
-        autoStart = false
+        val request = pendingDownload
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null, retryable = false) }
-            if (startAfterCheck) {
-                // The auto-started download honours the Wi-Fi preference too.
-                val wifiOnly = runCatching { preferences.getPreferences().autoSyncOnWifi }.getOrDefault(true)
-                _ui.update { it.copy(wifiOnly = wifiOnly) }
-            }
             try {
                 val envelope = distribution.fetchEnvelope(region).decodeToString()
                 // Refuse a manifest of another region before any Room row is written.
@@ -182,14 +175,22 @@ class MapDownloadsViewModel @Inject constructor(
                 } catch (e: MapDownloadException) {
                     if (e.message == "active-generation-reimport") {
                         // Already on this generation: show current state, no fake update.
+                        pendingDownload = null
                         refresh()
                         return@launch
                     }
                     throw e
                 }
+                if (request != null) {
+                    pendingDownload = null
+                    mobileDataGeneration = verified.manifest.generation.takeIf { request.allowMobileData }
+                }
                 showCandidate(verified)
-                if (startAfterCheck) download()
+                if (request != null) download()
+            } catch (e: CancellationException) {
+                throw e
             } catch (error: MapDownloadException) {
+                pendingDownload = null
                 _ui.update { it.copy(loading = false, error = error.message, retryable = false) }
             } catch (_: IOException) {
                 _ui.update { it.copy(loading = false, error = "network-offline", retryable = true) }
@@ -202,10 +203,12 @@ class MapDownloadsViewModel @Inject constructor(
     private suspend fun showCandidate(verified: VerifiedMapManifest) {
         val rows = store.packages(verified.manifest.generation)
         val active = store.activeGeneration()
+        val wifiOnly = requiresUnmetered(verified.manifest.generation)
         _ui.update {
             it.copy(
                 loading = false,
                 candidateGeneration = verified.manifest.generation,
+                wifiOnly = wifiOnly,
                 candidateBytes = rows.sumOf { row -> row.bytes },
                 downloadedBytes = rows.sumOf { row -> row.downloadedBytes },
                 candidatePackages = rows.map { row ->
@@ -220,18 +223,30 @@ class MapDownloadsViewModel @Inject constructor(
 
     fun download() {
         val generation = _ui.value.candidateGeneration ?: return
+        if (_ui.value.downloading) return
         pollJob?.cancel()
-        // Enqueue synchronously with the last refreshed Wi-Fi preference so the
-        // unique work exists even if observation is cancelled immediately after.
-        work.enqueue(generation, _ui.value.wifiOnly)
+        _ui.update { it.copy(downloading = true, error = null, retryable = false) }
         pollJob = viewModelScope.launch {
             observeDownloadInner(generation)
         }
     }
 
+    private suspend fun requiresUnmetered(generation: String?): Boolean {
+        if (generation != null && generation == mobileDataGeneration) return false
+        return try {
+            !preferences.getPreferences().allowMapDownloadsOnMobileData
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            true
+        }
+    }
+
     private suspend fun observeDownloadInner(generation: String) {
-        _ui.update { it.copy(downloading = true, error = null, retryable = false) }
         try {
+            val wifiOnly = requiresUnmetered(generation)
+            _ui.update { it.copy(wifiOnly = wifiOnly) }
+            work.enqueue(generation, wifiOnly)
             while (true) {
                 delay(500)
                 val rows = store.packages(generation)
@@ -255,9 +270,12 @@ class MapDownloadsViewModel @Inject constructor(
                         delay(500)
                         val active = store.activeGeneration()
                         if (active?.generation == generation) {
+                            mobileDataGeneration = null
+                            val wifiOnly = requiresUnmetered(null)
                             _ui.update {
                                 it.copy(
                                     downloading = false, activeGeneration = generation,
+                                    wifiOnly = wifiOnly,
                                     published = repository.publishedState()?.complete == true,
                                     candidateGeneration = null, candidatePackages = emptyList(),
                                     candidateDependencies = emptyList(),
@@ -281,11 +299,14 @@ class MapDownloadsViewModel @Inject constructor(
         val generation = _ui.value.candidateGeneration ?: return
         pollJob?.cancel()
         work.cancel(generation)
+        mobileDataGeneration = null
         viewModelScope.launch {
             val rows = store.packages(generation)
+            val wifiOnly = requiresUnmetered(null)
             _ui.update {
                 it.copy(
                     downloading = false,
+                    wifiOnly = wifiOnly,
                     downloadedBytes = rows.sumOf { row -> row.downloadedBytes },
                     candidatePackages = rows.map { row ->
                         MapPackageUi(row.packageId, row.bytes, row.downloadedBytes, row.status, row.error)

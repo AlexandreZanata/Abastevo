@@ -24,6 +24,7 @@ import com.anpfuel.domain.model.StorageUsage
 import com.anpfuel.domain.model.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,6 +33,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class SettingsUiState(
     val isLoading: Boolean = true,
@@ -72,6 +75,8 @@ class SettingsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private val preferenceUpdates = Mutex()
 
     private val _effects = MutableSharedFlow<SettingsEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<SettingsEffect> = _effects.asSharedFlow()
@@ -116,14 +121,14 @@ class SettingsViewModel @Inject constructor(
         if (_uiState.value.preferences.localeTag == localeTag) {
             return
         }
-        updatePreferences(_uiState.value.preferences.copy(localeTag = localeTag, localeUserSelected = true)) {
+        updatePreferences({ it.copy(localeTag = localeTag, localeUserSelected = true) }) {
             AppLocaleHolder.localeTag = localeTag
             _effects.emit(SettingsEffect.RecreateActivity)
         }
     }
 
     fun onSyncStationDetailChanged(enabled: Boolean) {
-        updatePreferences(_uiState.value.preferences.copy(syncStationDetail = enabled))
+        updatePreferences({ it.copy(syncStationDetail = enabled) })
     }
 
     /**
@@ -133,7 +138,7 @@ class SettingsViewModel @Inject constructor(
      */
     fun onSyncPublicCityCatalogChanged(enabled: Boolean, context: android.content.Context) {
         // The application observes persisted policy changes and cancels/reschedules the unique worker.
-        updatePreferences(_uiState.value.preferences.copy(syncPublicCityCatalog = enabled))
+        updatePreferences({ it.copy(syncPublicCityCatalog = enabled) })
     }
 
     fun clearPublicCatalog() {
@@ -167,24 +172,28 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onAutoDownloadLatestWeekChanged(enabled: Boolean) {
-        updatePreferences(_uiState.value.preferences.copy(autoDownloadLatestWeek = enabled))
+        updatePreferences({ it.copy(autoDownloadLatestWeek = enabled) })
     }
 
     fun onAutoSyncOnWifiChanged(enabled: Boolean) {
-        updatePreferences(_uiState.value.preferences.copy(autoSyncOnWifi = enabled)) {
+        updatePreferences({ it.copy(autoSyncOnWifi = enabled) }) {
             syncWorkScheduler.schedulePeriodicSync()
         }
     }
 
+    fun onAllowMapDownloadsOnMobileDataChanged(enabled: Boolean) {
+        updatePreferences({ it.copy(allowMapDownloadsOnMobileData = enabled) })
+    }
+
     fun onShowPriceHistoryChanged(enabled: Boolean) {
-        updatePreferences(_uiState.value.preferences.copy(showPriceHistory = enabled))
+        updatePreferences({ it.copy(showPriceHistory = enabled) })
     }
 
     fun onRetentionWeeksSelected(weeks: Int) {
         if (_uiState.value.preferences.stationDetailRetentionWeeks == weeks) {
             return
         }
-        updatePreferences(_uiState.value.preferences.copy(stationDetailRetentionWeeks = weeks))
+        updatePreferences({ it.copy(stationDetailRetentionWeeks = weeks) })
     }
 
     /** UC-015 — search radius for the nearest best-price station (BR-028). */
@@ -195,7 +204,7 @@ class SettingsViewModel @Inject constructor(
         if (_uiState.value.preferences.nearestStationRadiusKm == radiusKm) {
             return
         }
-        updatePreferences(_uiState.value.preferences.copy(nearestStationRadiusKm = radiusKm))
+        updatePreferences({ it.copy(nearestStationRadiusKm = radiusKm) })
     }
 
     fun syncNow() {
@@ -306,17 +315,19 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun updatePreferences(
-        updated: UserPreferences,
+        transform: (UserPreferences) -> UserPreferences,
         onSuccess: suspend () -> Unit = {},
     ) {
         viewModelScope.launch {
-            runCatching {
-                val result = updatePreferencesUseCase(updated)
-                _uiState.update { it.copy(preferences = result.preferences, error = null) }
-                onSuccess()
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(error = AppErrorResolver.fromThrowable(error))
+            preferenceUpdates.withLock {
+                try {
+                    val result = updatePreferencesUseCase(transform(getSettingsUseCase()))
+                    _uiState.update { it.copy(preferences = result.preferences, error = null) }
+                    onSuccess()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (error: Exception) {
+                    _uiState.update { it.copy(error = AppErrorResolver.fromThrowable(error)) }
                 }
             }
         }

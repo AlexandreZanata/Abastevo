@@ -5,9 +5,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.work.ListenableWorker
 import androidx.work.NetworkType
+import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
+import androidx.work.testing.WorkManagerTestInitHelper
 import androidx.work.workDataOf
 import com.anpfuel.data.local.map.MapGenerationEntity
 import com.anpfuel.data.local.map.MapPackageEntity
@@ -16,6 +18,7 @@ import com.anpfuel.data.map.MapPackageStore
 import com.anpfuel.data.map.MapDownloadException
 import com.anpfuel.data.map.MapStorageException
 import java.io.File
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -204,4 +207,25 @@ class MapDownloadWorkerTest {
         override suspend fun activate(generation: String, activatedAtMillis: Long) = Unit
         override suspend fun deleteInactive(generation: String) = Unit
     }
+
+    @Test fun cellularPermissionUpdatesQueuedWifiWorkWithoutDuplicatingIt() = runBlocking {
+        WorkManagerTestInitHelper.initializeTestWorkManager(context)
+        try {
+            val manager = WorkManager.getInstance(context)
+            val generation = "gen-mobile-permission"
+            val url = "https://example.test"
+            val work = manager.getWorkInfosForUniqueWorkFlow(MapDownloadScheduler.uniqueName(generation))
+            MapDownloadScheduler.enqueue(manager, generation, url, requireUnmetered = true)
+            val queued = work.first().single()
+            assertEquals(NetworkType.UNMETERED, queued.constraints.requiredNetworkType)
+
+            MapDownloadScheduler.enqueue(manager, generation, url, requireUnmetered = false)
+            val updated = work.first().single()
+            assertEquals(queued.id, updated.id)
+            assertEquals(NetworkType.CONNECTED, updated.constraints.requiredNetworkType)
+        } finally {
+            WorkManagerTestInitHelper.closeWorkDatabase()
+        }
+    }
+
 }

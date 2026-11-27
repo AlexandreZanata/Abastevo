@@ -32,6 +32,7 @@ data class UserPreferences(
     val onboardingCompleted: Boolean = false,
     val locationPromptCompleted: Boolean = false,
     val activeSurveyWeek: SurveyWeek? = null,
+    val allowMapDownloadsOnMobileData: Boolean = false,
 ) {
     /** UC-015 — search radius in meters for the nearest best-price station (BR-028). */
     fun getNearestStationRadiusMeters(): Double =
