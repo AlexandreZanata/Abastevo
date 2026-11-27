@@ -11,6 +11,7 @@ Base: `8a4503c`; isolated worktree because maintained dev contains another agent
 - BUC-NAV-01: Given Home → Select location (including deeper search/location paths), tapping Explore returns to Home.
 - BUC-NAV-02: Given Community → Contributions or Profile → Settings → Help, tapping the corresponding tab returns to its base.
 - BUC-NAV-03: Given another tab was left on a child screen, switching back opens its base. Repeated taps and subsequent Back do not reveal that discarded child.
+- BUC-NAV-04: After onboarding or initial week selection replaces its start entry with Home, switching tabs still discards the previous tab's children and keeps the same Home entry.
 
 ## Scope and validation
 

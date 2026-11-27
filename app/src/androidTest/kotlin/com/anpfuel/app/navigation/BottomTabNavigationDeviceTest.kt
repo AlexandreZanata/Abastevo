@@ -144,6 +144,28 @@ class BottomTabNavigationDeviceTest {
     }
 
     @Test
+    fun afterOnboardingTabSwitchDiscardsThePreviousTabAndKeepsHome() {
+        launch(startDestination = Routes.ONBOARDING)
+        compose.runOnIdle {
+            controller.navigate(Routes.HOME) {
+                popUpTo(Routes.ONBOARDING) { inclusive = true }
+            }
+        }
+        compose.waitForIdle()
+        val original = checkNotNull(homeEntry)
+
+        tap(NavigationTab.PROFILE)
+        open(Routes.SETTINGS)
+        tap(NavigationTab.COMMUNITY)
+
+        compose.runOnIdle {
+            controller.popBackStack()
+            assertEquals(Routes.HOME, controller.currentDestination?.route)
+            assertSame(original, controller.currentBackStackEntry)
+        }
+    }
+
+    @Test
     fun locationAsInitialDestinationCanReachEveryTabBase() {
         launch(startDestination = Routes.LOCATION)
         NavigationTab.entries.forEach(::tap)
