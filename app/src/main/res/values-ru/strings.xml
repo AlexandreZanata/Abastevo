@@ -291,6 +291,7 @@
     <string name="onboarding_action_sync_now">Синхронизировать сейчас</string>
     <string name="onboarding_action_skip">Пропустить пока</string>
     <string name="onboarding_location_prompt_title">Найти ваш город автоматически?</string>
+    <string name="onboarding_location_top_title">Ваш город</string>
     <string name="onboarding_location_prompt_body">Мы можем один раз использовать геолокацию устройства, чтобы предложить город для цен. Вы также можете выбрать вручную.</string>
     <string name="onboarding_location_use_device">Использовать мою геолокацию</string>
     <string name="onboarding_location_choose_manual">Выбрать вручную</string>
@@ -1051,10 +1052,10 @@
     <string name="capture_near_you_distance">Рядом с вами · %1$d м</string>
     <string name="capture_not_this_station">Не эта АЗС? Выбрать вручную</string>
     <string name="capture_locating_station">Ищем АЗС, на которой вы находитесь…</string>
-    <string name="capture_location_rationale">Разрешите доступ к геолокации, чтобы заранее выбрать АЗС, на которой вы находитесь.</string>
+    <string name="capture_location_rationale">Включите геолокацию, чтобы найти свою АЗС.</string>
     <string name="capture_use_my_location">Использовать мое местоположение</string>
     <string name="capture_open_location_settings">Открыть настройки</string>
-    <string name="capture_location_unavailable">Не удалось определить местоположение. Проверьте, что геолокация включена.</string>
+    <string name="capture_location_unavailable">Не удалось определить местоположение.</string>
     <string name="capture_no_station_nearby">Рядом с вами нет АЗС. Выберите ее ниже.</string>
     <string name="home_city_followed">Показан город %1$s, %2$s, где вы сейчас</string>
     <string name="home_city_followed_undo">Отменить</string>

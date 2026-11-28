@@ -291,6 +291,7 @@
     <string name="onboarding_action_sync_now">Sincronizar ahora</string>
     <string name="onboarding_action_skip">Omitir por ahora</string>
     <string name="onboarding_location_prompt_title">¿Encontrar su ciudad automáticamente?</string>
+    <string name="onboarding_location_top_title">Tu ciudad</string>
     <string name="onboarding_location_prompt_body">Podemos usar la ubicación del dispositivo una vez para sugerir su ciudad en los precios. También puede elegir manualmente.</string>
     <string name="onboarding_location_use_device">Usar mi ubicación</string>
     <string name="onboarding_location_choose_manual">Elegir manualmente</string>
@@ -1051,10 +1052,10 @@
     <string name="capture_near_you_distance">Cerca de ti · %1$d m</string>
     <string name="capture_not_this_station">¿No es esta estación? Elegir manualmente</string>
     <string name="capture_locating_station">Buscando la estación donde estás…</string>
-    <string name="capture_location_rationale">Permite la ubicación para preseleccionar la estación donde estás.</string>
+    <string name="capture_location_rationale">Activa la ubicación para encontrar tu estación.</string>
     <string name="capture_use_my_location">Usar mi ubicación</string>
     <string name="capture_open_location_settings">Abrir ajustes</string>
-    <string name="capture_location_unavailable">No se pudo obtener tu ubicación. Comprueba que esté activada.</string>
+    <string name="capture_location_unavailable">No encontramos tu ubicación.</string>
     <string name="capture_no_station_nearby">No hay ninguna estación justo a tu lado. Elígela abajo.</string>
     <string name="home_city_followed">Mostrando %1$s, %2$s, donde estás ahora</string>
     <string name="home_city_followed_undo">Deshacer</string>

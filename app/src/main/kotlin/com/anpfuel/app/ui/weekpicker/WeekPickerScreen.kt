@@ -62,6 +62,7 @@ import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonText
 import com.anpfuel.app.ui.components.skeletonLineHeight
 import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.SurveyWeekCatalogEntry
@@ -246,7 +247,7 @@ fun WeekPickerContent(
                 }
 
                 if (uiState.showSkipAction && onSkip != null) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = onSkip,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
