@@ -25,7 +25,12 @@ object NotificationTextFormatter {
     fun format(context: Context, content: AppNotificationContent, locale: Locale): NotificationText = when (content) {
         is AppNotificationContent.ForumReply -> NotificationText(
             context.getString(R.string.notifications_forum_reply_title),
-            context.getString(R.string.notifications_forum_reply_body, content.authorName, content.topicTitle),
+            // Replies without a public alias carry an empty author name.
+            if (content.authorName.isBlank()) {
+                context.getString(R.string.notifications_forum_reply_body_anonymous, content.topicTitle)
+            } else {
+                context.getString(R.string.notifications_forum_reply_body, content.authorName, content.topicTitle)
+            },
         )
         is AppNotificationContent.ContributionDecided -> {
             val fuel = content.fuel?.let { context.getString(FuelProductI18n.toStringRes(it)) }

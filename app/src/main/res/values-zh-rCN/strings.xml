@@ -1556,6 +1556,7 @@
     <string name="notifications_unread">未读</string>
     <string name="notifications_forum_reply_title">你的话题有新回复</string>
     <string name="notifications_forum_reply_body">%1$s 回复了“%2$s”</string>
+    <string name="notifications_forum_reply_body_anonymous">有人回复了“%1$s”</string>
     <string name="notifications_contribution_validated_title">你提交的价格已通过验证</string>
     <string name="notifications_contribution_validated_body">%1$s 现已获得社区确认。</string>
     <string name="notifications_contribution_rejected_title">你提交的价格未被接受</string>

@@ -1556,6 +1556,7 @@
     <string name="notifications_unread">未読</string>
     <string name="notifications_forum_reply_title">トピックに新しい返信</string>
     <string name="notifications_forum_reply_body">%1$s さんが「%2$s」に返信しました</string>
+    <string name="notifications_forum_reply_body_anonymous">「%1$s」に返信がありました</string>
     <string name="notifications_contribution_validated_title">投稿した価格が承認されました</string>
     <string name="notifications_contribution_validated_body">%1$s はコミュニティで確認されました。</string>
     <string name="notifications_contribution_rejected_title">投稿した価格は承認されませんでした</string>

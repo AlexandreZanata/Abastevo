@@ -1559,6 +1559,7 @@
     <string name="notifications_unread">Не прочитано</string>
     <string name="notifications_forum_reply_title">Новый ответ в вашей теме</string>
     <string name="notifications_forum_reply_body">%1$s ответил(а) в «%2$s»</string>
+    <string name="notifications_forum_reply_body_anonymous">Кто-то ответил в «%1$s»</string>
     <string name="notifications_contribution_validated_title">Ваша цена подтверждена</string>
     <string name="notifications_contribution_validated_body">%1$s теперь подтверждена сообществом.</string>
     <string name="notifications_contribution_rejected_title">Ваша цена не принята</string>

@@ -1558,6 +1558,7 @@
     <string name="notifications_unread">Non lue</string>
     <string name="notifications_forum_reply_title">Nouvelle réponse à votre sujet</string>
     <string name="notifications_forum_reply_body">%1$s a répondu à « %2$s »</string>
+    <string name="notifications_forum_reply_body_anonymous">Quelqu\'un a répondu à « %1$s »</string>
     <string name="notifications_contribution_validated_title">Votre prix a été validé</string>
     <string name="notifications_contribution_validated_body">%1$s est maintenant confirmé par la communauté.</string>
     <string name="notifications_contribution_rejected_title">Votre prix n\'a pas été accepté</string>
