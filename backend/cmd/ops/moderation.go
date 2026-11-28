@@ -11,8 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
+	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
@@ -115,12 +117,16 @@ func moderationAct(a actArgs, getenv func(string) string) error {
 	defer pool.Close()
 	raw := pool.Underlying()
 	store := moderationadapters.NewStore(raw)
+	// An invalidation is a rejection the contributor's account hears
+	// about in the same transaction (B-BR-NOTIF-02).
+	observations := communityadapters.NewStore(raw)
+	observations.Decided = contributionNotices(contributionProducers(raw, identityadapters.NewRegistrar(raw), accountadapters.NewPGStore(raw)))
 	res, err := moderationapp.Act(ctx, moderationapp.ActPorts{
 		ApplyQualityReport:    (&qualityadapters.ReportStore{Pool: raw}).ApplyReviewTx,
 		Clock:                 time.Now,
 		NewID:                 newUUID,
 		Store:                 store,
-		InvalidateObservation: communityadapters.NewStore(raw).InvalidateTx,
+		InvalidateObservation: observations.InvalidateTx,
 		InvalidateForumTarget: forumadapters.NewStore(raw).InvalidateForumTargetTx,
 		BlockContributor: func(ctx context.Context, tx pgx.Tx, contributorRef, caseID, reason string, at time.Time) error {
 			id, err := newUUID()

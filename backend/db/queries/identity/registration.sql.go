@@ -39,6 +39,21 @@ func (q *Queries) ConsumeChallenge(ctx context.Context, id pgtype.UUID) (Consume
 	return i, err
 }
 
+const contributorByAttributionToken = `-- name: ContributorByAttributionToken :one
+SELECT id FROM identity_contributors
+WHERE attribution_token = $1 AND status <> 'deleted'
+`
+
+// Account notices (B-BR-NOTIF-02) resolve an observation's attribution
+// token back to its contributor server-side only; erased contributors have
+// no token and never resolve.
+func (q *Queries) ContributorByAttributionToken(ctx context.Context, token pgtype.Text) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, contributorByAttributionToken, token)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createChallenge = `-- name: CreateChallenge :one
 
 INSERT INTO identity_challenges (id, nonce_hash, fingerprint, purpose, expires_at)

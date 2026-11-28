@@ -94,6 +94,27 @@ alias. The masked email hint stays within the owner's profile. Recovery
 rotates the key and revokes existing account session families, including
 their derived company web access, before the new session is issued.
 
+## Account notifications
+
+Rules: [B-BR-NOTIF-02/03](../product/notifications.md). Module
+`internal/modules/notifications`, table `account_notifications` (migration 000303).
+
+- `POST /v1/notifications/list` (session read): `{family_id, access_token, limit 1..50 = 30, before?}` →
+  `{items:[{notification_id, kind, created_at, read, payload}], next_before, unread}`. `before` is the
+  sealed `next_before` of the same account (owner-bound, 15-minute expiry); `next_before` is `null` on
+  the last page.
+- `POST /v1/notifications/read` (signed write, key bound to the session account):
+  `{family_id, access_token, operation_id, notification_ids 1..50}` or `{..., all:true}` → `{marked}`.
+  `marked` counts the caller's unexpired notifications the request covers, so a replay answers the same.
+- Any session or proof failure is `401 notifications.auth-required`; bad input `400
+  notifications.invalid`; store failure `503 notifications.unavailable`. Always `no-store`.
+- Producers join the event's transaction through the `notifications/application.Notifier` port:
+  `forum.reply` when a comment is first published (premoderation makes it visible there, not at
+  creation) on a published, visible post with an account author, never for the replier; contribution
+  decisions in `community` `Store.RecordDecisionTx`, the decision log the public projection reads,
+  resolved attribution token → contributor → bound account. No account means no row. Account erasure
+  deletes the inbox in the worker.
+
 ## Community commands (signed; private responses)
 
 - `POST /v1/observations`: body fields from COMMUNITY_PRICING_SPEC; Idempotency-Key required; 201 `{id,validation_state:"RECEIVED",received_at,status_url}`. The 201 means durably received, not validated/published. A job is persisted in the same transaction.

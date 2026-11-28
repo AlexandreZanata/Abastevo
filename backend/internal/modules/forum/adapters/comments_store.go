@@ -650,7 +650,44 @@ func (s *Store) ReviewCommentTx(ctx context.Context, tx pgx.Tx, commentID string
 	}); err != nil {
 		return nil, fmt.Errorf("forum: record change: %w", err)
 	}
+	// Comments are premoderated, so a reply becomes visible here, not at
+	// creation. Only the first publication notifies; a re-review after an
+	// owner edit keeps published_at and stays silent.
+	if approve && !existing.PublishedAt.Valid && s.Replies != nil {
+		if err := s.notifyReply(ctx, qtx, tx, reviewed); err != nil {
+			return nil, fmt.Errorf("forum: reply notice: %w", err)
+		}
+	}
 	return mapCommentRowToDomain(reviewed), nil
+}
+
+// notifyReply hands a just-published comment to the reply port when it is
+// publicly visible: the comment, its parent (for an answer) and the post
+// must all be published and visible, and the post needs an account author.
+func (s *Store) notifyReply(ctx context.Context, qtx *forumsql.Queries, tx pgx.Tx, c forumsql.ForumComment) error {
+	if c.Visibility != string(domain.VisibilityVisible) {
+		return nil
+	}
+	if c.ParentID.Valid {
+		parent, err := qtx.GetCommentByID(ctx, c.ParentID)
+		if err != nil {
+			return err
+		}
+		if parent.PublicationState != string(domain.StatePublished) || parent.Visibility != string(domain.VisibilityVisible) {
+			return nil
+		}
+	}
+	post, err := qtx.GetPostByID(ctx, c.PostID)
+	if err != nil {
+		return err
+	}
+	if !post.AuthorAccountID.Valid || post.PublicationState != string(domain.StatePublished) || post.Visibility != string(domain.VisibilityVisible) {
+		return nil
+	}
+	return s.Replies(ctx, tx, application.ReplyNotice{
+		PostID: uuidString(post.ID), PostTitle: post.Title, PostAuthorAccountID: uuidString(post.AuthorAccountID),
+		CommentID: uuidString(c.ID), CommentAuthorAccountID: uuidString(c.AuthorAccountID), AuthorName: c.PublicAlias,
+	})
 }
 
 // ListCommentsPendingReview returns the oldest unreviewed comments after an

@@ -37,14 +37,17 @@ contract does not need any push SDK.
 - Producers insert in the same transaction as the event they describe,
   through an explicit port of the notifications module. A producer never
   notifies the actor about their own action.
-- v1 kinds and payloads (JSON object, bounded, no email, no GPS, no tokens;
-  author names are the public forum names already visible on the topic):
+- Only active accounts receive rows; account erasure deletes the inbox in
+  batches and deleting an account row cascades to it.
+- v1 kinds and payloads (JSON object ≤ 2 KiB, no email, no GPS, no tokens;
+  author names are the public forum alias already visible on the topic, empty
+  when the reply has none):
 
 | Kind | Producer | Payload |
 | --- | --- | --- |
-| `forum.reply` | a visible reply is created on a topic | `topic_id`, `topic_title` (≤ 160), `comment_id`, `author_name` (≤ 80) |
-| `contribution.validated` | a community observation of the account reaches a validated decision | `observation_id`, `station_id`, `station_name` (≤ 160), `fuel` (wire product) |
-| `contribution.rejected` | a community observation of the account is rejected | same as validated, plus `reason` (stable code) |
+| `forum.reply` | the first publication of a reply on a topic of the account: comments are premoderated, so this happens when an operator approves it (`ReviewCommentTx`), only while the topic (and the parent, for an answer) is published; re-approval after an edit stays silent; parent-comment authors are not notified | `topic_id`, `topic_title` (≤ 160), `comment_id`, `author_name` (≤ 80) |
+| `contribution.validated` | a community observation attributed to a contributor bound to the account reaches a VALIDATED decision (`RecordDecisionTx`, used by the worker and by moderators) | `observation_id`, `station_id`, `station_name` (≤ 160), `fuel` (wire product, e.g. `ETHANOL`) |
+| `contribution.rejected` | the same observation reaches a REJECTED decision, including a later moderator invalidation (so one observation may produce both notices) | same as validated, plus `reason`: `invalid-station`, `invalid-supersedes`, `evidence-owner-mismatch`, `evidence-timeout`, `evidence-reused`, `contributor-blocked` or `moderation-invalid` |
 
 - Unknown kinds are skipped by the app, so new kinds can ship server-first.
 
@@ -53,13 +56,16 @@ contract does not need any push SDK.
 - `POST /v1/notifications/list`, a private session read like the ledger record
   pages: `{family_id, access_token, limit (1..50, default 30), before?}` →
   `{items: [{notification_id, kind, created_at, read, payload}], next_before,
-  unread}`. `before` is an opaque cursor from `next_before`.
+  unread}`. `before` is the sealed `next_before` cursor (bound to the account,
+  valid for 15 minutes); `next_before` is null on the last page.
 - `POST /v1/notifications/read`, a signed write (device key bound to the
   account): `{family_id, access_token, operation_id, notification_ids (1..50)}`
-  or `{..., all: true}` → `{marked}`. Idempotent; ids of other accounts are
-  ignored, never revealed.
-- Both are `Cache-Control: no-store` and return the generic authentication
-  error for any session or proof failure.
+  or `{..., all: true}` → `{marked}`, the number of the caller's live
+  notifications the request covers (all read afterwards), so a replay answers
+  the same. Ids of other accounts are ignored, never revealed.
+- Both are `Cache-Control: no-store`. Any session or proof failure returns the
+  generic `401 notifications.auth-required`; a malformed body, limit or cursor
+  returns `400 notifications.invalid`; a store failure returns 503.
 
 ## B-BR-NOTIF-04 Account notifications on the device
 

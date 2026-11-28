@@ -332,6 +332,9 @@ func TestRuntimeRoleServesProductionProcessAndEnterprise(t *testing.T) {
 	sessionBody, _ := json.Marshal(map[string]any{"family_id": sessionA["family_id"], "access_token": sessionA["access_token"]})
 	h.call(h.req("POST", "/v1/premium/status", sessionBody), 200)
 	h.call(h.req("POST", "/v1/cloud/status", sessionBody), 200)
+	if inbox := h.call(h.req("POST", "/v1/notifications/list", sessionBody), 200); inbox["unread"] != float64(0) {
+		t.Fatal("notification inbox under the runtime role", inbox)
+	}
 	_, refreshed := h.accountLogin("runtimerefresh")
 	h.call(h.req("POST", "/v1/accounts/sessions/refresh", []byte(fmt.Sprintf(`{"family_id":%q,"refresh_token":%q}`, refreshed["family_id"], refreshed["refresh_token"]))), 200)
 

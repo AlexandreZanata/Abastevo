@@ -72,6 +72,8 @@ tags:
     description: Public editorial reading, categories, feeds, and future community discussion.
   - name: community-safety
     description: Signed report and block of the author of public forum and station content (B-BR-SAFE-01..09); account identifiers never leave the server.
+  - name: notifications
+    description: Private account notification inbox (B-BR-NOTIF-02/03); session reads and signed mark-read writes.
 paths:
   /v1/orgs/{org_id}/employees/{employee_id}/merge/preview:
     post:
@@ -11231,6 +11233,68 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/notifications/list:
+    post:
+      tags:
+      - notifications
+      summary: List account notifications
+      description: Private session read (B-BR-NOTIF-03). The owner derives from the live account session. Items are the
+        account's notifications newest first; rows expire 30 days after creation and are never listed after that.
+        before is the opaque, authenticated next_before cursor of the same account (it expires after 15 minutes);
+        next_before is null on the last page and unread counts every unexpired unread item. Every session failure
+        answers the same generic 401. All responses are no-store without ETags.
+      operationId: notificationsList
+      x-implementation-status: source-local-done
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationsListRequest'
+      responses:
+        '200':
+          description: Private owned page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/notifications/read:
+    post:
+      tags:
+      - notifications
+      summary: Mark account notifications read
+      description: Signed write (B-BR-NOTIF-03) proved by the device key bound to the session's account. Marks
+        notification_ids (1..50) or, with all true, every unexpired notification of the account. Idempotent - marked
+        counts the caller's unexpired notifications the request covers, all read afterwards, so a replay answers the
+        same; IDs of other accounts are ignored and never revealed. Every session or proof failure answers the same
+        generic 401. All responses are no-store without ETags.
+      operationId: notificationsRead
+      x-implementation-status: source-local-done
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationsReadRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsReadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '503':
           $ref: '#/components/responses/Unavailable'
   /v1/ledger/reports/build:
@@ -44102,6 +44166,169 @@ components:
             type: object
       required:
       - items
+    NotificationsListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id:
+          type: string
+          format: uuid
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 30
+        before:
+          type: string
+          minLength: 1
+          maxLength: 512
+      required:
+      - family_id
+      - access_token
+    NotificationsListResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AccountNotification'
+        next_before:
+          type:
+          - string
+          - 'null'
+          maxLength: 512
+        unread:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - next_before
+      - unread
+    AccountNotification:
+      type: object
+      additionalProperties: false
+      description: One account notification. Clients skip kinds they do not know, so new kinds can ship server-first.
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          maxLength: 64
+          description: v1 kinds are forum.reply, contribution.validated and contribution.rejected.
+        created_at:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+        payload:
+          type: object
+          description: Kind-specific public fields, at most 2048 bytes; see NotificationForumReplyPayload and
+            NotificationContributionPayload. Never an email, GPS position or token.
+      required:
+      - notification_id
+      - kind
+      - created_at
+      - read
+      - payload
+    NotificationForumReplyPayload:
+      type: object
+      additionalProperties: false
+      description: forum.reply - a visible reply on the account's topic. author_name is the public forum name shown on
+        the topic for that reply and may be empty.
+      properties:
+        topic_id:
+          type: string
+          format: uuid
+        topic_title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        comment_id:
+          type: string
+          format: uuid
+        author_name:
+          type: string
+          maxLength: 80
+      required:
+      - topic_id
+      - topic_title
+      - comment_id
+      - author_name
+    NotificationContributionPayload:
+      type: object
+      additionalProperties: false
+      description: contribution.validated or contribution.rejected - a decision on the account's community observation.
+        fuel is the wire product; reason is a stable rejection code and appears only on contribution.rejected.
+      properties:
+        observation_id:
+          type: string
+          format: uuid
+        station_id:
+          type: string
+          format: uuid
+        station_name:
+          type: string
+          maxLength: 160
+        fuel:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]{0,31}$
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9-]{0,63}$
+      required:
+      - observation_id
+      - station_id
+      - station_name
+      - fuel
+    NotificationsReadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id:
+          type: string
+          format: uuid
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+        operation_id:
+          type: string
+          format: uuid
+        notification_ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            format: uuid
+        all:
+          type: boolean
+          const: true
+      required:
+      - family_id
+      - access_token
+      - operation_id
+      oneOf:
+      - required:
+        - notification_ids
+      - required:
+        - all
+    NotificationsReadResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        marked:
+          type: integer
+          minimum: 0
+      required:
+      - marked
     AlertsEraseRequest:
       type: object
       additionalProperties: false

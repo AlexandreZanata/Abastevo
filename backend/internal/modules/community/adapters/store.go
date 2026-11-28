@@ -15,12 +15,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	community "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/community"
+	application "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 )
 
 // Store persists observations and decisions.
 type Store struct {
 	pool *pgxpool.Pool
+	// Decided, when set, receives every terminal decision appended by
+	// RecordDecisionTx in the same transaction (B-BR-NOTIF-02).
+	Decided application.DecisionNotifier
 }
 
 // NewStore wires the owned generated queries to a pool.
@@ -271,8 +275,34 @@ func (s *Store) RecordDecisionTx(ctx context.Context, tx pgx.Tx, d domain.Decisi
 	if err != nil {
 		return err
 	}
-	_, err = q.AppendDecision(ctx, community.AppendDecisionParams{ID: id, ObservationID: uid, Sequence: d.Sequence, ToState: d.ToState, ReasonCodes: append([]string{}, d.ReasonCodes...), PolicyVersion: d.PolicyVersion, OccurredAt: pgTime(d.OccurredAt), ActorRef: d.Actor})
-	return err
+	if _, err = q.AppendDecision(ctx, community.AppendDecisionParams{ID: id, ObservationID: uid, Sequence: d.Sequence, ToState: d.ToState, ReasonCodes: append([]string{}, d.ReasonCodes...), PolicyVersion: d.PolicyVersion, OccurredAt: pgTime(d.OccurredAt), ActorRef: d.Actor}); err != nil {
+		return err
+	}
+	return s.noticeDecision(ctx, q, tx, uid, d)
+}
+
+// noticeDecision reports a terminal decision of a live observation to the
+// notification port inside the decision's transaction.
+func (s *Store) noticeDecision(ctx context.Context, q *community.Queries, tx pgx.Tx, uid pgtype.UUID, d domain.Decision) error {
+	if s.Decided == nil || (d.ToState != domain.StateValidated && d.ToState != domain.StateRejected) {
+		return nil
+	}
+	facts, err := q.DecisionNoticeFacts(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if facts.Deleted {
+		return nil
+	}
+	notice := application.DecisionNotice{
+		ObservationID: uuidString(uid), ContributorRef: facts.ContributorRef,
+		StationID: uuidString(facts.StationID), StationName: facts.StationName,
+		Product: facts.FuelProduct, Validated: d.ToState == domain.StateValidated,
+	}
+	if !notice.Validated && len(d.ReasonCodes) > 0 {
+		notice.Reason = d.ReasonCodes[0]
+	}
+	return s.Decided(ctx, tx, notice)
 }
 
 // InvalidateTx derives the reviewed transition under the same target lock.

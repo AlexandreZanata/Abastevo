@@ -320,3 +320,21 @@ type ReportStore interface {
 
 // ModerationCaseOpener opens or converges a moderation case in an authorized transaction.
 type ModerationCaseOpener func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (caseID string, replayed bool, err error)
+
+// ReplyNotice is a comment that just became publicly visible for the first
+// time on a post whose author is an account (B-BR-NOTIF-02). It carries
+// only public fields; AuthorName is the comment's public alias as shown on
+// the topic, possibly empty.
+type ReplyNotice struct {
+	PostID                 string
+	PostTitle              string
+	PostAuthorAccountID    string
+	CommentID              string
+	CommentAuthorAccountID string
+	AuthorName             string
+}
+
+// ReplyNotifier receives a ReplyNotice inside the publishing transaction.
+// An error rolls the publication back, so a reply and its notice commit
+// together. The receiver decides whom to notify, never the replier.
+type ReplyNotifier func(ctx context.Context, tx pgx.Tx, n ReplyNotice) error

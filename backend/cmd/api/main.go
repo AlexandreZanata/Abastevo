@@ -94,6 +94,7 @@ import (
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
+	notificationsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/notifications/adapters"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
@@ -958,6 +959,8 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	}.RegisterRoutes(router)
 
 	forumStore := forumadapters.NewStore(pool.Underlying())
+	notificationsStore := notificationsadapters.NewStore(pool.Underlying())
+	forumStore.Replies = forumReplyNotices(notificationsStore)
 	forumWriteQuota := func(limit int32, window time.Duration) *identityadapters.Limiter {
 		return identityadapters.NewLimiter(pool.Underlying(), identitydomain.QuotaPolicy{
 			Version: 1,
@@ -1260,6 +1263,7 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 			return contributor, key, nil
 		},
 	}.RegisterRoutes(router)
+	notificationRoutes(router, notificationsStore, premiumHTTP.Sessions, premiumHTTP.SignedOwner, cfg.CursorSecret, cfg.CanonicalHost)
 	metricsReader := metricsLedgerReader{store: ledgerStore}
 	metricshttp.Handler{
 		Service: metricsadapters.NewStore(metricsReader),
