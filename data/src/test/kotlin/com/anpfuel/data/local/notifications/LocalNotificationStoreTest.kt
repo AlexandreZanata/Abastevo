@@ -110,6 +110,13 @@ class LocalNotificationStoreTest {
     }
 
     @Test
+    fun `remembers the newest week seen by local alerts`() = runTest {
+        assertNull(store.newestWeekEnd())
+        store.setNewestWeekEnd("2026-11-28")
+        assertEquals("2026-11-28", store.newestWeekEnd())
+    }
+
+    @Test
     fun `corrupt storage reads as empty`() = runTest {
         prefs.map["local_inbox"] = "{not json"
         assertTrue(store.list().isEmpty())

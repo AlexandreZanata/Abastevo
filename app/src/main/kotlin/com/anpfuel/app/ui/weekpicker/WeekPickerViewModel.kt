@@ -34,6 +34,8 @@ class WeekPickerViewModel @Inject constructor(
     private val selectWeekAndSyncUseCase: SelectWeekAndSyncUseCase,
     private val downloadSurveyWeekUseCase: DownloadSurveyWeekUseCase,
     private val getDownloadedSurveyWeeksUseCase: GetDownloadedSurveyWeeksUseCase,
+    /** B-BR-NOTIF-05: a week imported here runs the same post-import alerts as a background sync. */
+    private val syncWorkScheduler: com.anpfuel.data.worker.SyncWorkScheduler? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WeekPickerUiState(isLoadingCatalog = true))
@@ -172,6 +174,7 @@ class WeekPickerViewModel @Inject constructor(
                     ) {
                         is SelectWeekAndSyncResult.Failed -> handleSyncFailed(result.error)
                         is SelectWeekAndSyncResult.Success -> {
+                            syncWorkScheduler?.enqueuePriceDropEvaluation()
                             refreshDownloadedWeeks()
                             _navigation.emit(WeekPickerNavigation.Completed)
                         }
@@ -179,7 +182,10 @@ class WeekPickerViewModel @Inject constructor(
                 } else {
                     when (val result = downloadSurveyWeekUseCase(catalogEntry = entry)) {
                         is DownloadSurveyWeekResult.Failed -> handleSyncFailed(result.error)
-                        is DownloadSurveyWeekResult.Success -> refreshDownloadedWeeks()
+                        is DownloadSurveyWeekResult.Success -> {
+                            syncWorkScheduler?.enqueuePriceDropEvaluation()
+                            refreshDownloadedWeeks()
+                        }
                     }
                 }
             } finally {

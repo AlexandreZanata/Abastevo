@@ -85,7 +85,11 @@ contract does not need any push SDK.
     fell from the previous imported week (one alert per city and week, listing
     the fuels that fell, largest drop first);
   - `local.vehicle_price_drop`: the existing per-vehicle alert (UC-014);
-  - `local.new_week`: a newer ANP survey week was imported.
+  - `local.new_week`: an ANP survey week newer than the newest one seen
+    before was imported (the first import only records that baseline, and
+    downloading an older week announces nothing).
+- The evaluation runs after a background sync and after a week is
+  downloaded or selected in the survey week list.
 - Every local alert is kept in a device inbox (last 100, 30 days) and listed on
   the Notifications screen. An Android notification is posted only with the OS
   permission, in the existing price-alert channel.
