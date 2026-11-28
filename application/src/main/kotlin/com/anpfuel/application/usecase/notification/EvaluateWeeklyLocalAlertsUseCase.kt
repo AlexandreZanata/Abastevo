@@ -19,8 +19,8 @@ import java.math.RoundingMode
 
 /**
  * B-BR-NOTIF-05 — local alerts after a successful ANP weekly import, from
- * data already on the device: `local.new_week` once per newer week (never
- * for the very first import) and `local.city_average_drop` once per city and
+ * data already on the device: `local.new_week` once per week newer than the
+ * newest week seen before (the first import only sets that baseline) and `local.city_average_drop` once per city and
  * week when a fuel's average fell. Each alert is kept in the device inbox and
  * posted as an Android notification only when the OS allows it.
  */
@@ -30,6 +30,7 @@ class EvaluateWeeklyLocalAlertsUseCase(
     private val preferences: UserPreferencesRepository,
     private val inbox: LocalNotificationInbox,
     private val poster: SystemNotificationPoster,
+    private val baseline: com.anpfuel.domain.notification.LocalAlertBaseline,
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
     /** Number of new local alerts recorded. */
@@ -39,11 +40,15 @@ class EvaluateWeeklyLocalAlertsUseCase(
         val known = inbox.list().map { it.id }.toSet()
         var created = 0
 
+        // Announce only a newest week that is newer than the one seen before: the first
+        // import sets the baseline silently and downloading an older week says nothing.
+        val seen = baseline.newestWeekEnd()?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
         val weekId = "local.new_week:${newest.endDate}"
-        if (imported.map { it.surveyWeek }.distinct().size > 1 && weekId !in known) {
+        if (seen != null && newest.endDate.isAfter(seen) && weekId !in known) {
             record(weekId, AppNotificationContent.NewSurveyWeek(newest.startDate.toString(), newest.endDate.toString()))
             created++
         }
+        if (seen == null || newest.endDate.isAfter(seen)) baseline.setNewestWeekEnd(newest.endDate.toString())
 
         val prefs = preferences.getPreferences()
         val state = prefs.preferredState ?: return created

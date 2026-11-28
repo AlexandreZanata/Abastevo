@@ -36,3 +36,9 @@ interface AccountNotificationShownStore {
     suspend fun shownIds(): Set<String>
     suspend fun remember(ids: Collection<String>)
 }
+
+/** Newest imported ANP week already seen by the local alerts (B-BR-NOTIF-05), as its ISO end date. */
+interface LocalAlertBaseline {
+    suspend fun newestWeekEnd(): String?
+    suspend fun setNewestWeekEnd(endIso: String)
+}

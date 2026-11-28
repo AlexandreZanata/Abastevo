@@ -301,11 +301,12 @@ private fun PackageRow(pkg: MapPackageUi, size: (Long) -> String) {
         pkg.packageId == "world-coasts" -> Icons.Default.Public to stringResource(R.string.map_pkg_world_coasts)
         else -> Icons.Default.Map to stringResource(R.string.map_pkg_region)
     }
-    val (statusLabel, statusColor) = when (pkg.status) {
-        "DOWNLOADING" -> stringResource(R.string.map_pkg_status_downloading) to MaterialTheme.colorScheme.primary
-        "COMPLETE", "VERIFIED" -> stringResource(R.string.map_pkg_status_complete) to MaterialTheme.colorScheme.primary
-        "FAILED" -> stringResource(R.string.map_pkg_status_failed) to MaterialTheme.colorScheme.error
-        else -> stringResource(R.string.map_pkg_status_pending) to MaterialTheme.colorScheme.onSurfaceVariant
+    val phase = mapPackagePhase(pkg.status)
+    val (statusLabel, statusColor) = when (phase) {
+        MapPackagePhase.DOWNLOADING -> stringResource(R.string.map_pkg_status_downloading) to MaterialTheme.colorScheme.primary
+        MapPackagePhase.READY -> stringResource(R.string.map_pkg_status_complete) to MaterialTheme.colorScheme.primary
+        MapPackagePhase.FAILED -> stringResource(R.string.map_pkg_status_failed) to MaterialTheme.colorScheme.error
+        MapPackagePhase.QUEUED -> stringResource(R.string.map_pkg_status_pending) to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -315,11 +316,11 @@ private fun PackageRow(pkg: MapPackageUi, size: (Long) -> String) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    when (pkg.status) {
-                        "COMPLETE", "VERIFIED" -> Icons.Default.CheckCircle
-                        "FAILED" -> Icons.Default.ErrorOutline
-                        "DOWNLOADING" -> icon
-                        else -> Icons.Default.Schedule
+                    when (phase) {
+                        MapPackagePhase.READY -> Icons.Default.CheckCircle
+                        MapPackagePhase.FAILED -> Icons.Default.ErrorOutline
+                        MapPackagePhase.DOWNLOADING -> icon
+                        MapPackagePhase.QUEUED -> Icons.Default.Schedule
                     },
                     null,
                     tint = statusColor,
@@ -334,7 +335,7 @@ private fun PackageRow(pkg: MapPackageUi, size: (Long) -> String) {
                 }
                 Text(statusLabel, style = MaterialTheme.typography.labelLarge, color = statusColor)
             }
-            if (pkg.status == "DOWNLOADING") {
+            if (phase == MapPackagePhase.DOWNLOADING) {
                 LinearProgressIndicator(
                     progress = { (pkg.downloadedBytes.toFloat() / pkg.bytes.coerceAtLeast(1)).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),

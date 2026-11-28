@@ -25,7 +25,8 @@ import kotlinx.coroutines.withContext
 class LocalNotificationStore internal constructor(
     private val prefs: SharedPreferences,
     private val nowMillis: () -> Long,
-) : LocalNotificationInbox, AccountNotificationCache, AccountNotificationShownStore {
+) : LocalNotificationInbox, AccountNotificationCache, AccountNotificationShownStore,
+    com.anpfuel.domain.notification.LocalAlertBaseline {
 
     @Inject constructor(@ApplicationContext context: Context) :
         this(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE), System::currentTimeMillis)
@@ -72,6 +73,12 @@ class LocalNotificationStore internal constructor(
         prefs.getString(KEY_SHOWN, null).orEmpty().split(',').filter { it.isNotBlank() }.toSet()
     }
 
+    override suspend fun newestWeekEnd(): String? = locked { prefs.getString(KEY_NEWEST_WEEK, null) }
+
+    override suspend fun setNewestWeekEnd(endIso: String) = locked {
+        prefs.edit().putString(KEY_NEWEST_WEEK, endIso).apply()
+    }
+
     private fun writeLocal(items: List<AppNotification>) {
         prefs.edit().putString(KEY_LOCAL, NotificationJsonCodec.encode(items)).apply()
     }
@@ -83,5 +90,6 @@ class LocalNotificationStore internal constructor(
         private const val KEY_LOCAL = "local_inbox"
         private const val KEY_ACCOUNT_CACHE = "account_page"
         private const val KEY_SHOWN = "account_shown_ids"
+        private const val KEY_NEWEST_WEEK = "local_newest_week_end"
     }
 }

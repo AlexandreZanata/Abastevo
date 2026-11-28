@@ -40,6 +40,9 @@ object NotificationsModule {
     fun shownStore(store: LocalNotificationStore): AccountNotificationShownStore = store
 
     @Provides
+    fun localAlertBaseline(store: LocalNotificationStore): com.anpfuel.domain.notification.LocalAlertBaseline = store
+
+    @Provides
     @Singleton
     fun accountGateway(
         @Named("apiOrigin") environment: ApiEnvironment,
@@ -77,5 +80,7 @@ object NotificationsModule {
         preferences: UserPreferencesRepository,
         inbox: LocalNotificationInbox,
         poster: SystemNotificationPoster,
-    ): EvaluateWeeklyLocalAlertsUseCase = EvaluateWeeklyLocalAlertsUseCase(averagePrices, priceTables, preferences, inbox, poster)
+        baseline: com.anpfuel.domain.notification.LocalAlertBaseline,
+    ): EvaluateWeeklyLocalAlertsUseCase =
+        EvaluateWeeklyLocalAlertsUseCase(averagePrices, priceTables, preferences, inbox, poster, baseline)
 }

@@ -159,6 +159,13 @@ class NotificationUseCasesTest {
         DomainId.forSurveyWeek(week), week, BrazilianState.MATO_GROSSO, "SORRISO", fuel, average = PriceAmount.of(value),
     )
 
+    private class MemoryBaseline(var end: String? = null) : com.anpfuel.domain.notification.LocalAlertBaseline {
+        override suspend fun newestWeekEnd() = end
+        override suspend fun setNewestWeekEnd(endIso: String) { end = endIso }
+    }
+
+    private val baseline = MemoryBaseline()
+
     private fun weekly(surveys: List<PriceSurvey>, poster: SystemNotificationPoster): EvaluateWeeklyLocalAlertsUseCase {
         val tables = mockk<PriceTableRepository>()
         coEvery { tables.getImportedPriceSurveys() } returns surveys
@@ -171,16 +178,18 @@ class NotificationUseCasesTest {
         coEvery { averages.getPricesByMunicipality(any(), any(), current) } returns listOf(
             average(current, FuelProduct.GASOLINE_REGULAR, "6.47"), average(current, FuelProduct.ETHANOL, "4.29"),
         )
-        return EvaluateWeeklyLocalAlertsUseCase(averages, tables, prefs, inbox, poster) { 1_000L }
+        return EvaluateWeeklyLocalAlertsUseCase(averages, tables, prefs, inbox, poster, baseline) { 1_000L }
     }
 
     @Test
-    fun `a new week records the new week and the city drop once`() = runTest {
+    fun `a newer week records the new week and the city drop once`() = runTest {
         val poster = mockk<SystemNotificationPoster>(relaxed = true)
         every { poster.canPost() } returns true
+        baseline.end = previous.endDate.toString()
         val useCase = weekly(listOf(survey(previous), survey(current)), poster)
 
         assertEquals(2, useCase())
+        assertEquals(current.endDate.toString(), baseline.end)
         val drop = inbox.items.first { it.content is AppNotificationContent.CityAverageDrop }.content as AppNotificationContent.CityAverageDrop
         assertEquals(listOf(FuelProduct.GASOLINE_REGULAR), drop.drops.map { it.fuel })
         assertEquals(120, drop.drops.single().dropMilli)
@@ -191,12 +200,24 @@ class NotificationUseCasesTest {
     }
 
     @Test
-    fun `the first import is not announced and alerts stay in the inbox without permission`() = runTest {
+    fun `the first import only sets the baseline and alerts stay in the inbox without permission`() = runTest {
         val poster = mockk<SystemNotificationPoster>(relaxed = true)
         every { poster.canPost() } returns false
 
-        assertEquals(0, weekly(listOf(survey(current)), poster)())
+        assertEquals(0, weekly(listOf(survey(previous)), poster)())
+        assertEquals(previous.endDate.toString(), baseline.end)
         assertEquals(2, weekly(listOf(survey(previous), survey(current)), poster)())
         coVerify(exactly = 0) { poster.postLocal(any()) }
+    }
+
+    @Test
+    fun `downloading an older week announces no new week but may report the city drop`() = runTest {
+        val poster = mockk<SystemNotificationPoster>(relaxed = true)
+        every { poster.canPost() } returns true
+        baseline.end = current.endDate.toString()
+
+        assertEquals(1, weekly(listOf(survey(previous), survey(current)), poster)())
+        assertTrue(inbox.items.single().content is AppNotificationContent.CityAverageDrop)
+        assertEquals(current.endDate.toString(), baseline.end)
     }
 }

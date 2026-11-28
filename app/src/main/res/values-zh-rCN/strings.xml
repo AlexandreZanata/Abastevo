@@ -291,6 +291,7 @@
     <string name="onboarding_action_sync_now">立即同步</string>
     <string name="onboarding_action_skip">暂时跳过</string>
     <string name="onboarding_location_prompt_title">自动查找您的城市？</string>
+    <string name="onboarding_location_top_title">你的城市</string>
     <string name="onboarding_location_prompt_body">我们可以使用一次设备位置来推荐您的城市以查看油价。您也可以手动选择。</string>
     <string name="onboarding_location_use_device">使用我的位置</string>
     <string name="onboarding_location_choose_manual">手动选择</string>
@@ -1051,10 +1052,10 @@
     <string name="capture_near_you_distance">在你附近 · %1$d 米</string>
     <string name="capture_not_this_station">不是这个加油站？手动选择</string>
     <string name="capture_locating_station">正在查找你所在的加油站…</string>
-    <string name="capture_location_rationale">允许使用位置信息，以便预先选中你所在的加油站。</string>
+    <string name="capture_location_rationale">开启位置信息,找到你所在的加油站。</string>
     <string name="capture_use_my_location">使用我的位置</string>
     <string name="capture_open_location_settings">打开设置</string>
-    <string name="capture_location_unavailable">无法获取你的位置。请检查位置信息是否已开启。</string>
+    <string name="capture_location_unavailable">无法获取你的位置。</string>
     <string name="capture_no_station_nearby">你附近没有加油站。请在下方选择。</string>
     <string name="home_city_followed">正在显示你当前所在的 %1$s, %2$s</string>
     <string name="home_city_followed_undo">撤销</string>

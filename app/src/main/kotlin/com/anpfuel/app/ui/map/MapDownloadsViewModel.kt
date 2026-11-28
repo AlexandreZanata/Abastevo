@@ -87,6 +87,21 @@ class WorkManagerControl @Inject constructor(
  * Missing configuration shows the specific pendency; a network failure is
  * reported as retryable and never as "no package" nor success.
  */
+/** What a stored package status means on screen (B-BR-MAP-DL-PROGRESS-01). */
+enum class MapPackagePhase { QUEUED, DOWNLOADING, READY, FAILED }
+
+/**
+ * Maps the store's package status to its phase. Bound to the store constants,
+ * never to literals, so a renamed status cannot silently show a finished
+ * package as queued again; unknown values read as queued.
+ */
+fun mapPackagePhase(status: String): MapPackagePhase = when (status) {
+    com.anpfuel.data.map.PACKAGE_DOWNLOADING -> MapPackagePhase.DOWNLOADING
+    com.anpfuel.data.map.PACKAGE_READY -> MapPackagePhase.READY
+    com.anpfuel.data.map.PACKAGE_FAILED -> MapPackagePhase.FAILED
+    else -> MapPackagePhase.QUEUED
+}
+
 @HiltViewModel
 class MapDownloadsViewModel @Inject constructor(
     private val config: MapDistributionConfig,

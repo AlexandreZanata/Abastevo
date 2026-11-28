@@ -38,7 +38,7 @@ import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.GeocodingAttributionFooter
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.designsystem.Button
-import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.app.ui.weekpicker.WeekPickerConfirmDialog
 import com.anpfuel.app.ui.weekpicker.WeekPickerContent
@@ -137,7 +137,7 @@ private fun OnboardingContent(
 ) {
     val titleRes = when (uiState.step) {
         OnboardingStep.INTRO -> R.string.onboarding_title_welcome
-        OnboardingStep.LOCATION_PROMPT -> R.string.onboarding_location_prompt_title
+        OnboardingStep.LOCATION_PROMPT -> R.string.onboarding_location_top_title
         OnboardingStep.WEEK_PICKER, OnboardingStep.SYNCING -> R.string.week_picker_title
     }
 
@@ -320,7 +320,7 @@ private fun OnboardingIntroActions(
             ) {
                 Text(text = stringResource(R.string.onboarding_action_get_started))
             }
-            TextButton(
+            OutlinedButton(
                 onClick = onSkipSync,
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -332,7 +332,7 @@ private fun OnboardingIntroActions(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (uiState.pageIndex > 0) {
-                    TextButton(onClick = onPreviousPage) {
+                    OutlinedButton(onClick = onPreviousPage, modifier = Modifier.weight(1f)) {
                         Text(text = stringResource(R.string.action_back))
                     }
                 }

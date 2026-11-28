@@ -133,6 +133,9 @@ outlines and indicators.
   has a 2dp ink outline, a black badge and an outlined "Change station" pill;
   a station pre-selected from the device location shows "Near you · N m" above
   it and an outlined "Not this station? Choose manually" action below it.
+  Without location, a white card with a black location badge, one short bold
+  line and a full-width filled action ("Use my location" or "Open settings")
+  sits above the search. "Choose city" is a compact outlined button.
   Selection is never a tinted (green) fill.
 - **Business card** (station page, "Do you manage this station?"): navy
   `large` card with no outline, a light round badge with the business icon,
@@ -206,14 +209,31 @@ components and only change the defaults:
 | --- | --- |
 | `Button` | 12dp radius, 48dp minimum height, black fill (off-white fill in dark) |
 | `OutlinedButton` | 12dp radius, 48dp minimum height, 1.5dp black border |
-| `TextButton` | 12dp radius, accent label |
+| `TextButton` | 12dp radius, accent label; inline links and dialog rows only (see Buttons below) |
 | `FilterChip` | pill; selected: solid black with inverse label |
 | `AssistChip` | pill |
 
 For a segmented control pass `AbastevoSelectionDefaults.segmentedButtonColors()`.
 
-Use one filled button per card or screen section for the main action;
-secondary actions are outlined or text buttons.
+### Buttons: never text-only actions (owner rule, 2026-11-28)
+
+An action is always a button with a visible container, never bare text:
+
+- The main action of a card or screen section is one filled `Button`.
+- Every other action next to it (above, below or beside) is an
+  `OutlinedButton` with exactly the same proportions: the same width
+  (`fillMaxWidth()` when the filled one is full width, or the same `weight`
+  in a row), the same 48dp minimum height, the same 12dp `control` radius and
+  padding, transparent fill and the standard 1.5dp ink border. Do not shrink
+  it, swap the radius or drop the border.
+- A secondary action on its own (no filled button nearby) is an
+  `OutlinedButton` too.
+- `TextButton` is allowed only for an inline link inside running text and for
+  the action row of a Material `AlertDialog`; it is never a standalone screen
+  or card action, and never an option stacked under a filled button
+  ("Choose manually", "Skip for now", "Back", "Open settings").
+
+Existing text-only actions are migrated whenever their screen is edited.
 
 Pair the map download dialog actions in one row. Split the available width
 evenly after horizontal margins and spacing. Use the taller label to size

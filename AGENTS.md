@@ -44,7 +44,9 @@ the task needs ([docs/README.md](docs/README.md) is the index).
   orchestrate UI state; business logic stays in `domain`/`application`.
   The package root is `com.anpfuel`. Content cards and surfaces use
   `AnpContainerDefaults` ([UI containers](docs/android/ui-containers.md)); do
-  not duplicate outlines or outline structural layouts.
+  not duplicate outlines or outline structural layouts. Actions are never
+  bare text: a filled `Button` plus same-size `OutlinedButton`s
+  ([design system: buttons](docs/android/design-system.md#buttons-never-text-only-actions-owner-rule-2026-11-28)).
 - Stack: Go (net/http, chi, pgx, sqlc, slog), PostgreSQL + PostGIS, private S3
   media, Caddy, k3s; Kotlin, Compose, Material 3, Room, Hilt, WorkManager.
   Adding a dependency needs a stated need, license check and security review.

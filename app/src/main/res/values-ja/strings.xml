@@ -291,6 +291,7 @@
     <string name="onboarding_action_sync_now">今すぐ同期</string>
     <string name="onboarding_action_skip">今はスキップ</string>
     <string name="onboarding_location_prompt_title">市区町村を自動で見つけますか？</string>
+    <string name="onboarding_location_top_title">お住まいの市</string>
     <string name="onboarding_location_prompt_body">価格表示のために、一度だけ端末の位置情報で市区町村を提案できます。手動で選ぶこともできます。</string>
     <string name="onboarding_location_use_device">位置情報を使う</string>
     <string name="onboarding_location_choose_manual">手動で選ぶ</string>
@@ -1051,10 +1052,10 @@
     <string name="capture_near_you_distance">現在地の近く · %1$d m</string>
     <string name="capture_not_this_station">この給油所ではありませんか？手動で選ぶ</string>
     <string name="capture_locating_station">現在地の給油所を探しています…</string>
-    <string name="capture_location_rationale">位置情報を許可すると、いる給油所を自動で選択します。</string>
+    <string name="capture_location_rationale">位置情報をオンにして給油所を見つけましょう。</string>
     <string name="capture_use_my_location">現在地を使う</string>
     <string name="capture_open_location_settings">設定を開く</string>
-    <string name="capture_location_unavailable">現在地を取得できませんでした。位置情報がオンか確認してください。</string>
+    <string name="capture_location_unavailable">現在地を取得できませんでした。</string>
     <string name="capture_no_station_nearby">すぐ近くに給油所がありません。下から選んでください。</string>
     <string name="home_city_followed">現在地の %1$s, %2$s を表示しています</string>
     <string name="home_city_followed_undo">元に戻す</string>

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -86,7 +87,6 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.designsystem.OutlinedButton
-import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import kotlinx.coroutines.Dispatchers
@@ -399,7 +399,11 @@ internal fun PhotoReviewContent(
         OutlinedButton(onClick = onReanalyze, enabled = editable, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.capture_reanalyze))
         }
-        TextButton(onClick = onRetake, enabled = !processing && submit !is CaptureOcrViewModel.SubmitState.Submitting) { Text(stringResource(R.string.capture_retake)) }
+        OutlinedButton(
+            onClick = onRetake,
+            enabled = !processing && submit !is CaptureOcrViewModel.SubmitState.Submitting,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(stringResource(R.string.capture_retake)) }
         if (photoAttached) {
             Text(
                 text = stringResource(R.string.capture_photo_attached),
@@ -449,7 +453,7 @@ internal fun PhotoReviewContent(
             }
         }
         Box {
-            TextButton(onClick = { addingFuel = true }, enabled = editable) {
+            OutlinedButton(onClick = { addingFuel = true }, enabled = editable, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.capture_add_fuel))
             }
             DropdownMenu(expanded = addingFuel, onDismissRequest = { addingFuel = false }) {
@@ -776,7 +780,11 @@ private fun NominalStationPicker(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { viewModel.changeNominalStation(); onChooseCity() }, enabled = !busy) {
+                OutlinedButton(
+                    onClick = { viewModel.changeNominalStation(); onChooseCity() },
+                    enabled = !busy,
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                ) {
                     Text(stringResource(R.string.capture_choose_city))
                 }
             }
@@ -900,27 +908,35 @@ private fun LocationAssistNotice(assist: StationLocationAssist, enabled: Boolean
     }
 }
 
+/**
+ * Location help as a compact card: a black location badge, one short bold
+ * line and a full-width filled action (the card's only action, so it is the
+ * filled button of the design system, never bare text).
+ */
 @Composable
 private fun LocationAssistCard(message: String, action: String, enabled: Boolean, onAction: () -> Unit) {
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surfaceContainerLow
     Surface(
         shape = AnpContainerDefaults.containerShape(),
         color = containerColor,
         border = AnpContainerDefaults.borderStroke(containerColor),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(Icons.Default.MyLocation, null, tint = MaterialTheme.colorScheme.onSurface)
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onAction, enabled = enabled) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = CircleShape, color = scheme.primary, contentColor = scheme.onPrimary, modifier = Modifier.size(40.dp)) {
+                    Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.MyLocation, null, Modifier.size(20.dp)) }
+                }
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Button(onClick = onAction, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
                 Text(action)
             }
         }

@@ -28,12 +28,12 @@ class MapPackageRepositoryTest {
 
     @AfterEach fun stop() { server.shutdown() }
 
-    private fun manifest(generation: String = "gen-1"): String = """
+    private fun manifest(generation: String = "gen-1", bytes: ByteArray = packageBytes): String = """
         {
           "format":"abastevo.native-map-manifest-v1","version":1,"generation":"$generation",
           "engine":{"name":"comaps","upstream_sha":"4587b8ad4d12c9f59982709fdaf03cc925948827","generator_sha":"4587b8ad4d12c9f59982709fdaf03cc925948827","format_version":"261004"},
           "region":{"id":"brazil-parana-east","name":"Parana East","overview":"world","bbox":{"min_lon_deg":-50.0,"min_lat_deg":-26.0,"max_lon_deg":-48.0,"max_lat_deg":-24.0}},
-          "packages":[{"id":"region","role":"REGION","path":"region.mwm","bytes":${packageBytes.size},"sha256":"$packageSha"}],
+          "packages":[{"id":"region","role":"REGION","path":"region.mwm","bytes":${bytes.size},"sha256":"${sha(bytes)}"}],
           "dependencies":[],
           "sources":[{"id":"osm","license":"ODbL-1.0","attribution":"OpenStreetMap contributors","sha256":"${"a".repeat(64)}"}],
           "rights":{"license":"ODbL-1.0","attribution":"OpenStreetMap contributors","commercial":true,"offline":true,"redistribution":true},
@@ -116,6 +116,36 @@ class MapPackageRepositoryTest {
         assertEquals("gen-1", store.active?.generation)
     }
 
+    /**
+     * B-BR-MAP-DL-PROGRESS-01 contract: while a package streams, the stored
+     * downloaded bytes (what the downloads screen polls) advance in visible
+     * steps, never go backwards and never exceed the package size; the end
+     * state is READY at the full size. A download that only stores its start
+     * and end leaves the screen at 0% until completion.
+     */
+    @Test fun `download progress is stored while the package streams`() {
+        val big = ByteArray(3 * 1024 * 1024) { (it * 31 % 251).toByte() }
+        val store = store()
+        val repository = repo(store)
+        kotlinx.coroutines.runBlocking {
+            repository.importManifestWithPlatformKeys(envelope(manifest("gen-progress", big)), mapOf("test-key" to keyPair.public))
+        }
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("ETag", "\"etag-p\"").setBody(okio.Buffer().write(big)))
+        server.start()
+        store.updates.clear()
+
+        assertTrue(kotlinx.coroutines.runBlocking { repository.downloadMissing("gen-progress", server.url("/").toString().trimEnd('/')) })
+
+        val progress = store.updates.filter { it.status == PACKAGE_DOWNLOADING }.map { it.downloadedBytes }
+        val intermediate = progress.filter { it in 1 until big.size }
+        assertTrue(intermediate.size >= 3, "expected visible intermediate progress, stored: $progress")
+        assertEquals(progress, progress.sorted(), "stored progress must never go backwards")
+        assertTrue(progress.all { it <= big.size })
+        val last = store.updates.last()
+        assertEquals(PACKAGE_READY, last.status)
+        assertEquals(big.size.toLong(), last.downloadedBytes)
+    }
+
     @Test fun `digest mismatch does not activate or delete the previous generation`() {
         val store = store()
         val repository = repo(store)
@@ -171,8 +201,11 @@ class MapPackageRepositoryTest {
         .joinToString("") { "%02x".format(it) }
 }
 
+private data class StoredUpdate(val packageId: String, val status: String, val downloadedBytes: Long)
+
 private class FakeStore : MapPackageStore {
     var packages: List<MapPackageEntity> = emptyList()
+    val updates = mutableListOf<StoredUpdate>()
     var active: MapGenerationEntity? = null
     private val generations = mutableMapOf<String, MapGenerationEntity>()
 
@@ -185,6 +218,7 @@ private class FakeStore : MapPackageStore {
     override suspend fun activeGeneration() = active
     override suspend fun packages(generation: String) = packages.filter { it.generation == generation }
     override suspend fun updatePackage(generation: String, packageId: String, status: String, downloadedBytes: Long, etag: String?, error: String?, updatedAtMillis: Long) {
+        updates += StoredUpdate(packageId, status, downloadedBytes)
         packages = packages.map { if (it.generation == generation && it.packageId == packageId) it.copy(status = status, downloadedBytes = downloadedBytes, etag = etag, error = error) else it }
     }
     override suspend fun activate(generation: String, activatedAtMillis: Long) {

@@ -20,7 +20,7 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.designsystem.Button
-import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 
 @Composable
@@ -65,7 +65,8 @@ fun LocationPromptStep(
         ) {
             Text(text = stringResource(R.string.onboarding_location_use_device))
         }
-        TextButton(
+        // Design system: never a text-only action; same size as the filled button above.
+        OutlinedButton(
             onClick = onChooseManualLocation,
             modifier = Modifier.fillMaxWidth(),
         ) {
