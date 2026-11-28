@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -87,12 +88,16 @@ fun ProfileScreen(
     onOpenContributors: () -> Unit,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = hiltViewModel(),
+    companyModeEntry: CompanyModeEntryViewModel = hiltViewModel(),
 ) {
     // P22-T01: same shared session store as the auth flow; rehydrate runs
     // again on resume so Perfil reflects shared sign-in/logout changes.
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    // B-BR-EMP-ENTRY-01: Company mode opens only once the account has a company link.
+    val companyModeEnabled by companyModeEntry.enabled.collectAsStateWithLifecycle()
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
         authViewModel.refreshAccount()
+        companyModeEntry.refresh()
     }
     val signedIn = authState.step in listOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)
     AnpScaffold(
@@ -320,8 +325,11 @@ fun ProfileScreen(
                     ProfileToolItem(
                         icon = Icons.Default.Business,
                         title = stringResource(R.string.enterprise_context_entry),
-                        subtitle = stringResource(R.string.enterprise_context_intro),
+                        subtitle = stringResource(
+                            if (companyModeEnabled) R.string.enterprise_context_intro else R.string.enterprise_context_entry_locked,
+                        ),
                         onClick = { onNavigate(Routes.ENTERPRISE_CONTEXT) },
+                        enabled = companyModeEnabled,
                         modifier = Modifier.testTag("enterprise-context-entry"),
                     )
                     HorizontalDivider()
@@ -378,11 +386,17 @@ private fun ProfileToolItem(
     subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
+    // A closed entry stays readable but grays out and takes no tap.
+    val disabledAlpha = 0.38f
+    val contentColor = MaterialTheme.colorScheme.onSurface.let { if (enabled) it else it.copy(alpha = disabledAlpha) }
+    val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant.let { if (enabled) it else it.copy(alpha = disabledAlpha) }
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { if (!enabled) disabled() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -390,7 +404,7 @@ private fun ProfileToolItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = mutedColor,
         )
         Column(
             modifier = Modifier.weight(1f),
@@ -399,17 +413,18 @@ private fun ProfileToolItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
+                color = contentColor,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = mutedColor,
             )
         }
         Icon(
-            imageVector = Icons.Default.ChevronRight,
+            imageVector = if (enabled) Icons.Default.ChevronRight else Icons.Default.Lock,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
+            tint = if (enabled) MaterialTheme.colorScheme.outline else mutedColor,
         )
     }
 }

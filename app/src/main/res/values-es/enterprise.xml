@@ -48,6 +48,7 @@
     <string name="enterprise_role_unknown">Rol no identificado</string>
     <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
     <string name="enterprise_context_entry">Modo empresa</string>
+    <string name="enterprise_context_entry_locked">Disponible después de unirte a una empresa con una invitación.</string>
     <string name="enterprise_context_title">Elegir espacio</string>
     <string name="enterprise_context_intro">Elige una empresa o continúa en modo personal.</string>
     <string name="enterprise_context_personal">Usar modo personal</string>

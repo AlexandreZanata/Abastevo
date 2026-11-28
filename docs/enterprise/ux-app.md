@@ -38,7 +38,7 @@ for the staging and device evidence still needed.
 
 | Entry | Behaviour |
 |---|---|
-| Perfil tab | A neutral entry card "Modo empresa" (existing entry-card pattern, outlined button) lists the organizations of the account. With no membership it offers "Tenho um convite" and "Ativar acesso corporativo" (§4.1). |
+| Perfil tab | A neutral entry card "Modo empresa" (existing entry-card pattern, outlined button) lists the organizations of the account. With no membership it offers "Tenho um convite" and "Ativar acesso corporativo" (§4.1). B-BR-EMP-ENTRY-01: the "Modo empresa" row is grayed out and takes no tap until the signed account has a company link: a server-confirmed company list or an accepted invitation with an active membership. A device hint (one boolean per account, keyed by a hash) remembers that answer; it never grants access, and the context screen re-reads membership. While the hint is unknown and no company is in use, Perfil reads the company list once. An active company context always keeps the row open. "Entrar em uma empresa" stays available. |
 | Invitation link or code | Opens the activation flow (§4.1). |
 | App start | The app reopens in the context that was active on this device (UC-AUTH-04). It never picks an organization from a record or a notification by itself. |
 | Organization notification | The notification names the organization. Opening it shows the item inside that organization; when another context was active, the change is announced (§4.14). |

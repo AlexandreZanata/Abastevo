@@ -20,6 +20,10 @@ object EnterpriseContextModule {
     fun contexts(client: CompanyAccessClient): EnterpriseContextGateway = EnterpriseContextHttpGateway(client)
 
     @Provides
+    fun membershipHints(store: com.anpfuel.data.local.preferences.EnterpriseMembershipHintStore):
+        com.anpfuel.application.enterprise.EnterpriseMembershipHints = store
+
+    @Provides
     fun contextFlow(gateway: EnterpriseContextGateway, localContext: EnterpriseLocalContext,
         protection: EnterpriseContextProtection, fence: EnterpriseSessionFence): EnterpriseContextFlow =
         EnterpriseContextFlow(gateway, localContext, protection, fence)
