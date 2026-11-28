@@ -80,6 +80,8 @@ open class MapPackageRepository(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val onGenerationActivated: suspend (generation: String, dataVersion: String) -> Unit = { _, _ -> },
     private val activationObserver: MapActivationObserver = MapActivationObserver.None,
+    /** Elapsed time for progress pacing; never the wall clock, which can jump. */
+    private val monotonicMillis: () -> Long = { System.nanoTime() / 1_000_000 },
 ) {
     private val publishMutex = Mutex()
     private val leaseLock = Any()
@@ -422,6 +424,9 @@ open class MapPackageRepository(
                     FileOutputStream(part, true).use { output ->
                         val buffer = ByteArray(256 * 1024)
                         var downloaded = part.length()
+                        // B-BR-MAP-DL-PROGRESS-01: the screen polls the store, so
+                        // progress must be stored while the bytes stream.
+                        val progress = MapDownloadProgressGate(pkg.bytes, downloaded, monotonicMillis())
                         while (true) {
                             context.ensureActive()
                             val read = input.read(buffer)
@@ -434,6 +439,10 @@ open class MapPackageRepository(
                             }
                             output.write(buffer, 0, read)
                             onProgress(pkg.packageId, downloaded, pkg.bytes)
+                            if (progress.shouldStore(downloaded, monotonicMillis())) {
+                                output.flush()
+                                store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_DOWNLOADING, downloaded, etag, null, clock())
+                            }
                         }
                     }
                 }

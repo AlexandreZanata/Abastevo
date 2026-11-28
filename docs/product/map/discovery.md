@@ -217,6 +217,18 @@ WHEN the download is interrupted or its digest/signature fails
 THEN the partial file is not activated, the previous generation remains usable,
 and the user can resume/retry or roll back explicitly.
 
+#### Download progress
+
+- **B-BR-MAP-DL-PROGRESS-01** — While a package streams, its stored
+  downloaded bytes, which the downloads screen polls every 500 ms, advance at
+  least every 512 KiB or every 500 ms, always reach the full size, never go
+  backwards and never pass the signed size. A transfer that stores only its
+  start and end left the bar at 0% until completion. Contract:
+  `MapDownloadProgressGate` and the "download progress is stored while the
+  package streams" test in `MapPackageRepositoryTest`. Each package row shows
+  its phase from the store constants (`mapPackagePhase`, `MapPackagePhaseTest`):
+  a READY package is complete, never "queued".
+
 #### Mobile data for regional downloads
 
 - **B-BR-MAP-MOBILE-01** — The map download preference is off by default and
