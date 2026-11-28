@@ -166,8 +166,32 @@ fun HeaderWeekAction(onWeekChanged: () -> Unit) {
         trigger = { surveyWeek, isLatest, isStale, onClick, modifier ->
             HeaderWeekLabel(surveyWeek, isLatest, isStale, onClick, modifier)
         },
+        placeholder = { modifier -> HeaderWeekPlaceholder(modifier) },
     )
 }
+
+/** Holds the header week label's space and shape while the active week loads. */
+@Composable
+private fun HeaderWeekPlaceholder(modifier: Modifier) {
+    val chrome = LocalAbastevoChromeColors.current
+    val description = stringResource(R.string.a11y_loading)
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .semantics { contentDescription = description }
+            .padding(start = AbastevoSpacing.xs, end = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(width = HeaderWeekPlaceholderWidth, height = WeekChipHeight)
+                .background(chrome.selected.copy(alpha = HEADER_PLACEHOLDER_ALPHA), CircleShape),
+        )
+    }
+}
+
+private const val HEADER_PLACEHOLDER_ALPHA = 0.35f
+private val HeaderWeekPlaceholderWidth = 116.dp
 
 @Composable
 private fun HeaderWeekLabel(

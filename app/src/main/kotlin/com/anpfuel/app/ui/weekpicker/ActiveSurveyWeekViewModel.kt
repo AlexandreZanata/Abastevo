@@ -18,6 +18,8 @@ data class ActiveSurveyWeekUiState(
     val surveyWeek: SurveyWeek? = null,
     val isLatest: Boolean = false,
     val isStale: Boolean = false,
+    /** False until the first read finishes; the trigger shows a same-size placeholder meanwhile. */
+    val isLoaded: Boolean = false,
 )
 
 @HiltViewModel
@@ -31,15 +33,21 @@ class ActiveSurveyWeekViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            val preferences = getSettingsUseCase()
-            val readiness = getDataReadinessUseCase()
-            val activeWeek = preferences.activeSurveyWeek
-            _uiState.update {
-                it.copy(
-                    surveyWeek = activeWeek,
-                    isLatest = activeWeek != null && activeWeek == readiness.latestSurveyWeek,
-                    isStale = readiness.readiness == DataReadinessState.STALE,
-                )
+            try {
+                val preferences = getSettingsUseCase()
+                val readiness = getDataReadinessUseCase()
+                val activeWeek = preferences.activeSurveyWeek
+                _uiState.update {
+                    it.copy(
+                        surveyWeek = activeWeek,
+                        isLatest = activeWeek != null && activeWeek == readiness.latestSurveyWeek,
+                        isStale = readiness.readiness == DataReadinessState.STALE,
+                        isLoaded = true,
+                    )
+                }
+            } finally {
+                // A failed read ends the placeholder too; it never shimmers forever.
+                _uiState.update { it.copy(isLoaded = true) }
             }
         }
     }

@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.SurveyWeekChip
+import com.anpfuel.app.ui.components.SurveyWeekChipPlaceholder
 import com.anpfuel.app.ui.components.rememberRawSystemBottomPadding
 import com.anpfuel.domain.valueobject.SurveyWeek
 
@@ -50,6 +51,9 @@ fun SurveyWeekChipAction(
             isStale = isStale,
         )
     },
+    placeholder: @Composable (modifier: Modifier) -> Unit = { placeholderModifier ->
+        SurveyWeekChipPlaceholder(modifier = placeholderModifier)
+    },
 ) {
     val uiState by activeSurveyWeekViewModel.uiState.collectAsStateWithLifecycle()
     var sheetVisible by rememberSaveable { mutableStateOf(false) }
@@ -64,8 +68,13 @@ fun SurveyWeekChipAction(
         modifier.padding(end = 12.dp)
     }
 
-    uiState.surveyWeek?.let { surveyWeek ->
-        trigger(surveyWeek, uiState.isLatest, uiState.isStale, { sheetVisible = true }, chipModifier)
+    // Hold the trigger's space while the active week loads, so the bar never jumps.
+    if (!uiState.isLoaded) {
+        placeholder(chipModifier)
+    } else {
+        uiState.surveyWeek?.let { surveyWeek ->
+            trigger(surveyWeek, uiState.isLatest, uiState.isStale, { sheetVisible = true }, chipModifier)
+        }
     }
 
     WeekPickerBottomSheet(

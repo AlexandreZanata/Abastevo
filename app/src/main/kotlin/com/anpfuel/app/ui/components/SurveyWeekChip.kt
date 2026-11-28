@@ -1,6 +1,9 @@
 package com.anpfuel.app.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -95,6 +98,26 @@ fun SurveyWeekChip(
         },
     )
 }
+
+/**
+ * Same size and pill shape as [SurveyWeekChip], shown while the active week
+ * loads so the bar around it keeps its layout.
+ */
+@Composable
+fun SurveyWeekChipPlaceholder(modifier: Modifier = Modifier) {
+    val chrome = LocalAbastevoChromeColors.current
+    val description = stringResource(R.string.a11y_loading)
+    Box(
+        modifier = modifier
+            .size(width = SurveyWeekChipPlaceholderWidth, height = AssistChipDefaults.Height)
+            .background(chrome.selected.copy(alpha = PLACEHOLDER_ALPHA), CircleShape)
+            .semantics { contentDescription = description },
+    )
+}
+
+/** Chip-shaped placeholder alpha: present on black bars and white panels, never a solid gray fill. */
+private const val PLACEHOLDER_ALPHA = 0.35f
+private val SurveyWeekChipPlaceholderWidth = 148.dp
 
 @Preview(showBackground = true)
 @Composable

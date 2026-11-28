@@ -2,7 +2,6 @@ package com.anpfuel.app.ui.weekpicker
 
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.components.skeletonShimmer
-import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonButton
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.filled.Update
@@ -60,7 +59,8 @@ import com.anpfuel.app.ui.accessibility.accessibilityDescription
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.SkeletonGroup
-import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.components.SkeletonText
+import com.anpfuel.app.ui.components.skeletonLineHeight
 import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpFuelTheme
@@ -164,7 +164,7 @@ fun WeekPickerContent(
     ) {
         when {
             uiState.isLoadingCatalog -> {
-                WeekPickerLoadingSkeleton()
+                WeekPickerLoadingSkeleton(showLatestAction = uiState.showLatestCta && onUseLatestWeek != null)
             }
 
             uiState.catalogError != null -> {
@@ -208,7 +208,7 @@ fun WeekPickerContent(
 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(WeekListSpacing),
                     contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
                     // Every week holds the same two datasets: say it once, not per row.
@@ -267,35 +267,60 @@ fun WeekPickerContent(
     }
 }
 
-/** Mirrors the loaded list: action button, contents card, year and week cards. */
+/**
+ * Mirrors the loaded list piece by piece so nothing moves when the catalog
+ * arrives: the action button (only where it will appear), the static contents
+ * card as is, a year header and week cards with the row's own paddings,
+ * badge, two text lines and action pill.
+ */
 @Composable
-private fun WeekPickerLoadingSkeleton() {
+private fun WeekPickerLoadingSkeleton(showLatestAction: Boolean) {
     SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
-        SkeletonButton()
-        SkeletonCard(height = 88.dp)
-        SkeletonLine(width = 56.dp, height = 18.dp)
-        repeat(4) {
-            WeekCardFrame {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Box(Modifier.size(BadgeSize).then(skeletonShimmer(cornerRadius = BadgeSize / 2)))
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SkeletonLine(width = 140.dp, height = 18.dp)
-                        SkeletonLine(width = 110.dp, height = 12.dp)
-                    }
-                    Box(Modifier.size(width = 84.dp, height = 32.dp).then(skeletonShimmer(cornerRadius = 16.dp)))
-                }
-            }
+        if (showLatestAction) SkeletonButton()
+        Column(verticalArrangement = Arrangement.spacedBy(WeekListSpacing)) {
+            WeekContentsCard()
+            SkeletonText(
+                style = MaterialTheme.typography.titleSmall,
+                width = 40.dp,
+                modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+            )
+            repeat(SKELETON_WEEK_ROWS) { WeekPickerRowSkeleton() }
         }
     }
 }
 
+@Composable
+private fun WeekPickerRowSkeleton() {
+    val tagHeight = skeletonLineHeight(MaterialTheme.typography.labelLarge) + WeekTagVerticalPadding * 2
+    WeekCardFrame {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(BadgeSize).then(skeletonShimmer(cornerRadius = BadgeSize / 2)))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                SkeletonText(style = MaterialTheme.typography.titleMedium, width = 128.dp)
+                SkeletonText(style = MaterialTheme.typography.bodySmall, width = 112.dp)
+            }
+            Box(
+                Modifier
+                    .size(width = 104.dp, height = tagHeight)
+                    .then(skeletonShimmer(cornerRadius = tagHeight / 2)),
+            )
+        }
+    }
+}
+
+private const val SKELETON_WEEK_ROWS = 5
 private val BadgeSize = 40.dp
+private val WeekListSpacing = 10.dp
+private val WeekTagVerticalPadding = 6.dp
 
 /** White outlined week card shared by rows and their skeleton. */
 @Composable
@@ -380,7 +405,7 @@ private fun WeekTag(
         Row(
             modifier = Modifier.padding(
                 horizontal = if (compact) 8.dp else 12.dp,
-                vertical = if (compact) 2.dp else 6.dp,
+                vertical = if (compact) 2.dp else WeekTagVerticalPadding,
             ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -621,6 +646,19 @@ private fun WeekPickerContentPreview() {
                     ),
                 ),
             ),
+            onRetryCatalog = {},
+            onNavigateBack = {},
+            onUseLatestWeek = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Week picker loading")
+@Composable
+private fun WeekPickerLoadingPreview() {
+    AnpFuelTheme {
+        WeekPickerScreen(
+            uiState = WeekPickerUiState(isLoadingCatalog = true),
             onRetryCatalog = {},
             onNavigateBack = {},
             onUseLatestWeek = {},
