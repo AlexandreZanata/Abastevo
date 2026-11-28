@@ -114,7 +114,11 @@ func paidStore(t *testing.T, pool *pgxpool.Pool, p app.Principal) *Store {
 	subStore := sub.NewStore(pool)
 	codec, _ := sub.NewTokenCodec(bytes.Repeat([]byte{4}, 32))
 	binding, _ := sub.NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
-	svc := &subapp.Service{Store: subStore, Tokens: codec, Provider: testProvider{}, AccountBinding: binding, Environment: "test", PackageName: "com.anpfuel"}
+	svc := &subapp.Service{
+		Store: subStore, Tokens: codec, Provider: testProvider{}, AccountBinding: binding,
+		Environment: "test", PackageName: "com.anpfuel",
+		PlayTestAccounts: map[string]struct{}{p.AccountID: {}},
+	}
 	_, err := svc.Admit(context.Background(), subapp.Principal{AccountID: p.AccountID, FamilyID: p.FamilyID, ContributorID: p.ContributorID, KeyID: p.KeyID}, subapp.Command{OperationID: newid(t), Token: "synthetic-cloud-" + p.AccountID, Kind: "verify"})
 	if err != nil {
 		t.Fatal(err)
