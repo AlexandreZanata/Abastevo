@@ -47,7 +47,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import com.anpfuel.app.ui.components.AnpSourceLink
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.designsystem.AbastevoSelectionDefaults
 import com.anpfuel.app.ui.designsystem.AssistChip
@@ -378,10 +377,6 @@ internal fun HomeContent(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
-                    PriceMetadata(uiState = uiState)
-                    if (uiState.prices.isNotEmpty()) {
-                        AnpSourceLink()
-                    }
                     HomePriceFilterButton(
                         current = uiState.priceSort,
                         onOpenFilters = { filterOpen = true },
@@ -586,21 +581,6 @@ private fun VehicleCarousel(
                 modifier = Modifier.width(cardWidth),
             )
         }
-    }
-}
-
-@Composable
-private fun PriceMetadata(uiState: HomeUiState) {
-    uiState.surveyWeek?.let { week ->
-        val locale = LocalConfiguration.current.locales[0]
-        Text(
-            text = stringResource(
-                R.string.home_reference_period,
-                SurveyWeekFormatter.formatRange(week, locale),
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

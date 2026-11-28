@@ -826,7 +826,6 @@
     <string name="home_filter_lowest">価格が安い順</string>
     <string name="home_filter_highest">価格が高い順</string>
     <string name="home_change_city">自分の街</string>
-    <string name="home_reference_period">ANP参考価格 • %1$s</string>
     <string name="home_shortcut_stations">給油所を探す</string>
     <string name="home_shortcut_stations_description">街の給油所を探索</string>
     <string name="home_shortcut_history">価格履歴</string>
@@ -1466,7 +1465,8 @@
     <string name="home_open_map">地図で表示</string>
     <string name="premium_store_section_title">登録</string>
     <string name="premium_store_plans_loading">Google Playのプランを読み込んでいます…</string>
-    <string name="premium_store_plans_unavailable">Google Playのプランを読み込めませんでした。</string>
+    <string name="premium_store_plans_unavailable">プランを一時的に利用できません</string>
+    <string name="premium_store_plans_retry_hint">しばらくしてから再試行し、Google Play の定期購入料金をご確認ください。</string>
     <string name="premium_store_trial_then">1か月無料。その後は%1$sで自動更新</string>
     <string name="premium_store_subscribe">登録する</string>
     <string name="premium_store_billing_note">支払い、更新、解約はGoogle Playで行われます。</string>

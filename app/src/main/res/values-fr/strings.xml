@@ -826,7 +826,6 @@
     <string name="home_filter_lowest">Prix le plus bas</string>
     <string name="home_filter_highest">Prix le plus élevé</string>
     <string name="home_change_city">Ma ville</string>
-    <string name="home_reference_period">Référence ANP • %1$s</string>
     <string name="home_shortcut_stations">Voir les stations</string>
     <string name="home_shortcut_stations_description">Explorez les stations locales</string>
     <string name="home_shortcut_history">Historique des prix</string>
@@ -1468,7 +1467,8 @@
     <string name="home_open_map">Voir sur la carte</string>
     <string name="premium_store_section_title">S’abonner</string>
     <string name="premium_store_plans_loading">Chargement des formules Google Play…</string>
-    <string name="premium_store_plans_unavailable">Impossible de charger les formules Google Play.</string>
+    <string name="premium_store_plans_unavailable">Formules temporairement indisponibles</string>
+    <string name="premium_store_plans_retry_hint">Réessayez dans un instant pour consulter les tarifs des abonnements sur Google Play.</string>
     <string name="premium_store_trial_then">1 mois gratuit, puis %1$s avec renouvellement automatique</string>
     <string name="premium_store_subscribe">S’abonner</string>
     <string name="premium_store_billing_note">Le paiement, le renouvellement et la résiliation sont gérés par Google Play.</string>

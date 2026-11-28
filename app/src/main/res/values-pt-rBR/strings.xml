@@ -901,7 +901,6 @@
     <string name="home_filter_lowest">Menor preço</string>
     <string name="home_filter_highest">Maior preço</string>
     <string name="home_change_city">Minha cidade</string>
-    <string name="home_reference_period">Referência ANP • %1$s</string>
     <string name="home_shortcut_stations">Ver postos</string>
     <string name="home_shortcut_stations_description">Explore postos da cidade</string>
     <string name="home_shortcut_history">Histórico de preços</string>
@@ -1481,7 +1480,8 @@
     </plurals>
     <string name="premium_store_section_title">Assinar</string>
     <string name="premium_store_plans_loading">Carregando planos do Google Play…</string>
-    <string name="premium_store_plans_unavailable">Não foi possível carregar os planos do Google Play.</string>
+    <string name="premium_store_plans_unavailable">Planos indisponíveis no momento</string>
+    <string name="premium_store_plans_retry_hint">Aguarde um instante e tente novamente para ver os preços das assinaturas no Google Play.</string>
     <string name="premium_store_trial_then">1 mês grátis, depois %1$s com renovação automática</string>
     <string name="premium_store_subscribe">Assinar</string>
     <string name="premium_store_billing_note">O pagamento, a renovação e o cancelamento são feitos pelo Google Play.</string>

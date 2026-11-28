@@ -66,6 +66,8 @@ provider API details live in the
 - **B-BR-STORE-10 — Fail closed.** A store channel stays off until its
   credentials and catalog are configured. Without a configured offer for the
   app's store, the app shows the current status with no purchase button.
+  When Google Play cannot return the listed plans, Android shows a retry action
+  in the subscription section. Prices and the billing note appear with loaded plans.
   Payment never changes trust, moderation or free participation.
 - **B-BR-STORE-11 — Play license test access.** In the `test` environment,
   Google Play offers, verification and restore are limited to explicitly

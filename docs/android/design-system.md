@@ -95,7 +95,8 @@ outlines and indicators.
   hairline. Logo and white name on the left, round `control` notification and
   profile buttons on the right. On Explorar and Comunidade one `control` pill
   field holds the city (green pin) and, as a light chip at its right end, the
-  survey week.
+  survey week. On Explore, the fuel cards identify ANP as the source. The
+  full attribution is available in history and station details.
 - **Top app bar** (`AnpTopAppBar`): solid chrome with white title and icons.
 - **Bottom bar** (`AbastevoBottomBar`): solid chrome extending under the
   gesture area, no hairline. The selected tab sits in a light pill with a

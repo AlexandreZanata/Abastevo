@@ -5,6 +5,9 @@ import androidx.compose.runtime.setValue
 
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -236,17 +239,22 @@ class HomeScreenTest {
     }
 
     @Test
-    fun darkThemeKeepsAnpSourceAndFuelNavigationExplicit() {
+    fun darkThemeShowsTheFuelSourceWithoutRepeatingTheFullAttribution() {
         var route: String? = null
         showCommercialHome(darkTheme = true, onNavigate = { route = it })
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeTestRule.onNodeWithText(context.getString(R.string.prices_anp_attribution))
-            .performScrollTo()
-            .assertIsDisplayed()
-            .assertHasClickAction()
+            .assertDoesNotExist()
         val fuelLabel = context.getString(FuelProductI18n.toStringRes(FuelProduct.ETHANOL))
         val description = context.getString(R.string.a11y_fuel_price_card, fuelLabel, "R$ 3,42")
-        composeTestRule.onNodeWithContentDescription(description).performScrollTo().performClick()
+        val fuelCard = composeTestRule.onNodeWithContentDescription(description)
+        fuelCard.performScrollTo().assertHasClickAction()
+        composeTestRule.onNode(
+            hasText(context.getString(R.string.home_reference_source)) and
+                hasAnyAncestor(hasContentDescription(description)),
+            useUnmergedTree = true,
+        ).assertIsDisplayed()
+        fuelCard.performClick()
         assertEquals(Routes.stations(FuelProduct.ETHANOL), route)
     }
 
