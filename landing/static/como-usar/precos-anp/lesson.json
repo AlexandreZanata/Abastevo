@@ -8,16 +8,16 @@
     {
       "stepId": "tu05-s1",
       "image": "/assets/app/fuel-prices-01-anp-average-cards-720w.webp",
-      "imageSha256": "f3591fde22c0809c5e6622830253cf3d728dcbe4d8061f5f5eaf4ba6309d9705",
+      "imageSha256": "cfaeaaaf71e9feff9465aef6d33c6e03285cf84aee73229a6daab30ad41dfc37",
       "nativeWidth": 1080,
       "nativeHeight": 1920,
       "state": "Cartões de média semanal",
       "prerequisite": "Cidade escolhida e semana sincronizada.",
       "instructionPtBr": "Na aba \"Explorar\", role até \"Preços na sua cidade\". Cada cartão mostra a média semanal da ANP para um combustível, o número de postos pesquisados e o selo \"ANP\".",
       "controlLabelPtBr": "Preços na sua cidade",
-      "expectedPtBr": "A linha \"Referência ANP • 8 de nov. de 2026 a 14 de nov. de 2026\" informa a semana da pesquisa. É uma referência datada, não o preço da bomba agora.",
+      "expectedPtBr": "A semana no cabeçalho informa o período da pesquisa. O selo ANP nos cartões identifica a fonte das médias.",
       "recoveryPtBr": "Sem cartões? Confira a cidade no topo e use \"Sincronizar agora\" nas configurações.",
-      "altPtBr": "Seção “Preços na sua cidade” em São Paulo, SP, com a linha “Referência ANP • 8 de nov. de 2026 a 14 de nov. de 2026” e cartões de etanol, gasolina comum e gasolina aditivada com o selo ANP.",
+      "altPtBr": "Seção “Preços na sua cidade” em São Paulo, SP. O cabeçalho mostra a semana de 8 a 14 de novembro de 2026, e os cartões de combustíveis exibem o selo ANP.",
       "target": {
         "x": 24,
         "y": 380,
@@ -38,7 +38,7 @@
     {
       "stepId": "tu05-s2",
       "image": "/assets/app/fuel-prices-02-more-fuels-720w.webp",
-      "imageSha256": "ea712274c1f49d7c25f1919a71fe7fc725da10a83bc6acb686fea4e8160a86d7",
+      "imageSha256": "7e9903eb7134fbdace9d0dbb3a1b0d7f0da0260cd50d99e81e8b7c65a3e821f6",
       "nativeWidth": 1080,
       "nativeHeight": 1920,
       "state": "Lista de combustíveis rolada",
@@ -67,7 +67,7 @@
     {
       "stepId": "tu05-s3",
       "image": "/assets/app/fuel-prices-03-home-shortcuts-720w.webp",
-      "imageSha256": "b6d321d4225cc6391f07418706196c9413325a47ff9e8429c9dd31b11d482204",
+      "imageSha256": "9c215c4204724f695a4a32df13b6f8495b2e6956006084a935badbe61dd91fb2",
       "nativeWidth": 1080,
       "nativeHeight": 1920,
       "state": "Atalhos no fim da lista",
@@ -96,7 +96,7 @@
     {
       "stepId": "tu05-s4",
       "image": "/assets/app/fuel-prices-04-sort-prices-720w.webp",
-      "imageSha256": "81cadd935c344ba48c78d93662bed7993f444d9ab51d7f475e4129addfdacdf1",
+      "imageSha256": "2637eb3a37075a606c8b29d0b83a1e0592c96e6336a9d3f0cc4c4f1814a38b62",
       "nativeWidth": 1080,
       "nativeHeight": 1920,
       "state": "Diálogo de ordenação aberto",
