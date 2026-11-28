@@ -64,7 +64,11 @@ Addresses:
 
 `legal_name` is always the legal name from the official source, kept
 verbatim. The UI shows it as a secondary line only when it differs from
-`display_name` after case and whitespace normalisation. A trade name counts
+`display_name` after case and whitespace normalisation. Registry trade names
+often read `TRADE (LEGAL NAME)`; when the parenthesized part equals the legal
+name (ignoring case, spacing and punctuation) the Android title keeps only
+`TRADE`, so the legal name appears once, as the secondary line
+(`stationTitle` in the domain). A trade name counts
 as absent when it is any of:
 
 - empty or punctuation only;
