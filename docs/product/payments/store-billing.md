@@ -54,7 +54,9 @@ provider API details live in the
 - **B-BR-STORE-07 — Notifications trigger a refresh.** Play real-time
   developer notifications and App Store Server Notifications V2 only enqueue a
   refresh of an already bound purchase. The refreshed canonical state decides
-  access, never the notification type or time.
+  access, never the notification type or time. The wrapped Pub/Sub envelope
+  accepts the documented message ID and publish time aliases when their
+  values agree with the canonical fields.
 - **B-BR-STORE-08 — Completion.** The server acknowledges a verified Play
   subscription within the Play window. The iOS app finishes a StoreKit
   transaction only after the server accepted or definitively refused it. An
