@@ -26,7 +26,7 @@ func (p *inboxProbe) ReceiveNotification(context.Context, app.Notification) (boo
 func TestProviderEnvelopeRequiresProofBeforePersistence(t *testing.T) {
 	now := time.Now().UTC()
 	event, _ := json.Marshal(map[string]any{"version": "1.0", "packageName": "com.anpfuel", "eventTimeMillis": strconv.FormatInt(now.UnixMilli(), 10), "subscriptionNotification": map[string]any{"version": "1.0", "notificationType": 2, "purchaseToken": "synthetic-token"}})
-	for _, name := range []string{"valid", "unauthenticated", "forged", "duplicate-header", "wrong-subscription", "stale", "oversize", "duplicate-json", "disabled"} {
+	for _, name := range []string{"valid", "wrapped", "conflicting-id-alias", "conflicting-time-alias", "unauthenticated", "forged", "duplicate-header", "wrong-subscription", "stale", "oversize", "duplicate-json", "disabled"} {
 		t.Run(name, func(t *testing.T) {
 			store := &inboxProbe{}
 			h := ProviderHandler{Store: store, Environment: "test", PackageName: "com.anpfuel", Subscription: "projects/test/subscriptions/rtdn", Now: func() time.Time { return now }, Verify: func(_ context.Context, raw string) error {
@@ -43,7 +43,19 @@ func TestProviderEnvelopeRequiresProofBeforePersistence(t *testing.T) {
 			if name == "stale" {
 				published = now.Add(-11 * time.Minute).Format(time.RFC3339Nano)
 			}
-			raw, _ := json.Marshal(map[string]any{"subscription": subscription, "message": map[string]any{"messageId": "synthetic-id", "publishTime": published, "data": base64.StdEncoding.EncodeToString(event)}})
+			message := map[string]any{"messageId": "synthetic-id", "publishTime": published, "data": base64.StdEncoding.EncodeToString(event)}
+			envelope := map[string]any{"subscription": subscription, "message": message}
+			switch name {
+			case "wrapped":
+				message["message_id"] = message["messageId"]
+				message["publish_time"] = published
+				envelope["deliveryAttempt"] = 1
+			case "conflicting-id-alias":
+				message["message_id"] = "different-id"
+			case "conflicting-time-alias":
+				message["publish_time"] = now.Add(time.Second).Format(time.RFC3339Nano)
+			}
+			raw, _ := json.Marshal(envelope)
 			body := string(raw)
 			if name == "oversize" {
 				body = strings.Repeat("x", 16385)
@@ -70,7 +82,7 @@ func TestProviderEnvelopeRequiresProofBeforePersistence(t *testing.T) {
 			if w.Header().Get("Cache-Control") != "no-store" {
 				t.Fatal("private response cacheable")
 			}
-			if name == "valid" {
+			if name == "valid" || name == "wrapped" {
 				if w.Code != 204 || store.calls != 1 {
 					t.Fatal("valid receipt refused", w.Code)
 				}

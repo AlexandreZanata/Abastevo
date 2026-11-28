@@ -938,7 +938,6 @@
     <string name="home_filter_lowest">Lowest price</string>
     <string name="home_filter_highest">Highest price</string>
     <string name="home_change_city">My city</string>
-    <string name="home_reference_period">ANP reference • %1$s</string>
     <string name="home_shortcut_stations">Find stations</string>
     <string name="home_shortcut_stations_description">Explore local stations</string>
     <string name="home_shortcut_history">Price history</string>
@@ -1492,7 +1491,8 @@
     </plurals>
     <string name="premium_store_section_title">Subscribe</string>
     <string name="premium_store_plans_loading">Loading Google Play plans…</string>
-    <string name="premium_store_plans_unavailable">Google Play plans could not be loaded.</string>
+    <string name="premium_store_plans_unavailable">Plans are temporarily unavailable</string>
+    <string name="premium_store_plans_retry_hint">Try again in a moment to see subscription prices from Google Play.</string>
     <string name="premium_store_trial_then">1 month free, then %1$s with automatic renewal</string>
     <string name="premium_store_subscribe">Subscribe</string>
     <string name="premium_store_billing_note">Payment, renewal and cancellation are handled by Google Play.</string>

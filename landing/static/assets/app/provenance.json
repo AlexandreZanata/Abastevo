@@ -268,96 +268,96 @@
       "master": "docs/assets/app-tutorial/fuel-prices/01-anp-average-cards.png",
       "width": 360,
       "height": 640,
-      "bytes": 18776,
-      "sha256": "0998bfc635f6b46eb036786c91d6dfada2b5da6a3a0a6b290a4b26452bb7c2c9"
+      "bytes": 17144,
+      "sha256": "57b4d8e3228b44fa03cd15dd05badd4f132d5252a2df7049b246b9c520689d2d"
     },
     {
       "file": "fuel-prices-01-anp-average-cards-720w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/01-anp-average-cards.png",
       "width": 720,
       "height": 1280,
-      "bytes": 41604,
-      "sha256": "f3591fde22c0809c5e6622830253cf3d728dcbe4d8061f5f5eaf4ba6309d9705"
+      "bytes": 38046,
+      "sha256": "cfaeaaaf71e9feff9465aef6d33c6e03285cf84aee73229a6daab30ad41dfc37"
     },
     {
       "file": "fuel-prices-01-anp-average-cards-1080w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/01-anp-average-cards.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 63828,
-      "sha256": "8d82fac959582987d936570d9429dcefba474154891d021335510cb6f41f9591"
+      "bytes": 58056,
+      "sha256": "597b22a4db0912ffcf84e704389ffb5baeebeee882c2a1534752158cb31ee9cb"
     },
     {
       "file": "fuel-prices-02-more-fuels-360w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/02-more-fuels.png",
       "width": 360,
       "height": 640,
-      "bytes": 17024,
-      "sha256": "e989cbcb0d58d0f5b99868451f4589dc6082f4f758c426f89fc02a37aa003583"
+      "bytes": 16848,
+      "sha256": "88751717271a90368530adf60b761e6c244784280a514c2ecc65f47591fc0087"
     },
     {
       "file": "fuel-prices-02-more-fuels-720w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/02-more-fuels.png",
       "width": 720,
       "height": 1280,
-      "bytes": 37324,
-      "sha256": "ea712274c1f49d7c25f1919a71fe7fc725da10a83bc6acb686fea4e8160a86d7"
+      "bytes": 37458,
+      "sha256": "7e9903eb7134fbdace9d0dbb3a1b0d7f0da0260cd50d99e81e8b7c65a3e821f6"
     },
     {
       "file": "fuel-prices-02-more-fuels-1080w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/02-more-fuels.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 58266,
-      "sha256": "6932810ab0eacde6d64f0d0a786a935496d846c80345d53a517af18cc2a04358"
+      "bytes": 57872,
+      "sha256": "648b437cd091165294ec91195a3f45c7a83e3ab305ca6d709c742503c558680e"
     },
     {
       "file": "fuel-prices-03-home-shortcuts-360w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/03-home-shortcuts.png",
       "width": 360,
       "height": 640,
-      "bytes": 17748,
-      "sha256": "52dbc497f0419e6ec1255b3fe84765a0d793bf39d7ada57d363b56cd334b6dc1"
+      "bytes": 17312,
+      "sha256": "7571fa9b21816958b6248fbe4f6f6b94340f610c4177045ee73a7e2bf4fc5546"
     },
     {
       "file": "fuel-prices-03-home-shortcuts-720w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/03-home-shortcuts.png",
       "width": 720,
       "height": 1280,
-      "bytes": 39084,
-      "sha256": "b6d321d4225cc6391f07418706196c9413325a47ff9e8429c9dd31b11d482204"
+      "bytes": 38356,
+      "sha256": "9c215c4204724f695a4a32df13b6f8495b2e6956006084a935badbe61dd91fb2"
     },
     {
       "file": "fuel-prices-03-home-shortcuts-1080w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/03-home-shortcuts.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 61094,
-      "sha256": "f2793f85f54c1efbb80a60e8819ab62be3ffe8e29bedc2666b8c6be93ff4d47a"
+      "bytes": 59492,
+      "sha256": "f1c631bbf8b21d1e3b9fee4f37246d5efccf4550e81a8ed02e58ce789b231482"
     },
     {
       "file": "fuel-prices-04-sort-prices-360w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/04-sort-prices.png",
       "width": 360,
       "height": 640,
-      "bytes": 11894,
-      "sha256": "94c57e638a53524f99e4d014831b24fa0c1764a23876f6c7b81f72a80131a94e"
+      "bytes": 12626,
+      "sha256": "f9e8ab2db95b615621e6a0a2975de262f2c0bc2ca9c4b2cee8af0a12134c64be"
     },
     {
       "file": "fuel-prices-04-sort-prices-720w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/04-sort-prices.png",
       "width": 720,
       "height": 1280,
-      "bytes": 25050,
-      "sha256": "81cadd935c344ba48c78d93662bed7993f444d9ab51d7f475e4129addfdacdf1"
+      "bytes": 26810,
+      "sha256": "2637eb3a37075a606c8b29d0b83a1e0592c96e6336a9d3f0cc4c4f1814a38b62"
     },
     {
       "file": "fuel-prices-04-sort-prices-1080w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/04-sort-prices.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 38338,
-      "sha256": "573c6d5cf4509a9d5ca93cd5190e8504a7a18d965276fd0265f9b5a1d524437c"
+      "bytes": 39910,
+      "sha256": "0aeddd7b9c0eb410a56d3908861d570f5a2f399ac4b4bd0526e3a52d4cb9cee1"
     },
     {
       "file": "fuel-prices-05-lowest-price-360w.webp",
@@ -388,24 +388,24 @@
       "master": "docs/assets/app-tutorial/fuel-prices/06-community-prices.png",
       "width": 360,
       "height": 640,
-      "bytes": 16384,
-      "sha256": "17f721968abbc9d05758f20837effd33aaa30b02c82b926cf588d9f1973686d8"
+      "bytes": 16296,
+      "sha256": "fb4ab4024dd6b860b5e00c3ddaed8806bb97e5e445a3140fcad35102885c6db9"
     },
     {
       "file": "fuel-prices-06-community-prices-720w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/06-community-prices.png",
       "width": 720,
       "height": 1280,
-      "bytes": 36542,
-      "sha256": "0398c5a397a1e4813672b6fa12212bdf64c209bd355f3eb3b146e50897f64004"
+      "bytes": 37610,
+      "sha256": "2df48c755613f41f42fe1752095f4b909c06490257797b2b5a89124a90b283b9"
     },
     {
       "file": "fuel-prices-06-community-prices-1080w.webp",
       "master": "docs/assets/app-tutorial/fuel-prices/06-community-prices.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 58010,
-      "sha256": "5495b402e391bf74f22fd055ef4791a534808727f584bb957a1f58091e8c1e7a"
+      "bytes": 58342,
+      "sha256": "28fcb6c427c0415b42b90d8927e57a41c4909f3e5f6652c818a5f4bbc5cef411"
     },
     {
       "file": "stations-01-stations-for-fuel-360w.webp",
@@ -972,48 +972,48 @@
       "master": "docs/assets/app-tutorial/survey-weeks/05-older-week-active.png",
       "width": 360,
       "height": 640,
-      "bytes": 18272,
-      "sha256": "3c955c46bf6526fc21d4731c8b3aa41bbdef91c712742b00ae54564c2f6e9e07"
+      "bytes": 17094,
+      "sha256": "b359a5717884f97406b5fb42de4615cf74da7d1cc5f511fc295154820a86ec94"
     },
     {
       "file": "survey-weeks-05-older-week-active-720w.webp",
       "master": "docs/assets/app-tutorial/survey-weeks/05-older-week-active.png",
       "width": 720,
       "height": 1280,
-      "bytes": 40742,
-      "sha256": "623d757f7ff2cd74d9e6726dbd095c829c7cf4fa964595a41cbc05cd4847680b"
+      "bytes": 37124,
+      "sha256": "fe40033b2554fd0c3b3a8b79787a003bf26db231ea8bf0745a299e9c385eabfc"
     },
     {
       "file": "survey-weeks-05-older-week-active-1080w.webp",
       "master": "docs/assets/app-tutorial/survey-weeks/05-older-week-active.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 62712,
-      "sha256": "2801e6d49f1fcd9ab28c016294cc737cf5aaa64e73acb87428ddcacf1c2760d7"
+      "bytes": 57354,
+      "sha256": "7c1b54c9b879c297ff46241ef6d1c7186802b25a8b00d2b42ffad3c3dbc5306d"
     },
     {
       "file": "history-01-weekly-history-360w.webp",
       "master": "docs/assets/app-tutorial/history/01-weekly-history.png",
       "width": 360,
       "height": 640,
-      "bytes": 12350,
-      "sha256": "33ef09a621ece0002c1fa2f644cbe93d647651c010746d5cf30fd95788e88fc0"
+      "bytes": 14062,
+      "sha256": "6a0e66248240c8fa4a8dac51189694c285bcbd856126b5dc4fb3e13664cb7975"
     },
     {
       "file": "history-01-weekly-history-720w.webp",
       "master": "docs/assets/app-tutorial/history/01-weekly-history.png",
       "width": 720,
       "height": 1280,
-      "bytes": 27824,
-      "sha256": "6c5bb960d75d18ebf7828368cbdea5ff94d5c8c48702b0f9731aca3643062df1"
+      "bytes": 31124,
+      "sha256": "becefe4c7b6aef0fd97c1148892f2d4a69d708bce1117ee73227250596400021"
     },
     {
       "file": "history-01-weekly-history-1080w.webp",
       "master": "docs/assets/app-tutorial/history/01-weekly-history.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 43034,
-      "sha256": "7e4f7def54c5b0da168340e368649f37adf8007e6d3b7628ec51c2631e527349"
+      "bytes": 49074,
+      "sha256": "4a724fa3f68cb37eb86039a4d6cc171868a78d8ea9b081deeecc6ffed503f139"
     },
     {
       "file": "history-02-choose-fuel-360w.webp",
@@ -1284,24 +1284,24 @@
       "master": "docs/assets/app-tutorial/settings/01-sync-and-preferences.png",
       "width": 360,
       "height": 640,
-      "bytes": 16982,
-      "sha256": "c2fe1446d3205c5bd1249488a71fadabddbfc7d66def0484eec9c952e6eb819f"
+      "bytes": 16560,
+      "sha256": "5967c462e81866a87e1e3a315a9ac03d4490a0cbc465c130a5b990e834db590a"
     },
     {
       "file": "settings-01-sync-and-preferences-720w.webp",
       "master": "docs/assets/app-tutorial/settings/01-sync-and-preferences.png",
       "width": 720,
       "height": 1280,
-      "bytes": 38822,
-      "sha256": "fb01922bd94c3636f7fe6e49a03bbcaf84a60665293f04d9498d1729721f3a72"
+      "bytes": 37938,
+      "sha256": "babdc35537e4e9208dfb7cb3a42c453e0a94e054ea499e31c2789e4c9cd87706"
     },
     {
       "file": "settings-01-sync-and-preferences-1080w.webp",
       "master": "docs/assets/app-tutorial/settings/01-sync-and-preferences.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 60938,
-      "sha256": "14416de9d657869fd922237d715ddb515ad12178ea568657c33c99b0a1d33440"
+      "bytes": 59988,
+      "sha256": "6e52d943f4317887abbe1ae4d9d718ed4cc97d7e19b1460a6083e26459032865"
     },
     {
       "file": "settings-02-language-and-search-distance-360w.webp",
@@ -1500,24 +1500,24 @@
       "master": "docs/assets/app-tutorial/community/01-community-tab.png",
       "width": 360,
       "height": 640,
-      "bytes": 18846,
-      "sha256": "92d541c71022b9375d9f404a99d7787305671c74b96a290c8eca424f25f7fd9e"
+      "bytes": 18432,
+      "sha256": "646e89cb9a484955c0f45f425f914e6b1566af472b0e5e1a13aeb741127ae33d"
     },
     {
       "file": "community-01-community-tab-720w.webp",
       "master": "docs/assets/app-tutorial/community/01-community-tab.png",
       "width": 720,
       "height": 1280,
-      "bytes": 41908,
-      "sha256": "2933328d0b369367fa5ef79e6b5848f0d856b5424d4405d7f42c205d2dd4c392"
+      "bytes": 40676,
+      "sha256": "480a5ac4aeddcc0ad970ededc90c9e6a8be405ea47f679f67a51c20c80322b1c"
     },
     {
       "file": "community-01-community-tab-1080w.webp",
       "master": "docs/assets/app-tutorial/community/01-community-tab.png",
       "width": 1080,
       "height": 1920,
-      "bytes": 63790,
-      "sha256": "194f507ac478de2743aeaae966862b40482b8b8e3dd09981eccd9b1e9d79fbab"
+      "bytes": 62710,
+      "sha256": "d6bb0dfc31c7dd706f3931750b5157a101d7c18eb1d9eae317a922e96ffcb119"
     },
     {
       "file": "community-02-community-prices-empty-360w.webp",

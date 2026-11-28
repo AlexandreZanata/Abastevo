@@ -56,16 +56,26 @@ func (h ProviderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var envelope struct {
-		Subscription string `json:"subscription"`
-		Message      struct {
-			ID          string            `json:"messageId"`
-			Data        string            `json:"data"`
-			Published   string            `json:"publishTime"`
-			Attributes  map[string]string `json:"attributes,omitempty"`
-			OrderingKey string            `json:"orderingKey,omitempty"`
+		Subscription    string `json:"subscription"`
+		DeliveryAttempt int    `json:"deliveryAttempt,omitempty"`
+		Message         struct {
+			ID             string            `json:"messageId"`
+			IDAlias        *string           `json:"message_id,omitempty"`
+			Data           string            `json:"data"`
+			Published      string            `json:"publishTime"`
+			PublishedAlias *string           `json:"publish_time,omitempty"`
+			Attributes     map[string]string `json:"attributes,omitempty"`
+			OrderingKey    string            `json:"orderingKey,omitempty"`
 		} `json:"message"`
 	}
 	if httpapi.DecodeJSON(raw, &envelope) != nil || envelope.Subscription != h.Subscription || len(envelope.Message.ID) == 0 || len(envelope.Message.ID) > 128 {
+		fail(400, "invalid")
+		return
+	}
+	// Wrapped Pub/Sub messages can repeat these two fields for compatibility.
+	// Keep one message identity and one publish time for deduplication and age checks.
+	if msg := envelope.Message; (msg.IDAlias != nil && *msg.IDAlias != msg.ID) ||
+		(msg.PublishedAlias != nil && *msg.PublishedAlias != msg.Published) {
 		fail(400, "invalid")
 		return
 	}

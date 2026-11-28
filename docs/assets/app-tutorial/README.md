@@ -162,7 +162,7 @@ Landing pages: `/como-usar/semanas-anp/`
 | 02 | [`survey-weeks/02-week-list.png`](survey-weeks/02-week-list.png) | Each week shows when it was updated and whether it is downloaded; "Baixar" saves it offline. _(sorriso-mt)_ |
 | 03 | [`survey-weeks/03-downloading-week.png`](survey-weeks/03-downloading-week.png) | The download imports the ANP data in place and can be cancelled. _(sorriso-mt)_ |
 | 04 | [`survey-weeks/04-week-downloaded.png`](survey-weeks/04-week-downloaded.png) | Downloaded weeks are marked "Baixada". _(sorriso-mt)_ |
-| 05 | [`survey-weeks/05-older-week-active.png`](survey-weeks/05-older-week-active.png) | Tapping a downloaded week makes it active: the chip and the ANP reference line change. _(sorriso-mt)_ |
+| 05 | [`survey-weeks/05-older-week-active.png`](survey-weeks/05-older-week-active.png) | Tapping a downloaded week makes it active: the header shows the selected week and the ANP price cards update. _(sorriso-mt)_ |
 
 ### Price history
 
@@ -268,7 +268,7 @@ Landing pages: `/como-usar/comunidade/`
 
 | Step | Image | Caption |
 |---|---|---|
-| 01 | [`community/01-community-tab.png`](community/01-community-tab.png) | "Comunidade" opens the price contribution, the Abastevo forum and the community price feed. _(sorriso-mt; signed in)_ |
+| 01 | [`community/01-community-tab.png`](community/01-community-tab.png) | "Comunidade" opens the price contribution, the Abastevo forum and the community price feed. _(sorriso-mt)_ |
 | 02 | [`community/02-community-prices-empty.png`](community/02-community-prices-empty.png) | The feed filters by order and fuel; with no recent community price it invites a contribution. _(sorriso-mt; signed in)_ |
 
 ### Forum: read, comment, post and block

@@ -827,7 +827,6 @@
     <string name="home_filter_lowest">最低价格</string>
     <string name="home_filter_highest">最高价格</string>
     <string name="home_change_city">我的城市</string>
-    <string name="home_reference_period">ANP参考价格 • %1$s</string>
     <string name="home_shortcut_stations">查找加油站</string>
     <string name="home_shortcut_stations_description">探索本地加油站</string>
     <string name="home_shortcut_history">价格历史</string>
@@ -1471,7 +1470,8 @@
     <string name="home_open_map">在地图上查看</string>
     <string name="premium_store_section_title">订阅</string>
     <string name="premium_store_plans_loading">正在加载 Google Play 方案…</string>
-    <string name="premium_store_plans_unavailable">无法加载 Google Play 方案。</string>
+    <string name="premium_store_plans_unavailable">订阅方案暂时不可用</string>
+    <string name="premium_store_plans_retry_hint">请稍后重试，以查看 Google Play 上的订阅价格。</string>
     <string name="premium_store_trial_then">免费试用 1 个月，之后按%1$s自动续订</string>
     <string name="premium_store_subscribe">订阅</string>
     <string name="premium_store_billing_note">付款、续订和取消均由 Google Play 处理。</string>
