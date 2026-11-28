@@ -1,6 +1,8 @@
 package com.anpfuel.app.capture
 
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -755,9 +757,11 @@ private fun NominalStationPicker(
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(stringResource(R.string.capture_pick_station), style = MaterialTheme.typography.titleLarge)
         // City context: where the search runs, with an explicit change action.
+        val cityContainer = MaterialTheme.colorScheme.surfaceContainerLow
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = AnpContainerDefaults.containerShape(),
+            color = cityContainer,
+            border = AnpContainerDefaults.borderStroke(cityContainer),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Row(
@@ -765,10 +769,11 @@ private fun NominalStationPicker(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.secondary)
                 Text(
                     city?.let { "${it.name} · ${it.state.abbreviation}" }.orEmpty(),
                     style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = { viewModel.changeNominalStation(); onChooseCity() }, enabled = !busy) {
@@ -922,7 +927,11 @@ private fun LocationAssistCard(message: String, action: String, enabled: Boolean
     }
 }
 
-/** One station choice: pump badge, name, readable address and an affordance. */
+/**
+ * One station choice in the Explorar card language: a white container, a pump
+ * badge (black once selected, outlined otherwise), the name in bold and the
+ * readable address. Selection is a 2dp ink outline, never a tinted fill.
+ */
 @Composable
 private fun StationOptionCard(
     name: String,
@@ -932,42 +941,67 @@ private fun StationOptionCard(
     onClick: () -> Unit,
     trailingLabel: String? = null,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surfaceContainerLow
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(20.dp),
-        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-        border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = AnpContainerDefaults.containerShape(),
+        color = containerColor,
+        border = if (selected) BorderStroke(2.dp, scheme.primary) else AnpContainerDefaults.borderStroke(containerColor),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) {
+            Surface(
+                shape = CircleShape,
+                color = if (selected) scheme.primary else Color.Transparent,
+                contentColor = if (selected) scheme.onPrimary else scheme.onSurface,
+                border = if (selected) null else BorderStroke(1.dp, scheme.outlineVariant),
+                modifier = Modifier.size(40.dp),
+            ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.LocalGasStation, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Icon(Icons.Default.LocalGasStation, null, modifier = Modifier.size(20.dp))
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 if (address.isNotBlank()) {
                     Text(
                         address,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = scheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            if (trailingLabel != null) {
-                Text(trailingLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            } else if (selected) {
-                Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-            } else {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            when {
+                trailingLabel != null -> Surface(
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    contentColor = scheme.onSurface,
+                    border = BorderStroke(1.dp, scheme.onSurface),
+                ) {
+                    Text(
+                        trailingLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+                selected -> Icon(Icons.Default.CheckCircle, null, tint = scheme.primary)
+                else -> Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = scheme.onSurfaceVariant)
             }
         }
     }

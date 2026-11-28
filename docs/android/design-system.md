@@ -114,6 +114,13 @@ outlines and indicators.
   white card with a calendar badge (black once downloaded), the date, an
   "Atual" tag for the latest week and a black "Baixar" action or an outlined
   "Baixada" state. The loading skeleton mirrors these cards.
+- **Station picker** (price photo): the city sits in a white card with the
+  green pin and a "Choose city" link. Each station is a white card with an
+  outlined pump badge, the name in bold and the address. The selected station
+  has a 2dp ink outline, a black badge and an outlined "Change station" pill;
+  a station pre-selected from the device location shows "Near you · N m" above
+  it and an outlined "Not this station? Choose manually" action below it.
+  Selection is never a tinted (green) fill.
 - **Empty states** (`EmptyState`): a white outlined card with a black icon
   badge, the message as title, an optional hint and an optional outlined
   action that leads out of the empty state.
