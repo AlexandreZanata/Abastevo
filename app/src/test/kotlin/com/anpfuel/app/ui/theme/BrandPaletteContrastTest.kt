@@ -56,6 +56,18 @@ class BrandPaletteContrastTest {
     }
 
     @Test
+    fun `business navy card keeps readable text and action in both themes`() {
+        listOf(AbastevoBusiness.Light, AbastevoBusiness.Dark).forEach { tones ->
+            assertTrue(ColorContrast.contrastRatio(tones.content, tones.container) >= 4.5)
+            assertTrue(ColorContrast.contrastRatio(tones.contentMuted, tones.container) >= 4.5)
+            assertTrue(ColorContrast.contrastRatio(tones.onAction, tones.action) >= 4.5)
+            assertTrue(ColorContrast.contrastRatio(tones.action, tones.container) >= 3.0)
+        }
+        assertTrue(ColorContrast.contrastRatio(AbastevoBusiness.Light.container, LightColorScheme.background) >= 3.0)
+        assertTrue(ColorContrast.contrastRatio(AbastevoBusiness.Dark.container, DarkColorScheme.background) >= 1.5)
+    }
+
+    @Test
     fun `filled actions invert with the theme`() {
         assertEquals(LightColorScheme.onSurface, AbastevoActionDefaults.Light.container)
         assertEquals(Color.White, AbastevoActionDefaults.Light.content)

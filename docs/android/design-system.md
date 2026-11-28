@@ -17,6 +17,7 @@ in [UI_CONTAINER_GUIDELINES](ui-containers.md).
 | --- | --- |
 | Foundation colors | `ui/theme/Color.kt` (`EnergiaLightTokens`, `EnergiaDarkTokens`) |
 | Accent | `ui/theme/Color.kt` (`AbastevoAccent`) |
+| Business navy | `ui/theme/AbastevoBusinessColors.kt` (`AbastevoBusiness`) |
 | Chrome (header, bars, hero) | `ui/theme/Color.kt` (`AbastevoChrome`), `ui/theme/AbastevoChromeColors.kt` |
 | Filled action colors | `ui/theme/AbastevoActionColors.kt` |
 | Bottom bar colors | `ui/theme/AbastevoNavColors.kt` (derived from the chrome) |
@@ -77,6 +78,13 @@ The accent marks text links (`TextButton`), the location pin and community
 elements. It is never the
 fill of a primary button and never the color of a price.
 
+Business (`AbastevoBusiness`, `ui/theme/AbastevoBusinessColors.kt`): the
+brand navy of the logo and the landing ink, `#0B1849` (light) and a lifted
+`#213380` (dark), with white text, a muted `#D3DAF0` body and a light filled
+action. It is reserved for surfaces that address station owners and
+companies, such as the station page's "Do you manage this station?" card. It
+is never a screen, chrome or price color.
+
 Other fixed meanings:
 
 - **Amber** (`tertiary`) is notice: stale data and operational notes.
@@ -121,6 +129,11 @@ outlines and indicators.
   a station pre-selected from the device location shows "Near you · N m" above
   it and an outlined "Not this station? Choose manually" action below it.
   Selection is never a tinted (green) fill.
+- **Business card** (station page, "Do you manage this station?"): navy
+  `large` card with no outline, a light round badge with the business icon,
+  white bold title, muted white body and a light filled full-width action
+  with navy text. Community and owner messages never use the green accent
+  container as a card fill.
 - **Empty states** (`EmptyState`): a white outlined card with a black icon
   badge, the message as title, an optional hint and an optional outlined
   action that leads out of the empty state.

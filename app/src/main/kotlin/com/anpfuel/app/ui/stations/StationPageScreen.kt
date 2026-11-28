@@ -300,20 +300,7 @@ internal fun StationPageContent(
                 }
             }
             item {
-                val containerColor = MaterialTheme.colorScheme.secondaryContainer
-                Card(Modifier.widthIn(max = 720.dp).fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
-                    colors = CardDefaults.cardColors(containerColor = containerColor),
-                    border = AnpContainerDefaults.borderStroke(containerColor)) {
-                    Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Default.Business, contentDescription = null)
-                        Text(stringResource(R.string.station_page_owner_title), style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-                        Text(stringResource(R.string.station_page_owner_copy))
-                        OutlinedButton(onClick = { showGuide = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.station_page_owner_action))
-                        }
-                    }
-                }
+                StationOwnerCard(onLearnMore = { showGuide = true })
             }
         }
     }
@@ -332,6 +319,56 @@ internal fun StationPageContent(
             },
             confirmLabel = stringResource(R.string.action_back),
         )
+    }
+}
+
+/**
+ * "Do you manage this station?" in the brand navy (design system: business
+ * card): a light badge, white title, muted white body and a light filled
+ * action. No outline; it is the only navy surface on the page.
+ */
+@Composable
+private fun StationOwnerCard(onLearnMore: () -> Unit) {
+    val business = com.anpfuel.app.ui.theme.abastevoBusinessColors
+    Card(
+        Modifier.widthIn(max = 720.dp).fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = business.container, contentColor = business.content),
+    ) {
+        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            androidx.compose.material3.Surface(
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = business.action,
+                contentColor = business.onAction,
+                modifier = Modifier.size(44.dp),
+            ) {
+                androidx.compose.foundation.layout.Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    Icon(Icons.Default.Business, contentDescription = null, modifier = Modifier.size(22.dp))
+                }
+            }
+            Text(
+                stringResource(R.string.station_page_owner_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = business.content,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                stringResource(R.string.station_page_owner_copy),
+                style = MaterialTheme.typography.bodyMedium,
+                color = business.contentMuted,
+            )
+            com.anpfuel.app.ui.designsystem.Button(
+                onClick = onLearnMore,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = business.action,
+                    contentColor = business.onAction,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.station_page_owner_action), fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
