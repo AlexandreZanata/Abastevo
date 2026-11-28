@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- EMP-PRIV-003: explicit credential retry and acknowledged empty recovery. -->
-    <string name="enterprise_protection_unlock_required">Desbloqueie o dispositivo e selecione a empresa novamente para verificar o acesso.</string>
-    <string name="enterprise_protection_unlock_action">Desbloquear dispositivo</string>
-    <string name="enterprise_protection_unlock_title">Confirmar bloqueio do dispositivo</string>
-    <string name="enterprise_protection_unlock_copy">Use o bloqueio de tela. O acesso da empresa será verificado novamente.</string>
-    <string name="enterprise_protection_unlock_done">Dispositivo confirmado. Selecione a empresa novamente para verificar o acesso.</string>
-    <string name="enterprise_protection_device_lock_required">Configure um bloqueio de tela do dispositivo para continuar.</string>
-    <string name="enterprise_protection_recovery_required">Os dados locais anteriores não podem ser reabertos. Recomeçar descarta o trabalho local ainda não enviado.</string>
-    <string name="enterprise_protection_recovery_action">Recomeçar dados locais de %1$s</string>
-    <string name="enterprise_protection_recovery_title">Descartar o trabalho local anterior?</string>
-    <string name="enterprise_protection_recovery_copy">Esta ação remove os dados locais desta empresa, inclusive operações ainda não enviadas. O servidor verificará o acesso antes de iniciar com dados locais vazios.</string>
-    <string name="enterprise_protection_recovery_confirm">Descartar e verificar acesso</string>
+    <string name="enterprise_protection_unlock_required">Unlock the device and select the company again to verify access.</string>
+    <string name="enterprise_protection_unlock_action">Unlock device</string>
+    <string name="enterprise_protection_unlock_title">Confirm device lock</string>
+    <string name="enterprise_protection_unlock_copy">Use your screen lock. Company access will be verified again.</string>
+    <string name="enterprise_protection_unlock_done">Device confirmed. Select the company again to verify access.</string>
+    <string name="enterprise_protection_device_lock_required">Set up a device screen lock to continue.</string>
+    <string name="enterprise_protection_recovery_required">The previous local data cannot be reopened. Starting over discards local work not yet sent.</string>
+    <string name="enterprise_protection_recovery_action">Reset local data for %1$s</string>
+    <string name="enterprise_protection_recovery_title">Discard previous local work?</string>
+    <string name="enterprise_protection_recovery_copy">This removes this company\'s local data, including operations not yet sent. The server will verify access before starting with empty local data.</string>
+    <string name="enterprise_protection_recovery_confirm">Discard and verify access</string>
     <!-- EMP-OFFL-011: an access-ended lock; locked and still sending, nothing removed yet (B-BR-EMP-539). -->
-    <string name="enterprise_protection_access_ended">O acesso a esta empresa neste aparelho foi encerrado. Os registros salvos antes disso continuam sendo enviados para revisão da empresa. Os dados desta empresa ficam bloqueados neste aparelho e serão removidos depois do envio; nada foi removido ainda.</string>
+    <string name="enterprise_protection_access_ended">Access to this company on this device has ended. Records saved before then are still being sent for company review. This company\'s data stays locked on this device and will be removed after sending; nothing has been removed yet.</string>
 </resources>
