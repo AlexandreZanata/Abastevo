@@ -13,17 +13,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -39,12 +48,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.locale.AppLocaleHolder
+import com.anpfuel.app.ui.designsystem.AbastevoButtonDefaults
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.theme.AbastevoSpacing
 import com.anpfuel.domain.map.saved.SavedTrip
 import com.anpfuel.domain.routing.NativeRouteRequest
 import com.anpfuel.domain.routing.RoadAvoidance
@@ -516,6 +530,41 @@ fun MapScreen(
         !discUi.chargingSnapshotPresent || discUi.chargingError != null -> R.string.charging_catalog_unavailable
         discUi.error == null && discUi.selectableByUuid.values.none { it.charging } -> R.string.charging_map_gap
         else -> R.string.charging_open_sources
+    }
+
+    if (!guidanceUi.active && !guidanceUi.starting && !showRoute && !showFilters && !showFilterLocation) {
+        ui.mobileDownloadPrompt?.let { region ->
+            AlertDialog(
+                onDismissRequest = viewModel::dismissMobileDownloadPrompt,
+                icon = { Icon(Icons.Default.SignalCellularAlt, contentDescription = null) },
+                title = { Text(stringResource(R.string.map_mobile_download_title)) },
+                text = { Text(stringResource(R.string.map_mobile_download_message, region.name)) },
+                confirmButton = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.sm),
+                    ) {
+                        TextButton(
+                            onClick = viewModel::dismissMobileDownloadPrompt,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border = AbastevoButtonDefaults.outlinedBorder(enabled = true),
+                        ) {
+                            Text(stringResource(R.string.map_mobile_download_dismiss), textAlign = TextAlign.Center)
+                        }
+                        Button(
+                            onClick = {
+                                if (viewModel.confirmMobileDownload(region.slug)) onOpenDownloads()
+                            },
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            contentPadding = ButtonDefaults.TextButtonContentPadding,
+                        ) {
+                            Text(stringResource(R.string.map_mobile_download_confirm), textAlign = TextAlign.Center)
+                        }
+                    }
+                },
+            )
+        }
     }
 
     if (showFilters) {

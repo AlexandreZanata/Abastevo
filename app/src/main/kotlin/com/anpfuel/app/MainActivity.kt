@@ -65,8 +65,14 @@ class MainActivity : ComponentActivity() {
         super.attachBaseContext(AppLocaleApplier.wrap(newBase, AppLocaleHolder.localeTag))
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        com.anpfuel.app.notification.NotificationOpenRequest.from(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) com.anpfuel.app.notification.NotificationOpenRequest.from(intent)
         // Resume and maintain short-lived tokens while the app is visible.
         // AuthFlow serializes rotations with logout; failures retain no live grant.
         lifecycleScope.launch {

@@ -18,6 +18,25 @@ private val nameSpacing = Regex("""[\s\p{Z}]+""")
 
 internal fun normalizedStationName(name: String): String = nameSpacing.replace(name, " ").trim()
 
+/**
+ * B-BR-STATION-NAME-01 — registry names often read "Trade (Legal)". When the
+ * parenthesized part is the station's legal name, which the UI already shows
+ * as the secondary line, the title keeps only the trade name. Any other
+ * parenthesis, or a title that would become empty, is kept as is.
+ */
+fun stationTitle(displayName: String, legalName: String?): String {
+    val legal = legalName?.let(::comparableStationName)?.takeIf { it.isNotEmpty() } ?: return displayName
+    val match = trailingParenthesis.matchEntire(displayName.trim()) ?: return displayName
+    val (outer, inner) = match.destructured
+    return if (outer.isNotBlank() && comparableStationName(inner) == legal) normalizedStationName(outer) else displayName
+}
+
+private val trailingParenthesis = Regex("^(.*\\S)\\s*\\(([^()]+)\\)$")
+
+/** Letters and digits only, lowercased: "Ltda." and "LTDA" compare equal. */
+private fun comparableStationName(name: String): String =
+    name.lowercase().filter(Char::isLetterOrDigit)
+
 /** A single known name is shown once, regardless of case or source spacing. */
 fun secondaryStationLegalName(displayName: String, legalName: String?): String? =
     legalName?.trim()?.takeIf { it.isNotEmpty() &&

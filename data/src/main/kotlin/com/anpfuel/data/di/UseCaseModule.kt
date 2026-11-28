@@ -769,6 +769,7 @@ object UseCaseModule {
         userPreferencesRepository: UserPreferencesRepository,
         priceDropNotificationRepository: PriceDropNotificationRepository,
         priceDropAlertHistoryRepository: PriceDropAlertHistoryRepository,
+        localInbox: com.anpfuel.domain.notification.LocalNotificationInbox,
     ): EvaluatePriceDropAlertsUseCase = EvaluatePriceDropAlertsUseCase(
         vehicleRepository = vehicleRepository,
         averagePriceRepository = averagePriceRepository,
@@ -777,6 +778,7 @@ object UseCaseModule {
         userPreferencesRepository = userPreferencesRepository,
         priceDropNotificationRepository = priceDropNotificationRepository,
         priceDropAlertHistoryRepository = priceDropAlertHistoryRepository,
+        localInbox = localInbox,
     )
 
     @Provides
@@ -857,6 +859,19 @@ object UseCaseModule {
         GetNearbyServerStationsUseCase(
             flagProvider = flagProvider,
             gateway = gateway,
+        )
+
+    @Provides
+    @Singleton
+    fun provideFollowDeviceCityUseCase(
+        nearbyStations: GetNearbyServerStationsUseCase,
+        catalog: MunicipalityCatalogRepository,
+        locations: SelectLocationUseCase,
+    ): com.anpfuel.application.usecase.location.FollowDeviceCityUseCase =
+        com.anpfuel.application.usecase.location.FollowDeviceCityUseCase(
+            nearbyStations = nearbyStations,
+            catalog = catalog,
+            locations = locations,
         )
 
     @Provides

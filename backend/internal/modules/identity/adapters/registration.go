@@ -249,6 +249,24 @@ func canonicalJWK(x, y string) string {
 	return `{"crv":"P-256","kty":"EC","x":"` + x + `","y":"` + y + `"}`
 }
 
+// ContributorForAttributionTx resolves an observation attribution token to
+// its live contributor inside the caller's transaction. It is a
+// server-side lookup for account notices (B-BR-NOTIF-02) and never
+// reaches a public response; erased contributors do not resolve.
+func (r *Registrar) ContributorForAttributionTx(ctx context.Context, tx pgx.Tx, token string) (string, bool, error) {
+	if token == "" {
+		return "", false, nil
+	}
+	id, err := identity.New(tx).ContributorByAttributionToken(ctx, pgtype.Text{String: token, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return uuidString(id), true, nil
+}
+
 // AttributionToken resolves a contributor to its stable random token,
 // minting it once on first use. Observations carry the token, never the
 // contributor UUID, so public content cannot pivot to identity rows.

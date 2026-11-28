@@ -44,10 +44,11 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import com.anpfuel.app.location.rememberLocationPermissionRequest
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import com.anpfuel.app.ui.components.AnpSourceLink
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.designsystem.AbastevoSelectionDefaults
 import com.anpfuel.app.ui.designsystem.AssistChip
@@ -120,6 +121,16 @@ fun HomeScreen(
     val locale = LocalConfiguration.current.locales[0]
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    // B-BR-LOC-03: drivers who travel get the city they are in without picking it.
+    val requestLocationPermission = rememberLocationPermissionRequest { granted, _ ->
+        if (granted) viewModel.followDeviceCity(locale)
+    }
+    LaunchedEffect(lifecycleOwner, locale) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (viewModel.shouldAskLocationPermission()) requestLocationPermission() else viewModel.followDeviceCity(locale)
+        }
+    }
+
     LaunchedEffect(lifecycleOwner, locale, uiState.priceSource) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             if(uiState.priceSource==HomePriceSource.ANP) viewModel.load(locale)
@@ -151,6 +162,8 @@ fun HomeScreen(
         onDismissBenefits = viewModel::dismissBenefits,
         onPriceSourceChanged = { viewModel.selectPriceSource(it, locale) },
         onSyncNoticeShown = viewModel::onSyncNoticeShown,
+        onUndoCityFollow = { viewModel.undoCityFollow(locale) },
+        onCityFollowNoticeShown = viewModel::onCityFollowNoticeShown,
         onRouteToStation = onRouteToStation,
         modifier = modifier,
     )
@@ -171,6 +184,8 @@ internal fun HomeContent(
     onDismissBenefits: () -> Unit = {},
     onPriceSourceChanged: (HomePriceSource) -> Unit = {},
     onSyncNoticeShown: () -> Unit = {},
+    onUndoCityFollow: () -> Unit = {},
+    onCityFollowNoticeShown: () -> Unit = {},
     onRouteToStation: (String, String) -> Unit = { _, _ -> },
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -180,6 +195,22 @@ internal fun HomeContent(
             // Read once, then gone: a verified week leaves nothing on screen.
             snackbarHostState.showSnackbar(noticeText, duration = SnackbarDuration.Long)
             onSyncNoticeShown()
+        }
+    }
+    val cityFollowNotice = uiState.cityFollowNotice
+    val cityFollowText = cityFollowNotice?.let {
+        stringResource(R.string.home_city_followed, it.municipality, it.state.abbreviation)
+    }
+    val undoLabel = stringResource(R.string.home_city_followed_undo)
+    LaunchedEffect(cityFollowNotice) {
+        if (cityFollowNotice != null && cityFollowText != null) {
+            val result = snackbarHostState.showSnackbar(
+                message = cityFollowText,
+                actionLabel = if (cityFollowNotice.canUndo) undoLabel else null,
+                duration = SnackbarDuration.Long,
+            )
+            onCityFollowNoticeShown()
+            if (result == SnackbarResult.ActionPerformed) onUndoCityFollow()
         }
     }
     val scrollState = rememberSaveable(saver = ScrollState.Saver) {
@@ -205,7 +236,7 @@ internal fun HomeContent(
             val municipality = uiState.municipality
             val state = uiState.state
             AbastevoHeader(
-                onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+                onNotificationsClick = { onNavigate(Routes.NOTIFICATIONS) },
                 onProfileClick = { onNavigate(Routes.PROFILE) },
                 locationLabel = if (municipality != null && state != null) {
                     stringResource(R.string.home_location_format, municipality, state.abbreviation)
@@ -378,10 +409,6 @@ internal fun HomeContent(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
-                    PriceMetadata(uiState = uiState)
-                    if (uiState.prices.isNotEmpty()) {
-                        AnpSourceLink()
-                    }
                     HomePriceFilterButton(
                         current = uiState.priceSort,
                         onOpenFilters = { filterOpen = true },
@@ -586,21 +613,6 @@ private fun VehicleCarousel(
                 modifier = Modifier.width(cardWidth),
             )
         }
-    }
-}
-
-@Composable
-private fun PriceMetadata(uiState: HomeUiState) {
-    uiState.surveyWeek?.let { week ->
-        val locale = LocalConfiguration.current.locales[0]
-        Text(
-            text = stringResource(
-                R.string.home_reference_period,
-                SurveyWeekFormatter.formatRange(week, locale),
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

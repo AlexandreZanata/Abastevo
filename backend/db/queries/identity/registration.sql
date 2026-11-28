@@ -43,6 +43,13 @@ WHERE id = @id;
 -- name: GetAttributionToken :one
 SELECT attribution_token FROM identity_contributors WHERE id = @id;
 
+-- Account notices (B-BR-NOTIF-02) resolve an observation's attribution
+-- token back to its contributor server-side only; erased contributors have
+-- no token and never resolve.
+-- name: ContributorByAttributionToken :one
+SELECT id FROM identity_contributors
+WHERE attribution_token = @token AND status <> 'deleted';
+
 -- name: SetAttributionToken :execrows
 UPDATE identity_contributors
 SET attribution_token = @token

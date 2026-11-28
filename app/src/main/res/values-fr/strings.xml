@@ -472,15 +472,16 @@
     <string name="public_catalog_cleared">Répertoire public effacé.</string>
     <string name="settings_auto_download_latest_week">Télécharger automatiquement la semaine la plus récente</string>
     <string name="settings_sync_wifi_only">Synchronisation automatique en Wi‑Fi uniquement</string>
+    <string name="settings_allow_mobile_map_downloads">Autoriser le téléchargement des cartes via les données mobiles</string>
     <string name="settings_show_price_history">Afficher l\'historique des prix</string>
     <string name="settings_retention_weeks">Conservation des données des stations</string>
     <string name="settings_retention_weeks_option">%1$d semaines</string>
     <string name="settings_nearest_station_radius">Rayon de recherche de « Moins cher près de moi »</string>
     <string name="settings_nearest_station_radius_option">%1$d km</string>
     <string name="settings_storage_usage">Utilisation du stockage</string>
-    <string name="settings_storage_summary_rows">Lignes de résumé : %1$s</string>
-    <string name="settings_storage_station_rows">Lignes de stations : %1$s</string>
-    <string name="settings_storage_week_count">Semaines importées : %1$s</string>
+    <string name="settings_storage_summary_rows">Résumés des prix</string>
+    <string name="settings_storage_station_rows">Relevés de prix par station</string>
+    <string name="settings_storage_week_count">Semaines importées</string>
     <string name="settings_sync_section">Synchronisation</string>
     <string name="settings_change_survey_week">Changer la semaine d\'enquête</string>
     <string name="settings_clear_cache">Vider le cache</string>
@@ -826,7 +827,6 @@
     <string name="home_filter_lowest">Prix le plus bas</string>
     <string name="home_filter_highest">Prix le plus élevé</string>
     <string name="home_change_city">Ma ville</string>
-    <string name="home_reference_period">Référence ANP • %1$s</string>
     <string name="home_shortcut_stations">Voir les stations</string>
     <string name="home_shortcut_stations_description">Explorez les stations locales</string>
     <string name="home_shortcut_history">Historique des prix</string>
@@ -1048,6 +1048,16 @@
     <string name="stations_summary_order">Tri : %1$s</string>
     <string name="capture_choose_city">Choisir une ville</string>
     <string name="capture_change_station">Changer de station</string>
+    <string name="capture_near_you_distance">Près de vous · %1$d m</string>
+    <string name="capture_not_this_station">Pas cette station ? Choisir manuellement</string>
+    <string name="capture_locating_station">Recherche de la station où vous êtes…</string>
+    <string name="capture_location_rationale">Autorisez la localisation pour présélectionner la station où vous êtes.</string>
+    <string name="capture_use_my_location">Utiliser ma position</string>
+    <string name="capture_open_location_settings">Ouvrir les paramètres</string>
+    <string name="capture_location_unavailable">Impossible d\'obtenir votre position. Vérifiez que la localisation est activée.</string>
+    <string name="capture_no_station_nearby">Aucune station juste à côté de vous. Choisissez-la ci-dessous.</string>
+    <string name="home_city_followed">Affichage de %1$s, %2$s, où vous êtes maintenant</string>
+    <string name="home_city_followed_undo">Annuler</string>
     <string name="capture_station_name">Nom de la station</string>
     <string name="capture_search_failed">Recherche impossible. Vérifiez la connexion et réessayez.</string>
     <string name="capture_search_empty">Aucune station trouvée.</string>
@@ -1186,6 +1196,10 @@
     <string name="map_downloads_depends_on">Dépend de : %1$s</string>
     <string name="map_downloads_wifi_only">Wi-Fi uniquement</string>
     <string name="map_downloads_wifi_any">Wi-Fi ou données mobiles</string>
+    <string name="map_mobile_download_title">Pas de connexion Wi-Fi</string>
+    <string name="map_mobile_download_message">Télécharger la carte hors ligne de %1$s via les données mobiles ? Cela peut consommer une partie de votre forfait.</string>
+    <string name="map_mobile_download_confirm">Télécharger la carte</string>
+    <string name="map_mobile_download_dismiss">Plus tard</string>
     <string name="map_downloads_delete">Supprimer</string>
     <string name="map_downloads_in_use">Utilisé par la navigation ; arrêtez le guidage et réessayez</string>
     <string name="map_downloads_stored">Enregistré : %1$s</string>
@@ -1468,7 +1482,8 @@
     <string name="home_open_map">Voir sur la carte</string>
     <string name="premium_store_section_title">S’abonner</string>
     <string name="premium_store_plans_loading">Chargement des formules Google Play…</string>
-    <string name="premium_store_plans_unavailable">Impossible de charger les formules Google Play.</string>
+    <string name="premium_store_plans_unavailable">Formules temporairement indisponibles</string>
+    <string name="premium_store_plans_retry_hint">Réessayez dans un instant pour consulter les tarifs des abonnements sur Google Play.</string>
     <string name="premium_store_trial_then">1 mois gratuit, puis %1$s avec renouvellement automatique</string>
     <string name="premium_store_subscribe">S’abonner</string>
     <string name="premium_store_billing_note">Le paiement, le renouvellement et la résiliation sont gérés par Google Play.</string>
@@ -1529,4 +1544,35 @@
     <string name="auth_error_email_login_retired">Connectez-vous avec Google ou avec votre clé de compte.</string>
     <string name="auth_error_google_unavailable">La connexion Google est indisponible. Réessayez ou utilisez votre clé.</string>
     <string name="auth_legacy_key_issued_warning">Enregistrez votre clé pour accéder à ce compte sur un autre appareil. Vous pourrez aussi l’exporter depuis le profil.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Notifications</string>
+    <string name="notifications_mark_all_read">Tout marquer comme lu</string>
+    <string name="notifications_settings">Paramètres des notifications</string>
+    <string name="notifications_sign_in_hint">Connectez-vous pour voir aussi les réponses et les nouvelles de votre compte.</string>
+    <string name="notifications_sign_in_action">Se connecter</string>
+    <string name="notifications_not_refreshed">Dernières nouvelles du compte affichées ; actualisation impossible.</string>
+    <string name="notifications_mark_failed">Impossible de marquer comme lu. Réessayez.</string>
+    <string name="notifications_empty_title">Aucune notification pour le moment</string>
+    <string name="notifications_empty_hint">Les baisses de prix dans votre ville, les nouvelles semaines de l\'ANP et les réponses à vos sujets apparaissent ici.</string>
+    <string name="notifications_unread">Non lue</string>
+    <string name="notifications_forum_reply_title">Nouvelle réponse à votre sujet</string>
+    <string name="notifications_forum_reply_body">%1$s a répondu à « %2$s »</string>
+    <string name="notifications_forum_reply_body_anonymous">Quelqu\'un a répondu à « %1$s »</string>
+    <string name="notifications_contribution_validated_title">Votre prix a été validé</string>
+    <string name="notifications_contribution_validated_body">%1$s est maintenant confirmé par la communauté.</string>
+    <string name="notifications_contribution_rejected_title">Votre prix n\'a pas été accepté</string>
+    <string name="notifications_contribution_rejected_body">%1$s. Voir le motif dans Mes contributions.</string>
+    <string name="notifications_city_drop_title">Le carburant a baissé à %1$s, %2$s</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Le prix du carburant a baissé</string>
+    <string name="notifications_vehicle_drop_body">%1$s est maintenant à %2$s</string>
+    <string name="notifications_new_week_title">Nouvelle semaine d\'enquête de l\'ANP</string>
+    <string name="notifications_new_week_body">Les prix de %1$s sont disponibles.</string>
+    <string name="notifications_account_channel_name">Nouvelles du compte</string>
+    <string name="notifications_account_channel_description">Réponses à vos sujets et décisions sur vos contributions</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">%d nouvelle de plus</item>
+        <item quantity="other">%d nouvelles de plus</item>
+    </plurals>
 </resources>

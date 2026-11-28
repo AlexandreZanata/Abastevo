@@ -124,6 +124,23 @@ class SettingsUseCasesTest {
     }
 
     @Test
+    fun mapMobileDataOptInIsTrackedSeparatelyFromPriceSync() = runTest {
+        val updated = defaultPreferences.copy(allowMapDownloadsOnMobileData = true)
+        coEvery { userPreferencesRepository.getPreferences() } returns defaultPreferences
+        coEvery { userPreferencesRepository.savePreferences(updated) } returns Unit
+
+        val result = updatePreferencesUseCase.invoke(updated)
+
+        assertEquals(updated, result.preferences)
+        assertEquals(
+            setOf(UpdatePreferencesUseCase.KEY_ALLOW_MAP_DOWNLOADS_ON_MOBILE_DATA),
+            result.event.payload.changedKeys,
+        )
+        assertTrue(result.preferences.autoSyncOnWifi)
+        coVerify(exactly = 1) { userPreferencesRepository.savePreferences(updated) }
+    }
+
+    @Test
     fun clearAllImportedDataAndResetsOnboarding() = runTest {
         val savedPreferences = slot<UserPreferences>()
         coEvery { cacheRepository.clearAllImportedData() } returns Unit

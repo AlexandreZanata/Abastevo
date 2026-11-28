@@ -217,6 +217,18 @@ WHEN the download is interrupted or its digest/signature fails
 THEN the partial file is not activated, the previous generation remains usable,
 and the user can resume/retry or roll back explicitly.
 
+#### Mobile data for regional downloads
+
+- **B-BR-MAP-MOBILE-01** — The map download preference is off by default and
+  applies independently of background price sync. It permits user-requested
+  map packages on mobile data when enabled. Without permission, package work
+  requires an unmetered connection.
+- **BUC-MAP-MOBILE-01** — On the map screen, a missing downloadable region on
+  a validated mobile connection prompts before starting its download when the
+  preference is off. Dismissal leaves the map usable and the region offer
+  available. Confirmation authorizes only the requested download and its
+  retries, without changing the saved preference.
+
 ### BUC-MAP-06 — Offline search/route/guidance
 
 GIVEN all required region/neighbor packages are active and the device is offline

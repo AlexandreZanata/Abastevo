@@ -180,4 +180,48 @@ class LocationPickerViewModelTest {
         assertTrue(viewModel.uiState.value.errorMessage?.contains("BR-006") == true)
         assertFalse(viewModel.uiState.value.isSaving)
     }
+
+    @Test
+    fun manualCityChoiceStopsCityFollowForTheSession() = runTest {
+        val gate = com.anpfuel.app.location.DeviceCityFollowGate()
+        coEvery { selectLocationUseCase.getMunicipalities(saoPaulo) } returns
+            municipalitiesResult(saoPaulo, "São Paulo")
+        coEvery { selectLocationUseCase.selectLocation(saoPaulo, "São Paulo") } returns io.mockk.mockk()
+        viewModel = LocationPickerViewModel(
+            selectLocationUseCase,
+            resolveDeviceLocationUseCase,
+            locationPermissionHandler,
+            gate,
+        )
+        advanceUntilIdle()
+
+        viewModel.onStateSelected(saoPaulo)
+        advanceUntilIdle()
+        viewModel.onMunicipalitySelected("São Paulo")
+        advanceUntilIdle()
+
+        assertTrue(gate.isSuppressed)
+    }
+
+    @Test
+    fun failedCityChoiceKeepsCityFollow() = runTest {
+        val gate = com.anpfuel.app.location.DeviceCityFollowGate()
+        coEvery { selectLocationUseCase.getMunicipalities(saoPaulo) } returns
+            municipalitiesResult(saoPaulo, "São Paulo")
+        coEvery { selectLocationUseCase.selectLocation(saoPaulo, "São Paulo") } throws DomainException("BR-006")
+        viewModel = LocationPickerViewModel(
+            selectLocationUseCase,
+            resolveDeviceLocationUseCase,
+            locationPermissionHandler,
+            gate,
+        )
+        advanceUntilIdle()
+
+        viewModel.onStateSelected(saoPaulo)
+        advanceUntilIdle()
+        viewModel.onMunicipalitySelected("São Paulo")
+        advanceUntilIdle()
+
+        assertFalse(gate.isSuppressed)
+    }
 }

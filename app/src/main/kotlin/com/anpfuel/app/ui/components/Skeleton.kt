@@ -18,16 +18,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.unit.sp
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 
@@ -93,6 +98,46 @@ fun SkeletonLine(
             .then(skeletonShimmer()),
     )
 }
+
+/**
+ * One line of [style] text: the box takes the style's exact line height, so a
+ * skeleton row is as tall as the loaded row, and the bar inside reads as text.
+ */
+@Composable
+fun SkeletonText(
+    style: TextStyle,
+    width: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val lineHeight = skeletonLineHeight(style)
+    Box(
+        modifier = modifier
+            .width(width)
+            .height(lineHeight),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(lineHeight * TEXT_BAR_FRACTION)
+                .then(skeletonShimmer(cornerRadius = 4.dp)),
+        )
+    }
+}
+
+/** Line height of [style] in dp, falling back to 1.4× the font size when unset. */
+@Composable
+fun skeletonLineHeight(style: TextStyle): Dp = with(LocalDensity.current) {
+    val fontSize = style.fontSize.takeIf { it.isSpecified && it.isSp } ?: 14.sp
+    val lineHeight = style.lineHeight
+    when {
+        lineHeight.isSp -> lineHeight.toDp()
+        lineHeight.isEm -> fontSize.toDp() * lineHeight.value
+        else -> fontSize.toDp() * 1.4f
+    }
+}
+
+private const val TEXT_BAR_FRACTION = 0.7f
 
 @Composable
 fun SkeletonCard(

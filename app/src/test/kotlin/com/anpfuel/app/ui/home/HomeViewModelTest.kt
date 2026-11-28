@@ -939,4 +939,157 @@ class HomeViewModelTest {
         viewModel.stopCommunityRefresh()
     }
 
+    // B-BR-LOC-03 city follow --------------------------------------------------------------
+
+    private val locationHandler = mockk<com.anpfuel.app.location.LocationPermissionHandler>()
+    private val followCity = mockk<com.anpfuel.application.usecase.location.FollowDeviceCityUseCase>()
+    private val fix = com.anpfuel.domain.valueobject.DeviceLocation.of(-12.55, -55.72)
+    private val sorriso = com.anpfuel.domain.community.FeedCity("5107925", BrazilianState.MATO_GROSSO, "Sorriso")
+    private val curitiba = PreferredLocation(state = BrazilianState.PARANA, municipality = "Curitiba")
+
+    private fun followViewModel(gate: com.anpfuel.app.location.DeviceCityFollowGate): HomeViewModel =
+        HomeViewModel(
+            getDataReadinessUseCase = getDataReadinessUseCase,
+            getMunicipalityPricesUseCase = getMunicipalityPricesUseCase,
+            selectLocationUseCase = selectLocationUseCase,
+            syncPriceTablesUseCase = syncPriceTablesUseCase,
+            listVehiclesUseCase = listVehiclesUseCase,
+            getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
+            homeVehiclePresenceStore = homeVehiclePresenceStore,
+            homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            manualSyncVerificationStore = manualSyncVerificationStore,
+            observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
+            communitySummary = communitySummary,
+            communitySnapshot = communitySnapshot,
+            locationHandler = locationHandler,
+            followDeviceCity = followCity,
+            cityFollowGate = gate,
+        ).also { it.ioDispatcher = dispatcher }
+
+    private fun givenDeviceIn(city: com.anpfuel.domain.community.FeedCity) {
+        every { locationHandler.hasLocationPermission() } returns true
+        coEvery { locationHandler.getCurrentLocation(any()) } returns fix
+        coEvery { followCity.surroundings(fix) } returns
+            com.anpfuel.application.usecase.location.DeviceSurroundings(emptyList(), city)
+    }
+
+    @Test fun `follow switches Home to the city the device is in and offers undo`() = runTest(dispatcher) {
+        stubReadyHome(vehicles = emptyList(), tankItems = emptyList())
+        givenDeviceIn(sorriso)
+        coEvery { followCity.follow(sorriso) } returns
+            com.anpfuel.application.usecase.location.CityFollowOutcome.Switched(curitiba, sorriso)
+        val vm = followViewModel(com.anpfuel.app.location.DeviceCityFollowGate())
+
+        vm.followDeviceCity(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(HomeCityFollowNotice("Sorriso", BrazilianState.MATO_GROSSO, canUndo = true), vm.uiState.value.cityFollowNotice)
+        coVerify(atLeast = 1) { getMunicipalityPricesUseCase.invoke() }
+        vm.onCityFollowNoticeShown()
+        assertEquals(null, vm.uiState.value.cityFollowNotice)
+    }
+
+    @Test fun `follow keeps Home quiet when the device is already in the city`() = runTest(dispatcher) {
+        givenDeviceIn(sorriso)
+        coEvery { followCity.follow(sorriso) } returns com.anpfuel.application.usecase.location.CityFollowOutcome.AlreadyThere
+        val vm = followViewModel(com.anpfuel.app.location.DeviceCityFollowGate())
+
+        vm.followDeviceCity(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(null, vm.uiState.value.cityFollowNotice)
+        coVerify(exactly = 0) { getMunicipalityPricesUseCase.invoke() }
+    }
+
+    @Test fun `follow is paced to once per interval`() = runTest(dispatcher) {
+        givenDeviceIn(sorriso)
+        coEvery { followCity.follow(sorriso) } returns com.anpfuel.application.usecase.location.CityFollowOutcome.AlreadyThere
+        val vm = followViewModel(com.anpfuel.app.location.DeviceCityFollowGate())
+        var now = 1_000L
+        vm.nowMillis = { now }
+
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+        now += 60_000
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+        coVerify(exactly = 1) { followCity.surroundings(fix) }
+
+        now += com.anpfuel.app.location.DeviceCityFollowGate.FOLLOW_INTERVAL_MILLIS
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+        coVerify(exactly = 2) { followCity.surroundings(fix) }
+    }
+
+    @Test fun `without location Home asks once per process and never locates`() = runTest(dispatcher) {
+        every { locationHandler.hasLocationPermission() } returns false
+        val gate = com.anpfuel.app.location.DeviceCityFollowGate()
+        val vm = followViewModel(gate)
+
+        assertTrue(vm.shouldAskLocationPermission())
+        assertFalse(vm.shouldAskLocationPermission())
+        assertFalse(followViewModel(gate).shouldAskLocationPermission())
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+
+        coVerify(exactly = 0) { locationHandler.getCurrentLocation(any()) }
+    }
+
+    @Test fun `undo restores the previous city and stops following for the session`() = runTest(dispatcher) {
+        stubReadyHome(vehicles = emptyList(), tankItems = emptyList())
+        givenDeviceIn(sorriso)
+        coEvery { followCity.follow(sorriso) } returns
+            com.anpfuel.application.usecase.location.CityFollowOutcome.Switched(curitiba, sorriso)
+        coEvery { followCity.restore(curitiba) } returns true
+        val gate = com.anpfuel.app.location.DeviceCityFollowGate()
+        val vm = followViewModel(gate)
+        var now = 1_000L
+        vm.nowMillis = { now }
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+
+        vm.undoCityFollow(Locale.US); advanceUntilIdle()
+
+        coVerify(exactly = 1) { followCity.restore(curitiba) }
+        assertTrue(gate.isSuppressed)
+        now += com.anpfuel.app.location.DeviceCityFollowGate.FOLLOW_INTERVAL_MILLIS * 2
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+        coVerify(exactly = 1) { followCity.follow(any()) }
+    }
+
+    @Test fun `a first city has no undo`() = runTest(dispatcher) {
+        stubReadyHome(vehicles = emptyList(), tankItems = emptyList())
+        givenDeviceIn(sorriso)
+        coEvery { followCity.follow(sorriso) } returns
+            com.anpfuel.application.usecase.location.CityFollowOutcome.Switched(null, sorriso)
+        val vm = followViewModel(com.anpfuel.app.location.DeviceCityFollowGate())
+
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+
+        assertEquals(false, vm.uiState.value.cityFollowNotice?.canUndo)
+    }
+
+    @Test fun `a manual city choice made while locating wins`() = runTest(dispatcher) {
+        val gate = com.anpfuel.app.location.DeviceCityFollowGate()
+        every { locationHandler.hasLocationPermission() } returns true
+        coEvery { locationHandler.getCurrentLocation(any()) } returns fix
+        coEvery { followCity.surroundings(fix) } coAnswers {
+            gate.suppressForSession()
+            com.anpfuel.application.usecase.location.DeviceSurroundings(emptyList(), sorriso)
+        }
+        val vm = followViewModel(gate)
+
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+
+        coVerify(exactly = 0) { followCity.follow(any()) }
+        assertEquals(null, vm.uiState.value.cityFollowNotice)
+    }
+
+    @Test fun `a lookup failure keeps the current city`() = runTest(dispatcher) {
+        every { locationHandler.hasLocationPermission() } returns true
+        coEvery { locationHandler.getCurrentLocation(any()) } returns fix
+        coEvery { followCity.surroundings(fix) } throws IllegalStateException("boom")
+        val vm = followViewModel(com.anpfuel.app.location.DeviceCityFollowGate())
+
+        vm.followDeviceCity(Locale.US); advanceUntilIdle()
+
+        coVerify(exactly = 0) { followCity.follow(any()) }
+        assertEquals(null, vm.uiState.value.cityFollowNotice)
+    }
+
 }

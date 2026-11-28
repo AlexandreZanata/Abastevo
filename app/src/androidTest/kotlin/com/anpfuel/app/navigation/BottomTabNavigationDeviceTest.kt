@@ -3,11 +3,13 @@ package com.anpfuel.app.navigation
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +19,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +31,7 @@ class BottomTabNavigationDeviceTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var controller: NavHostController
+    private var homeEntry: NavBackStackEntry? = null
 
     private fun launch(startDestination: String = Routes.HOME) {
         compose.setContent {
@@ -41,7 +45,10 @@ class BottomTabNavigationDeviceTest {
                             Routes.LOCATION, Routes.CONTRIBUTIONS,
                             Routes.SETTINGS, Routes.HELP, Routes.ONBOARDING,
                         ).forEach { route ->
-                            composable(route) { Text(route) }
+                            composable(route) { entry ->
+                                if (route == Routes.HOME) SideEffect { homeEntry = entry }
+                                Text(route)
+                            }
                         }
                     }
                     AbastevoBottomBar(
@@ -122,6 +129,40 @@ class BottomTabNavigationDeviceTest {
             }
         }
         compose.runOnIdle { assertFalse(controller.popBackStack()) }
+    }
+
+    @Test
+    fun homeEntrySurvivesTabSwitches() {
+        launch()
+        val original = checkNotNull(homeEntry)
+
+        tap(NavigationTab.PROFILE)
+        tap(NavigationTab.MAP)
+        tap(NavigationTab.EXPLORE)
+
+        assertSame(original, homeEntry)
+    }
+
+    @Test
+    fun afterOnboardingTabSwitchDiscardsThePreviousTabAndKeepsHome() {
+        launch(startDestination = Routes.ONBOARDING)
+        compose.runOnIdle {
+            controller.navigate(Routes.HOME) {
+                popUpTo(Routes.ONBOARDING) { inclusive = true }
+            }
+        }
+        compose.waitForIdle()
+        val original = checkNotNull(homeEntry)
+
+        tap(NavigationTab.PROFILE)
+        open(Routes.SETTINGS)
+        tap(NavigationTab.COMMUNITY)
+
+        compose.runOnIdle {
+            controller.popBackStack()
+            assertEquals(Routes.HOME, controller.currentDestination?.route)
+            assertSame(original, controller.currentBackStackEntry)
+        }
     }
 
     @Test

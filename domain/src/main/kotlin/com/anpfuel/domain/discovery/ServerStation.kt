@@ -133,7 +133,7 @@ class ServerStation private constructor(
             }
             return ServerStation(
                 stationId = stationId.lowercase(),
-                displayName = name,
+                displayName = stationTitle(name, legalName),
                 locationQuality = locationQuality,
                 latitude = latitude,
                 longitude = longitude,

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -17,8 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.accessibility.liveRegionSemantics
+import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.designsystem.Button
-import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.premium.PurchaseEligibility
 import com.anpfuel.domain.premium.StorePlan
@@ -91,6 +94,18 @@ private fun PremiumPlansCard(
     onRetryPlans: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (!state.plansLoading && state.plans.isEmpty()) {
+        EmptyState(
+            message = stringResource(R.string.premium_store_plans_unavailable),
+            hint = stringResource(R.string.premium_store_plans_retry_hint),
+            icon = Icons.Outlined.CloudOff,
+            actionLabel = stringResource(R.string.action_retry),
+            onAction = onRetryPlans,
+            modifier = modifier.liveRegionSemantics(),
+        )
+        return
+    }
+
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -99,40 +114,28 @@ private fun PremiumPlansCard(
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            when {
-                state.plansLoading -> {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Text(
-                        text = stringResource(R.string.premium_store_plans_loading),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            if (state.plansLoading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(
+                    text = stringResource(R.string.premium_store_plans_loading),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                state.plans.forEachIndexed { index, plan ->
+                    if (index > 0) HorizontalDivider()
+                    PremiumPlanRow(
+                        plan = plan,
+                        enabled = !state.purchaseBusy && !state.loading,
+                        onSubscribe = { onSubscribe(plan) },
                     )
                 }
-                state.plans.isEmpty() -> {
-                    Text(
-                        text = stringResource(R.string.premium_store_plans_unavailable),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    TextButton(onClick = onRetryPlans) {
-                        Text(stringResource(R.string.action_retry))
-                    }
-                }
-                else -> {
-                    state.plans.forEachIndexed { index, plan ->
-                        if (index > 0) HorizontalDivider()
-                        PremiumPlanRow(
-                            plan = plan,
-                            enabled = !state.purchaseBusy && !state.loading,
-                            onSubscribe = { onSubscribe(plan) },
-                        )
-                    }
-                }
+                Text(
+                    text = stringResource(R.string.premium_store_billing_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Text(
-                text = stringResource(R.string.premium_store_billing_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

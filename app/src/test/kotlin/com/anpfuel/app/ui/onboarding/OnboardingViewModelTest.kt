@@ -232,6 +232,29 @@ class OnboardingViewModelTest {
     }
 
     @Test
+    fun onboardingLocationPromptIsTheSessionPromptForCityFollow() = runTest {
+        val gate = com.anpfuel.app.location.DeviceCityFollowGate()
+        every { locationPermissionHandler.hasLocationPermission() } returns false
+        val vm = OnboardingViewModel(
+            discoverSurveyWeekCatalogUseCase = discoverSurveyWeekCatalogUseCase,
+            onboardingSelectWeekAndSyncUseCase = onboardingSelectWeekAndSyncUseCase,
+            completeOnboardingUseCase = completeOnboardingUseCase,
+            completeLocationPromptUseCase = completeLocationPromptUseCase,
+            resolveDeviceLocationUseCase = resolveDeviceLocationUseCase,
+            locationPermissionHandler = locationPermissionHandler,
+            userPreferencesRepository = userPreferencesRepository,
+            cityFollowGate = gate,
+        )
+
+        vm.locationPermissionRequest.test {
+            vm.onUseDeviceLocationClick()
+            awaitItem()
+        }
+
+        assertFalse(gate.claimPermissionPrompt())
+    }
+
+    @Test
     fun useDeviceLocationWithPermissionResolvesLocation() = runTest {
         every { locationPermissionHandler.hasLocationPermission() } returns true
         every { locationPermissionHandler.getLastKnownLocation() } returns deviceLocation

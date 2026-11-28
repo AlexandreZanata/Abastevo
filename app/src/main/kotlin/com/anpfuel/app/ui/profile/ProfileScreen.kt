@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -87,12 +88,16 @@ fun ProfileScreen(
     onOpenContributors: () -> Unit,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = hiltViewModel(),
+    companyModeEntry: CompanyModeEntryViewModel = hiltViewModel(),
 ) {
     // P22-T01: same shared session store as the auth flow; rehydrate runs
     // again on resume so Perfil reflects shared sign-in/logout changes.
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    // B-BR-EMP-ENTRY-01: Company mode opens only once the account has a company link.
+    val companyModeEnabled by companyModeEntry.enabled.collectAsStateWithLifecycle()
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
         authViewModel.refreshAccount()
+        companyModeEntry.refresh()
     }
     val signedIn = authState.step in listOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)
     AnpScaffold(
@@ -100,7 +105,7 @@ fun ProfileScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AbastevoHeader(
-                onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+                onNotificationsClick = { onNavigate(Routes.NOTIFICATIONS) },
                 onProfileClick = {},
             )
         },
@@ -260,35 +265,10 @@ fun ProfileScreen(
             ) {
                 Column {
                     ProfileToolItem(
-                        icon = Icons.Default.SportsEsports,
-                        title = stringResource(R.string.games_title),
-                        subtitle = stringResource(R.string.games_profile_subtitle),
-                        onClick = { onNavigate(Routes.GAMES) },
-                    )
-                    HorizontalDivider()
-                    if (signedIn) {
-                        ProfileToolItem(
-                            icon = Icons.Default.PersonOutline,
-                            title = stringResource(R.string.profile_action_manage_account),
-                            subtitle = stringResource(R.string.profile_signed_in_title),
-                            onClick = { onNavigate(Routes.ACCOUNT) },
-                        )
-                        HorizontalDivider()
-                    }
-                    ProfileToolItem(
-                        icon = Icons.Default.Business,
-                        title = stringResource(R.string.enterprise_context_entry),
-                        subtitle = stringResource(R.string.enterprise_context_intro),
-                        onClick = { onNavigate(Routes.ENTERPRISE_CONTEXT) },
-                        modifier = Modifier.testTag("enterprise-context-entry"),
-                    )
-                    HorizontalDivider()
-                    ProfileToolItem(
-                        icon = Icons.Default.Business,
-                        title = stringResource(R.string.enterprise_invitation_entry),
-                        subtitle = stringResource(R.string.enterprise_invitation_entry_hint),
-                        onClick = { onNavigate(Routes.ENTERPRISE_INVITATION) },
-                        modifier = Modifier.testTag("enterprise-invitation-entry"),
+                        icon = Icons.Default.Settings,
+                        title = stringResource(R.string.profile_tool_settings_title),
+                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
+                        onClick = { onNavigate(Routes.SETTINGS) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(
@@ -296,13 +276,6 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_vehicles_title),
                         subtitle = stringResource(R.string.profile_tool_vehicles_subtitle),
                         onClick = { onNavigate(Routes.VEHICLES) },
-                    )
-                    HorizontalDivider()
-                    ProfileToolItem(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.profile_tool_settings_title),
-                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
-                        onClick = { onNavigate(Routes.SETTINGS) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(
@@ -331,6 +304,41 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_week_picker_title),
                         subtitle = stringResource(R.string.profile_tool_week_picker_subtitle),
                         onClick = { onNavigate(Routes.WEEK_PICKER) },
+                    )
+                    HorizontalDivider()
+                    if (signedIn) {
+                        ProfileToolItem(
+                            icon = Icons.Default.PersonOutline,
+                            title = stringResource(R.string.profile_action_manage_account),
+                            subtitle = stringResource(R.string.profile_signed_in_title),
+                            onClick = { onNavigate(Routes.ACCOUNT) },
+                        )
+                        HorizontalDivider()
+                    }
+                    ProfileToolItem(
+                        icon = Icons.Default.SportsEsports,
+                        title = stringResource(R.string.games_title),
+                        subtitle = stringResource(R.string.games_profile_subtitle),
+                        onClick = { onNavigate(Routes.GAMES) },
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Business,
+                        title = stringResource(R.string.enterprise_context_entry),
+                        subtitle = stringResource(
+                            if (companyModeEnabled) R.string.enterprise_context_intro else R.string.enterprise_context_entry_locked,
+                        ),
+                        onClick = { onNavigate(Routes.ENTERPRISE_CONTEXT) },
+                        enabled = companyModeEnabled,
+                        modifier = Modifier.testTag("enterprise-context-entry"),
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Business,
+                        title = stringResource(R.string.enterprise_invitation_entry),
+                        subtitle = stringResource(R.string.enterprise_invitation_entry_hint),
+                        onClick = { onNavigate(Routes.ENTERPRISE_INVITATION) },
+                        modifier = Modifier.testTag("enterprise-invitation-entry"),
                     )
                     HorizontalDivider()
                     ProfileToolItem(
@@ -378,11 +386,17 @@ private fun ProfileToolItem(
     subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
+    // A closed entry stays readable but grays out and takes no tap.
+    val disabledAlpha = 0.38f
+    val contentColor = MaterialTheme.colorScheme.onSurface.let { if (enabled) it else it.copy(alpha = disabledAlpha) }
+    val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant.let { if (enabled) it else it.copy(alpha = disabledAlpha) }
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { if (!enabled) disabled() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -390,7 +404,7 @@ private fun ProfileToolItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = mutedColor,
         )
         Column(
             modifier = Modifier.weight(1f),
@@ -399,17 +413,18 @@ private fun ProfileToolItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
+                color = contentColor,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = mutedColor,
             )
         }
         Icon(
-            imageVector = Icons.Default.ChevronRight,
+            imageVector = if (enabled) Icons.Default.ChevronRight else Icons.Default.Lock,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
+            tint = if (enabled) MaterialTheme.colorScheme.outline else mutedColor,
         )
     }
 }

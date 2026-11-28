@@ -1293,7 +1293,17 @@ func (s *PGStore) ListBindings(ctx context.Context, accountID string) ([]domain.
 
 // FindBindingOwner resolves the account owning a contributor binding.
 func (s *PGStore) FindBindingOwner(ctx context.Context, contributorID string) (string, bool, error) {
-	row, err := account.New(s.pool).FindBindingOwner(ctx, contributorID)
+	return findBindingOwner(ctx, account.New(s.pool), contributorID)
+}
+
+// FindBindingOwnerTx resolves the binding inside the caller's transaction,
+// for producers that notify the owning account atomically (B-BR-NOTIF-02).
+func (s *PGStore) FindBindingOwnerTx(ctx context.Context, tx pgx.Tx, contributorID string) (string, bool, error) {
+	return findBindingOwner(ctx, account.New(tx), contributorID)
+}
+
+func findBindingOwner(ctx context.Context, q *account.Queries, contributorID string) (string, bool, error) {
+	row, err := q.FindBindingOwner(ctx, contributorID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", false, nil

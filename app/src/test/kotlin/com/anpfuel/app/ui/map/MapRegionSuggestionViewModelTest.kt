@@ -3,9 +3,12 @@ package com.anpfuel.app.ui.map
 import com.anpfuel.data.local.map.MapGenerationEntity
 import com.anpfuel.data.local.map.MapPackageEntity
 import com.anpfuel.data.map.MapPackageStore
+import com.anpfuel.domain.model.UserPreferences
+import com.anpfuel.domain.repository.UserPreferencesRepository
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -40,7 +43,8 @@ class MapRegionSuggestionViewModelTest {
     ) : MapRegionServices {
         val dismissed = mutableSetOf<String>()
         val selected = mutableListOf<String?>()
-        val requested = mutableListOf<String>()
+        val requested = mutableListOf<MapRegionDownloadRequest>()
+        val mobileData = MutableStateFlow(false)
         val fetched = mutableListOf<String>()
         override val downloadsConfigured: Boolean get() = configured
         override suspend fun regionFor(latitude: Double, longitude: Double): String? = when {
@@ -51,7 +55,10 @@ class MapRegionSuggestionViewModelTest {
         override fun isDismissed(slug: String) = slug in dismissed
         override fun dismiss(slug: String) { dismissed += slug }
         override fun select(slug: String?) { selected += slug }
-        override fun requestDownload(slug: String) { requested += slug }
+        override fun requestDownload(slug: String, allowMobileData: Boolean) {
+            requested += MapRegionDownloadRequest(slug, allowMobileData)
+        }
+        override fun observeUsesMobileData() = mobileData
         override fun canFetchManifestAutomatically() = unmetered
         override suspend fun regionDownloadBytes(slug: String): Long {
             fetched += slug
@@ -146,7 +153,7 @@ class MapRegionSuggestionViewModelTest {
         again.onCityPoint(-25.4284, -49.2733)
         dispatcher.scheduler.advanceUntilIdle()
         assertTrue(again.acceptRegionSuggestion())
-        assertEquals(listOf("brazil-parana-east"), regions.requested)
+        assertEquals(listOf(MapRegionDownloadRequest("brazil-parana-east", false)), regions.requested)
     }
 
     @Test fun `without region services the screen keeps the legacy behaviour`() = runTest {
@@ -157,14 +164,92 @@ class MapRegionSuggestionViewModelTest {
         assertFalse(vm.acceptRegionSuggestion())
     }
 
-    @Test fun `selection hands the region to the downloads screen once`() {
+    @Test fun `unknown mobile download preference fails closed`() {
+        val region = MapRegionUi("Brazil_Mato Grosso", "brazil-mato-grosso", "Mato Grosso")
+        val state = MapScreenUi(
+            regionSuggestion = MapRegionSuggestion(region, bytes = null),
+            usesMobileData = true,
+        )
+
+        assertEquals(region, state.mobileDownloadPrompt)
+    }
+
+    @Test fun `cellular prompts before downloading and dismissal only hides the prompt`() = runTest {
+        val regions = FakeRegions(unmetered = false)
+        val vm = vm(regions)
+        vm.onCityPoint(-12.545, -55.711)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(vm.ui.value.mobileDownloadPrompt)
+
+        regions.mobileData.value = true
+        dispatcher.scheduler.advanceUntilIdle()
+        val slug = "brazil-mato-grosso"
+        assertEquals(slug, vm.ui.value.mobileDownloadPrompt?.slug)
+        assertTrue(regions.requested.isEmpty())
+        assertTrue(regions.fetched.isEmpty())
+
+        vm.dismissMobileDownloadPrompt()
+        assertNull(vm.ui.value.mobileDownloadPrompt)
+        assertEquals(slug, vm.ui.value.regionSuggestion?.region?.slug)
+        assertFalse(vm.acceptRegionSuggestion())
+        assertEquals(slug, vm.ui.value.mobileDownloadPrompt?.slug)
+
+        assertTrue(vm.confirmMobileDownload(slug))
+        assertEquals(listOf(MapRegionDownloadRequest(slug, true)), regions.requested)
+        assertEquals(false, vm.ui.value.allowMapDownloadsOnMobileData)
+        assertFalse(vm.confirmMobileDownload(slug))
+    }
+
+    @Test fun `cellular does not prompt for an installed region or a persistent opt in`() = runTest {
+        val region = "brazil-mato-grosso"
+        val regions = FakeRegions(unmetered = false, active = region).apply { mobileData.value = true }
+        val installed = vm(regions)
+        installed.onCityPoint(-12.545, -55.711)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(installed.ui.value.mobileDownloadPrompt)
+
+        val prefs = object : UserPreferencesRepository {
+            override suspend fun getPreferences() = UserPreferences(allowMapDownloadsOnMobileData = true)
+            override suspend fun savePreferences(preferences: UserPreferences) = error("Unexpected write")
+        }
+        regions.active = null
+        val optedIn = MapScreenViewModel(emptyStore, null, prefs, null, regions)
+        optedIn.onCityPoint(-12.545, -55.711)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(optedIn.ui.value.mobileDownloadPrompt)
+        assertTrue(optedIn.acceptRegionSuggestion())
+        assertEquals(listOf(MapRegionDownloadRequest(region, false)), regions.requested)
+    }
+
+    @Test fun `city changes and Wi-Fi recovery invalidate a cellular confirmation`() = runTest {
+        val regions = FakeRegions(unmetered = false).apply { mobileData.value = true }
+        val vm = vm(regions)
+        vm.onCityPoint(-12.545, -55.711)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("brazil-mato-grosso", vm.ui.value.mobileDownloadPrompt?.slug)
+
+        vm.onCityPoint(-25.4284, -49.2733)
+        assertFalse(vm.confirmMobileDownload("brazil-mato-grosso"))
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("brazil-parana-east", vm.ui.value.mobileDownloadPrompt?.slug)
+
+        regions.mobileData.value = false
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(vm.ui.value.mobileDownloadPrompt)
+        assertTrue(regions.requested.isEmpty())
+    }
+
+    @Test fun `selection hands the mobile-data permission to the matching region once`() {
         val selection = MapRegionSelection()
         selection.select("brazil-bahia")
-        assertFalse(selection.consumeDownloadRequest("brazil-bahia"))
-        selection.requestDownload("brazil-mato-grosso")
+        assertNull(selection.consumeDownloadRequest("brazil-bahia"))
+        selection.requestDownload("brazil-mato-grosso", allowMobileData = true)
         assertEquals("brazil-mato-grosso", selection.selected.value)
-        assertFalse(selection.consumeDownloadRequest("brazil-bahia"))
-        assertTrue(selection.consumeDownloadRequest("brazil-mato-grosso"))
-        assertFalse(selection.consumeDownloadRequest("brazil-mato-grosso"))
+        assertNull(selection.consumeDownloadRequest("brazil-bahia"))
+        assertEquals(
+            MapRegionDownloadRequest("brazil-mato-grosso", true),
+            selection.consumeDownloadRequest("brazil-mato-grosso"),
+        )
+        assertNull(selection.consumeDownloadRequest("brazil-mato-grosso"))
     }
 }

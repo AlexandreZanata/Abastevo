@@ -1,12 +1,16 @@
 package com.anpfuel.app.capture
 
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.BorderStroke
 import android.content.Context
@@ -92,6 +96,14 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.anpfuel.app.location.openAppSettings
+import com.anpfuel.app.location.rememberLocationPermissionRequest
+import com.anpfuel.app.ui.accessibility.liveRegionSemantics
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.valueobject.FuelProduct
 import java.io.ByteArrayOutputStream
@@ -188,13 +200,38 @@ fun CaptureScreen(
             } else cameraPermission.launch(android.Manifest.permission.CAMERA)
         }
     }
+    // B-BR-LOC-01: the context-free picker asks for location once per visit.
+    val locationAssist by viewModel.locationAssist.collectAsStateWithLifecycle()
+    val requestLocationPermission = rememberLocationPermissionRequest { granted, canAskAgain ->
+        viewModel.onStationLocationPermission(granted, canAskAgain)
+    }
+    val useMyLocation: () -> Unit = {
+        val assist = locationAssist
+        when {
+            viewModel.hasLocationPermission() -> viewModel.locateNearestStation()
+            assist is StationLocationAssist.PermissionDenied && !assist.canAskAgain -> context.openAppSettings()
+            else -> requestLocationPermission()
+        }
+    }
     LaunchedEffect(stationId) {
         viewModel.bindEntryTarget(stationId, fuelProductWire)
         withContext(Dispatchers.IO) { files.sweep() }
         if (reviewPhotoUri != null && !withContext(Dispatchers.IO) { files.exists(reviewPhotoUri, viewModel.originalCapturedAtMillis) }) {
             viewModel.rememberReviewUri(null)
         }
-        if (reviewPhotoUri == null && viewModel.pendingUri() == null) viewModel.loadStationSearch()
+        if (reviewPhotoUri == null && viewModel.pendingUri() == null) {
+            viewModel.loadStationSearch()
+            if (viewModel.beginLocationAssist() == LocationAssistStart.REQUEST_PERMISSION) requestLocationPermission()
+        }
+    }
+    // Back from system settings with location allowed: locate without another tap.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (viewModel.locationAssist.value is StationLocationAssist.PermissionDenied && viewModel.hasLocationPermission()) {
+                viewModel.locateNearestStation()
+            }
+        }
     }
     Box(Modifier.fillMaxSize()) {
         AnpScaffold(
@@ -243,19 +280,19 @@ fun CaptureScreen(
                             stringResource(R.string.capture_permission_required),
                             style = MaterialTheme.typography.bodyLarge,
                         )
-                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                        NominalStationPicker(viewModel, requestCamera, onChooseCity, useMyLocation)
                     }
                     CaptureOcrUiState.Cancelled -> {
                         Text(
                             stringResource(R.string.capture_cancelled),
                             style = MaterialTheme.typography.bodyLarge,
                         )
-                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                        NominalStationPicker(viewModel, requestCamera, onChooseCity, useMyLocation)
                     }
                     else -> {
                         val photoUri = reviewPhotoUri
                         if (photoUri == null) {
-                            NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                            NominalStationPicker(viewModel, requestCamera, onChooseCity, useMyLocation)
 
                         } else {
                             PhotoReviewContent(
@@ -697,9 +734,18 @@ private fun cropToFrame(
     }
 }
 
-/** Canonical nominal selection; station geometry is optional enrichment. */
+/**
+ * Canonical nominal selection; station geometry is optional enrichment. With a
+ * device fix the station the contributor stands at arrives pre-selected
+ * (B-BR-LOC-01) and one action returns to the manual list.
+ */
 @Composable
-private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () -> Unit, onChooseCity: () -> Unit) {
+private fun NominalStationPicker(
+    viewModel: CaptureOcrViewModel,
+    onCamera: () -> Unit,
+    onChooseCity: () -> Unit,
+    onUseMyLocation: () -> Unit,
+) {
     val city by viewModel.stationCity.collectAsStateWithLifecycle()
     val query by viewModel.stationQuery.collectAsStateWithLifecycle()
     val stations by viewModel.stationResults.collectAsStateWithLifecycle()
@@ -707,12 +753,15 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
     val loading by viewModel.stationSearchBusy.collectAsStateWithLifecycle()
     val failed by viewModel.stationSearchFailed.collectAsStateWithLifecycle()
     val busy by viewModel.gateBusy.collectAsStateWithLifecycle()
+    val assist by viewModel.locationAssist.collectAsStateWithLifecycle()
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(stringResource(R.string.capture_pick_station), style = MaterialTheme.typography.titleLarge)
         // City context: where the search runs, with an explicit change action.
+        val cityContainer = MaterialTheme.colorScheme.surfaceContainerLow
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = AnpContainerDefaults.containerShape(),
+            color = cityContainer,
+            border = AnpContainerDefaults.borderStroke(cityContainer),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Row(
@@ -720,10 +769,11 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.secondary)
                 Text(
                     city?.let { "${it.name} · ${it.state.abbreviation}" }.orEmpty(),
                     style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = { viewModel.changeNominalStation(); onChooseCity() }, enabled = !busy) {
@@ -731,20 +781,33 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
                 }
             }
         }
-        if (selected != null) {
+        val current = selected
+        if (current != null) {
+            val suggestion = (assist as? StationLocationAssist.Suggested)?.takeIf { it.stationId == current.stationId }
+            if (suggestion != null) NearYouLabel(suggestion.distanceMeters)
             StationOptionCard(
-                name = selected!!.displayName,
-                address = selected!!.addressLine.ifBlank { selected!!.cnpjNormalized.orEmpty() },
+                name = current.displayName,
+                address = current.addressLine.ifBlank { current.cnpjNormalized.orEmpty() },
                 selected = true,
                 enabled = !busy,
                 onClick = viewModel::changeNominalStation,
-                trailingLabel = stringResource(R.string.capture_change_station),
+                trailingLabel = if (suggestion == null) stringResource(R.string.capture_change_station) else null,
             )
+            if (suggestion != null) {
+                OutlinedButton(
+                    onClick = viewModel::rejectSuggestedStation,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.capture_not_this_station), textAlign = TextAlign.Center)
+                }
+            }
             Button(onClick = onCamera, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Icon(Icons.Default.PhotoCamera, null, Modifier.padding(end = 8.dp))
                 Text(stringResource(R.string.capture_take_photo))
             }
         } else {
+            LocationAssistNotice(assist = assist, enabled = !busy, onUseMyLocation = onUseMyLocation)
             OutlinedTextField(
                 value = query,
                 onValueChange = viewModel::searchStations,
@@ -774,7 +837,101 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
     }
 }
 
-/** One station choice: pump badge, name, readable address and an affordance. */
+/** "Near you · 40 m" above a station pre-selected from the device fix. */
+@Composable
+private fun NearYouLabel(distanceMeters: Double) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.MyLocation,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = stringResource(R.string.capture_near_you_distance, distanceMeters.roundToInt().coerceAtLeast(0)),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+/** Location help while no station is selected: progress, permission offer or an honest miss. */
+@Composable
+private fun LocationAssistNotice(assist: StationLocationAssist, enabled: Boolean, onUseMyLocation: () -> Unit) {
+    when (assist) {
+        StationLocationAssist.Locating -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().liveRegionSemantics(),
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            Text(
+                text = stringResource(R.string.capture_locating_station),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        is StationLocationAssist.PermissionDenied -> LocationAssistCard(
+            message = stringResource(R.string.capture_location_rationale),
+            action = stringResource(
+                if (assist.canAskAgain) R.string.capture_use_my_location else R.string.capture_open_location_settings,
+            ),
+            enabled = enabled,
+            onAction = onUseMyLocation,
+        )
+        StationLocationAssist.Unavailable -> LocationAssistCard(
+            message = stringResource(R.string.capture_location_unavailable),
+            action = stringResource(R.string.action_retry),
+            enabled = enabled,
+            onAction = onUseMyLocation,
+        )
+        StationLocationAssist.NoneNearby -> Text(
+            text = stringResource(R.string.capture_no_station_nearby),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        StationLocationAssist.Idle,
+        StationLocationAssist.Dismissed,
+        is StationLocationAssist.Suggested,
+        -> Unit
+    }
+}
+
+@Composable
+private fun LocationAssistCard(message: String, action: String, enabled: Boolean, onAction: () -> Unit) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Surface(
+        shape = AnpContainerDefaults.containerShape(),
+        color = containerColor,
+        border = AnpContainerDefaults.borderStroke(containerColor),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(Icons.Default.MyLocation, null, tint = MaterialTheme.colorScheme.onSurface)
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onAction, enabled = enabled) {
+                Text(action)
+            }
+        }
+    }
+}
+
+/**
+ * One station choice in the Explorar card language: a white container, a pump
+ * badge (black once selected, outlined otherwise), the name in bold and the
+ * readable address. Selection is a 2dp ink outline, never a tinted fill.
+ */
 @Composable
 private fun StationOptionCard(
     name: String,
@@ -784,40 +941,67 @@ private fun StationOptionCard(
     onClick: () -> Unit,
     trailingLabel: String? = null,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surfaceContainerLow
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(20.dp),
-        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-        border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = AnpContainerDefaults.containerShape(),
+        color = containerColor,
+        border = if (selected) BorderStroke(2.dp, scheme.primary) else AnpContainerDefaults.borderStroke(containerColor),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) {
+            Surface(
+                shape = CircleShape,
+                color = if (selected) scheme.primary else Color.Transparent,
+                contentColor = if (selected) scheme.onPrimary else scheme.onSurface,
+                border = if (selected) null else BorderStroke(1.dp, scheme.outlineVariant),
+                modifier = Modifier.size(40.dp),
+            ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.LocalGasStation, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Icon(Icons.Default.LocalGasStation, null, modifier = Modifier.size(20.dp))
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 if (address.isNotBlank()) {
                     Text(
                         address,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = scheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            if (trailingLabel != null) {
-                Text(trailingLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            } else {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            when {
+                trailingLabel != null -> Surface(
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    contentColor = scheme.onSurface,
+                    border = BorderStroke(1.dp, scheme.onSurface),
+                ) {
+                    Text(
+                        trailingLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+                selected -> Icon(Icons.Default.CheckCircle, null, tint = scheme.primary)
+                else -> Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = scheme.onSurfaceVariant)
             }
         }
     }

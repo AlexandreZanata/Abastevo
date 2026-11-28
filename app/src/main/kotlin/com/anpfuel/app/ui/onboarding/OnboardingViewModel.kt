@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.anpfuel.app.ui.weekpicker.WeekPickerSelectionPolicy
 import com.anpfuel.application.error.AppError
 import com.anpfuel.application.usecase.location.ResolveDeviceLocationOutcome
+import com.anpfuel.app.location.DeviceCityFollowGate
 import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.usecase.location.ResolveDeviceLocationUseCase
 import com.anpfuel.application.usecase.onboarding.CompleteLocationPromptUseCase
@@ -67,6 +68,7 @@ class OnboardingViewModel @Inject constructor(
     private val resolveDeviceLocationUseCase: ResolveDeviceLocationUseCase,
     private val locationPermissionHandler: LocationPermissionHandler,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val cityFollowGate: DeviceCityFollowGate? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -232,6 +234,8 @@ class OnboardingViewModel @Inject constructor(
         if (locationPermissionHandler.hasLocationPermission()) {
             onResolveDeviceLocation(locationPermissionHandler.getLastKnownLocation())
         } else {
+            // B-BR-LOC-03: this is the session's location prompt; Explorar does not ask again.
+            cityFollowGate?.claimPermissionPrompt()
             viewModelScope.launch {
                 _locationPermissionRequest.emit(Unit)
             }

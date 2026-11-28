@@ -46,6 +46,9 @@ type Store struct {
 	queries    *forumsql.Queries
 	quotas     Quotas
 	CaseOpener application.ModerationCaseOpener
+	// Replies, when set, receives each comment's first publication on an
+	// account-authored post in the publishing transaction (B-BR-NOTIF-02).
+	Replies application.ReplyNotifier
 }
 
 // SetQuotaChecker applies one transactional quota checker to every window.

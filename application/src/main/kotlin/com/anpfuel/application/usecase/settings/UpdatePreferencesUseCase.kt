@@ -51,6 +51,9 @@ class UpdatePreferencesUseCase(
             add(KEY_NEAREST_STATION_RADIUS_KM)
         }
         if (current.autoSyncOnWifi != updated.autoSyncOnWifi) add(KEY_AUTO_SYNC_ON_WIFI)
+        if (current.allowMapDownloadsOnMobileData != updated.allowMapDownloadsOnMobileData) {
+            add(KEY_ALLOW_MAP_DOWNLOADS_ON_MOBILE_DATA)
+        }
         if (current.showPriceHistory != updated.showPriceHistory) add(KEY_SHOW_PRICE_HISTORY)
         if (current.onboardingCompleted != updated.onboardingCompleted) add(KEY_ONBOARDING_COMPLETED)
         if (current.locationPromptCompleted != updated.locationPromptCompleted) {
@@ -70,6 +73,7 @@ class UpdatePreferencesUseCase(
         const val KEY_STATION_DETAIL_RETENTION_WEEKS = "stationDetailRetentionWeeks"
         const val KEY_NEAREST_STATION_RADIUS_KM = "nearestStationRadiusKm"
         const val KEY_AUTO_SYNC_ON_WIFI = "autoSyncOnWifi"
+        const val KEY_ALLOW_MAP_DOWNLOADS_ON_MOBILE_DATA = "allowMapDownloadsOnMobileData"
         const val KEY_SHOW_PRICE_HISTORY = "showPriceHistory"
         const val KEY_ONBOARDING_COMPLETED = "onboardingCompleted"
         const val KEY_LOCATION_PROMPT_COMPLETED = "locationPromptCompleted"

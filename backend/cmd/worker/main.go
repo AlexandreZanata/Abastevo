@@ -51,6 +51,7 @@ import (
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
+	notificationsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/notifications/adapters"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
@@ -383,6 +384,8 @@ func run() error {
 	forumStore := forumadapters.NewStore(pool.Underlying())
 	safetyStore := safetyadapters.NewStore(pool.Underlying())
 	accountStore := accountadapters.NewPGStore(raw)
+	notificationsStore := notificationsadapters.NewStore(raw)
+	contributionDecided := contributionNotices(contributionProducers(raw, identityRegistrar, accountStore))
 	accountRecovery := accountapp.ErasureRecovery{
 		Store: accountStore, NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {
@@ -416,6 +419,15 @@ func run() error {
 				return safetyErr
 			}
 			if !safetyDone {
+				return accountapp.ErrErasurePending
+			}
+
+			// B-BR-NOTIF-02: the account notification inbox.
+			notificationsDone, notificationsErr := notificationsStore.EraseAccountBatch(ctx, id, 500)
+			if notificationsErr != nil {
+				return notificationsErr
+			}
+			if !notificationsDone {
 				return accountapp.ErrErasurePending
 			}
 			return nil
@@ -717,6 +729,7 @@ func run() error {
 			},
 			Run: func(ctx context.Context, observationID, commandRef string) (string, error) {
 				store := communityadapters.NewStore(raw)
+				store.Decided = contributionDecided
 				return communityapp.Validate(ctx, communityapp.ValidateDeps{
 					Clock: time.Now,
 					StationExists: func(ctx context.Context, stationID string) (bool, error) {

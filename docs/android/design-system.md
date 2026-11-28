@@ -5,7 +5,8 @@ Scope: Compose UI in `app/src/main/kotlin/com/anpfuel/app`. The identity is
 status bar band and bottom bar are one solid black chrome in both themes,
 over warm off-white screens where every container is white (light) or
 near-black screens with graphite cards (dark), with a single green accent.
-The light theme is the default; Perfil switches to dark for the session. Fuel icons, prices
+The light theme is the default; the system night-mode setting does not select
+the app theme. Perfil switches to dark for the session. Fuel icons, prices
 and the map are the only colorful content. Typography is shared with the
 landing page (`landing/static/assets/styles.css`). Containers keep the rules
 in [UI_CONTAINER_GUIDELINES](ui-containers.md).
@@ -16,6 +17,7 @@ in [UI_CONTAINER_GUIDELINES](ui-containers.md).
 | --- | --- |
 | Foundation colors | `ui/theme/Color.kt` (`EnergiaLightTokens`, `EnergiaDarkTokens`) |
 | Accent | `ui/theme/Color.kt` (`AbastevoAccent`) |
+| Business navy | `ui/theme/AbastevoBusinessColors.kt` (`AbastevoBusiness`) |
 | Chrome (header, bars, hero) | `ui/theme/Color.kt` (`AbastevoChrome`), `ui/theme/AbastevoChromeColors.kt` |
 | Filled action colors | `ui/theme/AbastevoActionColors.kt` |
 | Bottom bar colors | `ui/theme/AbastevoNavColors.kt` (derived from the chrome) |
@@ -76,6 +78,13 @@ The accent marks text links (`TextButton`), the location pin and community
 elements. It is never the
 fill of a primary button and never the color of a price.
 
+Business (`AbastevoBusiness`, `ui/theme/AbastevoBusinessColors.kt`): the
+brand navy of the logo and the landing ink, `#0B1849` (light) and a lifted
+`#213380` (dark), with white text, a muted `#D3DAF0` body and a light filled
+action. It is reserved for surfaces that address station owners and
+companies, such as the station page's "Do you manage this station?" card. It
+is never a screen, chrome or price color.
+
 Other fixed meanings:
 
 - **Amber** (`tertiary`) is notice: stale data and operational notes.
@@ -95,7 +104,8 @@ outlines and indicators.
   hairline. Logo and white name on the left, round `control` notification and
   profile buttons on the right. On Explorar and Comunidade one `control` pill
   field holds the city (green pin) and, as a light chip at its right end, the
-  survey week.
+  survey week. On Explore, the fuel cards identify ANP as the source. The
+  full attribution is available in history and station details.
 - **Top app bar** (`AnpTopAppBar`): solid chrome with white title and icons.
 - **Bottom bar** (`AbastevoBottomBar`): solid chrome extending under the
   gesture area, no hairline. The selected tab sits in a light pill with a
@@ -112,6 +122,23 @@ outlines and indicators.
   white card with a calendar badge (black once downloaded), the date, an
   "Atual" tag for the latest week and a black "Baixar" action or an outlined
   "Baixada" state. The loading skeleton mirrors these cards.
+- **Notifications** (header bell): white cards newest first, a round badge
+  per kind (black while unread, outlined once read), bold title and a green
+  unread dot while unread, body in muted text and the relative time. Top bar
+  actions: mark all as read and notification settings. Sign-in and
+  "not refreshed" notices are white rows with a text action.
+- **Station picker** (price photo): the city sits in a white card with the
+  green pin and a "Choose city" link. Each station is a white card with an
+  outlined pump badge, the name in bold and the address. The selected station
+  has a 2dp ink outline, a black badge and an outlined "Change station" pill;
+  a station pre-selected from the device location shows "Near you · N m" above
+  it and an outlined "Not this station? Choose manually" action below it.
+  Selection is never a tinted (green) fill.
+- **Business card** (station page, "Do you manage this station?"): navy
+  `large` card with no outline, a light round badge with the business icon,
+  white bold title, muted white body and a light filled full-width action
+  with navy text. Community and owner messages never use the green accent
+  container as a card fill.
 - **Empty states** (`EmptyState`): a white outlined card with a black icon
   badge, the message as title, an optional hint and an optional outlined
   action that leads out of the empty state.
@@ -187,6 +214,10 @@ For a segmented control pass `AbastevoSelectionDefaults.segmentedButtonColors()`
 
 Use one filled button per card or screen section for the main action;
 secondary actions are outlined or text buttons.
+
+Pair the map download dialog actions in one row. Split the available width
+evenly after horizontal margins and spacing. Use the taller label to size
+both buttons when text wraps.
 
 ## Bundled fonts
 

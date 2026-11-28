@@ -28,7 +28,7 @@ class RetailStation private constructor(
     }
 
     fun displayName(): String =
-        tradeName?.takeIf { it.isNotBlank() }
+        tradeName?.takeIf { it.isNotBlank() }?.let { com.anpfuel.domain.discovery.stationTitle(it, legalName) }
             ?: legalName?.takeIf { it.isNotBlank() }
             ?: cnpj.formatted()
 

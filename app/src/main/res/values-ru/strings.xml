@@ -472,15 +472,16 @@
     <string name="public_catalog_cleared">Публичный каталог очищен.</string>
     <string name="settings_auto_download_latest_week">Автоматически загружать последнюю неделю опроса</string>
     <string name="settings_sync_wifi_only">Автосинхронизация только по Wi‑Fi</string>
+    <string name="settings_allow_mobile_map_downloads">Разрешить загрузку карт через мобильную сеть</string>
     <string name="settings_show_price_history">Показывать историю цен</string>
     <string name="settings_retention_weeks">Хранение данных АЗС</string>
     <string name="settings_retention_weeks_option">%1$d нед.</string>
     <string name="settings_nearest_station_radius">Радиус поиска для «Самое дешёвое рядом»</string>
     <string name="settings_nearest_station_radius_option">%1$d км</string>
     <string name="settings_storage_usage">Использование хранилища</string>
-    <string name="settings_storage_summary_rows">Строк сводки: %1$s</string>
-    <string name="settings_storage_station_rows">Строк АЗС: %1$s</string>
-    <string name="settings_storage_week_count">Импортированных недель: %1$s</string>
+    <string name="settings_storage_summary_rows">Сводки цен</string>
+    <string name="settings_storage_station_rows">Записи о ценах на АЗС</string>
+    <string name="settings_storage_week_count">Импортированные недели</string>
     <string name="settings_sync_section">Синхронизация</string>
     <string name="settings_change_survey_week">Изменить неделю опроса</string>
     <string name="settings_clear_cache">Очистить кэш</string>
@@ -826,7 +827,6 @@
     <string name="home_filter_lowest">Самая низкая цена</string>
     <string name="home_filter_highest">Самая высокая цена</string>
     <string name="home_change_city">Мой город</string>
-    <string name="home_reference_period">Ориентир ANP • %1$s</string>
     <string name="home_shortcut_stations">Найти АЗС</string>
     <string name="home_shortcut_stations_description">Посмотреть местные АЗС</string>
     <string name="home_shortcut_history">История цен</string>
@@ -1048,6 +1048,16 @@
     <string name="stations_summary_order">Сортировка: %1$s</string>
     <string name="capture_choose_city">Выбрать город</string>
     <string name="capture_change_station">Сменить АЗС</string>
+    <string name="capture_near_you_distance">Рядом с вами · %1$d м</string>
+    <string name="capture_not_this_station">Не эта АЗС? Выбрать вручную</string>
+    <string name="capture_locating_station">Ищем АЗС, на которой вы находитесь…</string>
+    <string name="capture_location_rationale">Разрешите доступ к геолокации, чтобы заранее выбрать АЗС, на которой вы находитесь.</string>
+    <string name="capture_use_my_location">Использовать мое местоположение</string>
+    <string name="capture_open_location_settings">Открыть настройки</string>
+    <string name="capture_location_unavailable">Не удалось определить местоположение. Проверьте, что геолокация включена.</string>
+    <string name="capture_no_station_nearby">Рядом с вами нет АЗС. Выберите ее ниже.</string>
+    <string name="home_city_followed">Показан город %1$s, %2$s, где вы сейчас</string>
+    <string name="home_city_followed_undo">Отменить</string>
     <string name="capture_station_name">Название АЗС</string>
     <string name="capture_search_failed">Не удалось найти АЗС. Проверьте подключение и повторите попытку.</string>
     <string name="capture_search_empty">АЗС не найдены.</string>
@@ -1186,6 +1196,10 @@
     <string name="map_downloads_depends_on">Зависит от: %1$s</string>
     <string name="map_downloads_wifi_only">Только Wi-Fi</string>
     <string name="map_downloads_wifi_any">Wi-Fi или мобильные данные</string>
+    <string name="map_mobile_download_title">Нет подключения к Wi-Fi</string>
+    <string name="map_mobile_download_message">Скачать офлайн-карту региона %1$s через мобильную сеть? Загрузка может израсходовать часть пакета трафика.</string>
+    <string name="map_mobile_download_confirm">Скачать карту</string>
+    <string name="map_mobile_download_dismiss">Не сейчас</string>
     <string name="map_downloads_delete">Удалить</string>
     <string name="map_downloads_in_use">Используется навигацией; остановите ведение и повторите</string>
     <string name="map_downloads_stored">Сохранено: %1$s</string>
@@ -1469,7 +1483,8 @@
     <string name="home_open_map">Посмотреть на карте</string>
     <string name="premium_store_section_title">Оформить подписку</string>
     <string name="premium_store_plans_loading">Загрузка тарифов Google Play…</string>
-    <string name="premium_store_plans_unavailable">Не удалось загрузить тарифы Google Play.</string>
+    <string name="premium_store_plans_unavailable">Тарифы временно недоступны</string>
+    <string name="premium_store_plans_retry_hint">Повторите попытку через некоторое время, чтобы увидеть цены подписок в Google Play.</string>
     <string name="premium_store_trial_then">1 месяц бесплатно, затем %1$s с автоматическим продлением</string>
     <string name="premium_store_subscribe">Оформить</string>
     <string name="premium_store_billing_note">Оплата, продление и отмена выполняются через Google Play.</string>
@@ -1530,4 +1545,37 @@
     <string name="auth_error_email_login_retired">Войдите через Google или с ключом аккаунта.</string>
     <string name="auth_error_google_unavailable">Вход через Google недоступен. Попробуйте снова или используйте ключ.</string>
     <string name="auth_legacy_key_issued_warning">Сохраните ключ для входа на другом устройстве. Позже его можно экспортировать из профиля.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Уведомления</string>
+    <string name="notifications_mark_all_read">Отметить все как прочитанные</string>
+    <string name="notifications_settings">Настройки уведомлений</string>
+    <string name="notifications_sign_in_hint">Войдите, чтобы видеть также ответы и обновления по вашему аккаунту.</string>
+    <string name="notifications_sign_in_action">Войти</string>
+    <string name="notifications_not_refreshed">Показаны последние обновления аккаунта; обновить не удалось.</string>
+    <string name="notifications_mark_failed">Не удалось отметить как прочитанное. Попробуйте ещё раз.</string>
+    <string name="notifications_empty_title">Уведомлений пока нет</string>
+    <string name="notifications_empty_hint">Здесь появятся снижения цен в вашем городе, новые недели ANP и ответы на ваши темы.</string>
+    <string name="notifications_unread">Не прочитано</string>
+    <string name="notifications_forum_reply_title">Новый ответ в вашей теме</string>
+    <string name="notifications_forum_reply_body">%1$s ответил(а) в «%2$s»</string>
+    <string name="notifications_forum_reply_body_anonymous">Кто-то ответил в «%1$s»</string>
+    <string name="notifications_contribution_validated_title">Ваша цена подтверждена</string>
+    <string name="notifications_contribution_validated_body">%1$s теперь подтверждена сообществом.</string>
+    <string name="notifications_contribution_rejected_title">Ваша цена не принята</string>
+    <string name="notifications_contribution_rejected_body">%1$s. Причина указана в разделе «Мои вклады».</string>
+    <string name="notifications_city_drop_title">Топливо подешевело: %1$s, %2$s</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Цена на топливо снизилась</string>
+    <string name="notifications_vehicle_drop_body">%1$s теперь стоит %2$s</string>
+    <string name="notifications_new_week_title">Новая неделя опроса ANP</string>
+    <string name="notifications_new_week_body">Доступны цены за %1$s.</string>
+    <string name="notifications_account_channel_name">Обновления аккаунта</string>
+    <string name="notifications_account_channel_description">Ответы на ваши темы и решения по вашим вкладам</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">Ещё %d обновление</item>
+        <item quantity="few">Ещё %d обновления</item>
+        <item quantity="many">Ещё %d обновлений</item>
+        <item quantity="other">Ещё %d обновления</item>
+    </plurals>
 </resources>

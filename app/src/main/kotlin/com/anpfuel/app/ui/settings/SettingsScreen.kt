@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Storefront
@@ -38,8 +40,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -96,6 +101,7 @@ fun SettingsScreen(
         onClearPublicCatalog = viewModel::clearPublicCatalog,
         onAutoDownloadLatestWeekChanged = viewModel::onAutoDownloadLatestWeekChanged,
         onAutoSyncOnWifiChanged = viewModel::onAutoSyncOnWifiChanged,
+        onAllowMapDownloadsOnMobileDataChanged = viewModel::onAllowMapDownloadsOnMobileDataChanged,
         onShowPriceHistoryChanged = viewModel::onShowPriceHistoryChanged,
         onRetentionWeeksSelected = viewModel::onRetentionWeeksSelected,
         onNearestStationRadiusSelected = viewModel::onNearestStationRadiusSelected,
@@ -124,6 +130,7 @@ private fun SettingsContent(
     onClearPublicCatalog: () -> Unit,
     onAutoDownloadLatestWeekChanged: (Boolean) -> Unit,
     onAutoSyncOnWifiChanged: (Boolean) -> Unit,
+    onAllowMapDownloadsOnMobileDataChanged: (Boolean) -> Unit,
     onShowPriceHistoryChanged: (Boolean) -> Unit,
     onRetentionWeeksSelected: (Int) -> Unit,
     onNearestStationRadiusSelected: (Int) -> Unit,
@@ -265,6 +272,13 @@ private fun SettingsContent(
                         )
                         SettingsDivider()
                         SettingsSwitchRow(
+                            icon = Icons.Default.SignalCellularAlt,
+                            title = stringResource(R.string.settings_allow_mobile_map_downloads),
+                            checked = uiState.preferences.allowMapDownloadsOnMobileData,
+                            onCheckedChange = onAllowMapDownloadsOnMobileDataChanged,
+                        )
+                        SettingsDivider()
+                        SettingsSwitchRow(
                             icon = Icons.Default.ShowChart,
                             title = stringResource(R.string.settings_show_price_history),
                             checked = uiState.preferences.showPriceHistory,
@@ -360,22 +374,21 @@ private fun SettingsContent(
 
                     SettingsGroup(title = stringResource(R.string.settings_storage_usage)) {
                         SettingsStat(
-                            stringResource(
-                                R.string.settings_storage_summary_rows,
-                                numberFormat.format(uiState.storageUsage.summaryRowCount),
-                            ),
+                            icon = Icons.Default.BarChart,
+                            label = stringResource(R.string.settings_storage_summary_rows),
+                            value = numberFormat.format(uiState.storageUsage.summaryRowCount),
                         )
+                        SettingsDivider()
                         SettingsStat(
-                            stringResource(
-                                R.string.settings_storage_station_rows,
-                                numberFormat.format(uiState.storageUsage.stationRowCount),
-                            ),
+                            icon = Icons.Default.Storefront,
+                            label = stringResource(R.string.settings_storage_station_rows),
+                            value = numberFormat.format(uiState.storageUsage.stationRowCount),
                         )
+                        SettingsDivider()
                         SettingsStat(
-                            stringResource(
-                                R.string.settings_storage_week_count,
-                                numberFormat.format(uiState.storageUsage.importedWeekCount),
-                            ),
+                            icon = Icons.Default.CalendarMonth,
+                            label = stringResource(R.string.settings_storage_week_count),
+                            value = numberFormat.format(uiState.storageUsage.importedWeekCount),
                         )
                         SettingsDivider()
                         SettingsRow(
@@ -467,12 +480,19 @@ private fun SettingsNote(text: String, emphasized: Boolean = false) {
 
 /** Read-only line inside a group, aligned with the row text. */
 @Composable
-private fun SettingsStat(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 2.dp),
+private fun SettingsStat(icon: ImageVector, label: String, value: String) {
+    SettingsRow(
+        icon = icon,
+        title = label,
+        modifier = Modifier.semantics(mergeDescendants = true) {},
+        trailing = {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
     )
 }
 
@@ -539,6 +559,7 @@ private fun SettingsScreenPreview() {
             onClearPublicCatalog = {},
             onAutoDownloadLatestWeekChanged = {},
             onAutoSyncOnWifiChanged = {},
+            onAllowMapDownloadsOnMobileDataChanged = {},
             onShowPriceHistoryChanged = {},
             onRetentionWeeksSelected = {},
             onNearestStationRadiusSelected = {},

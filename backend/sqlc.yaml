@@ -512,6 +512,21 @@ sql:
         sql_package: pgx/v5
         emit_json_tags: true
 
+  # Account notification inbox (B-BR-NOTIF-02/03). accounts is listed for
+  # the recipient status check only.
+  - engine: postgresql
+    queries: db/queries/notifications
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000303_account_notifications.sql
+    gen:
+      go:
+        package: notifications
+        out: db/queries/notifications
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+
   - engine: postgresql
     queries: db/queries/quality
     schema:

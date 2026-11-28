@@ -73,7 +73,10 @@ func TestAccountProfileMigrationRecoveryAndPreviousReads(t *testing.T) {
 	if err != nil || !clean {
 		t.Fatalf("migration failure left partial state: clean=%v err=%v", clean, err)
 	}
-	applied, err := Apply(ctx, dsn, dbmigrations.Files)
+	// Retry the clean chain through 000302 only, so later migrations never
+	// change what this upgrade test proves.
+	previous[upgrade] = &fstest.MapFile{Data: migration}
+	applied, err := Apply(ctx, dsn, previous)
 	if err != nil || len(applied) != 1 || applied[0] != "000302" {
 		t.Fatalf("retry did not solely apply 000302: %v, %v", applied, err)
 	}

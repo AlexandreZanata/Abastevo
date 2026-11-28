@@ -472,15 +472,16 @@
     <string name="public_catalog_cleared">Öffentliches Verzeichnis gelöscht.</string>
     <string name="settings_auto_download_latest_week">Neueste Erhebungswoche automatisch herunterladen</string>
     <string name="settings_sync_wifi_only">Automatische Synchronisierung nur über WLAN</string>
+    <string name="settings_allow_mobile_map_downloads">Kartendownloads über mobile Daten erlauben</string>
     <string name="settings_show_price_history">Preisverlauf anzeigen</string>
     <string name="settings_retention_weeks">Aufbewahrung von Tankstellendaten</string>
     <string name="settings_retention_weeks_option">%1$d Wochen</string>
     <string name="settings_nearest_station_radius">Suchradius für „Günstigstes in der Nähe“</string>
     <string name="settings_nearest_station_radius_option">%1$d km</string>
     <string name="settings_storage_usage">Speichernutzung</string>
-    <string name="settings_storage_summary_rows">Zusammenfassungszeilen: %1$s</string>
-    <string name="settings_storage_station_rows">Tankstellenzeilen: %1$s</string>
-    <string name="settings_storage_week_count">Importierte Wochen: %1$s</string>
+    <string name="settings_storage_summary_rows">Preisübersichten</string>
+    <string name="settings_storage_station_rows">Preiseinträge nach Tankstelle</string>
+    <string name="settings_storage_week_count">Importierte Wochen</string>
     <string name="settings_sync_section">Synchronisierung</string>
     <string name="settings_change_survey_week">Erhebungswoche ändern</string>
     <string name="settings_clear_cache">Cache leeren</string>
@@ -826,7 +827,6 @@
     <string name="home_filter_lowest">Niedrigster Preis</string>
     <string name="home_filter_highest">Höchster Preis</string>
     <string name="home_change_city">Meine Stadt</string>
-    <string name="home_reference_period">ANP-Referenz • %1$s</string>
     <string name="home_shortcut_stations">Tankstellen finden</string>
     <string name="home_shortcut_stations_description">Lokale Tankstellen entdecken</string>
     <string name="home_shortcut_history">Preisverlauf</string>
@@ -1048,6 +1048,16 @@
     <string name="stations_summary_order">Reihenfolge: %1$s</string>
     <string name="capture_choose_city">Stadt wählen</string>
     <string name="capture_change_station">Tankstelle wechseln</string>
+    <string name="capture_near_you_distance">In deiner Nähe · %1$d m</string>
+    <string name="capture_not_this_station">Nicht diese Tankstelle? Manuell wählen</string>
+    <string name="capture_locating_station">Tankstelle an deinem Standort wird gesucht…</string>
+    <string name="capture_location_rationale">Erlaube den Standort, damit die Tankstelle, an der du bist, vorausgewählt wird.</string>
+    <string name="capture_use_my_location">Meinen Standort verwenden</string>
+    <string name="capture_open_location_settings">Einstellungen öffnen</string>
+    <string name="capture_location_unavailable">Standort nicht verfügbar. Prüfe, ob die Standortermittlung aktiv ist.</string>
+    <string name="capture_no_station_nearby">Keine Tankstelle direkt in deiner Nähe. Wähle sie unten aus.</string>
+    <string name="home_city_followed">Anzeige für %1$s, %2$s, wo du gerade bist</string>
+    <string name="home_city_followed_undo">Rückgängig</string>
     <string name="capture_station_name">Name der Tankstelle</string>
     <string name="capture_search_failed">Tankstellen konnten nicht gesucht werden. Verbindung prüfen und erneut versuchen.</string>
     <string name="capture_search_empty">Keine Tankstellen gefunden.</string>
@@ -1186,6 +1196,10 @@
     <string name="map_downloads_depends_on">Abhängig von: %1$s</string>
     <string name="map_downloads_wifi_only">Nur WLAN</string>
     <string name="map_downloads_wifi_any">WLAN oder mobile Daten</string>
+    <string name="map_mobile_download_title">Keine WLAN-Verbindung</string>
+    <string name="map_mobile_download_message">Die Offlinekarte für %1$s über mobile Daten herunterladen? Dabei kann ein Teil Ihres Datenvolumens verbraucht werden.</string>
+    <string name="map_mobile_download_confirm">Karte herunterladen</string>
+    <string name="map_mobile_download_dismiss">Jetzt nicht</string>
     <string name="map_downloads_delete">Löschen</string>
     <string name="map_downloads_in_use">Wird von der Navigation verwendet; Führung stoppen und erneut versuchen</string>
     <string name="map_downloads_stored">Gespeichert: %1$s</string>
@@ -1467,7 +1481,8 @@
     <string name="home_open_map">Auf der Karte anzeigen</string>
     <string name="premium_store_section_title">Abonnieren</string>
     <string name="premium_store_plans_loading">Google-Play-Tarife werden geladen…</string>
-    <string name="premium_store_plans_unavailable">Die Google-Play-Tarife konnten nicht geladen werden.</string>
+    <string name="premium_store_plans_unavailable">Tarife vorübergehend nicht verfügbar</string>
+    <string name="premium_store_plans_retry_hint">Versuche es gleich noch einmal, um die Abopreise bei Google Play zu sehen.</string>
     <string name="premium_store_trial_then">1 Monat kostenlos, danach %1$s mit automatischer Verlängerung</string>
     <string name="premium_store_subscribe">Abonnieren</string>
     <string name="premium_store_billing_note">Zahlung, Verlängerung und Kündigung laufen über Google Play.</string>
@@ -1528,4 +1543,35 @@
     <string name="auth_error_email_login_retired">Melde dich mit Google oder deinem Kontoschlüssel an.</string>
     <string name="auth_error_google_unavailable">Die Google-Anmeldung ist gerade nicht verfügbar. Versuche es erneut oder verwende deinen Schlüssel.</string>
     <string name="auth_legacy_key_issued_warning">Speichere deinen Schlüssel für den Zugriff auf einem anderen Gerät. Du kannst ihn später auch im Profil exportieren.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Benachrichtigungen</string>
+    <string name="notifications_mark_all_read">Alle als gelesen markieren</string>
+    <string name="notifications_settings">Benachrichtigungseinstellungen</string>
+    <string name="notifications_sign_in_hint">Melde dich an, um auch Antworten und Neuigkeiten zu deinem Konto zu sehen.</string>
+    <string name="notifications_sign_in_action">Anmelden</string>
+    <string name="notifications_not_refreshed">Letzte Kontoneuigkeiten werden angezeigt; Aktualisierung nicht möglich.</string>
+    <string name="notifications_mark_failed">Konnte nicht als gelesen markiert werden. Versuche es erneut.</string>
+    <string name="notifications_empty_title">Noch keine Benachrichtigungen</string>
+    <string name="notifications_empty_hint">Preissenkungen in deiner Stadt, neue ANP-Wochen und Antworten auf deine Themen erscheinen hier.</string>
+    <string name="notifications_unread">Ungelesen</string>
+    <string name="notifications_forum_reply_title">Neue Antwort auf dein Thema</string>
+    <string name="notifications_forum_reply_body">%1$s hat auf „%2$s“ geantwortet</string>
+    <string name="notifications_forum_reply_body_anonymous">Jemand hat auf „%1$s“ geantwortet</string>
+    <string name="notifications_contribution_validated_title">Dein Preis wurde bestätigt</string>
+    <string name="notifications_contribution_validated_body">%1$s ist jetzt von der Community bestätigt.</string>
+    <string name="notifications_contribution_rejected_title">Dein Preis wurde nicht angenommen</string>
+    <string name="notifications_contribution_rejected_body">%1$s. Den Grund findest du unter Meine Beiträge.</string>
+    <string name="notifications_city_drop_title">Kraftstoff ist in %1$s, %2$s günstiger geworden</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Kraftstoffpreis gesunken</string>
+    <string name="notifications_vehicle_drop_body">%1$s kostet jetzt %2$s</string>
+    <string name="notifications_new_week_title">Neue ANP-Erhebungswoche</string>
+    <string name="notifications_new_week_body">Die Preise für %1$s sind verfügbar.</string>
+    <string name="notifications_account_channel_name">Konto-Neuigkeiten</string>
+    <string name="notifications_account_channel_description">Antworten auf deine Themen und Entscheidungen zu deinen Beiträgen</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">%d weitere Neuigkeit</item>
+        <item quantity="other">%d weitere Neuigkeiten</item>
+    </plurals>
 </resources>

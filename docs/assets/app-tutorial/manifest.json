@@ -262,21 +262,25 @@
           "caption": "Each card shows the ANP weekly average for a fuel, the number of surveyed stations and the source badge.",
           "strings": [
             "home_reference_prices_title",
-            "a11y_source_badge_anp_dated",
-            "home_reference_period"
+            "home_reference_source",
+            "a11y_survey_week_chip"
           ],
           "extraSources": [
-            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelPriceCard.kt"
+            "app/src/main/kotlin/com/anpfuel/app/ui/header/AbastevoHeader.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeDiscoveryCards.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
           ],
           "sources": [
-            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelPriceCard.kt",
-            "app/src/main/kotlin/com/anpfuel/app/ui/components/SourceTimeBadge.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/SurveyWeekChip.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/header/AbastevoHeader.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeDiscoveryCards.kt",
             "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
           ],
           "context": {
             "city": "sao-paulo-sp"
           },
-          "sha256": "4af9f2bcef3644979132777c5e72b94da16c5cc38dc6a6ca898ec26ed8e904c0"
+          "sha256": "b8a7a9fd93184cfa7d2fb76dd681bded0a0c629ef173a81a7f37bce6c2a4f341",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         },
         {
           "file": "02-more-fuels.png",
@@ -293,7 +297,8 @@
           "context": {
             "city": "sao-paulo-sp"
           },
-          "sha256": "1bcd91f32e4b82817675747006f02a1106393f08afa02bc893f287e2b9bfb261"
+          "sha256": "77fb2915d0e727c3ad67282d1fb16d632983eeab9839a46c97ca37e6d71e8773",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         },
         {
           "file": "03-home-shortcuts.png",
@@ -311,7 +316,8 @@
           "context": {
             "city": "sao-paulo-sp"
           },
-          "sha256": "946a4789b4cd7d5d2b4885204906a1488486018c810488215b155d2689d3c937"
+          "sha256": "2f2cacc7eb9d8f9afa2076fe0bea04c26ed5194fe1d64188aea105fc31a8a0ec",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         },
         {
           "file": "04-sort-prices.png",
@@ -331,7 +337,8 @@
           "context": {
             "city": "sao-paulo-sp"
           },
-          "sha256": "c122dc45206ab2912af28f4b4304567555b159411a2f4bb192127daa8c752ca5"
+          "sha256": "6c287f40061331d18aec7cd944ccae78f39c43458a35b6bda03d59995e7d8547",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         },
         {
           "file": "05-lowest-price.png",
@@ -367,7 +374,8 @@
           "context": {
             "city": "sorriso-mt"
           },
-          "sha256": "ef73c3ff7adebef1b43ad7fc402df487c393c175b393e9a355a2c59a15828e9f"
+          "sha256": "6e6158ab9edd5adfd11a31a5302b19aa868382638bf89eb8f2f7359d39d4ce00",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         }
       ]
     },
@@ -957,23 +965,27 @@
         },
         {
           "file": "05-older-week-active.png",
-          "caption": "Tapping a downloaded week makes it active: the chip and the ANP reference line change.",
+          "caption": "Tapping a downloaded week makes it active: the header shows the selected week and the ANP price cards update.",
           "strings": [
-            "a11y_source_badge_anp_dated",
-            "home_reference_period"
+            "a11y_survey_week_chip",
+            "home_reference_source"
           ],
           "extraSources": [
-            "app/src/main/kotlin/com/anpfuel/app/ui/components/SurveyWeekChip.kt"
+            "app/src/main/kotlin/com/anpfuel/app/ui/header/AbastevoHeader.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeDiscoveryCards.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
           ],
           "sources": [
-            "app/src/main/kotlin/com/anpfuel/app/ui/components/SourceTimeBadge.kt",
             "app/src/main/kotlin/com/anpfuel/app/ui/components/SurveyWeekChip.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/header/AbastevoHeader.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeDiscoveryCards.kt",
             "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
           ],
           "context": {
             "city": "sorriso-mt"
           },
-          "sha256": "6f523cbb8214867bbd4c5f7a687e89deeecf61eafdb3645fe58660f334edc011"
+          "sha256": "46b220f5c58d6c06ca38d4e3e664e047fc71d5f7f9fcecaf5dd241c3b238461c",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         }
       ]
     },
@@ -1005,7 +1017,8 @@
           "context": {
             "city": "sorriso-mt"
           },
-          "sha256": "2dddc77f514ed10c7c94d6a43670d2aa3af3c49db01df83ed0db2d1a969a4178"
+          "sha256": "2fcb8e4ed3456a77f88c17aec9de1ed8962fa14aa2a62da2f0c4e0c251f085a5",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         },
         {
           "file": "02-choose-fuel.png",
@@ -1244,7 +1257,8 @@
           "context": {
             "city": "sorriso-mt"
           },
-          "sha256": "36993ca11e6141c83da55a1fb133f0cc0cdea01ce18c289225d0c26b7af11f51"
+          "sha256": "71c424f07675993d2eb766ae4b15ef4eb7909dabc695786aeaaabf928bfc9b85",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         },
         {
           "file": "02-language-and-search-distance.png",
@@ -1593,10 +1607,10 @@
             "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
           ],
           "context": {
-            "city": "sorriso-mt",
-            "account": "signed-in"
+            "city": "sorriso-mt"
           },
-          "sha256": "15d4a4e24de6afbb5e5f905b5e9f8e2e42bae7005f6b1ee2ea4814b7344996c9"
+          "sha256": "93e48bae5cadbc730160c45251d4fbdf3664e6056f348e6985bd54050f913b02",
+          "appSourceCommit": "a9d47c2b28a289c39fdaba5a094c9aa468102065"
         },
         {
           "file": "02-community-prices-empty.png",

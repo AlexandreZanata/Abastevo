@@ -8,6 +8,7 @@ import com.anpfuel.data.map.MapDownloadException
 import com.anpfuel.data.map.MapPackageRepository
 import com.anpfuel.data.map.MapPackageStore
 import com.anpfuel.data.map.PACKAGE_FAILED
+import com.anpfuel.data.map.PACKAGE_READY
 import androidx.lifecycle.SavedStateHandle
 import java.io.File
 import java.io.IOException
@@ -21,6 +22,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -60,7 +62,7 @@ class MapDownloadsViewModelTest {
         val enqueued = mutableListOf<String>()
         val enqueuedUnmetered = mutableListOf<Boolean>()
         val cancelled = mutableListOf<String>()
-        override fun enqueue(generation: String, requireUnmetered: Boolean) {
+        override suspend fun enqueue(generation: String, requireUnmetered: Boolean) {
             enqueued += generation
             enqueuedUnmetered += requireUnmetered
         }
@@ -69,10 +71,17 @@ class MapDownloadsViewModelTest {
         }
     }
 
-    private class FakePrefs(var wifiOnly: Boolean = true) : com.anpfuel.domain.repository.UserPreferencesRepository {
-        override suspend fun getPreferences() = com.anpfuel.domain.model.UserPreferences(autoSyncOnWifi = wifiOnly)
+    private class FakePrefs(
+        var allowMapDownloadsOnMobileData: Boolean = false,
+        var autoSyncOnWifi: Boolean = true,
+    ) : com.anpfuel.domain.repository.UserPreferencesRepository {
+        override suspend fun getPreferences() = com.anpfuel.domain.model.UserPreferences(
+            autoSyncOnWifi = autoSyncOnWifi,
+            allowMapDownloadsOnMobileData = allowMapDownloadsOnMobileData,
+        )
         override suspend fun savePreferences(preferences: com.anpfuel.domain.model.UserPreferences) {
-            wifiOnly = preferences.autoSyncOnWifi
+            autoSyncOnWifi = preferences.autoSyncOnWifi
+            allowMapDownloadsOnMobileData = preferences.allowMapDownloadsOnMobileData
         }
     }
 
@@ -169,6 +178,7 @@ class MapDownloadsViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("g-catalog", viewModel.ui.value.candidateGeneration)
         viewModel.download()
+        dispatcher.scheduler.runCurrent()
         assertEquals(listOf("g-catalog"), work.enqueued)
         dispatcher.scheduler.advanceTimeBy(600)
         assertTrue(viewModel.ui.value.downloading)
@@ -267,7 +277,7 @@ class MapDownloadsViewModelTest {
         assertEquals(null, ui.error)
     }
 
-    @Test fun `wifi preference selects unmetered work and refresh surfaces it`() = runTest {
+    @Test fun `map opt in allows mobile data while price sync stays Wi-Fi only`() = runTest {
         val store = FakeStore()
         val manifest = catalogManifest()
         val kp = java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
@@ -279,7 +289,7 @@ class MapDownloadsViewModelTest {
         }
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(
-            config(mapOf("k" to rawPub)), distribution, realRepo, store, work, FakePrefs(wifiOnly = false),
+            config(mapOf("k" to rawPub)), distribution, realRepo, store, work, FakePrefs(allowMapDownloadsOnMobileData = true),
         )
         viewModel.checkForUpdate()
         dispatcher.scheduler.advanceUntilIdle()
@@ -332,6 +342,7 @@ class MapDownloadsViewModelTest {
         work: FakeWork = FakeWork(),
         defaultRegion: String = "",
         savedState: SavedStateHandle = SavedStateHandle(),
+        prefs: FakePrefs = FakePrefs(),
     ): MapDownloadsViewModel {
         val cfg = MapDistributionConfig("https://example.test", defaultRegion, mapOf("k" to signed.rawPub), keysInvalid = false)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), cfg) {
@@ -341,7 +352,7 @@ class MapDownloadsViewModelTest {
             }
         }
         val repo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
-        return MapDownloadsViewModel(cfg, distribution, repo, store, work, FakePrefs(), selection, savedState)
+        return MapDownloadsViewModel(cfg, distribution, repo, store, work, prefs, selection, savedState)
     }
 
     private fun regionManifest(region: String) = catalogManifest().replace("\"id\":\"test-rect\"", "\"id\":\"$region\"")
@@ -389,13 +400,13 @@ class MapDownloadsViewModelTest {
         val signed = signed(regionManifest("brazil-mato-grosso"))
         val selection = MapRegionSelection().apply { requestDownload("brazil-mato-grosso") }
         val work = FakeWork()
-        val viewModel = regionalVm(signed, FakeStore(), selection, work)
+        val viewModel = regionalVm(signed, FakeStore(), selection, work, prefs = FakePrefs(autoSyncOnWifi = false))
         dispatcher.scheduler.advanceTimeBy(100)
         dispatcher.scheduler.runCurrent()
         assertEquals(listOf("brazil-mato-grosso"), signed.requested)
         assertEquals(listOf("g-catalog"), work.enqueued)
         assertEquals(listOf(true), work.enqueuedUnmetered)
-        assertFalse(selection.consumeDownloadRequest("brazil-mato-grosso"), "request is one-shot")
+        assertNull(selection.consumeDownloadRequest("brazil-mato-grosso"), "request is one-shot")
         viewModel.cancel()
         dispatcher.scheduler.advanceUntilIdle()
         // A second screen instance does not start again.
@@ -413,5 +424,47 @@ class MapDownloadsViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("brazil-parana-east", restored.ui.value.region?.slug)
         assertEquals("Paraná – Leste", restored.ui.value.region?.name)
+    }
+
+    @Test fun `one-time mobile permission is cleared after activation`() = runTest {
+        val slug = "brazil-mato-grosso"
+        val selection = MapRegionSelection().apply { requestDownload(slug, allowMobileData = true) }
+        val store = FakeStore()
+        val work = FakeWork()
+        val viewModel = regionalVm(signed(regionManifest(slug)), store, selection, work)
+        dispatcher.scheduler.runCurrent()
+        assertEquals(listOf(false), work.enqueuedUnmetered)
+
+        store.updatePackage("g-catalog", "a", PACKAGE_READY, 100, null, null, 1L)
+        store.activate("g-catalog", 1L)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(viewModel.ui.value.candidateGeneration)
+        assertTrue(viewModel.ui.value.wifiOnly)
+
+        viewModel.activateActive()
+        dispatcher.scheduler.runCurrent()
+        assertEquals(listOf(false, true), work.enqueuedUnmetered)
+        viewModel.cancel()
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test fun `one-time mobile permission is used for the request and cleared on cancel`() = runTest {
+        val slug = "brazil-mato-grosso"
+        val selection = MapRegionSelection().apply { requestDownload(slug, allowMobileData = true) }
+        val work = FakeWork()
+        val viewModel = regionalVm(signed(regionManifest(slug)), FakeStore(), selection, work)
+        dispatcher.scheduler.runCurrent()
+        assertEquals(listOf(false), work.enqueuedUnmetered)
+        assertFalse(viewModel.ui.value.wifiOnly)
+        assertNull(selection.consumeDownloadRequest(slug))
+
+        viewModel.cancel()
+        dispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.ui.value.wifiOnly)
+        viewModel.download()
+        dispatcher.scheduler.runCurrent()
+        assertEquals(listOf(false, true), work.enqueuedUnmetered)
+        viewModel.cancel()
+        dispatcher.scheduler.advanceUntilIdle()
     }
 }

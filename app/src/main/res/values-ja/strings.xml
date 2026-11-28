@@ -472,15 +472,16 @@
     <string name="public_catalog_cleared">公開一覧を削除しました。</string>
     <string name="settings_auto_download_latest_week">最新の調査週を自動的にダウンロード</string>
     <string name="settings_sync_wifi_only">Wi‑Fi接続時のみ自動同期</string>
+    <string name="settings_allow_mobile_map_downloads">モバイルデータ通信で地図のダウンロードを許可</string>
     <string name="settings_show_price_history">価格履歴を表示</string>
     <string name="settings_retention_weeks">スタンドデータの保持期間</string>
     <string name="settings_retention_weeks_option">%1$d 週間</string>
     <string name="settings_nearest_station_radius">「最安の給油所を探す」の検索半径</string>
     <string name="settings_nearest_station_radius_option">%1$d km</string>
     <string name="settings_storage_usage">ストレージ使用量</string>
-    <string name="settings_storage_summary_rows">サマリー行：%1$s</string>
-    <string name="settings_storage_station_rows">スタンド行：%1$s</string>
-    <string name="settings_storage_week_count">インポート済み週：%1$s</string>
+    <string name="settings_storage_summary_rows">価格の集計</string>
+    <string name="settings_storage_station_rows">給油所別の価格記録</string>
+    <string name="settings_storage_week_count">取り込み済みの週</string>
     <string name="settings_sync_section">同期</string>
     <string name="settings_change_survey_week">調査週を変更</string>
     <string name="settings_clear_cache">キャッシュを消去</string>
@@ -826,7 +827,6 @@
     <string name="home_filter_lowest">価格が安い順</string>
     <string name="home_filter_highest">価格が高い順</string>
     <string name="home_change_city">自分の街</string>
-    <string name="home_reference_period">ANP参考価格 • %1$s</string>
     <string name="home_shortcut_stations">給油所を探す</string>
     <string name="home_shortcut_stations_description">街の給油所を探索</string>
     <string name="home_shortcut_history">価格履歴</string>
@@ -1048,6 +1048,16 @@
     <string name="stations_summary_order">並び順: %1$s</string>
     <string name="capture_choose_city">都市を選択</string>
     <string name="capture_change_station">給油所を変更</string>
+    <string name="capture_near_you_distance">現在地の近く · %1$d m</string>
+    <string name="capture_not_this_station">この給油所ではありませんか？手動で選ぶ</string>
+    <string name="capture_locating_station">現在地の給油所を探しています…</string>
+    <string name="capture_location_rationale">位置情報を許可すると、いる給油所を自動で選択します。</string>
+    <string name="capture_use_my_location">現在地を使う</string>
+    <string name="capture_open_location_settings">設定を開く</string>
+    <string name="capture_location_unavailable">現在地を取得できませんでした。位置情報がオンか確認してください。</string>
+    <string name="capture_no_station_nearby">すぐ近くに給油所がありません。下から選んでください。</string>
+    <string name="home_city_followed">現在地の %1$s, %2$s を表示しています</string>
+    <string name="home_city_followed_undo">元に戻す</string>
     <string name="capture_station_name">給油所名</string>
     <string name="capture_search_failed">検索できませんでした。接続を確認して再試行してください。</string>
     <string name="capture_search_empty">給油所が見つかりません。</string>
@@ -1186,6 +1196,10 @@
     <string name="map_downloads_depends_on">依存: %1$s</string>
     <string name="map_downloads_wifi_only">Wi-Fiのみ</string>
     <string name="map_downloads_wifi_any">Wi-Fiまたはモバイルデータ</string>
+    <string name="map_mobile_download_title">Wi-Fiに接続されていません</string>
+    <string name="map_mobile_download_message">モバイルデータ通信で%1$sのオフライン地図をダウンロードしますか？データ通信量を消費します。</string>
+    <string name="map_mobile_download_confirm">地図をダウンロード</string>
+    <string name="map_mobile_download_dismiss">今はしない</string>
     <string name="map_downloads_delete">削除</string>
     <string name="map_downloads_in_use">ナビゲーションで使用中。ガイダンス停止後に再試行</string>
     <string name="map_downloads_stored">保存済み: %1$s</string>
@@ -1466,7 +1480,8 @@
     <string name="home_open_map">地図で表示</string>
     <string name="premium_store_section_title">登録</string>
     <string name="premium_store_plans_loading">Google Playのプランを読み込んでいます…</string>
-    <string name="premium_store_plans_unavailable">Google Playのプランを読み込めませんでした。</string>
+    <string name="premium_store_plans_unavailable">プランを一時的に利用できません</string>
+    <string name="premium_store_plans_retry_hint">しばらくしてから再試行し、Google Play の定期購入料金をご確認ください。</string>
     <string name="premium_store_trial_then">1か月無料。その後は%1$sで自動更新</string>
     <string name="premium_store_subscribe">登録する</string>
     <string name="premium_store_billing_note">支払い、更新、解約はGoogle Playで行われます。</string>
@@ -1527,4 +1542,34 @@
     <string name="auth_error_email_login_retired">Google またはアカウントキーでログインしてください。</string>
     <string name="auth_error_google_unavailable">Google ログインを利用できません。再試行するか、キーを使用してください。</string>
     <string name="auth_legacy_key_issued_warning">別の端末でログインするためにキーを保存してください。後でプロフィールからもエクスポートできます。</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">お知らせ</string>
+    <string name="notifications_mark_all_read">すべて既読にする</string>
+    <string name="notifications_settings">通知設定</string>
+    <string name="notifications_sign_in_hint">ログインすると、アカウントへの返信や更新も表示されます。</string>
+    <string name="notifications_sign_in_action">ログイン</string>
+    <string name="notifications_not_refreshed">前回のアカウントの更新を表示しています。更新できませんでした。</string>
+    <string name="notifications_mark_failed">既読にできませんでした。もう一度お試しください。</string>
+    <string name="notifications_empty_title">お知らせはまだありません</string>
+    <string name="notifications_empty_hint">お住まいの市の値下がり、ANP の新しい週、トピックへの返信がここに表示されます。</string>
+    <string name="notifications_unread">未読</string>
+    <string name="notifications_forum_reply_title">トピックに新しい返信</string>
+    <string name="notifications_forum_reply_body">%1$s さんが「%2$s」に返信しました</string>
+    <string name="notifications_forum_reply_body_anonymous">「%1$s」に返信がありました</string>
+    <string name="notifications_contribution_validated_title">投稿した価格が承認されました</string>
+    <string name="notifications_contribution_validated_body">%1$s はコミュニティで確認されました。</string>
+    <string name="notifications_contribution_rejected_title">投稿した価格は承認されませんでした</string>
+    <string name="notifications_contribution_rejected_body">%1$s。理由は「自分の投稿」で確認できます。</string>
+    <string name="notifications_city_drop_title">%1$s, %2$s で燃料が値下がりしました</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">燃料価格が下がりました</string>
+    <string name="notifications_vehicle_drop_body">%1$s は現在 %2$s です</string>
+    <string name="notifications_new_week_title">ANP の新しい調査週</string>
+    <string name="notifications_new_week_body">%1$s の価格が利用できます。</string>
+    <string name="notifications_account_channel_name">アカウントの更新</string>
+    <string name="notifications_account_channel_description">トピックへの返信と投稿への判定</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="other">ほか %d 件の更新</item>
+    </plurals>
 </resources>

@@ -92,7 +92,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
     var showRules by remember { mutableStateOf(false) }
     AnpScaffold(modifier = modifier.fillMaxSize(), topBar = {
         AbastevoHeader(
-            onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+            onNotificationsClick = { onNavigate(Routes.NOTIFICATIONS) },
             onProfileClick = { onNavigate(Routes.PROFILE) },
             locationLabel = state.city?.let { "${it.name}, ${it.state.abbreviation}" }
                 ?: stringResource(R.string.feed_choose_city),

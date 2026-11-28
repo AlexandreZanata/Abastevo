@@ -54,7 +54,9 @@ provider API details live in the
 - **B-BR-STORE-07 — Notifications trigger a refresh.** Play real-time
   developer notifications and App Store Server Notifications V2 only enqueue a
   refresh of an already bound purchase. The refreshed canonical state decides
-  access, never the notification type or time.
+  access, never the notification type or time. The wrapped Pub/Sub envelope
+  accepts the documented message ID and publish time aliases when their
+  values agree with the canonical fields.
 - **B-BR-STORE-08 — Completion.** The server acknowledges a verified Play
   subscription within the Play window. The iOS app finishes a StoreKit
   transaction only after the server accepted or definitively refused it. An
@@ -66,6 +68,8 @@ provider API details live in the
 - **B-BR-STORE-10 — Fail closed.** A store channel stays off until its
   credentials and catalog are configured. Without a configured offer for the
   app's store, the app shows the current status with no purchase button.
+  When Google Play cannot return the listed plans, Android shows a retry action
+  in the subscription section. Prices and the billing note appear with loaded plans.
   Payment never changes trust, moderation or free participation.
 - **B-BR-STORE-11 — Play license test access.** In the `test` environment,
   Google Play offers, verification and restore are limited to explicitly

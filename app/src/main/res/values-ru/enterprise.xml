@@ -48,6 +48,7 @@
     <string name="enterprise_role_unknown">Неизвестная роль</string>
     <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
     <string name="enterprise_context_entry">Режим компании</string>
+    <string name="enterprise_context_entry_locked">Доступно после того, как вы присоединитесь к компании по приглашению.</string>
     <string name="enterprise_context_title">Выбрать пространство</string>
     <string name="enterprise_context_intro">Выберите компанию или продолжите в личном режиме.</string>
     <string name="enterprise_context_personal">Использовать личный режим</string>

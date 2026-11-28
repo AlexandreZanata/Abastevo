@@ -3,6 +3,7 @@ package com.anpfuel.app.capture
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anpfuel.app.location.DeviceCityFollowGate
 import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CaptureLocationSource
@@ -24,6 +25,7 @@ import com.anpfuel.application.usecase.contribution.GetOwnedContributionsUseCase
 import com.anpfuel.domain.model.PhotoContributionContext
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
+import com.anpfuel.application.usecase.location.FollowDeviceCityUseCase
 import com.anpfuel.data.mapper.WireFuelMapper
 import com.anpfuel.data.remote.PhotoCaptureHttpClient
 import com.anpfuel.domain.contribution.ContributionTarget
@@ -64,6 +66,31 @@ sealed interface CaptureOcrUiState {
     ) : CaptureOcrUiState
 }
 
+/** B-BR-LOC-01 — state of the location help in the nominal station picker. */
+sealed interface StationLocationAssist {
+    /** Not started: explicit target, photo under review, or waiting for Android's answer. */
+    data object Idle : StationLocationAssist
+
+    /** Permission refused; [canAskAgain] is false once Android stops showing its dialog. */
+    data class PermissionDenied(val canAskAgain: Boolean) : StationLocationAssist
+
+    data object Locating : StationLocationAssist
+
+    /** The nearest pinned station was pre-selected; [distanceMeters] is shown next to it. */
+    data class Suggested(val stationId: String, val distanceMeters: Double) : StationLocationAssist
+
+    /** Located, but no pinned station close enough to pre-select. */
+    data object NoneNearby : StationLocationAssist
+
+    /** No fix (location off, timeout) or the nearby read failed. */
+    data object Unavailable : StationLocationAssist
+
+    /** The contributor rejected the suggestion; nothing is suggested again this visit. */
+    data object Dismissed : StationLocationAssist
+}
+
+enum class LocationAssistStart { REQUEST_PERMISSION, STARTED, SKIPPED }
+
 @HiltViewModel
 class CaptureOcrViewModel @Inject constructor(
     private val useCase: ConfirmPriceCaptureUseCase,
@@ -80,7 +107,8 @@ class CaptureOcrViewModel @Inject constructor(
     private val cityFeed: com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase,
     private val stationGateway: com.anpfuel.domain.repository.ServerStationGateway,
     private val ownedContributions: GetOwnedContributionsUseCase,
-
+    private val followDeviceCity: FollowDeviceCityUseCase? = null,
+    private val cityFollowGate: DeviceCityFollowGate? = null,
 ) : ViewModel() {
 
     private val _stationCity = MutableStateFlow<com.anpfuel.domain.community.FeedCity?>(null)
@@ -97,13 +125,14 @@ class CaptureOcrViewModel @Inject constructor(
     private var searchGeneration = 0L
     private var normalSearchActive = false
     private var entryTargetBound = false
+    private var entryHadTarget = false
     fun bindEntryTarget(stationId: String?, fuel: String?) {
-        if (!entryTargetBound) { bindTarget(stationId, fuel); entryTargetBound = true }
+        if (!entryTargetBound) { bindTarget(stationId, fuel); entryTargetBound = true; entryHadTarget = stationId != null }
     }
     private val _selectedNominalStation = MutableStateFlow<com.anpfuel.domain.discovery.ServerStation?>(null)
     val selectedNominalStation = _selectedNominalStation.asStateFlow()
 
-    /** Reuses the manually selected city and canonical Directory; no GPS or developer mode. */
+    /** Starts from the preferred city and canonical Directory; only [locateNearestStation] uses a fix. */
     fun loadStationSearch() {
         if (_reviewUri.value != null || _gateBusy.value || submitting) return
         normalSearchActive = true
@@ -127,6 +156,7 @@ class CaptureOcrViewModel @Inject constructor(
 
     fun changeNominalStation() {
         if (_reviewUri.value != null || _gateBusy.value || submitting) return
+        if (_locationAssist.value is StationLocationAssist.Suggested) _locationAssist.value = StationLocationAssist.Dismissed
         bindTarget(null, null); pickStation(null); _selectedNominalStation.value = null
         searchStations(_stationQuery.value)
     }
@@ -164,6 +194,100 @@ class CaptureOcrViewModel @Inject constructor(
             if (normalSearchActive) bindTarget(null,null)
             pickStation(id); _selectedNominalStation.value = station
         }
+    }
+
+    private val _locationAssist = MutableStateFlow<StationLocationAssist>(StationLocationAssist.Idle)
+
+    /** B-BR-LOC-01 — location help shown in the nominal station picker. */
+    val locationAssist: StateFlow<StationLocationAssist> = _locationAssist.asStateFlow()
+    private var locationAssistBegun = savedState.get<Boolean>("locationAssistBegun") ?: false
+    private var locateJob: Job? = null
+
+    fun hasLocationPermission(): Boolean = locationHandler.hasLocationPermission()
+
+    /**
+     * First entry of the context-free picker: locate right away when location
+     * is granted, otherwise ask the screen to request it. Once per visit;
+     * an explicit station target or a photo under review skips it.
+     */
+    fun beginLocationAssist(): LocationAssistStart {
+        if (locationAssistBegun || !locationAssistAllowed()) return LocationAssistStart.SKIPPED
+        locationAssistBegun = true
+        savedState["locationAssistBegun"] = true
+        return if (locationHandler.hasLocationPermission()) {
+            locateNearestStation()
+            LocationAssistStart.STARTED
+        } else {
+            LocationAssistStart.REQUEST_PERMISSION
+        }
+    }
+
+    /** Android's answer; [canAskAgain] is false once the system stops showing the dialog. */
+    fun onStationLocationPermission(granted: Boolean, canAskAgain: Boolean = true) {
+        if (granted) {
+            locateNearestStation()
+        } else if (_locationAssist.value != StationLocationAssist.Dismissed) {
+            _locationAssist.value = StationLocationAssist.PermissionDenied(canAskAgain)
+        }
+    }
+
+    /**
+     * B-BR-LOC-01/03 — one fix and one nearby read: move the picker (and,
+     * unless the person chose a city by hand this session, the preferred
+     * city) to where the device is, then pre-select the station it stands at.
+     * The fix is never stored and never travels with the submission.
+     */
+    fun locateNearestStation() {
+        val follow = followDeviceCity ?: return
+        if (!locationAssistAllowed() || _locationAssist.value == StationLocationAssist.Dismissed) return
+        locateJob?.cancel()
+        _locationAssist.value = StationLocationAssist.Locating
+        locateJob = viewModelScope.launch {
+            try {
+                val fix = locationHandler.getCurrentLocation()
+                val surroundings = fix?.let { follow.surroundings(it) }
+                if (surroundings == null) {
+                    _locationAssist.value = StationLocationAssist.Unavailable
+                    return@launch
+                }
+                if (!locationAssistAllowed() || _pickedStationId.value != null) {
+                    _locationAssist.value = StationLocationAssist.Idle
+                    return@launch
+                }
+                surroundings.city?.takeIf { it.code != _stationCity.value?.code }?.let { city ->
+                    if (cityFollowGate?.isSuppressed != true) follow.follow(city)
+                    moveStationSearchTo(city)
+                }
+                val suggestion = surroundings.preselectable
+                if (suggestion == null) {
+                    _locationAssist.value = StationLocationAssist.NoneNearby
+                    return@launch
+                }
+                pickStation(suggestion.station.stationId)
+                _selectedNominalStation.value = suggestion.station
+                _locationAssist.value = StationLocationAssist.Suggested(suggestion.station.stationId, suggestion.distanceMeters)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _locationAssist.value = StationLocationAssist.Unavailable
+            }
+        }
+    }
+
+    /** "Not this station": back to the manual list; no new suggestion this visit. */
+    fun rejectSuggestedStation() {
+        if (_locationAssist.value !is StationLocationAssist.Suggested) return
+        changeNominalStation()
+    }
+
+    private fun locationAssistAllowed(): Boolean =
+        !entryHadTarget && _target.value == null && _reviewUri.value == null && !_gateBusy.value && !submitting
+
+    /** Lists the device city's stations; a name typed for the old city rarely fits the new one. */
+    private fun moveStationSearchTo(city: com.anpfuel.domain.community.FeedCity) {
+        normalSearchActive = true
+        _stationCity.value = city
+        searchStations("")
     }
 
     private val _state = MutableStateFlow<CaptureOcrUiState>(initialState())

@@ -77,6 +77,14 @@ fun AnpAppNavHost(
         onToggleTheme = onToggleTheme,
         modifier = modifier,
     )
+    // B-BR-NOTIF-01: a tap on an Abastevo Android notification opens Notifications.
+    val openNotifications by com.anpfuel.app.notification.NotificationOpenRequest.requested.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(openNotifications, startDestination) {
+        if (openNotifications && startDestination != Routes.ONBOARDING) {
+            com.anpfuel.app.notification.NotificationOpenRequest.consume()
+            navController.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true }
+        }
+    }
 }
 
 @Composable
@@ -644,6 +652,24 @@ fun AnpNavGraph(
         composable(Routes.PREMIUM_MANAGEMENT) {
             PremiumManagementScreen(
                 onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+            )
+        }
+        composable(Routes.NOTIFICATIONS) {
+            com.anpfuel.app.ui.notifications.NotificationsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenTarget = { target ->
+                    when (target) {
+                        is com.anpfuel.app.ui.notifications.NotificationTarget.ForumTopic ->
+                            Routes.forumPostOrNull(target.topicId)?.let { navController.navigate(it) }
+                        com.anpfuel.app.ui.notifications.NotificationTarget.Contributions -> navController.navigate(Routes.CONTRIBUTIONS)
+                        com.anpfuel.app.ui.notifications.NotificationTarget.Explore -> navController.navigate(Routes.HOME) {
+                            popUpTo(navController.graph.findStartDestination().id)
+                            launchSingleTop = true
+                        }
+                    }
+                },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onSignIn = { navController.navigate(Routes.AUTH) },
             )
         }

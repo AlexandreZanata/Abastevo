@@ -19,6 +19,8 @@ class EnterpriseInvitationViewModel @Inject constructor(
     private val flow: EnterpriseInvitationFlow,
     @Named("enterpriseConnectivity") network: NetworkConnectivityGateway,
     fence: EnterpriseSessionFence,
+    private val contexts: com.anpfuel.application.enterprise.EnterpriseContextGateway? = null,
+    private val membershipHints: com.anpfuel.application.enterprise.EnterpriseMembershipHints? = null,
 ) : ViewModel() {
     val state = flow.state
     val epochs = fence.epochs
@@ -33,6 +35,14 @@ class EnterpriseInvitationViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { fence.epochs.collect { flow.invalidateIfStale() } }
+        // B-BR-EMP-ENTRY-01: an accepted invitation with an active membership opens Company mode in Perfil.
+        viewModelScope.launch {
+            flow.state.collect { state ->
+                if (com.anpfuel.application.enterprise.CompanyModeEntryRule.linkedBy(state)) {
+                    contexts?.currentBinding()?.let { membershipHints?.record(it.accountId, it.origin, true) }
+                }
+            }
+        }
     }
 
     fun preview(code: String, inputEpoch: Long = epochs.value) {

@@ -600,15 +600,16 @@
     <string name="public_catalog_cleared">Diretório público limpo.</string>
     <string name="settings_auto_download_latest_week">Baixar automaticamente a semana mais recente</string>
     <string name="settings_sync_wifi_only">Sincronização automática apenas no Wi‑Fi</string>
+    <string name="settings_allow_mobile_map_downloads">Baixar mapas com dados móveis</string>
     <string name="settings_show_price_history">Exibir histórico de preços</string>
     <string name="settings_retention_weeks">Retenção de dados de postos</string>
     <string name="settings_retention_weeks_option">%1$d semanas</string>
     <string name="settings_nearest_station_radius">Distância de busca do "Mais barato perto de mim"</string>
     <string name="settings_nearest_station_radius_option">%1$d km</string>
     <string name="settings_storage_usage">Uso de armazenamento</string>
-    <string name="settings_storage_summary_rows">Linhas de resumo: %1$s</string>
-    <string name="settings_storage_station_rows">Linhas de postos: %1$s</string>
-    <string name="settings_storage_week_count">Semanas importadas: %1$s</string>
+    <string name="settings_storage_summary_rows">Resumos de preços</string>
+    <string name="settings_storage_station_rows">Registros de preços por posto</string>
+    <string name="settings_storage_week_count">Semanas importadas</string>
     <string name="settings_sync_section">Sincronização</string>
     <string name="settings_change_survey_week">Alterar semana de pesquisa</string>
     <string name="settings_clear_cache">Limpar cache</string>
@@ -901,7 +902,6 @@
     <string name="home_filter_lowest">Menor preço</string>
     <string name="home_filter_highest">Maior preço</string>
     <string name="home_change_city">Minha cidade</string>
-    <string name="home_reference_period">Referência ANP • %1$s</string>
     <string name="home_shortcut_stations">Ver postos</string>
     <string name="home_shortcut_stations_description">Explore postos da cidade</string>
     <string name="home_shortcut_history">Histórico de preços</string>
@@ -1061,6 +1061,16 @@
     <string name="stations_summary_order">Ordenação: %1$s</string>
     <string name="capture_choose_city">Escolher cidade</string>
     <string name="capture_change_station">Trocar posto</string>
+    <string name="capture_near_you_distance">Perto de você · %1$d m</string>
+    <string name="capture_not_this_station">Não é este posto? Escolher manualmente</string>
+    <string name="capture_locating_station">Procurando o posto onde você está…</string>
+    <string name="capture_location_rationale">Permita a localização para já selecionarmos o posto onde você está.</string>
+    <string name="capture_use_my_location">Usar minha localização</string>
+    <string name="capture_open_location_settings">Abrir configurações</string>
+    <string name="capture_location_unavailable">Não foi possível obter sua localização. Verifique se ela está ativada.</string>
+    <string name="capture_no_station_nearby">Nenhum posto bem perto de você. Escolha abaixo.</string>
+    <string name="home_city_followed">Mostrando %1$s, %2$s, onde você está agora</string>
+    <string name="home_city_followed_undo">Desfazer</string>
     <string name="capture_station_name">Nome do posto</string>
     <string name="capture_search_failed">Não foi possível buscar os postos. Verifique a conexão e tente novamente.</string>
     <string name="capture_search_empty">Nenhum posto encontrado.</string>
@@ -1199,6 +1209,10 @@
     <string name="map_downloads_depends_on">Depende de: %1$s</string>
     <string name="map_downloads_wifi_only">Somente Wi-Fi</string>
     <string name="map_downloads_wifi_any">Wi-Fi ou dados móveis</string>
+    <string name="map_mobile_download_title">Usar dados móveis?</string>
+    <string name="map_mobile_download_message">Você não está conectado ao Wi-Fi. Deseja usar dados móveis para baixar o mapa offline de %1$s? O download pode consumir sua franquia.</string>
+    <string name="map_mobile_download_confirm">Baixar mapa</string>
+    <string name="map_mobile_download_dismiss">Agora não</string>
     <string name="map_downloads_delete">Excluir</string>
     <string name="map_downloads_in_use">Em uso pela navegação; pare a navegação e tente de novo</string>
     <string name="map_downloads_stored">Armazenado: %1$s</string>
@@ -1481,7 +1495,8 @@
     </plurals>
     <string name="premium_store_section_title">Assinar</string>
     <string name="premium_store_plans_loading">Carregando planos do Google Play…</string>
-    <string name="premium_store_plans_unavailable">Não foi possível carregar os planos do Google Play.</string>
+    <string name="premium_store_plans_unavailable">Planos indisponíveis no momento</string>
+    <string name="premium_store_plans_retry_hint">Aguarde um instante e tente novamente para ver os preços das assinaturas no Google Play.</string>
     <string name="premium_store_trial_then">1 mês grátis, depois %1$s com renovação automática</string>
     <string name="premium_store_subscribe">Assinar</string>
     <string name="premium_store_billing_note">O pagamento, a renovação e o cancelamento são feitos pelo Google Play.</string>
@@ -1542,4 +1557,35 @@
     <string name="auth_error_email_login_retired">Entre com o Google ou com sua chave de conta.</string>
     <string name="auth_error_google_unavailable">O login com o Google está indisponível. Tente novamente ou use sua chave.</string>
     <string name="auth_legacy_key_issued_warning">Salve sua chave para acessar esta conta em outro aparelho. Você também poderá exportá-la depois pelo Perfil.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Notificações</string>
+    <string name="notifications_mark_all_read">Marcar todas como lidas</string>
+    <string name="notifications_settings">Configurações de notificação</string>
+    <string name="notifications_sign_in_hint">Entre na sua conta para ver também respostas e atualizações dela.</string>
+    <string name="notifications_sign_in_action">Entrar</string>
+    <string name="notifications_not_refreshed">Mostrando as últimas atualizações da conta; não foi possível atualizar.</string>
+    <string name="notifications_mark_failed">Não foi possível marcar como lida. Tente novamente.</string>
+    <string name="notifications_empty_title">Nenhuma notificação ainda</string>
+    <string name="notifications_empty_hint">Quedas de preço na sua cidade, novas semanas da ANP e respostas aos seus tópicos aparecem aqui.</string>
+    <string name="notifications_unread">Não lida</string>
+    <string name="notifications_forum_reply_title">Nova resposta no seu tópico</string>
+    <string name="notifications_forum_reply_body">%1$s respondeu “%2$s”</string>
+    <string name="notifications_forum_reply_body_anonymous">Alguém respondeu “%1$s”</string>
+    <string name="notifications_contribution_validated_title">Seu preço foi validado</string>
+    <string name="notifications_contribution_validated_body">%1$s agora está confirmado pela comunidade.</string>
+    <string name="notifications_contribution_rejected_title">Seu preço não foi aceito</string>
+    <string name="notifications_contribution_rejected_body">%1$s. Veja o motivo em Minhas contribuições.</string>
+    <string name="notifications_city_drop_title">Combustível ficou mais barato em %1$s, %2$s</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Preço do combustível caiu</string>
+    <string name="notifications_vehicle_drop_body">%1$s agora está %2$s</string>
+    <string name="notifications_new_week_title">Nova semana de pesquisa da ANP</string>
+    <string name="notifications_new_week_body">Os preços de %1$s estão disponíveis.</string>
+    <string name="notifications_account_channel_name">Atualizações da conta</string>
+    <string name="notifications_account_channel_description">Respostas aos seus tópicos e decisões sobre suas contribuições</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">Mais %d atualização</item>
+        <item quantity="other">Mais %d atualizações</item>
+    </plurals>
 </resources>

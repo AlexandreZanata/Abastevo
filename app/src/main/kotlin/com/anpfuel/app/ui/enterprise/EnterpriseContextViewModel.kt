@@ -20,6 +20,8 @@ class EnterpriseContextViewModel @Inject constructor(
     private val flow: EnterpriseContextFlow,
     @Named("enterpriseConnectivity") network: NetworkConnectivityGateway,
     fence: EnterpriseSessionFence,
+    private val contexts: com.anpfuel.application.enterprise.EnterpriseContextGateway? = null,
+    private val membershipHints: com.anpfuel.application.enterprise.EnterpriseMembershipHints? = null,
 ) : ViewModel() {
     val state = flow.state
     val epochs = fence.epochs
@@ -39,6 +41,13 @@ class EnterpriseContextViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { fence.epochs.collect { flow.invalidateIfStale() } }
+        // B-BR-EMP-ENTRY-01: remember what a confirmed company list proves for the Perfil entry.
+        viewModelScope.launch {
+            flow.state.collect { state ->
+                val link = com.anpfuel.application.enterprise.CompanyModeEntryRule.linkToRecord(state) ?: return@collect
+                contexts?.currentBinding()?.let { membershipHints?.record(it.accountId, it.origin, link) }
+            }
+        }
     }
 
     private fun sourceAction(renderedEpoch: Long, action: suspend () -> Unit) {

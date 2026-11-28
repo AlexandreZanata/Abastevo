@@ -1,0 +1,24 @@
+{
+  "id": "notifications-list-response-valid",
+  "schema": "NotificationsListResponse",
+  "valid": true,
+  "value": {
+    "items": [
+      {
+        "notification_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "kind": "contribution.rejected",
+        "created_at": "2026-11-28T12:00:00Z",
+        "read": false,
+        "payload": {
+          "observation_id": "45d0e8bc-01b1-441e-9b28-f8c16df7cb35",
+          "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+          "station_name": "Synthetic Station",
+          "fuel": "ETHANOL",
+          "reason": "evidence-timeout"
+        }
+      }
+    ],
+    "next_before": null,
+    "unread": 1
+  }
+}
