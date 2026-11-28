@@ -1544,4 +1544,34 @@
     <string name="auth_error_email_login_retired">Inicia sesión con Google o con tu clave de cuenta.</string>
     <string name="auth_error_google_unavailable">El acceso con Google no está disponible. Inténtalo de nuevo o usa tu clave.</string>
     <string name="auth_legacy_key_issued_warning">Guarda tu clave para acceder a esta cuenta en otro dispositivo. También puedes exportarla después desde Perfil.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Notificaciones</string>
+    <string name="notifications_mark_all_read">Marcar todas como leídas</string>
+    <string name="notifications_settings">Ajustes de notificaciones</string>
+    <string name="notifications_sign_in_hint">Inicia sesión para ver también las respuestas y novedades de tu cuenta.</string>
+    <string name="notifications_sign_in_action">Iniciar sesión</string>
+    <string name="notifications_not_refreshed">Se muestran las últimas novedades de la cuenta; no se pudieron actualizar.</string>
+    <string name="notifications_mark_failed">No se pudo marcar como leída. Inténtalo de nuevo.</string>
+    <string name="notifications_empty_title">Aún no hay notificaciones</string>
+    <string name="notifications_empty_hint">Las bajadas de precio en tu ciudad, las nuevas semanas de la ANP y las respuestas a tus temas aparecen aquí.</string>
+    <string name="notifications_unread">No leída</string>
+    <string name="notifications_forum_reply_title">Nueva respuesta en tu tema</string>
+    <string name="notifications_forum_reply_body">%1$s respondió a “%2$s”</string>
+    <string name="notifications_contribution_validated_title">Tu precio fue validado</string>
+    <string name="notifications_contribution_validated_body">%1$s ahora está confirmado por la comunidad.</string>
+    <string name="notifications_contribution_rejected_title">Tu precio no fue aceptado</string>
+    <string name="notifications_contribution_rejected_body">%1$s. Consulta el motivo en Mis contribuciones.</string>
+    <string name="notifications_city_drop_title">El combustible bajó en %1$s, %2$s</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Bajó el precio del combustible</string>
+    <string name="notifications_vehicle_drop_body">%1$s ahora cuesta %2$s</string>
+    <string name="notifications_new_week_title">Nueva semana de encuesta de la ANP</string>
+    <string name="notifications_new_week_body">Ya están disponibles los precios de %1$s.</string>
+    <string name="notifications_account_channel_name">Novedades de la cuenta</string>
+    <string name="notifications_account_channel_description">Respuestas a tus temas y decisiones sobre tus contribuciones</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">%d novedad más</item>
+        <item quantity="other">%d novedades más</item>
+    </plurals>
 </resources>

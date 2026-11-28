@@ -84,6 +84,7 @@ class AnpFuelApplication : Application(), Configuration.Provider {
             com.anpfuel.data.worker.DirectorySyncWorker.maintainSchedule(this@AnpFuelApplication, preferenceStore)
         }
         qualityReportScheduler.maintain()
+        com.anpfuel.data.worker.AccountNotificationWorker.schedule(this)
         enterpriseVaultMaintenance.maintain()
         enterpriseOperationDelivery.schedule()
         applicationScope.launch {

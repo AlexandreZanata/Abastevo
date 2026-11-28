@@ -1545,4 +1545,36 @@
     <string name="auth_error_email_login_retired">Войдите через Google или с ключом аккаунта.</string>
     <string name="auth_error_google_unavailable">Вход через Google недоступен. Попробуйте снова или используйте ключ.</string>
     <string name="auth_legacy_key_issued_warning">Сохраните ключ для входа на другом устройстве. Позже его можно экспортировать из профиля.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Уведомления</string>
+    <string name="notifications_mark_all_read">Отметить все как прочитанные</string>
+    <string name="notifications_settings">Настройки уведомлений</string>
+    <string name="notifications_sign_in_hint">Войдите, чтобы видеть также ответы и обновления по вашему аккаунту.</string>
+    <string name="notifications_sign_in_action">Войти</string>
+    <string name="notifications_not_refreshed">Показаны последние обновления аккаунта; обновить не удалось.</string>
+    <string name="notifications_mark_failed">Не удалось отметить как прочитанное. Попробуйте ещё раз.</string>
+    <string name="notifications_empty_title">Уведомлений пока нет</string>
+    <string name="notifications_empty_hint">Здесь появятся снижения цен в вашем городе, новые недели ANP и ответы на ваши темы.</string>
+    <string name="notifications_unread">Не прочитано</string>
+    <string name="notifications_forum_reply_title">Новый ответ в вашей теме</string>
+    <string name="notifications_forum_reply_body">%1$s ответил(а) в «%2$s»</string>
+    <string name="notifications_contribution_validated_title">Ваша цена подтверждена</string>
+    <string name="notifications_contribution_validated_body">%1$s теперь подтверждена сообществом.</string>
+    <string name="notifications_contribution_rejected_title">Ваша цена не принята</string>
+    <string name="notifications_contribution_rejected_body">%1$s. Причина указана в разделе «Мои вклады».</string>
+    <string name="notifications_city_drop_title">Топливо подешевело: %1$s, %2$s</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Цена на топливо снизилась</string>
+    <string name="notifications_vehicle_drop_body">%1$s теперь стоит %2$s</string>
+    <string name="notifications_new_week_title">Новая неделя опроса ANP</string>
+    <string name="notifications_new_week_body">Доступны цены за %1$s.</string>
+    <string name="notifications_account_channel_name">Обновления аккаунта</string>
+    <string name="notifications_account_channel_description">Ответы на ваши темы и решения по вашим вкладам</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">Ещё %d обновление</item>
+        <item quantity="few">Ещё %d обновления</item>
+        <item quantity="many">Ещё %d обновлений</item>
+        <item quantity="other">Ещё %d обновления</item>
+    </plurals>
 </resources>

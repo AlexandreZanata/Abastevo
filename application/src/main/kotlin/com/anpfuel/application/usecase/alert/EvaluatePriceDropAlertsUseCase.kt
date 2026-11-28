@@ -46,6 +46,9 @@ class EvaluatePriceDropAlertsUseCase(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val priceDropNotificationRepository: PriceDropNotificationRepository,
     private val priceDropAlertHistoryRepository: PriceDropAlertHistoryRepository,
+    /** B-BR-NOTIF-05: shown alerts are also kept in the device inbox of the Notifications screen. */
+    private val localInbox: com.anpfuel.domain.notification.LocalNotificationInbox? = null,
+    private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
 
     suspend operator fun invoke(): EvaluatePriceDropAlertsResult {
@@ -112,11 +115,21 @@ class EvaluatePriceDropAlertsUseCase(
                 continue
             }
 
+            val formatted = BrlPriceFormatter.format(currentPrice!!)
             priceDropNotificationRepository.showPriceDropAlert(
                 PriceDropAlertNotification(
                     vehicleId = vehicle.id,
                     vehicleDisplayName = vehicle.displayName,
-                    currentPriceFormatted = BrlPriceFormatter.format(currentPrice!!),
+                    currentPriceFormatted = formatted,
+                ),
+            )
+            localInbox?.add(
+                com.anpfuel.domain.notification.AppNotification(
+                    id = "local.vehicle_price_drop:${vehicle.id.value}:${currentWeek.endDate}",
+                    source = com.anpfuel.domain.notification.AppNotificationSource.LOCAL,
+                    content = com.anpfuel.domain.notification.AppNotificationContent.VehiclePriceDrop(vehicle.displayName, formatted),
+                    createdAtMillis = nowMillis(),
+                    read = false,
                 ),
             )
             priceDropAlertHistoryRepository.recordNotified(vehicle.id, currentWeek)

@@ -1542,4 +1542,33 @@
     <string name="auth_error_email_login_retired">Google またはアカウントキーでログインしてください。</string>
     <string name="auth_error_google_unavailable">Google ログインを利用できません。再試行するか、キーを使用してください。</string>
     <string name="auth_legacy_key_issued_warning">別の端末でログインするためにキーを保存してください。後でプロフィールからもエクスポートできます。</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">お知らせ</string>
+    <string name="notifications_mark_all_read">すべて既読にする</string>
+    <string name="notifications_settings">通知設定</string>
+    <string name="notifications_sign_in_hint">ログインすると、アカウントへの返信や更新も表示されます。</string>
+    <string name="notifications_sign_in_action">ログイン</string>
+    <string name="notifications_not_refreshed">前回のアカウントの更新を表示しています。更新できませんでした。</string>
+    <string name="notifications_mark_failed">既読にできませんでした。もう一度お試しください。</string>
+    <string name="notifications_empty_title">お知らせはまだありません</string>
+    <string name="notifications_empty_hint">お住まいの市の値下がり、ANP の新しい週、トピックへの返信がここに表示されます。</string>
+    <string name="notifications_unread">未読</string>
+    <string name="notifications_forum_reply_title">トピックに新しい返信</string>
+    <string name="notifications_forum_reply_body">%1$s さんが「%2$s」に返信しました</string>
+    <string name="notifications_contribution_validated_title">投稿した価格が承認されました</string>
+    <string name="notifications_contribution_validated_body">%1$s はコミュニティで確認されました。</string>
+    <string name="notifications_contribution_rejected_title">投稿した価格は承認されませんでした</string>
+    <string name="notifications_contribution_rejected_body">%1$s。理由は「自分の投稿」で確認できます。</string>
+    <string name="notifications_city_drop_title">%1$s, %2$s で燃料が値下がりしました</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">燃料価格が下がりました</string>
+    <string name="notifications_vehicle_drop_body">%1$s は現在 %2$s です</string>
+    <string name="notifications_new_week_title">ANP の新しい調査週</string>
+    <string name="notifications_new_week_body">%1$s の価格が利用できます。</string>
+    <string name="notifications_account_channel_name">アカウントの更新</string>
+    <string name="notifications_account_channel_description">トピックへの返信と投稿への判定</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="other">ほか %d 件の更新</item>
+    </plurals>
 </resources>

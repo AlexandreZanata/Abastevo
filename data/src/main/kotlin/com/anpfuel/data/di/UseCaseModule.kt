@@ -769,6 +769,7 @@ object UseCaseModule {
         userPreferencesRepository: UserPreferencesRepository,
         priceDropNotificationRepository: PriceDropNotificationRepository,
         priceDropAlertHistoryRepository: PriceDropAlertHistoryRepository,
+        localInbox: com.anpfuel.domain.notification.LocalNotificationInbox,
     ): EvaluatePriceDropAlertsUseCase = EvaluatePriceDropAlertsUseCase(
         vehicleRepository = vehicleRepository,
         averagePriceRepository = averagePriceRepository,
@@ -777,6 +778,7 @@ object UseCaseModule {
         userPreferencesRepository = userPreferencesRepository,
         priceDropNotificationRepository = priceDropNotificationRepository,
         priceDropAlertHistoryRepository = priceDropAlertHistoryRepository,
+        localInbox = localInbox,
     )
 
     @Provides

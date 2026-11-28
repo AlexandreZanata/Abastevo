@@ -36,6 +36,7 @@ object Routes {
     const val STATIONS = "stations"
     const val STATIONS_WITH_FUEL = "stations/{fuelProduct}"
     const val SETTINGS = "settings"
+    const val NOTIFICATIONS = "notifications"
     const val HELP = "help"
     const val PRIVACY = "privacy"
     const val VEHICLES = "vehicles"

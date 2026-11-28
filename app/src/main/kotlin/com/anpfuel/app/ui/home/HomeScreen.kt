@@ -236,7 +236,7 @@ internal fun HomeContent(
             val municipality = uiState.municipality
             val state = uiState.state
             AbastevoHeader(
-                onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+                onNotificationsClick = { onNavigate(Routes.NOTIFICATIONS) },
                 onProfileClick = { onNavigate(Routes.PROFILE) },
                 locationLabel = if (municipality != null && state != null) {
                     stringResource(R.string.home_location_format, municipality, state.abbreviation)

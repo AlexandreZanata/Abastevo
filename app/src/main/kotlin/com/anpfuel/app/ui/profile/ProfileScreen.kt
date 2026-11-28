@@ -105,7 +105,7 @@ fun ProfileScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AbastevoHeader(
-                onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+                onNotificationsClick = { onNavigate(Routes.NOTIFICATIONS) },
                 onProfileClick = {},
             )
         },

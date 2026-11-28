@@ -1542,4 +1542,33 @@
     <string name="auth_error_email_login_retired">请使用 Google 或账户密钥登录。</string>
     <string name="auth_error_google_unavailable">Google 登录暂不可用。请重试或使用密钥。</string>
     <string name="auth_legacy_key_issued_warning">保存密钥以便在其他设备登录。以后也可从个人资料导出。</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">通知</string>
+    <string name="notifications_mark_all_read">全部标为已读</string>
+    <string name="notifications_settings">通知设置</string>
+    <string name="notifications_sign_in_hint">登录后还可以查看账号的回复和更新。</string>
+    <string name="notifications_sign_in_action">登录</string>
+    <string name="notifications_not_refreshed">显示的是上次的账号更新;无法刷新。</string>
+    <string name="notifications_mark_failed">无法标为已读。请重试。</string>
+    <string name="notifications_empty_title">暂无通知</string>
+    <string name="notifications_empty_hint">你所在城市的降价、ANP 新的调查周以及你话题的回复会显示在这里。</string>
+    <string name="notifications_unread">未读</string>
+    <string name="notifications_forum_reply_title">你的话题有新回复</string>
+    <string name="notifications_forum_reply_body">%1$s 回复了“%2$s”</string>
+    <string name="notifications_contribution_validated_title">你提交的价格已通过验证</string>
+    <string name="notifications_contribution_validated_body">%1$s 现已获得社区确认。</string>
+    <string name="notifications_contribution_rejected_title">你提交的价格未被接受</string>
+    <string name="notifications_contribution_rejected_body">%1$s。原因请在“我的贡献”中查看。</string>
+    <string name="notifications_city_drop_title">%1$s, %2$s 的燃油降价了</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">燃油价格下降了</string>
+    <string name="notifications_vehicle_drop_body">%1$s 现在是 %2$s</string>
+    <string name="notifications_new_week_title">ANP 新的调查周</string>
+    <string name="notifications_new_week_body">%1$s 的价格已可查看。</string>
+    <string name="notifications_account_channel_name">账号更新</string>
+    <string name="notifications_account_channel_description">你话题的回复以及对你贡献的处理结果</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="other">还有 %d 条更新</item>
+    </plurals>
 </resources>

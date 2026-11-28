@@ -122,6 +122,11 @@ outlines and indicators.
   white card with a calendar badge (black once downloaded), the date, an
   "Atual" tag for the latest week and a black "Baixar" action or an outlined
   "Baixada" state. The loading skeleton mirrors these cards.
+- **Notifications** (header bell): white cards newest first, a round badge
+  per kind (black while unread, outlined once read), bold title and a green
+  unread dot while unread, body in muted text and the relative time. Top bar
+  actions: mark all as read and notification settings. Sign-in and
+  "not refreshed" notices are white rows with a text action.
 - **Station picker** (price photo): the city sits in a white card with the
   green pin and a "Choose city" link. Each station is a white card with an
   outlined pump badge, the name in bold and the address. The selected station

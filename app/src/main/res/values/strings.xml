@@ -1563,4 +1563,34 @@
     <string name="auth_error_email_login_retired">Sign in with Google or with your account key.</string>
     <string name="auth_error_google_unavailable">Google sign-in is unavailable. Try again or use your key.</string>
     <string name="auth_legacy_key_issued_warning">Save your key to access this account on another device. You can also export it later from Profile.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Notifications</string>
+    <string name="notifications_mark_all_read">Mark all as read</string>
+    <string name="notifications_settings">Notification settings</string>
+    <string name="notifications_sign_in_hint">Sign in to also see replies and updates for your account.</string>
+    <string name="notifications_sign_in_action">Sign in</string>
+    <string name="notifications_not_refreshed">Showing the last account updates; they could not be refreshed.</string>
+    <string name="notifications_mark_failed">Could not mark as read. Try again.</string>
+    <string name="notifications_empty_title">No notifications yet</string>
+    <string name="notifications_empty_hint">Price drops in your city, new ANP weeks and replies to your topics show up here.</string>
+    <string name="notifications_unread">Unread</string>
+    <string name="notifications_forum_reply_title">New reply on your topic</string>
+    <string name="notifications_forum_reply_body">%1$s replied to “%2$s”</string>
+    <string name="notifications_contribution_validated_title">Your price was validated</string>
+    <string name="notifications_contribution_validated_body">%1$s is now confirmed by the community.</string>
+    <string name="notifications_contribution_rejected_title">Your price was not accepted</string>
+    <string name="notifications_contribution_rejected_body">%1$s. See the reason in My contributions.</string>
+    <string name="notifications_city_drop_title">Fuel got cheaper in %1$s, %2$s</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Fuel price dropped</string>
+    <string name="notifications_vehicle_drop_body">%1$s is now %2$s</string>
+    <string name="notifications_new_week_title">New ANP survey week</string>
+    <string name="notifications_new_week_body">Prices for %1$s are available.</string>
+    <string name="notifications_account_channel_name">Account updates</string>
+    <string name="notifications_account_channel_description">Replies to your topics and decisions on your contributions</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">%d more update</item>
+        <item quantity="other">%d more updates</item>
+    </plurals>
 </resources>

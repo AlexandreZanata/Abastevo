@@ -1543,4 +1543,34 @@
     <string name="auth_error_email_login_retired">Melde dich mit Google oder deinem Kontoschlüssel an.</string>
     <string name="auth_error_google_unavailable">Die Google-Anmeldung ist gerade nicht verfügbar. Versuche es erneut oder verwende deinen Schlüssel.</string>
     <string name="auth_legacy_key_issued_warning">Speichere deinen Schlüssel für den Zugriff auf einem anderen Gerät. Du kannst ihn später auch im Profil exportieren.</string>
+
+    <!-- B-BR-NOTIF: Notifications screen and Android notifications -->
+    <string name="notifications_screen_title">Benachrichtigungen</string>
+    <string name="notifications_mark_all_read">Alle als gelesen markieren</string>
+    <string name="notifications_settings">Benachrichtigungseinstellungen</string>
+    <string name="notifications_sign_in_hint">Melde dich an, um auch Antworten und Neuigkeiten zu deinem Konto zu sehen.</string>
+    <string name="notifications_sign_in_action">Anmelden</string>
+    <string name="notifications_not_refreshed">Letzte Kontoneuigkeiten werden angezeigt; Aktualisierung nicht möglich.</string>
+    <string name="notifications_mark_failed">Konnte nicht als gelesen markiert werden. Versuche es erneut.</string>
+    <string name="notifications_empty_title">Noch keine Benachrichtigungen</string>
+    <string name="notifications_empty_hint">Preissenkungen in deiner Stadt, neue ANP-Wochen und Antworten auf deine Themen erscheinen hier.</string>
+    <string name="notifications_unread">Ungelesen</string>
+    <string name="notifications_forum_reply_title">Neue Antwort auf dein Thema</string>
+    <string name="notifications_forum_reply_body">%1$s hat auf „%2$s“ geantwortet</string>
+    <string name="notifications_contribution_validated_title">Dein Preis wurde bestätigt</string>
+    <string name="notifications_contribution_validated_body">%1$s ist jetzt von der Community bestätigt.</string>
+    <string name="notifications_contribution_rejected_title">Dein Preis wurde nicht angenommen</string>
+    <string name="notifications_contribution_rejected_body">%1$s. Den Grund findest du unter Meine Beiträge.</string>
+    <string name="notifications_city_drop_title">Kraftstoff ist in %1$s, %2$s günstiger geworden</string>
+    <string name="notifications_city_drop_fuel">%1$s %2$s (−%3$s)</string>
+    <string name="notifications_vehicle_drop_title">Kraftstoffpreis gesunken</string>
+    <string name="notifications_vehicle_drop_body">%1$s kostet jetzt %2$s</string>
+    <string name="notifications_new_week_title">Neue ANP-Erhebungswoche</string>
+    <string name="notifications_new_week_body">Die Preise für %1$s sind verfügbar.</string>
+    <string name="notifications_account_channel_name">Konto-Neuigkeiten</string>
+    <string name="notifications_account_channel_description">Antworten auf deine Themen und Entscheidungen zu deinen Beiträgen</string>
+    <plurals name="notifications_more_updates">
+        <item quantity="one">%d weitere Neuigkeit</item>
+        <item quantity="other">%d weitere Neuigkeiten</item>
+    </plurals>
 </resources>
