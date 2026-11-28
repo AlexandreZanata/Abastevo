@@ -1048,6 +1048,16 @@
     <string name="stations_summary_order">並び順: %1$s</string>
     <string name="capture_choose_city">都市を選択</string>
     <string name="capture_change_station">給油所を変更</string>
+    <string name="capture_near_you_distance">現在地の近く · %1$d m</string>
+    <string name="capture_not_this_station">この給油所ではありませんか？手動で選ぶ</string>
+    <string name="capture_locating_station">現在地の給油所を探しています…</string>
+    <string name="capture_location_rationale">位置情報を許可すると、いる給油所を自動で選択します。</string>
+    <string name="capture_use_my_location">現在地を使う</string>
+    <string name="capture_open_location_settings">設定を開く</string>
+    <string name="capture_location_unavailable">現在地を取得できませんでした。位置情報がオンか確認してください。</string>
+    <string name="capture_no_station_nearby">すぐ近くに給油所がありません。下から選んでください。</string>
+    <string name="home_city_followed">現在地の %1$s, %2$s を表示しています</string>
+    <string name="home_city_followed_undo">元に戻す</string>
     <string name="capture_station_name">給油所名</string>
     <string name="capture_search_failed">検索できませんでした。接続を確認して再試行してください。</string>
     <string name="capture_search_empty">給油所が見つかりません。</string>

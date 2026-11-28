@@ -861,6 +861,19 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideFollowDeviceCityUseCase(
+        nearbyStations: GetNearbyServerStationsUseCase,
+        catalog: MunicipalityCatalogRepository,
+        locations: SelectLocationUseCase,
+    ): com.anpfuel.application.usecase.location.FollowDeviceCityUseCase =
+        com.anpfuel.application.usecase.location.FollowDeviceCityUseCase(
+            nearbyStations = nearbyStations,
+            catalog = catalog,
+            locations = locations,
+        )
+
+    @Provides
+    @Singleton
     fun provideSubmitStationSuggestionUseCase(
         gateway: StationIntakeGateway,
     ): SubmitStationSuggestionUseCase = SubmitStationSuggestionUseCase(gateway)

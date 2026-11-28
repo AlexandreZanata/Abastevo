@@ -11,6 +11,7 @@ code and its tests are the final word on what ships today.
 - [Open source and business boundaries](open-source-business.md).
 - [Admin suite, tiers, contributors and staff roles](admin-tiers.md).
 - [Notification content](notification-content.md).
+- [Device location: city follow and station pre-selection](device-location.md).
 
 ## Stations and official data
 

@@ -4,6 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.error.AppError
 import com.anpfuel.application.error.AppErrorResolver
+import com.anpfuel.app.location.DeviceCityFollowGate
+import com.anpfuel.app.location.LocationPermissionHandler
+import com.anpfuel.application.usecase.location.CityFollowOutcome
+import com.anpfuel.application.usecase.location.FollowDeviceCityUseCase
+import com.anpfuel.application.usecase.location.PreferredLocation
 import com.anpfuel.application.usecase.location.SelectLocationUseCase
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetMunicipalityPricesUseCase
@@ -72,6 +77,8 @@ data class HomeUiState(
     val syncError: AppError? = null,
     /** One-shot confirmation of a manual sync; the screen shows it once and consumes it. */
     val syncNotice: HomeSyncNotice? = null,
+    /** B-BR-LOC-03: one-shot "now showing the city you are in"; consumed after it is shown. */
+    val cityFollowNotice: HomeCityFollowNotice? = null,
 ) {
     /**
      * True when STALE is already verified for the displayed week:
@@ -85,6 +92,9 @@ data class HomeUiState(
             verifiedSurveyWeek != null &&
             verifiedSurveyWeek == surveyWeek
 }
+
+/** B-BR-LOC-03: the city Explorar switched to; Undo exists only when a previous city did. */
+data class HomeCityFollowNotice(val municipality: String, val state: BrazilianState, val canUndo: Boolean)
 
 /** Transient outcome of a manual sync (B-BR-SYNC-FEEDBACK-01). */
 enum class HomeSyncNotice { VERIFIED_NO_NEW_WEEK, UPDATED }
@@ -103,6 +113,9 @@ class HomeViewModel @Inject constructor(
     observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
     private val communitySummary: com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase,
     private val communitySnapshot: com.anpfuel.domain.community.CommunityFeedLocalSnapshot,
+    private val locationHandler: LocationPermissionHandler? = null,
+    private val followDeviceCity: FollowDeviceCityUseCase? = null,
+    private val cityFollowGate: DeviceCityFollowGate? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -519,6 +532,69 @@ class HomeViewModel @Inject constructor(
 
     fun onSyncNoticeShown() {
         _uiState.update { it.copy(syncNotice = null) }
+    }
+
+    private var cityFollowJob: kotlinx.coroutines.Job? = null
+    private var undoCity: PreferredLocation? = null
+
+    /** B-BR-LOC-03: Explorar asks for location once per app process, only while it is not granted. */
+    fun shouldAskLocationPermission(): Boolean {
+        val handler = locationHandler ?: return false
+        val gate = cityFollowGate ?: return false
+        if (handler.hasLocationPermission()) return false
+        return gate.claimPermissionPrompt()
+    }
+
+    /**
+     * B-BR-LOC-03 — makes the city the device is in the preferred city, paced
+     * by [DeviceCityFollowGate]. The fix stays in memory for one nearby read;
+     * any failure keeps the current city without a message.
+     */
+    fun followDeviceCity(locale: Locale) {
+        val handler = locationHandler ?: return
+        val follow = followDeviceCity ?: return
+        val gate = cityFollowGate ?: return
+        if (!handler.hasLocationPermission() || cityFollowJob?.isActive == true) return
+        if (!gate.tryBeginFollow(nowMillis())) return
+        cityFollowJob = viewModelScope.launch {
+            try {
+                val fix = handler.getCurrentLocation() ?: return@launch
+                val city = follow.surroundings(fix)?.city ?: return@launch
+                // A manual choice made while locating wins.
+                if (gate.isSuppressed) return@launch
+                val switched = follow.follow(city) as? CityFollowOutcome.Switched ?: return@launch
+                undoCity = switched.previous
+                _uiState.update {
+                    it.copy(
+                        cityFollowNotice = HomeCityFollowNotice(
+                            municipality = city.name,
+                            state = city.state,
+                            canUndo = switched.previous != null,
+                        ),
+                    )
+                }
+                load(locale, showLoadingIndicator = true)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Offline, no fix or a city outside the catalog: keep the current city.
+            }
+        }
+    }
+
+    /** Puts the previous city back and stops following until the app process ends. */
+    fun undoCityFollow(locale: Locale) {
+        val previous = undoCity ?: return
+        val follow = followDeviceCity ?: return
+        undoCity = null
+        cityFollowGate?.suppressForSession()
+        viewModelScope.launch {
+            if (follow.restore(previous)) load(locale, showLoadingIndicator = true)
+        }
+    }
+
+    fun onCityFollowNoticeShown() {
+        _uiState.update { it.copy(cityFollowNotice = null) }
     }
 
     /**

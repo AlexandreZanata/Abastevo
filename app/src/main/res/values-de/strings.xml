@@ -1048,6 +1048,16 @@
     <string name="stations_summary_order">Reihenfolge: %1$s</string>
     <string name="capture_choose_city">Stadt wählen</string>
     <string name="capture_change_station">Tankstelle wechseln</string>
+    <string name="capture_near_you_distance">In deiner Nähe · %1$d m</string>
+    <string name="capture_not_this_station">Nicht diese Tankstelle? Manuell wählen</string>
+    <string name="capture_locating_station">Tankstelle an deinem Standort wird gesucht…</string>
+    <string name="capture_location_rationale">Erlaube den Standort, damit die Tankstelle, an der du bist, vorausgewählt wird.</string>
+    <string name="capture_use_my_location">Meinen Standort verwenden</string>
+    <string name="capture_open_location_settings">Einstellungen öffnen</string>
+    <string name="capture_location_unavailable">Standort nicht verfügbar. Prüfe, ob die Standortermittlung aktiv ist.</string>
+    <string name="capture_no_station_nearby">Keine Tankstelle direkt in deiner Nähe. Wähle sie unten aus.</string>
+    <string name="home_city_followed">Anzeige für %1$s, %2$s, wo du gerade bist</string>
+    <string name="home_city_followed_undo">Rückgängig</string>
     <string name="capture_station_name">Name der Tankstelle</string>
     <string name="capture_search_failed">Tankstellen konnten nicht gesucht werden. Verbindung prüfen und erneut versuchen.</string>
     <string name="capture_search_empty">Keine Tankstellen gefunden.</string>

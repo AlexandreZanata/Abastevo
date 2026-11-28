@@ -1048,6 +1048,16 @@
     <string name="stations_summary_order">Сортировка: %1$s</string>
     <string name="capture_choose_city">Выбрать город</string>
     <string name="capture_change_station">Сменить АЗС</string>
+    <string name="capture_near_you_distance">Рядом с вами · %1$d м</string>
+    <string name="capture_not_this_station">Не эта АЗС? Выбрать вручную</string>
+    <string name="capture_locating_station">Ищем АЗС, на которой вы находитесь…</string>
+    <string name="capture_location_rationale">Разрешите доступ к геолокации, чтобы заранее выбрать АЗС, на которой вы находитесь.</string>
+    <string name="capture_use_my_location">Использовать мое местоположение</string>
+    <string name="capture_open_location_settings">Открыть настройки</string>
+    <string name="capture_location_unavailable">Не удалось определить местоположение. Проверьте, что геолокация включена.</string>
+    <string name="capture_no_station_nearby">Рядом с вами нет АЗС. Выберите ее ниже.</string>
+    <string name="home_city_followed">Показан город %1$s, %2$s, где вы сейчас</string>
+    <string name="home_city_followed_undo">Отменить</string>
     <string name="capture_station_name">Название АЗС</string>
     <string name="capture_search_failed">Не удалось найти АЗС. Проверьте подключение и повторите попытку.</string>
     <string name="capture_search_empty">АЗС не найдены.</string>

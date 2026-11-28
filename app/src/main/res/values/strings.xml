@@ -1067,6 +1067,16 @@
     <string name="stations_summary_order">Order: %1$s</string>
     <string name="capture_choose_city">Choose city</string>
     <string name="capture_change_station">Change station</string>
+    <string name="capture_near_you_distance">Near you · %1$d m</string>
+    <string name="capture_not_this_station">Not this station? Choose manually</string>
+    <string name="capture_locating_station">Finding the station you\'re at…</string>
+    <string name="capture_location_rationale">Allow location to pre-select the station you\'re at.</string>
+    <string name="capture_use_my_location">Use my location</string>
+    <string name="capture_open_location_settings">Open settings</string>
+    <string name="capture_location_unavailable">Couldn\'t get your location. Check that location is on.</string>
+    <string name="capture_no_station_nearby">No station right next to you. Choose it below.</string>
+    <string name="home_city_followed">Showing %1$s, %2$s, where you are now</string>
+    <string name="home_city_followed_undo">Undo</string>
     <string name="capture_station_name">Station name</string>
     <string name="capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="capture_search_empty">No matching stations.</string>

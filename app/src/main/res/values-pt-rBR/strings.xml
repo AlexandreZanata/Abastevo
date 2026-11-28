@@ -1061,6 +1061,16 @@
     <string name="stations_summary_order">Ordenação: %1$s</string>
     <string name="capture_choose_city">Escolher cidade</string>
     <string name="capture_change_station">Trocar posto</string>
+    <string name="capture_near_you_distance">Perto de você · %1$d m</string>
+    <string name="capture_not_this_station">Não é este posto? Escolher manualmente</string>
+    <string name="capture_locating_station">Procurando o posto onde você está…</string>
+    <string name="capture_location_rationale">Permita a localização para já selecionarmos o posto onde você está.</string>
+    <string name="capture_use_my_location">Usar minha localização</string>
+    <string name="capture_open_location_settings">Abrir configurações</string>
+    <string name="capture_location_unavailable">Não foi possível obter sua localização. Verifique se ela está ativada.</string>
+    <string name="capture_no_station_nearby">Nenhum posto bem perto de você. Escolha abaixo.</string>
+    <string name="home_city_followed">Mostrando %1$s, %2$s, onde você está agora</string>
+    <string name="home_city_followed_undo">Desfazer</string>
     <string name="capture_station_name">Nome do posto</string>
     <string name="capture_search_failed">Não foi possível buscar os postos. Verifique a conexão e tente novamente.</string>
     <string name="capture_search_empty">Nenhum posto encontrado.</string>

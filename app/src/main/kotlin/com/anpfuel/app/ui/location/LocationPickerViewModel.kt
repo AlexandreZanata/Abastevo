@@ -2,6 +2,7 @@ package com.anpfuel.app.ui.location
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anpfuel.app.location.DeviceCityFollowGate
 import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.usecase.location.CatalogMunicipalityItem
 import com.anpfuel.application.usecase.location.PreferredLocation
@@ -54,6 +55,7 @@ class LocationPickerViewModel @Inject constructor(
     private val selectLocationUseCase: SelectLocationUseCase,
     private val resolveDeviceLocationUseCase: ResolveDeviceLocationUseCase,
     private val locationPermissionHandler: LocationPermissionHandler,
+    private val cityFollowGate: DeviceCityFollowGate? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LocationPickerUiState())
@@ -180,6 +182,8 @@ class LocationPickerViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             runCatching {
                 selectLocationUseCase.selectLocation(state = state, municipality = municipality)
+                // B-BR-LOC-03: a city picked by hand is not overwritten by city follow this session.
+                cityFollowGate?.suppressForSession()
                 _uiState.update { it.copy(isSaving = false) }
                 _navigation.emit(LocationPickerNavigation.ToHome)
             }.onFailure { error ->
