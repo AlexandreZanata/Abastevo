@@ -909,18 +909,22 @@ private fun LocationAssistCard(message: String, action: String, enabled: Boolean
         border = AnpContainerDefaults.borderStroke(containerColor),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(Icons.Default.MyLocation, null, tint = MaterialTheme.colorScheme.onSurface)
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onAction, enabled = enabled) {
+        // Message on its own line and the action under it, so a long label
+        // ("Open settings") never squeezes the explanation into a narrow column.
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+            Row(
+                modifier = Modifier.padding(end = 8.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(Icons.Default.MyLocation, null, tint = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            TextButton(onClick = onAction, enabled = enabled, modifier = Modifier.align(Alignment.End)) {
                 Text(action)
             }
         }
